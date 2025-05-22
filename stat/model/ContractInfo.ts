@@ -5,6 +5,7 @@ import {ContractVerify} from "./ContractVerify";
 import {format} from "js-conflux-sdk";
 import {StatApp} from "../StatApp";
 import {getAddrId, } from "./HexMap";
+import {Interface} from "ethers/lib/utils";
 
 export interface IAbiInfo {
     id?:number
@@ -63,7 +64,7 @@ export class ContractABI extends Model<IContractABI> implements IContractABI {
 // Refer:
 // https://docs.soliditylang.org/en/v0.5.3/abi-spec.html
 // https://docs.soliditylang.org/en/v0.5.3/abi-spec.html#events
-export async function saveAbiInfo(abiObj:any, contractId?:number) {
+export async function saveAbiInfo(abiObj:any, contractId?:number, dryRun = false) {
     const abi = (typeof abiObj === 'string') ? JSON.parse(abiObj) : abiObj;
     const cfx = await initCfxSdk({url:''});
     let contract: any;
@@ -71,9 +72,15 @@ export async function saveAbiInfo(abiObj:any, contractId?:number) {
         contract = cfx.Contract({abi});
     } catch (e) {
         console.log(`failed to parse abi, contract id `, contractId, `abi`, abi, 'error is ', e);
+        if (dryRun) {
+            throw e;
+        }
         return e.message?.includes('can not found matched coder'); // js conflux sdk
     }
-    const arr:IAbiInfo[] = []
+    if (dryRun) {
+        return true;
+    }
+    const arr:IAbiInfo[] = [];
     // each key is a prop of the contract, only care the exact method/event like abc(address,uint)
     const maxFullName = 1024
     for (let key of Object.keys(contract)) {
@@ -209,10 +216,8 @@ export async function fillMethodInfo(list:{method?:string, to?:string}[],
     }).then(list=>{
         poorAbiMap.clear();
         list.forEach(info=>{
-            if (poorAbiMap.has(info.hash)) {
-                // we have multiple abi. set it to null, display method id instead.
-                poorAbiMap.set(info.hash, null);
-            } else {
+            if (!poorAbiMap.has(info.hash)) {
+                // we have multiple abi. use the first.
                 poorAbiMap.set(info.hash, info)
             }
         })
@@ -237,4 +242,21 @@ export async function fillMethodInfo(list:{method?:string, to?:string}[],
         }
         // console.log(`set full name ${fullName} to ${row.method} , map v ${map.get(row.method)}`)
     })
+}
+
+export function parseAbiStr(str: string) {
+        const jsonArr = JSON.parse(str);
+        const iFace = new Interface(jsonArr);
+        return iFace.format();
+}
+
+export async function saveAbiAnnounce(str: string, epoch:number) {
+    let segments: string | Array<string>;
+    try {
+        segments = parseAbiStr(str);
+    } catch (e) {
+        console.log(`failed to parse abi at epoch ${epoch} for ${str}`, e);
+        throw e;
+    }
+    return saveAbiInfo(segments);
 }

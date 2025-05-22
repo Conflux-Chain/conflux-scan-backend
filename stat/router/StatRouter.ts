@@ -42,6 +42,7 @@ import {RateLimiterMemory} from "rate-limiter-flexible";
 import {paginateCore, paginateCoreStat} from "./ParamChecker";
 import * as bodyParser from "koa-bodyparser";
 import {NoCoreSpace} from "../config/StatConfig";
+import {AbiInfo, parseAbiStr, saveAbiInfo} from "../model/ContractInfo";
 
 const e2k = require('express-to-koa');
 const swStats = require('swagger-stats');
@@ -154,6 +155,48 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const result = await statApp.contractQuery.query({address,fields});
 
         ctx.body = result || {};
+    })
+    router.get('/contract/check-abi', async (ctx)=>{
+        const base64 = ctx.request.query.base64;
+        if(!base64){
+            throw new Errors.ParameterError(`param <base64> is absent`);
+        }
+        let decodedBase64: string;
+        try {
+            decodedBase64 = Buffer.from(base64, 'base64').toString();
+        } catch (e) {
+            throw new Errors.ParameterError(`<base64> is invalid: ${e}`);
+        }
+        try {
+            const parsed = parseAbiStr(decodedBase64);
+            await saveAbiInfo(parsed, 0, true);
+        } catch (e) {
+            throw new Errors.ParameterError(`failed to parse abi: ${e}`);
+        }
+        ctx.body = {result: 0, message: 'ok'};
+    });
+    router.get('list-abi-method', async (ctx)=>{
+        const id = ctx.request.query.id;
+        if (id?.length != 10) {
+            throw new Errors.ParameterError(`param <id> is invalid`);
+        }
+        const list = await AbiInfo.findAll({
+            where: {hash: id, type: 'function', }, raw: true,
+            attributes: ['fullName', 'type', 'hash']
+        });
+        ctx.body = {list};
+    })
+    router.get('list-abi-event', async (ctx)=>{
+        const hash = ctx.request.query.hash;
+        if (hash?.length < 66) {
+            throw new Errors.ParameterError(`param <hash> is invalid`);
+        }
+        const arr = hash.split(',').filter(Boolean);
+        const list = await Promise.all(arr.map(h=>AbiInfo.findOne({
+            where: {hash: h, type: 'event'}, raw: true,
+            attributes: ['fullName', 'type', 'hash']
+        })))
+        ctx.body = {list};
     })
 
     router.get('/contract/registered/name', async (ctx)=>{
