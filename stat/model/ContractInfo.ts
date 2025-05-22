@@ -218,6 +218,9 @@ export async function fillMethodInfo(list:{method?:string, to?:string}[],
     }).catch(err=>{
         console.log(`build method map fail:`, err)
     })
+    console.log(`verifiedAbiMap`, verifiedAbiMap);
+    console.log(`cImplAbiMap`, cImplAbiMap);
+    console.log(`poorAbiMap`, poorAbiMap);
     list.forEach((row, index)=>{
         const toId = toIdArr[index];
         const verifiedContractAbi = verifiedAbiMap.get(toId)?.get(row.method)?.fullName;
