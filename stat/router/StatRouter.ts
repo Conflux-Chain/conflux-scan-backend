@@ -191,7 +191,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         if (!hash || hash.length < 66) {
             throw new Errors.ParameterError(`param <hash> is invalid`);
         }
-        const arr = hash.split(',').filter(Boolean);
+        const arr = [...new Set(hash.split(',').filter(Boolean))];
         const list = await Promise.all(arr.map(h=>AbiInfo.findOne({
             where: {hash: h, type: 'event'}, raw: true,
             attributes: ['fullName', 'type', 'hash']
