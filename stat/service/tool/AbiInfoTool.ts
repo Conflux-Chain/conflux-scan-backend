@@ -31,14 +31,14 @@ async function run() {
 
 async function buildAbiForVerifiedContract() {
     const cList = await ContractVerify.findAll({
-        attributes: ['id', 'name', 'abi', 'base32'],
+        attributes: ['id', 'name', 'abi', 'base32', 'implementation'],
         where: {verifyResult: true}, raw: true}
     );
     console.log(`contract count`, cList.length);
     let idx = 0;
     for (const contractVerify of cList) {
         idx ++;
-        const {id, name, abi, base32} = contractVerify;
+        const {id, name, abi, base32, implementation} = contractVerify;
         const hexId = await makeIdV(base32);
         if (!hexId) {
             console.log(`hex id ${hexId} not found, id ${id} name [${name}] ${base32}`);
