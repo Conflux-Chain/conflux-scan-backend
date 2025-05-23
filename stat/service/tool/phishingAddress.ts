@@ -2,7 +2,7 @@ import {AddressTransactionIndex} from "../../model/FullBlock";
 import {Op} from "sequelize";
 import {buildHexSet, getAddrId, idHex40Map, mapProp} from "../../model/HexMap";
 import {fmtAddr, StatApp} from "../../StatApp";
-import {ZERO_ADDRESS_HEX} from "js-conflux-sdk/dist/types/CONST";
+import { CONST } from "../common/constant";
 
 export async function detectFishingAddress(addrId: number, list: any[]) {
 	if (list.length === 0) {
@@ -32,7 +32,7 @@ export async function detectFishingAddress(addrId: number, list: any[]) {
 	]);
 	const ids = buildHexSet(null, laterTxArr, 'toId', 'fromId');
 	buildHexSet(ids, earlierTxArr, 'toId', 'fromId');
-	ids.delete(await getAddrId(ZERO_ADDRESS_HEX));
+	ids.delete(await getAddrId(CONST.ZERO_ADDRESS));
 	let addressMap = await idHex40Map([...ids], true);
 	if (StatApp.isEVM) {
 		let base32map: Map<number, string>;
