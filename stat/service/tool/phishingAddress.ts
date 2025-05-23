@@ -4,6 +4,8 @@ import {buildHexSet, getAddrId, idHex40Map, mapProp} from "../../model/HexMap";
 import {fmtAddr, StatApp} from "../../StatApp";
 import { CONST } from "../common/constant";
 
+let zeroAddr = '';
+
 export async function detectFishingAddress(addrId: number, list: any[]) {
 	if (list.length === 0) {
 		return;
@@ -33,6 +35,9 @@ export async function detectFishingAddress(addrId: number, list: any[]) {
 	const ids = buildHexSet(null, laterTxArr, 'toId', 'fromId');
 	buildHexSet(ids, earlierTxArr, 'toId', 'fromId');
 	ids.delete(await getAddrId(CONST.ZERO_ADDRESS));
+	if (!zeroAddr) {
+		zeroAddr = fmtAddr(CONST.ZERO_ADDRESS, StatApp.networkId);
+	}
 	let addressMap = await idHex40Map([...ids], true);
 	if (StatApp.isEVM) {
 		let base32map: Map<number, string>;
@@ -60,7 +65,7 @@ export async function detectFishingAddress(addrId: number, list: any[]) {
 function fillAbbreviationMap(abMap: Map<string, Set<string>>, list: any[], headChars: number, tailChars: number) {
 
 	function putAddr(addr: string) {
-		if (!addr || addr.length < 40) {// not an address
+		if (!addr || addr.length < 40 || addr === zeroAddr) {// not an address
 			return;
 		}
 		const ab = addr.substr(0, headChars) + '...' + addr.substr(addr.length - tailChars);
