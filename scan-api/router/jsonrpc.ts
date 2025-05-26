@@ -93,7 +93,24 @@ export const jsonrpc_trend = jsonrpc.method_('trend',
     return service.statistic.trend(options);
   },
 );
-
+function patchDomain(host:string, netArr: {url: string}[]) {
+    if (!host) {
+        return netArr;
+    }
+    const ret = [];
+    const lastSeg = host.substr(host.lastIndexOf('.'));
+    for(const net of netArr) {
+        let {url} = net;
+        if (!url || url.endsWith(lastSeg)) {
+            // nothing
+        } else {
+            const headingSeg = url.substring(0, url.lastIndexOf('.'));
+            url = headingSeg + lastSeg;
+        }
+        ret.push({...net, url});
+    }
+    return ret;
+}
 export const jsonrpc_frontend = jsonrpc.method_('frontend',
   parameter({
     referer: { path: '0', type: type.string, required: false },
@@ -110,8 +127,15 @@ export const jsonrpc_frontend = jsonrpc.method_('frontend',
     let frontedConfig;
     try {
       const { frontend } = config;
-      const networks = (networkId === 1029 || networkId === 1030 || networkId === 1 || networkId === 71)
-        ? frontend.networks.slice(0, 4) : frontend.networks;
+        const productNet = networkId === 1029 || networkId === 1030 || networkId === 1 || networkId === 71;
+        let networks = productNet ? frontend.networks.slice(0, 4) : (frontend.devScan[networkId] ?? frontend.networks);
+        try {
+            if (!productNet) {
+                networks = patchDomain(refHost, networks);
+            }
+        } catch (e) {
+            console.log(`failed to patch domain`, e);
+        }
       const contracts = frontend.contracts.map((contract) => {
         return { key: contract.key, name: contract.name, address: contract.address[networkId] };
       });

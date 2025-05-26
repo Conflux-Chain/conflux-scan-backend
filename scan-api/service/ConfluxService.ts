@@ -1,6 +1,7 @@
 import {ScanApp, ScanCtx} from "./index";
-import {fmtAddr} from "../../stat/StatApp";
+import {fmtAddr, StatApp} from "../../stat/StatApp";
 import {safeAddErrorLog} from "../../stat/monitor/ErrorMonitor";
+import {format} from "js-conflux-sdk";
 
 const {noVerboseAddr} = require("../../stat/service/common/utils")
 const {patchPocketAddress} = require("../../stat/model/HexMap")
@@ -232,7 +233,7 @@ export class ConfluxService {
               transaction.blockHash = block.hash;
               transaction.status = CONST.TX_STATUS.SUCCESS;
               transaction.transactionIndex = block.transactions.indexOf(transaction.hash); // must not be -1
-              transaction.contractCreated = CONST.GENESIS_TX_TO_CONTRACT[transaction.hash] || null;
+              transaction.contractCreated = this.getGenesisContract(transaction.hash)
             }
 
             transaction.epochNumber = block.epochNumber;
@@ -266,7 +267,7 @@ export class ConfluxService {
               transaction.blockHash = block.hash;
               transaction.status = CONST.TX_STATUS.SUCCESS;
               transaction.transactionIndex = block.transactions.indexOf(transaction.hash); // must not be -1
-              transaction.contractCreated = CONST.GENESIS_TX_TO_CONTRACT[transaction.hash] || null;
+              transaction.contractCreated = this.getGenesisContract(transaction.hash)
             }
 
             transaction.epochNumber = block.epochNumber;
@@ -321,7 +322,7 @@ export class ConfluxService {
             transaction.blockHash = block?.hash;
             transaction.status = CONST.TX_STATUS.SUCCESS;
             transaction.transactionIndex = block?.transactions.indexOf(transaction.hash); // must not be -1
-            transaction.contractCreated = CONST.GENESIS_TX_TO_CONTRACT[transaction.hash] || null;
+            transaction.contractCreated = this.getGenesisContract(transaction.hash)
           }
         }
         return transaction;
@@ -332,6 +333,24 @@ export class ConfluxService {
     );
   }
 
+  getGenesisContract(txHash) {
+    const {
+      app: { CONST },
+    } = this;
+
+    const txHashes = CONST.GENESIS_TX_TO_CONTRACT[StatApp.networkId]
+    if(!txHashes) {
+      return null
+    }
+
+    const contract = txHashes[txHash]
+    if(!contract) {
+      return null
+    }
+
+    return format.address(contract, StatApp.networkId)
+  }
+
   async getTransactionReceipt(transactionHash) {
     const {
       app: { CONST, cfx, ttlMap },
@@ -339,7 +358,7 @@ export class ConfluxService {
 
     return ttlMap.cache(`ConfluxService.getTransactionReceipt(${transactionHash})`,
       async () => {
-        if (transactionHash in CONST.GENESIS_TX_TO_CONTRACT) {
+        if (CONST.GENESIS_TX_TO_CONTRACT[StatApp.networkId] && (transactionHash in CONST.GENESIS_TX_TO_CONTRACT[StatApp.networkId])) {
           return { gasUsed: 0, gasFee: 0, txExecErrorMsg: null };
         }
         return cfx.getTransactionReceipt(transactionHash);

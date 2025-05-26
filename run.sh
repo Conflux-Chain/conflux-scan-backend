@@ -328,6 +328,7 @@ else
 export default {
     port: $STAT_PORT,
     apiPort: $OPEN_PORT,
+    v1port: $V1_PORT,
     serverTag: 'test-sync',
     conflux:          { url: '$_RPC' ,keepAlive: true, },
     tokenTransferRpc: { url: '$_RPC',keepAlive: true, },
@@ -335,6 +336,7 @@ export default {
     blockSyncRpc: { url: '$_RPC',keepAlive: true,},
     preload: 4,
     $_IS_EVM $_NO_CORE_SPACE $CORE_RPC
+    influxDB: {disable: true},
     database: { USE_MYSQL: true, syncSchema: true, },
   databaseRW: {
     USE_MYSQL: true,
@@ -349,6 +351,7 @@ export default {
     },
     logging: false,
   },
+  wrappedCFX: '0x2ed3dddae5b2f321af0806181fbfa6d049be47d8', // placeholder
 }
 	""" > ./stat/config/Prod.ts
 	echo """

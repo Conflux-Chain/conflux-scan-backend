@@ -41,6 +41,7 @@ import {Errors} from "../service/common/LogicError";
 import {RateLimiterMemory} from "rate-limiter-flexible";
 import {paginateCore, paginateCoreStat} from "./ParamChecker";
 import * as bodyParser from "koa-bodyparser";
+import {NoCoreSpace} from "../config/StatConfig";
 
 const e2k = require('express-to-koa');
 const swStats = require('swagger-stats');
@@ -899,7 +900,11 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const {accountAddress} = ctx.request.query
         let result;
         if(StatApp.isEVM) {
-            result = await statApp.fullBlockQuery.listPendingTxEvm({accountAddress});
+            if (NoCoreSpace) {
+                result = await statApp.fullBlockQuery.listPendingTxEvmGeneral({accountAddress});
+            } else{
+                result = await statApp.fullBlockQuery.listPendingTxEvm({accountAddress});
+            }
         } else {
             result = await statApp.fullBlockQuery.listPendingTx({accountAddress});
         }

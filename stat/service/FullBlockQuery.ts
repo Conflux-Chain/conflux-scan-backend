@@ -26,6 +26,7 @@ import {extractActualGasCost, initCfxSdk} from "./common/utils";
 import {CoreDB, NoCoreSpace} from "../config/StatConfig";
 import {init} from "./tool/FixDailyTokenStat";
 import {detectFishingAddress} from "./tool/phishingAddress";
+import {JsonRpcProvider} from "@ethersproject/providers/src.ts/json-rpc-provider";
 
 const limitMap = require('limit-map');
 
@@ -900,6 +901,80 @@ export class FullBlockQuery {
         }
 
         return result;
+    }
+
+    public async listPendingTxEvmGeneral({accountAddress}) {
+        const {eth} = this.app;
+        if (!eth) {
+            return {message: 'eth client is not available'}
+        }
+
+        // tx pool content
+        const sdk = eth as JsonRpcProvider
+        const {pending} = await eth.send('txpool_contentFrom', [accountAddress])
+        if (!Object.keys(pending).length) {
+            return new AccountPendingInfo()
+        }
+
+        // first pending tx
+        const firstPendingNonce = String(Math.min(...Object.keys(pending).map(key => parseInt(key, 10))))
+        const {from, to, nonce, value, gas: gasLimit, gasPrice} = pending[firstPendingNonce]
+
+        // future nonce
+        {
+            const nextNonce = await sdk.getTransactionCount(accountAddress)
+            if (parseInt(nonce) !== nextNonce) {
+                const pendingDetail = {
+                    code: 11,
+                    message: 'The nonce in [stateNonce, txNonce) is skipped',
+                    params: {txNonce: `${parseInt(nonce)}`, stateNonce: nextNonce}
+                }
+                return new AccountPendingInfo(pending, {pending: "futureNonce"}, pendingDetail)
+            }
+        }
+
+        // insufficient balance
+        {
+            const gasFee = BigNumber.from(gasLimit).mul(BigNumber.from(gasPrice))
+            const balance = await sdk.getBalance(from)
+            const totalCost = BigNumber.from(value).add(BigNumber.from(gasFee))
+            const insufficientBalance = BigNumber.from(balance).lt(BigNumber.from(totalCost))
+            if (insufficientBalance) {
+                const pendingDetail = {
+                    message: 'The balance is insufficient to pay value + gasLimit * gasPrice',
+                    params: {
+                        balance,
+                        value: BigNumber.from(value).toString(),
+                        gasLimit: BigNumber.from(gasLimit).toString(),
+                        gasPrice: BigNumber.from(gasPrice).toString()
+                    },
+                }
+                if (to === null) {
+                    pendingDetail['code'] = 21 // contract create
+                } else if ((await sdk.getCode(to)) === '0x') {
+                    pendingDetail['code'] = 22 // EOA
+                } else {
+                    pendingDetail['code'] = 20
+                }
+                return new AccountPendingInfo(pending, {pending: "notEnoughCash"}, pendingDetail)
+            }
+        }
+
+        // ready
+        {
+            const pendingDetail = {
+                code: 32,
+                message: 'The transaction execution can be speed up by increasing the gasPrice appropriately',
+            };
+            return new AccountPendingInfo(pending, "ready", pendingDetail)
+        }
+    }
+}
+
+class AccountPendingInfo {
+    pendingCount: number
+    constructor(public pendingTransactions: any[] = [], public firstTxStatus: any = null, public pendingDetail: any = undefined) {
+        this.pendingCount = pendingTransactions.length
     }
 }
 

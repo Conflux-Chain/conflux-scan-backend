@@ -107,9 +107,9 @@ export class StatApp{
         this.txnSync = new TxnSync(this);
         const utilContract = await BatchBalanceWatcher.getUtilContractAddr();
         if (this.config.watchCfxBalance) {
-            (this.cfxWatcher = new CfxWatcher('cfx', this.cfx))
-            this.batchBalanceWatcher = new BatchBalanceWatcher(this.cfx, utilContract)
+            this.cfxWatcher = new CfxWatcher('cfx', this.cfx);
         }
+        this.batchBalanceWatcher = new BatchBalanceWatcher(this.cfx, utilContract)
         // @ts-ignore
         this.balanceService = new BalanceService(this, StatApp.networkId)
         this.balanceService.schedule(60_000)
