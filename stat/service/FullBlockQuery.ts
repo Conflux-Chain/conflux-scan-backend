@@ -25,6 +25,7 @@ import {CoreSpaceRpc, fmtAddr, StatApp} from "../StatApp";
 import {extractActualGasCost, initCfxSdk} from "./common/utils";
 import {CoreDB, NoCoreSpace} from "../config/StatConfig";
 import {init} from "./tool/FixDailyTokenStat";
+import {detectFishingAddress} from "./tool/phishingAddress";
 import {JsonRpcProvider} from "@ethersproject/providers/src.ts/json-rpc-provider";
 
 const limitMap = require('limit-map');
@@ -414,6 +415,7 @@ export class FullBlockQuery {
         }
         const list = [];
         let extraInfo = {dataSource:'rdb'}
+        let phishingInfo: any = {};
         if(rawList){
             const txHashArray = [];
             const hex40IdSet = new Set<number>();
@@ -501,9 +503,17 @@ export class FullBlockQuery {
             await fillMethodInfo(list).catch(err=>{
                 extraInfo['fillMethodError'] = err
             })
+
+            if(accountAddressId){
+                await detectFishingAddress(accountAddressId, list).then(res=>{
+                    phishingInfo = res;
+                }).catch(err=>{
+                    console.log(`failed to detectFishing address`, err)
+                })
+            }
         }
 
-        return {total: count, list, extraInfo};
+        return {total: count, list, extraInfo, phishingInfo};
     }
 
     async computeTxCount({accountAddressId, sort, options}) {
