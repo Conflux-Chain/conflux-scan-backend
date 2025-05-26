@@ -415,7 +415,7 @@ export class FullBlockQuery {
         }
         const list = [];
         let extraInfo = {dataSource:'rdb'}
-        let phishingInfo: any;
+        let phishingInfo: any = {};
         if(rawList){
             const txHashArray = [];
             const hex40IdSet = new Set<number>();
