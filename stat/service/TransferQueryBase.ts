@@ -265,7 +265,7 @@ export abstract class TransferQueryBase {
             });
             await Promise.all(failedQuery);
         } else if (accountAddressId) {
-            await detectFishingAddress(accountAddressId, list).then(res=>{
+            await detectFishingAddress(accountAddressId, list, this.getTransferType()).then(res=>{
                 phishingInfo = res;
             }).catch(err=>{
                 console.log(`${__filename} failed to detectFishing address`, err);
