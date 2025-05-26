@@ -83,7 +83,7 @@ function fillAbbreviationMap(abMap: Map<string, Set<string>>, list: any[], headC
 		if (!addr || addr.length < 40 || addr === zeroAddr) {// not an address
 			return;
 		}
-		addr = addr.toUpperCase();
+		addr = addr.toLowerCase();
 		const ab = addr.substr(0, headChars) + '...' + addr.substr(addr.length - tailChars);
 		let set = abMap.get(ab);
 		if (!set) {
