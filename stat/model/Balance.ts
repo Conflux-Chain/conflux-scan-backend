@@ -111,7 +111,7 @@ export class NFTBalance extends Model<INFTBalance> implements INFTBalance{
             addressId: {type: DataTypes.BIGINT, allowNull: false, primaryKey: true},
             nft721: {type: DataTypes.STRING(74), allowNull: false, defaultValue: 0},
             nft1155: {type: DataTypes.STRING(74), allowNull: false, defaultValue: 0},
-            total: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0},
+            total: {type: DataTypes.STRING(74), allowNull: false, defaultValue: 0},
         },{
             sequelize: seq,
             tableName: T_NFT_BALANCE,
