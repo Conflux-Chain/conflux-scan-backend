@@ -26,7 +26,6 @@ import {extractActualGasCost, initCfxSdk} from "./common/utils";
 import {CoreDB, NoCoreSpace} from "../config/StatConfig";
 import {init} from "./tool/FixDailyTokenStat";
 import {detectFishingAddress} from "./tool/phishingAddress";
-import {detectFishingAddress} from "./tool/phishingAddress";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import {JsonRpcProvider} from "@ethersproject/providers/src.ts/json-rpc-provider";
 
