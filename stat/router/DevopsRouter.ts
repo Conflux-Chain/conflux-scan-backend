@@ -4,7 +4,6 @@ import {StatApp} from "../StatApp";
 import {Context} from "koa";
 const proxy = require('koa-proxy');
 import {Hex40Map} from "../model/HexMap";
-import {AbiInfo, fillMethodInfo} from "../model/ContractInfo";
 import {DailyToken, Token} from "../model/Token";
 import {QueryTypes} from "sequelize";
 import {
@@ -177,9 +176,6 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
                 case 'config':
                     list = await KV.findAll({offset: skip, limit})
                     break;
-                case 'abi_info':
-                    list = await AbiInfo.findAll({offset: skip, limit, order:[["createdAt",'desc']]})
-                    break;
                 case 'block_row_mark':
                     list = await BlockRowMark.findAll({offset: skip, limit, order:[["id",'desc']]})
                     break;
@@ -188,18 +184,6 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
                     break;
             }
             ctx.body = {list}
-        }
-    )
-    router.get('/devops/test-list-tx-with-method',
-        async (ctx) => {
-            const pageInfo = await pagingFullTx(0)
-            const where = pageInfo.epoch === Infinity ? {} : buildTxHigherCondition(pageInfo)
-            const {epoch} = ctx.request.query
-            epoch && (where['epoch'] = Number(epoch))
-            const txList = await FullTransaction.findAll({where, offset:pageInfo.skip, limit: 10,
-                order:[["epoch","desc"],["blockPosition","desc"],["txPosition","desc"]]})
-            await fillMethodInfo(txList)
-            ctx.body = {list:txList, pageInfo}
         }
     )
 

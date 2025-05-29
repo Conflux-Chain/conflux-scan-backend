@@ -41,7 +41,7 @@ import {EpochHashCfxTransfer} from "../CfxTransferSync";
 import {sleep} from "./tool/ProcessTool";
 import {FullBlock, FullTransaction} from "../model/FullBlock";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
-import {ScanCtx} from "../../scan-api/service/index";
+import {saveAbiAnnounce} from "../model/ContractInfo";
 const {sign} = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
@@ -462,6 +462,14 @@ export class EpochSync extends SyncBase {
         let contractMap = {};
         for (const announce of announceArray) {
             const key = Buffer.from(announce.key, 'base64').toString();
+            if (key === '/contract/abi') {
+                const decodedBase64 = Buffer.from(announce.value, 'base64').toString();
+                saveAbiAnnounce(decodedBase64, epochNumber).catch(e=>{
+                    e.epochNumber = epochNumber;
+                    safeAddErrorLog(`epoch-sync`, `save-abi-announce-${epochNumber}`, e);
+                })
+                continue;
+            }
             const params = key.split('/');
             if (params[0] === 'token') {
                 await this.parseAnnounce(epochNumber, params, announce, tokenMap);

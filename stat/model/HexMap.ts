@@ -128,7 +128,7 @@ export class ESpaceHex40Map extends Model<ESpaceHexMapAttributes> implements ESp
 }
 const cacheTtl = 60 * 10 // 10 minutes
 const base32toHexCache = new NodeCache({ maxKeys: 10000,  stdTTL: cacheTtl, checkperiod: 60})
-export function formatToHex(address:string) {
+export function formatToHex(address:string) : string {
     let hex = base32toHexCache.get(address)
     if (hex) {
         return hex;
