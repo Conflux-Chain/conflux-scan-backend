@@ -1,4 +1,5 @@
 import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
+import {getAppEntryName} from "../../config/LoggerConfig";
 
 const lodash = require('lodash');
 
@@ -9,8 +10,12 @@ process.on('unhandledRejection', (e) => {
   }
   safeAddErrorLog('stat-task', 'unhandled rejection', e as Error).then();
   console.error(`${new Date().toISOString()} ProcessTool.ts, the process encountered unhandledRejection!\n`, e); // eslint-disable-line no-console
-  // running = false;
-  process.exit(9) // restart
+  console.log(`system will exit soon.`)
+  const timer = setTimeout(()=>process.exit(9), 15_000)
+  safeAddErrorLog(getAppEntryName(), 'system', e as Error).finally(()=>{
+    clearTimeout(timer);
+    process.exit(9) // restart
+  });
 });
 export function regExitHook() {
   const fn = (signal) => {

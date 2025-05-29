@@ -128,7 +128,7 @@ export const jsonrpc_frontend = jsonrpc.method_('frontend',
     try {
       const { frontend } = config;
         const productNet = networkId === 1029 || networkId === 1030 || networkId === 1 || networkId === 71;
-        let networks = productNet ? frontend.networks.slice(0, 4) : (frontend.devScan[networkId] ?? frontend.networks);
+        let networks = productNet ? frontend.networks.slice(0, 4) : (frontend.devScan[networkId] ?? []);
         try {
             if (!productNet) {
                 networks = patchDomain(refHost, networks);
@@ -141,7 +141,6 @@ export const jsonrpc_frontend = jsonrpc.method_('frontend',
       });
       frontedConfig = { networkId, networks, contracts, referer, host };
         if (NoCoreSpace) {
-            frontedConfig.networks = [];
             frontedConfig.contracts = [];
         }
       let {from, to} = {from: '.org', to: '.net'};

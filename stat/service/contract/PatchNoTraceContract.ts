@@ -16,8 +16,12 @@ let tokenContracts = {
 } as {[key:number]: boolean}
 
 export async function startMonitorContractCreated() {
-	await checkToken();
-	await check();
+	try {
+		await checkToken();
+		await check();
+	} catch (e) {
+		console.log(`Failed to run MonitorContractCreated: `, e);
+	}
 	setInterval(check, 10_000);
 }
 /*
@@ -48,7 +52,9 @@ where contract.id is null
 		}
 		await Contract.create(
 			{base32: token.base32, hex40id: token.hex40id, epoch: 0}
-		)
+		).catch(e=>{
+			console.log(`error creating mock contract record: `, e);
+		})
 		tokenContracts[token.hex40id] = true
 		console.log(`${i} create mock contract for token ${token.name} ${format.hexAddress(token.base32)}`)
 	}
@@ -100,7 +106,9 @@ async function check() {
 			outcome: "",
 		} as ITraceCreateContract;
 		if (!dryRun) {
-			await TraceCreateContract.create(mockTrace)
+			await TraceCreateContract.bulkCreate([mockTrace], {ignoreDuplicates: true}).catch(e=>{
+				console.log(`${__filename} failed to create mock trace create contract`, e);
+			})
 		}
 		if (round % 100 == 0) {
 			console.log(`create mock trace contract creation, id ${c.id} round ${round}`)
