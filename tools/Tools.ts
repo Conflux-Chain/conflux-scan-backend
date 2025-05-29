@@ -14,7 +14,7 @@ async function main() {
 	} else if (cmd === 'hardware') {
 		let forceAlert = Boolean(arg1);
 		monitorHardware(msg=>{
-			dingMsg(ConfigInstance.dingDevToken, msg);
+			dingMsg(msg, ConfigInstance.dingDevToken);
 			forceAlert = false;
 		},true, forceAlert)
 		setInterval(main, 5_000);
