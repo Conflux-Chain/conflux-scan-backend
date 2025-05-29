@@ -228,7 +228,8 @@ async function syncErc1155data(epochBase: number, rpc: Contract, cfx:Conflux) {
             if (b) {
                 // at least the epoch is different.
                 const [affected] = await Erc1155Data.update({amount: b, epoch: Number(mark), latestEpoch}, {
-                    where: {contractId, addressId, tokenId}, logging: isNewLatestEpoch ? console.log : false
+                    where: {contractId, addressId, tokenId},
+                    // logging: isNewLatestEpoch ? console.log : false
                 })
                 if (!affected) {
                     // check existence
