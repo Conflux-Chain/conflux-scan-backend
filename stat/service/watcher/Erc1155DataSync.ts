@@ -73,17 +73,22 @@ export async function fetch1155balance(rpc: Contract, cfx:Conflux, params: any) 
         }
         // fallback to balanceOf
         for (let i = 0; i < params.accounts.length; i++) {
+            const ownerAddr = params.accounts[i];
+            const tokenId = params.tokenIds[i];
             try {
                 // @ts-ignore
-                const b = await rpc.balanceOf(params.accounts[i], params.tokenIds[i])
+                const b = await rpc.balanceOf(ownerAddr, tokenId)
                 balanceArr.push(b)
             } catch (e) {
-                if (e.data?.includes('owner query for nonexistent token')) {
+                if (e.data?.includes('owner query for nonexistent token')
+                    || e.message?.includes('execution reverted')
+                ) {
                     balanceArr.push(BigInt(0))
-                    console.log(`token not exist. ${rpc.address}, id ${params.tokenIds[i]}`)
+                    console.log(`failed to call 1155 balanceOf. contract ${rpc.address}, owner ${ownerAddr} token id ${tokenId}`);
+                    console.log(`reason , message [${e.message}] , data [${e.data}]`);
                     continue
                 }
-                console.log(`call balanceOf fail`, params.accounts[i], params.tokenIds[i], e.data || e)
+                console.log(`call balanceOf fail`, ownerAddr, tokenId, e.data || e)
                 break;
             }
         }

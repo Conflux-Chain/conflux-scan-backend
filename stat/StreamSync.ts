@@ -166,8 +166,8 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
                 console.log(` user ${hexId} holds 0 NFT of ${contractHex40}`)
                 await BalanceWatcher.saveModel(model, hexId, 0, false, 0)
             }
-        } else if (banList.length === existsAddrArr.length) { // banList will be empty when error occurs
-            console.log(` util returns balance list [${banList.join(',')}] of ${contractHex40} cid ${contractId}`)
+        } else if (banList.length === existsAddrArr.length) { // banList will be empty when an error occurs
+            console.log(` util returns balance list [${banList.length > 10 ? banList.length : banList.join(',')}] of ${contractHex40} cid ${contractId}`)
             let i = 0
             const tasks = []
             for (const addr of existsAddrArr) {
