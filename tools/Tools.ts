@@ -1,10 +1,18 @@
 import {ConfigInstance, loadConfig} from "../stat/config/StatConfig";
 import {dingMsg} from "../stat/monitor/Monitor";
 import {getHardwareInfo, monitorHardware} from "../stat/monitor/hardware";
+import {StatApp} from "../stat/StatApp";
 
 export default {}
 
+function monitorHD(forceAlert: boolean = false) {
+	monitorHardware(msg => {
+		dingMsg(msg, ConfigInstance.dingDevToken);
+	}, true, forceAlert)
+}
+
 async function main() {
+	StatApp.networkId = 0;
 	const [,,cmd, arg1 , arg2] = process.argv;
 	const cfg = loadConfig('Prod');
 	if (cmd === 'ding') {
@@ -13,11 +21,8 @@ async function main() {
 		await dingMsg(`test ding, possible keywords are: cfx, alert scan. arg1: [${arg1}]`, ConfigInstance.dingDevToken)
 	} else if (cmd === 'hardware') {
 		let forceAlert = Boolean(arg1);
-		monitorHardware(msg=>{
-			dingMsg(msg, ConfigInstance.dingDevToken);
-			forceAlert = false;
-		},true, forceAlert)
-		setInterval(main, 5_000);
+		monitorHD(forceAlert);
+		setInterval(monitorHD, 5_000);
 	} else {
 		console.log(`nothing [${cmd}]`);
 	}
