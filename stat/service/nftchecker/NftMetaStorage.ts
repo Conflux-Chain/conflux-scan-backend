@@ -11,6 +11,7 @@ import {TokenQuery} from "../TokenQuery";
 import {IPFSGatewaySync} from "../IPFSGatewaySync";
 import {CENSOR_STATUS} from "../censor/CensorService";
 import {format} from "js-conflux-sdk";
+import {regExitHook} from "../tool/ProcessTool";
 
 const lodash = require('lodash');
 const {NFTMetaParser} = require('@confluxfans/nft-utils');
@@ -201,6 +202,7 @@ async function bestGateway() {
 
 // --------------------------- run command -------------------------------
 async function run(gateway) {
+    regExitHook();
     await setup(gateway)
     await syncIPFSGateway()
     await syncNFTMeta()
