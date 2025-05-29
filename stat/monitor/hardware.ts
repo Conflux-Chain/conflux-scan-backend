@@ -52,9 +52,7 @@ export function monitorHardware(fn: (v: string)=>void, log = false, forceAlert =
 	const {load, memUsage, fire} = checkHardware(log);
 	if (fire || forceAlert) {
 		const forceTag: string = forceAlert ? 'TEST! ' : '';
-		fn(`${forceTag}
-		System load is heavy\n
-		Load ${load.join(', ')}\n
-		Memory usage: ${memUsage.toFixed(2)}%`);
+		fn(`${forceTag}System load is heavy.\nLoad: ${load.join(', ')
+		}\nMemory usage: ${memUsage.toFixed(2)}%`);
 	}
 }
