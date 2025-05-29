@@ -48,10 +48,10 @@ export function checkHardware(log = false) {
 	return {load, memUsage, fire};
 }
 
-export function monitorHardware(fn: (v: string)=>void, log = false) {
+export function monitorHardware(fn: (v: string)=>void, log = false, forceAlert = false) {
 	const {load, memUsage, fire} = checkHardware(log);
-	if (fire) {
-		fn(`System load is heavy\nLoad ${load.join(', ')
+	if (fire || forceAlert) {
+		fn(`${forceAlert ? 'TEST! ' : ''}System load is heavy\nLoad ${load.join(', ')
 		}\nMemory usage: ${memUsage.toFixed(2)}%`);
 	}
 }

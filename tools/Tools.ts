@@ -12,9 +12,10 @@ async function main() {
 	} else if (cmd === 'ding-dev') {
 		await dingMsg(`test ding, possible keywords are: cfx, alert scan. arg1: [${arg1}]`, ConfigInstance.dingDevToken)
 	} else if (cmd === 'hardware') {
+		let forceAlert = Boolean(arg1);
 		monitorHardware(msg=>{
 			dingMsg(ConfigInstance.dingDevToken, msg);
-		},true)
+		},true, forceAlert)
 		setInterval(main, 5_000);
 	} else {
 		console.log(`nothing [${cmd}]`)
