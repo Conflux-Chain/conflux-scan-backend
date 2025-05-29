@@ -1,5 +1,6 @@
 import {ConfigInstance, loadConfig} from "../stat/config/StatConfig";
 import {dingMsg} from "../stat/monitor/Monitor";
+import {getHardwareInfo} from "../stat/monitor/hardware";
 
 export default {}
 
@@ -10,6 +11,8 @@ async function main() {
 		await dingMsg(`test ding, possible keywords are: cfx, alert scan. arg1: [${arg1}]`, ConfigInstance.dingTalkToken)
 	} else if (cmd === 'ding-dev') {
 		await dingMsg(`test ding, possible keywords are: cfx, alert scan. arg1: [${arg1}]`, ConfigInstance.dingDevToken)
+	} else if (cmd === 'hardware') {
+		getHardwareInfo();
 	} else {
 		console.log(`nothing [${cmd}]`)
 	}
