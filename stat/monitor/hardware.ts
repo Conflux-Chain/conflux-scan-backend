@@ -1,6 +1,6 @@
 const fs = require('fs');
 
-function getLoadAvg() {
+function getLoadAvg() : number[] {
 	const loadavg = fs.readFileSync('/proc/loadavg', 'utf8');
 	return loadavg.split(' ').slice(0, 3).map(parseFloat);
 }
@@ -27,13 +27,31 @@ function getMemInfo() {
 		cached: result.Cached
 	};
 }
-export function getHardwareInfo() {
+export function getHardwareInfo(log = false) {
 // 使用示例
 	const load = getLoadAvg();
 	const mem = getMemInfo();
 	const usedMem = mem.total - mem.free - mem.buffers - mem.cached;
 	const memUsage = (usedMem / mem.total) * 100;
 
-	console.log(`负载: ${load.join(', ')}`);
-	console.log(`内存使用: ${(usedMem / 1024 / 1024).toFixed(2)} MB / ${(mem.total / 1024 / 1024).toFixed(2)} MB (${memUsage.toFixed(2)}%)`);
+	if (log) {
+		console.log(`load: ${load.join(', ')}`);
+		console.log(`memory usage: ${(usedMem / 1024 / 1024).toFixed(2)} MB / ${(mem.total / 1024 / 1024).toFixed(2)} MB (${memUsage.toFixed(2)}%)`);
+	}
+
+	return {load, memUsage};
+}
+
+export function checkHardware(log = false) {
+	const {load, memUsage} = getHardwareInfo(log);
+	const fire = load.filter(v=>v >= 5).length || memUsage > 80;
+	return {load, memUsage, fire};
+}
+
+export function monitorHardware(fn: (v: string)=>void, log = false) {
+	const {load, memUsage, fire} = checkHardware(log);
+	if (fire) {
+		fn(`System load is heavy\nLoad ${load.join(', ')
+		}\nMemory usage: ${memUsage.toFixed(2)}%`);
+	}
 }

@@ -1,6 +1,6 @@
 import {ConfigInstance, loadConfig} from "../stat/config/StatConfig";
 import {dingMsg} from "../stat/monitor/Monitor";
-import {getHardwareInfo} from "../stat/monitor/hardware";
+import {getHardwareInfo, monitorHardware} from "../stat/monitor/hardware";
 
 export default {}
 
@@ -12,7 +12,10 @@ async function main() {
 	} else if (cmd === 'ding-dev') {
 		await dingMsg(`test ding, possible keywords are: cfx, alert scan. arg1: [${arg1}]`, ConfigInstance.dingDevToken)
 	} else if (cmd === 'hardware') {
-		getHardwareInfo();
+		monitorHardware(msg=>{
+			dingMsg(ConfigInstance.dingDevToken, msg);
+		},true)
+		setInterval(main, 5_000);
 	} else {
 		console.log(`nothing [${cmd}]`)
 	}
@@ -24,3 +27,4 @@ if (module == require.main) {
 
 // node tools/Tools.js ding
 // node tools/Tools.js ding-dev
+// node tools/Tools.js hardware
