@@ -15,10 +15,11 @@ async function main() {
 		let forceAlert = Boolean(arg1);
 		monitorHardware(msg=>{
 			dingMsg(ConfigInstance.dingDevToken, msg);
+			forceAlert = false;
 		},true, forceAlert)
 		setInterval(main, 5_000);
 	} else {
-		console.log(`nothing [${cmd}]`)
+		console.log(`nothing [${cmd}]`);
 	}
 }
 
