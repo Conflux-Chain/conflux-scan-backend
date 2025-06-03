@@ -77,7 +77,7 @@ export class Token extends Model<IToken> implements IToken{
         Token.init({
             id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
             // basic info
-            hex40id: {type: DataTypes.BIGINT, allowNull: false, },
+            hex40id: {type: DataTypes.BIGINT, allowNull: false, unique: true},
             base32: {type: DataTypes.CHAR(64), allowNull: false, unique: true},
             name: {type: DataTypes.CHAR(64), allowNull: true},
             symbol: {type: DataTypes.CHAR(64), allowNull: true },
