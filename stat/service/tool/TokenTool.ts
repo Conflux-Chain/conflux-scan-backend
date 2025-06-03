@@ -785,14 +785,14 @@ function handlerCallError(fn: string, addr: string, err: Error) {
     || err.message?.startsWith('execution reverted') // evm
     || ( err.message?.startsWith('(Invalid input|args)') && err["code"] === PARSER_ERROR ) // invalid response, decoding failure
     ) {
-        console.log(`failed to call ${biz} , message ${err.message}`)
+        // console.log(`failed to call ${biz} , message ${err.message}`)
         if (fn == 'name' || fn == 'symbol') {
             saveNameSymbolFailure(addr);
         }
         return;
     }
-    safeAddErrorLog('token-tool', biz, err).then();
-    console.log(`failed to call ${biz} , message ${err.message}`, err)
+    // safeAddErrorLog('token-tool', biz, err).then();
+    // console.log(`failed to call ${biz} , message ${err.message}`, err)
 }
 
 async function saveNameSymbolFailure(addr: string) {

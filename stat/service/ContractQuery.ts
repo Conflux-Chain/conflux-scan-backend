@@ -544,7 +544,7 @@ export class ContractQuery {
                 .call({to: beaconHex40}, undefined)
                 .catch((e) => {
                     // safeAddErrorLog('contract',`call-impl-on-${beaconHex40}`, e);
-                    console.log(`failed to call ${beaconHex40} `, e)
+                    console.log(`${__filename} failed to call ${beaconHex40} `, e)
                 });
             implHex40 = format.hexAddress(impl).substr(2)
         }
