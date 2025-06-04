@@ -114,7 +114,7 @@ export class TokenQuery {
         //query
         let rawList;
         let count;
-        if (addressArray) {
+        if (addressArray?.length) {
             delete options.where['auditResult'];
             rawList = await Token.findAll(options);
             count = rawList?.length || 0;
@@ -124,6 +124,9 @@ export class TokenQuery {
             const page = await Token.findAndCountAll(options);
             rawList = page?.rows;
             count = page?.count;
+        }
+        if (rawList.length > 100) {
+            throw Errors.ParameterError(`token list with bad size ${rawList.length}`)
         }
         let list = [];
         let registeredTokens;

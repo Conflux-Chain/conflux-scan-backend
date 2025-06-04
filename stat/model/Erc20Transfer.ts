@@ -243,6 +243,7 @@ export interface IDailyTokenTxn {
     type: string // erc20 erc721 erc777 erc1155
     createdAt: Date
 }
+// without relation to contract
 export class DailyTokenTxn extends Model<IDailyTokenTxn> implements IDailyTokenTxn{
     id?:number
     txnCount:number
