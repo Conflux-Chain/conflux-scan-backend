@@ -462,7 +462,7 @@ export class EpochSync extends SyncBase {
         let contractMap = {};
         for (const announce of announceArray) {
             const key = Buffer.from(announce.key, 'base64').toString();
-            if (key === '/contract/abi') {
+            if (key === 'contract/abi') {
                 const decodedBase64 = Buffer.from(announce.value, 'base64').toString();
                 saveAbiAnnounce(decodedBase64, epochNumber).catch(e=>{
                     e.epochNumber = epochNumber;
