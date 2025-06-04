@@ -46,7 +46,7 @@ export class TxnQuery{
         return sum;
     }
 
-    static async topByGasUsed({span = '24h', forceUseCache = false}) {
+    static async topByGasUsed({span = '24h'}) {
         const emptyResult = {/*code: 0,*/ totalGas: 0, list:[]};
         const def = {'24h': -1, '3d': -3, '7d': -7}
 
@@ -99,22 +99,19 @@ export class TxnQuery{
     public async scheduleCache(delay: number = 600_000) {
         console.log(`schedule top_gas_used with delay:${delay}`)
         const that = this
-        await that.updateTopGasUsed(true).catch(err =>{
-            console.log(`schedule top_gas_used error:${err}`)
-        })
         async function repeat() {
-            await that.updateTopGasUsed(false).catch(err =>{
+            await that.updateTopGasUsed().catch(err =>{
                 console.log(`schedule top_gas_used error:${err}`)
             })
             setTimeout(repeat, delay)
         }
         repeat().then()
     }
-    public async updateTopGasUsed(forceUseCache = false) {
+    public async updateTopGasUsed() {
         // execute sql sequentially in order to reduce db load
-        const d7 = await TxnQuery.topByGasUsed({span: '7d', forceUseCache})
-        const d3 = await TxnQuery.topByGasUsed({span: '3d', forceUseCache})
-        const h24 = await TxnQuery.topByGasUsed({span: '24h', forceUseCache})
+        const d7 = await TxnQuery.topByGasUsed({span: '7d'})
+        const d3 = await TxnQuery.topByGasUsed({span: '3d'})
+        const h24 = await TxnQuery.topByGasUsed({span: '24h'})
         this.topGasUsedCache = {
             '7d': d7,
             '3d': d3,

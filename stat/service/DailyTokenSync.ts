@@ -37,7 +37,7 @@ export async  function scheduleDailyTokenStat() {
 }
 
 export async  function calcAllRegisteredTokenDailyStat(dt:Date) {
-    console.log(`${new Date().toISOString()} begin calculate token's daily statistics: token count `);
+    console.log(`${new Date().toISOString()} begin calculate token's daily statistics`);
     let idGreatThan = 0;
     let counter = 0;
     let ms = Date.now();
@@ -56,14 +56,18 @@ export async  function calcAllRegisteredTokenDailyStat(dt:Date) {
             break;
         }
     }
-    console.log(`${new Date().toISOString()} calcAllRegisteredTokenDailyStat done.`);
+    console.log(`${new Date().toISOString()} calcAllRegisteredTokenDailyStat done. count ${counter}`);
 }
 async  function calcOneTokenDailyStat(dt:Date, idGreatThan: number) {
+    let _sql = '';
     const token = await Token.findOne({
         attributes: ['hex40id','symbol','name','base32'],
         where: {id: {[Op.gt]: idGreatThan}},
+        logging: sql => _sql = sql,
     })
     if (!token) {
+        console.log(`token not found, id > `, idGreatThan);
+        console.log(`sql is `, _sql);
         return null;
     }
     await calcDailyTokenEach(dt, token.hex40id, showDebugLog)

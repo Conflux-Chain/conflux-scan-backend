@@ -141,7 +141,7 @@ export class StatApp{
         if(this.config.blacklist) {
             await this.desensitizer.scheduleRefreshBlacklist();
         }
-        await this.txnQuery.scheduleCache()
+        this.txnQuery.scheduleCache().then()
         let fullStateRpc = await KV.getString(KEY_FULL_STATE_RPC, "");
         if (fullStateRpc) {
             this.fullStateCfx = await initCfxSdk({url: fullStateRpc}).catch(e=>{
