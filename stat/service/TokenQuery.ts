@@ -234,7 +234,13 @@ export class TokenQuery {
         const addressId = hex40.id;
 
         const hexIdArray = [];
-        const balanceArray = await TokenBalance.findAll({where: {addressId}, order: [['updatedAt', 'desc']]})
+        const balanceArray = await TokenBalance.findAll({
+            where: {addressId},
+            order: [['updatedAt', 'desc']],
+            //without limit, will hit <out of gas> error
+            //TODO fix it
+            limit: 100,
+        })
         balanceArray.forEach(balance => {
             hexIdArray.push(balance.contractId)
             balanceMap[balance.contractId] = balance;

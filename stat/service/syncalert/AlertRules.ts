@@ -39,10 +39,10 @@ export function pushMeter(metrics: IMetric[]) {
 		meterData.meterGrowth.mark(Math.max(latestSynced - meterData.lastV, 0));
 		meterData.lastV = latestSynced;
 		//
-		[meterData.meterGap, meterData.meterGrowth].forEach(m=>{
-			console.log(`meter info : ${m.getName().padEnd(20, ' ')} 1m ${m.get1MinuteRate() * 60} 5m ${m.get5MinuteRate() * 60
-			}, 15m ${m.get15MinuteRate() * 60}`)
-		})
+		// [meterData.meterGap, meterData.meterGrowth].forEach(m=>{
+		// 	console.log(`meter info : ${m.getName().padEnd(20, ' ')} 1m ${m.get1MinuteRate() * 60} 5m ${m.get5MinuteRate() * 60
+		// 	}, 15m ${m.get15MinuteRate() * 60}`)
+		// })
 		if (doTest && meterData.counter > 0){
 			// do test with at least one round data.
 		} else	if (meterData.counter < 5) {

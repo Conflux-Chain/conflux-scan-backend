@@ -61,7 +61,7 @@ export async  function calcAllRegisteredTokenDailyStat(dt:Date) {
 async  function calcOneTokenDailyStat(dt:Date, idGreatThan: number) {
     let _sql = '';
     const token = await Token.findOne({
-        attributes: ['hex40id','symbol','name','base32'],
+        attributes: ['hex40id','symbol','name','base32', 'id'],
         where: {id: {[Op.gt]: idGreatThan}},
         logging: sql => _sql = sql,
     })
@@ -135,6 +135,7 @@ export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
     const sql = `select epoch,\`value\` from ${model.getTableName()} where contractId=?
             and epoch between ? and ? order by epoch asc limit ?`
     const pageSize = 10000;
+    const addr = fmtAddr(tokenBean.base32, StatApp.networkId);
     let sum = BigInt(0)
     do {
         await model.sequelize.query(sql,{type:QueryTypes.SELECT,
@@ -143,10 +144,10 @@ export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
                 list.forEach(row=>{
                     sum += BigInt(row.value)
                 })
-            if (list.length > 0) {
+            if (list.length == pageSize) {
                 startE = list[list.length-1].epoch + 1;
-                console.log(`token ${tokenBean.hex40id} ${tokenBean.symbol} ${tokenBean.base32
-                } transfer records:${list.length}  `)
+                // console.log(`token ${tokenBean.hex40id} ${tokenBean.symbol} ${addr
+                // } transfer records:${list.length}  `)
             } else {
                 startE = endE + 1;
             }
