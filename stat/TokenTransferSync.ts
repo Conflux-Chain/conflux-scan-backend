@@ -479,28 +479,10 @@ async function pop(epoch:number) {
     })
 }
 
-async function updateAllTokenTransferCount(lt = 100_000) {
-    const list = await Token.findAll({
-        where: {auditResult: true, transfer: {[Op.lt]: lt}},
-        attributes: {exclude: ['icon']},
-    })
-    for (let i = 0; i < list.length; i++) {
-        const token = list[i]
-        process.stdout.write(`begin update ${token.name} :`)
-        await updateTransferCountReal(token)
-    }
-    await Token.sequelize.close();
-    process.exit(0)
-}
 let notifyError:Function
 // noinspection DuplicatedCode
 async function setup(cfxUrl:string) {
     const config = await init();
-    if (process.argv.includes('updateAllTokenTransferCount')) {
-        await updateAllTokenTransferCount()
-        await Erc20Transfer.sequelize.close()
-        return;
-    }
     notifyError = async (msg, err)=>{
         return dingMsg(`[${config.serverTag}] TOKEN-X-SYNC ${msg}: ${err}`, config.dingTalkToken)
     }

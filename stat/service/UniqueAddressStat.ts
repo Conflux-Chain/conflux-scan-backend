@@ -42,7 +42,7 @@ export class UniqueAddress extends Model<IUniqueAddress> implements IUniqueAddre
     addr:string
     fromMark: boolean
     toMark: boolean
-    epochStart:number // it's start epoch of the task.
+    epochStart:number // it's the start epoch of the task.
 
     epochEnd: number
     timeStart: Date
@@ -94,7 +94,7 @@ export class EpochTask extends Model<IEpochTask> implements IEpochTask{
         })
     }
 }
-// from epoch is from startup argument, so it's safe using it when resuming task.
+// from epoch is from startup argument, so it's safe using it when resuming the task.
 export async function fetchTask(len:number, fromEpoch = 0, model = EpochTask) : Promise<IEpochTask> {
     do {
         const [maxOne, exactOne, runningOne] = await Promise.all([
@@ -134,7 +134,7 @@ export async function fetchTask(len:number, fromEpoch = 0, model = EpochTask) : 
     } while (true)
 }
 
-// assume that all records are within one epoch, so they have same time.
+// assume that all records are within one epoch, so they have the same time.
 export class Aggregator<K,V> {
     allMap = new Map<K, Map<V, IUniqueAddress>>()
     buildMap(arr: { from: V, to: V, contractId: K/*, createdAt: Date */}[], epoch:number, time:Date) {

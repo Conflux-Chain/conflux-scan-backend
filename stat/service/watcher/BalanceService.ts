@@ -23,36 +23,11 @@ export class BalanceService {
         this.networkId = networkId;
     }
 
-    public async listToken() {
-        const list = await Token.findAll({})
-        return list;
-    }
-
-    public schedule(delay: number = 60_000) {
-        const that = this
-        async function repeat() {
-            await that.run()
-            setTimeout(repeat, delay)
-        }
-        repeat().then()
-    }
-
-    async run() {
-        const list = await Token.findAll({
-            attributes: {exclude: ['icon']},
-            where: {type: {[Op.ne]: ''}, name: {[Op.ne]: ''}}
-        })
-        for (let i = 0; i < list.length; i++){
-            let t = list[i];
-            await this.updateToken(t)
-        }
-    }
-
-    public async updateToken(tokenBean: Token) {
+    public static async updateTokenHolder(hex40id: number) {
         //
-        let table = BalanceWatcher.mapModel('', true, tokenBean.hex40id);
+        let table = BalanceWatcher.mapModel('', true, hex40id);
         let holder = await table.count()
-        await tokenBean.update({holder: holder}, {where: {id: tokenBean.id}})
+        await Token.update({holder: holder}, {where: {hex40id}})
     }
 
     async rankHolder(base32: any, skip: any, limit: any) {

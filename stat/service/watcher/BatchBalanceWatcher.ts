@@ -478,7 +478,7 @@ export async function startContractUserAnd1155data(cfx: Conflux, cfg: StatConfig
     repeat().then()
 }
 // should check rpc epoch, and only delete confirmed records.
-// in case the sync process uses a rpc with higher epoch than this program.
+// in case, the sync process uses a rpc with higher epoch than this program.
 async function processContractUser(cfx:Conflux, limit:number) {
     const list = await ContractUser.findAll({
         order: [['id', 'asc']], limit

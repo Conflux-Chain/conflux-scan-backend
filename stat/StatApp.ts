@@ -112,7 +112,6 @@ export class StatApp{
         this.batchBalanceWatcher = new BatchBalanceWatcher(this.cfx, utilContract)
         // @ts-ignore
         this.balanceService = new BalanceService(this, StatApp.networkId)
-        this.balanceService.schedule(60_000)
         new ChainWatcher().watchPivotSwitch({cfxWsUrl: this.config.cfxWsUrl}).then()
         this.dailyTxnQuery = new DailyTxnQuery();
         this.posQuery = new PosQuery(this.cfx);

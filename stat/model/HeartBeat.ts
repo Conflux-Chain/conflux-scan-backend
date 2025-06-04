@@ -49,5 +49,7 @@ export async function doHeartBeat(key:string) {
     return HeartBeatBean.upsert({key, updatedAt: new Date()}).then(res=>{
         lastTimeMap.set(key, now)
         return res
+    }).catch(err=>{
+        console.log(`${__filename} failed to upsert heart beat.`, err);
     })
 }
