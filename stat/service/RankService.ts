@@ -203,12 +203,3 @@ export class RankService{
         return {/*code: 0,*/ total: list.length, list, accountMap: accountBasic};
     }
 }
-
-if (require.main === module) {
-    init().then(()=>{
-        return new RankService({}).rankCfxBalance('total', 100)
-    }).then(list=>{
-        const str = list.map(r=>`${r["addressId"]}, ${r['hex']}, ${r['valueN']}, ${r['value4']}`).join('\n')
-        console.log(`${str}`)
-    })
-}
