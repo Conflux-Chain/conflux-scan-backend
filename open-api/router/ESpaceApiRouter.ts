@@ -28,6 +28,7 @@ import {
     checkVerifyStatus,
     verifyProxyContract,
     checkProxyVerification,
+    getContractCreation,
 } from "../service/OpenContractService";
 import {
     getTokenInfos,
@@ -133,6 +134,9 @@ async function gateway(ctx) {
                     break;
                 case CONTRACT.action.GET_SOURCECODE:
                     handler = getSourceCode;
+                    break;
+                case CONTRACT.action.GET_CONTRACT_CREATION:
+                    handler = getContractCreation;
                     break;
                 case CONTRACT.action.VERIFY_SOURCECODE:
                     handler = verifySourcecode;

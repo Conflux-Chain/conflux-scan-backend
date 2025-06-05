@@ -20,6 +20,7 @@ import {
     checkProxyVerification,
     checkVerifyStatus,
     getABI,
+    getContractCreation,
     getSourceCode,
     verifyProxyContract,
     verifySourcecode
@@ -164,6 +165,7 @@ function registerRouter(router: Router) {
     // contract
     router.get('/contract/getabi', getABI)
     router.get('/contract/getsourcecode', getSourceCode)
+    router.get('/contract/getContractCreation', getContractCreation)
     router.post('/contract/verifysourcecode', verifySourcecode)
     router.get('/contract/checkverifystatus', checkVerifyStatus)
     router.get('/contract/verifyproxycontract', verifyProxyContract)

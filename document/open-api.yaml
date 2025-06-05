@@ -342,6 +342,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ContractInfo'
+  '/contract/getContractCreation':
+    get:
+      tags:
+        - 'Contracts'
+      description: "Returns a contract's deployer address and transaction hash it was created, up to 5 at a time."
+      parameters:
+        - $ref: '#/components/parameters/contractAddressesParam'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContractCreationInfo'
   '/contract/verifysourcecode':
     post:
       tags:
@@ -2771,20 +2785,20 @@ components:
     CommonResponse:
       type: object
       properties:
-        status:
-          type: string
+        code:
+          type: integer
         message:
           type: string
-        result:
+        data:
           type: string
     ContractInfo:
       type: object
       properties:
-        status:
-          type: string
+        code:
+          type: integer
         message:
           type: string
-        result:
+        data:
           type: array
           items:
             properties:
@@ -2814,6 +2828,38 @@ components:
                 type: string
               SwarmSource:
                 type: string
+    ContractCreationInfo:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            properties:
+              contractAddress:
+                type: string
+                description: 'Contract address'
+              contractCreator:
+                type: string
+                description: 'Creator address of contract'
+              txHash:
+                type: string
+                description: 'Transaction hash in which the contact was deployed'
+              blockNumber:
+                type: string
+                description: 'Block number in which the contact was deployed'
+              timestamp:
+                type: string
+                description: 'The timeStamp is represented in Unix timestamp'
+              contractFactory:
+                type: string
+                description: 'Factory address of contract'
+              creationBytecode:
+                type: string
+                description: 'Creation bytecode of contract'
     NFTStat:
       type: object
       properties:
@@ -3171,6 +3217,15 @@ components:
       eg. on testnet it's like cfxtest:aaka4zypus90zrt7vzgsz437r1cwkgkahe374ds80v,cfxtest:aatmcd6m3e4gjczt9v9d1gca1d77trk3vjr04w5yha,
       eg. on mainnet it's like cfx:aamgvyzht7h1zxdghb9ee9w26wrz8rd3gj837392dp,cfx:aanjcf1esdz50j6zhkm0k60wc7669tfkw28mzudg24"
       name: contracts
+      in: query
+      required: true
+      schema:
+        type: string
+    contractAddressesParam:
+      description: "Contract addresses, separated by comma,
+      eg. on testnet it's like cfxtest:aaka4zypus90zrt7vzgsz437r1cwkgkahe374ds80v,cfxtest:aatmcd6m3e4gjczt9v9d1gca1d77trk3vjr04w5yha,
+      eg. on mainnet it's like cfx:aamgvyzht7h1zxdghb9ee9w26wrz8rd3gj837392dp,cfx:aanjcf1esdz50j6zhkm0k60wc7669tfkw28mzudg24"
+      name: contractaddresses
       in: query
       required: true
       schema:

@@ -285,6 +285,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ContractInfo'
+  '/api?module=contract&action=getcontractcreation':
+    get:
+      tags:
+        - 'Contracts'
+      description: "Returns a contract's deployer address and transaction hash it was created, up to 5 at a time."
+      parameters:
+        - $ref: '#/components/parameters/contractAddressesParam'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContractCreationInfo'
   '/api':
     post:
       tags:
@@ -1644,6 +1658,38 @@ components:
                 type: string
               SwarmSource:
                 type: string
+    ContractCreationInfo:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            properties:
+              contractAddress:
+                type: string
+                description: 'Contract address'
+              contractCreator:
+                type: string
+                description: 'Creator address of contract'
+              txHash:
+                type: string
+                description: 'Transaction hash in which the contact was deployed'
+              blockNumber:
+                type: string
+                description: 'Block number in which the contact was deployed'
+              timestamp:
+                type: string
+                description: 'The timeStamp is represented in Unix timestamp'
+              contractFactory:
+                type: string
+                description: 'Factory address of contract'
+              creationBytecode:
+                type: string
+                description: 'Creation bytecode of contract'
     ContractExecutionStatus:
       type: object
       properties:
@@ -3494,6 +3540,14 @@ components:
       description: "Contract addresses, separated by comma,
       eg. it's like 0x672158893ce87d812befd2209bc1b7818fe48b2a,0xfd2209bc1b7818fe48b2a672158893ce87d812be"
       name: contracts
+      in: query
+      required: true
+      schema:
+        type: string
+    contractAddressesParam:
+      description: "Contract addresses, separated by comma,
+      eg. it's like 0x672158893ce87d812befd2209bc1b7818fe48b2a,0xfd2209bc1b7818fe48b2a672158893ce87d812be"
+      name: contractaddresses
       in: query
       required: true
       schema:

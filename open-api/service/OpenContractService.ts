@@ -6,12 +6,15 @@ import {
     checkEVMVersion,
     checkLibrary,
     checkPresent,
+    mustBeAddressArrayParamIfPresent,
     mustBeAddressParamIfPresent
 } from "../../stat/service/common/utils";
 import {setBody} from "../router/middleware";
 import {CONST} from "../../stat/service/common/constant"
 import {toBase32} from "../../stat/service/tool/AddressTool";
 import {ContractVerify} from "../../stat/model/ContractVerify";
+import {FullTransaction} from "../../stat/model/FullBlock";
+import {QueryTypes} from "sequelize";
 
 const lodash = require('lodash');
 const util = require('util');
@@ -131,6 +134,75 @@ export async function getSourceCode(ctx) {
         SwarmSource: "",
     });
     setBody(ctx, [contractItem])
+}
+
+const MAX_CONTRACTS = 5;
+export async function getContractCreation(ctx) {
+    mustBeAddressArrayParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contractaddresses');
+    const { contractaddresses } = ctx.request.query;
+    checkPresent({contractaddresses}, ['contractaddresses']);
+    if(contractaddresses.length > MAX_CONTRACTS){
+        setBody(ctx, null, 1, `Contract addresses up to ${MAX_CONTRACTS} at a time`);
+        return
+    }
+
+    const contractCreations = []
+    for (let addr of contractaddresses) {
+        const trace: any = await getApiService().traceCreateQuery.query(format.hexAddress(addr));
+        if(trace.msg) {
+            console.log(`No trace found for contract ${addr}`)
+            continue
+        }
+
+        const txHash = trace.transactionHash
+        const contractCreated = await FullTransaction.sequelize.query(`
+            select h.hex as address from full_tx t  
+            join hex40 h on t.contractCreatedId = h.id 
+            where t.hash = ?
+        `, {
+            type: QueryTypes.SELECT,
+            replacements: [txHash]
+        }).then((list: any[]) => (list?.length ? `0x${list[0].address}` : null))
+
+        let creationBytecode: string
+        if(contractCreated && format.hexAddress(contractCreated) === format.hexAddress(addr)) {
+            const transaction = await getApiService().cfx.getTransactionByHash(txHash)
+            creationBytecode = transaction.data
+        } else {
+            const traces: any[] = await getApiService().cfx.traceTransaction(txHash);
+            const stack = []
+            for (const trace of traces) {
+                if(trace.type === 'create') {
+                    stack.push(trace)
+                }
+                if(trace.type === 'create_result') {
+                    if(format.hexAddress(trace.action.addr) === format.hexAddress(addr)) {
+                        const createTrace = stack.pop()
+                        creationBytecode = createTrace.action.init
+                        break
+                    } else{
+                        stack.pop()
+                    }
+                }
+            }
+        }
+
+        const contractAddress = StatApp.isEVM ? format.hexAddress(addr) : format.address(addr, StatApp.networkId)
+        const contractCreator = StatApp.isEVM ? trace.from : format.address(trace.from, StatApp.networkId)
+        const contractFactory = StatApp.isEVM ? trace.contractFactory :
+            (trace.contractFactory ? format.address(trace.contractFactory, StatApp.networkId) : trace.contractFactory)
+        contractCreations.push({
+            contractAddress,
+            contractCreator,
+            txHash,
+            blockNumber: trace.epochNumber,
+            timestamp: trace.timestamp,
+            contractFactory,
+            creationBytecode,
+        })
+    }
+
+    setBody(ctx, contractCreations)
 }
 
 export async function verifySourcecode(ctx) {

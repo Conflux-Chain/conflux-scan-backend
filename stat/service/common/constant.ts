@@ -176,6 +176,7 @@ export const CONST = {
       action: {
         GET_ABI: 'getabi',
         GET_SOURCECODE: 'getsourcecode',
+        GET_CONTRACT_CREATION: 'getcontractcreation',
         VERIFY_SOURCECODE: 'verifysourcecode',
         CHECK_VERIFY_STATUS: 'checkverifystatus',
         VERIFY_PROXY_CONTRACT: 'verifyproxycontract',
