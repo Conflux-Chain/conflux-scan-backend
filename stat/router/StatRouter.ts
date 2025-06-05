@@ -656,7 +656,6 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = page;
     })
 
-    // get creat trace
     router.get('/trace/create', async function (ctx) {
         mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contract');
 
@@ -665,7 +664,6 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = createTrace;
     });
 
-    // get creat trace
     router.post('/recaptcha/siteverify', async function (ctx) {
         mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address');
         // mustBeEnumParamIfPresent(ctx.request.query, 'type', ['Phish / Hack', 'Scam', 'Fishy', 'High Risk', 'Spam', 'Others']);

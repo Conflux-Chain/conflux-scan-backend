@@ -2,7 +2,7 @@
 import {format} from "js-conflux-sdk";
 import {Hex40Map, idHex40Map, hex40IdMap, formatToHex} from "../model/HexMap";
 import {TraceCreateContract} from "../model/TraceCreateContract";
-import {Op} from "sequelize";
+import {Op, QueryTypes} from "sequelize";
 import {FullTransaction} from "../model/FullBlock";
 import {fmtAddr} from "../StatApp";
 const lodash = require('lodash');
@@ -16,37 +16,57 @@ export class BlockTraceCreateQuery{
 
     async query(address: string) {
         const{ cfx,  } = this.app;
-
-        const hex40Bean = await Hex40Map.findOne({where: {hex: address.substr(2)}});
-        if(!hex40Bean){
+        const addr = await Hex40Map.findOne({where: {hex: address.substr(2)}});
+        if(!addr){
             return {msg: `get create trace, no contract ${address} found`};
         }
 
-        const trace = await TraceCreateContract.findOne({where: {to: hex40Bean.id}});
+        const trace: any = await TraceCreateContract.sequelize.query(`
+            select 
+                t.epochNumber,
+                t.blockTime,
+                t.txHash,
+                h.hex as caller
+            from trace_create_contract t  
+            join hex40 h on t.from = h.id 
+            where t.to = ?
+        `, {
+            type: QueryTypes.SELECT,
+            replacements: [addr.id]
+        }).then((list) => (list?.length ? list[0] : null))
         if(!trace){
             return {msg: `get create trace, no create trace found for contract ${address}`};
         }
+
         // use EOA from as contract creator, not the trace caller.
-        let from = undefined
-        let hash = '0x'+trace.txHash;
-        if (trace.txHash) { // mocked trace (such as token contract on zg) do not have tx hash
-            const localTx = await FullTransaction.findOne({where: {hash: hash}});
-            if (localTx) {
-                const fromHex40Bean = await Hex40Map.findOne({where: {id: localTx.fromId}});
-                from = fromHex40Bean ? `0x${fromHex40Bean.hex}` : undefined
-            } else {
-                const rpcTx = await cfx.getTransactionByHash(hash);
-                if (rpcTx) {
-                    from = formatToHex(rpcTx.from)
-                }
+        const transactionHash = `0x${trace.txHash}`;
+        let contractCreator = await FullTransaction.sequelize.query(`
+            select h.hex as address from full_tx t  
+            join hex40 h on t.fromId = h.id 
+            where t.hash = ?
+        `, {
+            type: QueryTypes.SELECT,
+            replacements: [transactionHash]
+        }).then((list: any[]) => (list?.length ? `0x${list[0].address}` : null))
+        if(!contractCreator) {
+            const tx = await cfx.getTransactionByHash(transactionHash);
+            if (tx) {
+                contractCreator = format.hexAddress(tx.from);
             }
         }
 
+        let contractFactory = ''
+        const traceCaller = `0x${trace.caller}`
+        if(traceCaller !== contractCreator) {
+            contractFactory = traceCaller
+        }
 
         return {
             epochNumber: trace.epochNumber,
-            transactionHash: trace.txHash ? `0x${trace.txHash}` : "",
-            from,
+            timestamp: trace.blockTime,
+            transactionHash,
+            from: contractCreator,
+            contractFactory,
             address,
         };
     }
