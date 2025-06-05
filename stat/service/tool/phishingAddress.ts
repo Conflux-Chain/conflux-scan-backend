@@ -37,8 +37,8 @@ export async function detectFishingAddress(addrId: number, list: any[], type?: s
 		console.log(`${__filename} unknown type ${type}`);
 		return ;
 	}
-	const {epoch: maxEpoch} = list[0];
-	const {epoch: minEpoch} = list[list.length - 1];
+	const {epochNumber: maxEpoch} = list[0];
+	const {epochNumber: minEpoch} = list[list.length - 1];
 	const [laterTxArr, earlierTxArr] = await Promise.all([
 		model.findAll({
 			where: {addressId: addrId, epoch: {[Op.gte]: maxEpoch}}, order: [['epoch', 'asc']], limit: 100, raw: true,
