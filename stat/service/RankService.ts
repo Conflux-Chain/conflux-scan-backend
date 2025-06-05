@@ -27,10 +27,6 @@ export class RankService{
     }
 
     public repeatUpdateTxnCache() {
-        if (ConfigInstance['noTopToken']) {
-            console.log(`${__filename} do not rank token.`)
-            return;
-        }
         // update unique addr cache.
         ['senders','receivers','participants'].forEach(which=>{
             [1,3,7].forEach(day=>{

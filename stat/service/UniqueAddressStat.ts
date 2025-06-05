@@ -17,7 +17,7 @@ import {Epoch} from "../model/Epoch";
 import {Erc721Transfer} from "../model/Erc721Transfer";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {EpochHashTokenTransfer} from "../TokenTransferSync";
-import {FirstBlockNo} from "../config/StatConfig";
+import {ConfigInstance, FirstBlockNo} from "../config/StatConfig";
 import {PreloadMap} from "./SyncBase";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 
@@ -249,7 +249,8 @@ async function calcOneDayUniqueAddr(timeBegin: Date, timeEnd: Date) {
 export async function topUnique({limit = 10, day = 7, showSql = false}) {
     // index is on timeStart, not timeEnd.
     // do not use universal time because the result may be too few.
-    const maxUnique = await UniqueAddress.findOne({order:[['timeStart','desc']]})
+    const maxUnique = ConfigInstance.noTopToken ? null
+        : await UniqueAddress.findOne({order:[['timeStart','desc']]});
     if (maxUnique === null) {
         if (!this.___show_log){
             console.log(`UniqueAddr no unique address record found.`)
