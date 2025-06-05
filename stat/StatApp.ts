@@ -112,7 +112,6 @@ export class StatApp{
         this.batchBalanceWatcher = new BatchBalanceWatcher(this.cfx, utilContract)
         // @ts-ignore
         this.balanceService = new BalanceService(this, StatApp.networkId)
-        this.balanceService.schedule(60_000)
         new ChainWatcher().watchPivotSwitch({cfxWsUrl: this.config.cfxWsUrl}).then()
         this.dailyTxnQuery = new DailyTxnQuery();
         this.posQuery = new PosQuery(this.cfx);
@@ -129,6 +128,7 @@ export class StatApp{
         this.nftCheckerService = new NFTCheckerService(this, utilContract);
         this.desensitizer = new Desensitizer(this);
         this.rankService = new RankService(this)
+        this.rankService.repeatUpdateTxnCache(); // scheduleCache
         this.fullBlockQuery = new FullBlockQuery(this);
         this.ensCheckerQuery = new ENSCheckerQuery(this);
         this.accountQuery = new AccountQuery(this);
@@ -142,7 +142,7 @@ export class StatApp{
         if(this.config.blacklist) {
             await this.desensitizer.scheduleRefreshBlacklist();
         }
-        await this.txnQuery.scheduleCache()
+        this.txnQuery.scheduleCache().then()
         let fullStateRpc = await KV.getString(KEY_FULL_STATE_RPC, "");
         if (fullStateRpc) {
             this.fullStateCfx = await initCfxSdk({url: fullStateRpc}).catch(e=>{

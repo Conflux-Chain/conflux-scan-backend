@@ -47,53 +47,53 @@ async function main() {
     removeDate1970().then();
     //
     const blockAndMinerSync = new BlockAndMinerSync();
-    await blockAndMinerSync.schedule()
+    blockAndMinerSync.schedule().then()
     //
     const traceCreateQuery = new BlockTraceCreateQuery({});
     if(config.censorApiKey && config.censorSecretKey) {
         const censorService = new CensorService({config, cfx, traceCreateQuery},
             {tx: 10, token: 10, nft: 10});
-        await censorService.schedule(1000 * 3);
+        censorService.schedule(1000 * 300).then();
     }
     //
     scheduleDailyTokenStat().then()
-    await scheduleDailyActiveAddress()
+    scheduleDailyActiveAddress().then()
     calcDailyUniqueAddrSchedule().then()
     scheduleRollupDailyCfxTxn().then();
     //
     const reporter = new Reporter({config, cfx});
-    await reporter.start();
+    reporter.start().then();
     scheduleGasConsumerStat();
     //
     const statDailyBlockData = new StatDailyBlockData({cfx});
-    await statDailyBlockData.schedule(1000 * 6);
+    statDailyBlockData.schedule(1000 * 60).then();
     //
     const statDailyContractAnalysis = new StatDailyContractAnalysis({cfx});
-    await statDailyContractAnalysis.schedule();
+    statDailyContractAnalysis.schedule().then();
     //
     const statDailyContractCreation = new StatDailyContractCreation({cfx})
-    await statDailyContractCreation.schedule(1000 * 6);
+    statDailyContractCreation.schedule(1000 * 60).then();
     //
     const statDailyContractRegister = new StatDailyContractRegister({cfx});
-    await statDailyContractRegister.schedule(1000 * 6);
+    statDailyContractRegister.schedule(1000 * 60).then();
     //
     const statDailyTxn = new StatDailyTxn({cfx});
-    await statDailyTxn.schedule(1000 * 6);
+    statDailyTxn.schedule(1000 * 60).then();
     //
     const statDailyNFT = new StatDailyNFT({cfx});
-    await statDailyNFT.schedule(1000 * 1);
+    statDailyNFT.schedule(1000 * 60).then();
     //
     const statTotalNFTHolder = new StatTotalNFTHolder({cfx});
-    await statTotalNFTHolder.schedule(1000 * 3);
+    statTotalNFTHolder.schedule(1000 * 300).then();
     //
     const statTotalCfxHolder = new StatTotalCfxHolder({cfx});
-    await statTotalCfxHolder.schedule(1000 * 6);
+    statTotalCfxHolder.schedule(1000 * 60).then();
     //
     const statDailyPosReward = new StatDailyPosReward({cfx});
-    await statDailyPosReward.schedule(1000 * 1);
+    statDailyPosReward.schedule(1000 * 60 * 10).then();
     //
     const statDailyPowReward = new StatDailyPowReward({cfx});
-    await statDailyPowReward.schedule(1000 * 1);
+    statDailyPowReward.schedule(1000 * 60 * 10).then();
     //
     if (config.syncTokenSecurityAudit) {
         const tokenQuery = new TokenQuery({cfx, config})

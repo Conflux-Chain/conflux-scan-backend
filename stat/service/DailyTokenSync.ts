@@ -15,6 +15,7 @@ import {TxnQuery} from "./TxnQuery";
 import {getMaxTokenSyncDate} from "./tool/FixDailyTokenStat";
 import {FullBlock} from "../model/FullBlock";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
+import {fmtAddr, StatApp} from "../StatApp";
 
 let showDebugLog = true
 export async  function scheduleDailyTokenStat() {
@@ -32,20 +33,47 @@ export async  function scheduleDailyTokenStat() {
         fromT.setDate(fromT.getDate()+1);
     }
 
-    setTimeout(scheduleDailyTokenStat, 1000*60*10)
+    setTimeout(scheduleDailyTokenStat, 1000*60*30)
 }
 
 export async  function calcAllRegisteredTokenDailyStat(dt:Date) {
-    const tokenList = await Token.findAll({
-        attributes: ['hex40id','symbol','name','base32'],
-        where: {auditResult: true},
-    })
-    console.log(`${new Date().toISOString()} begin calculate token's daily statistics:`)
-    for(const token of tokenList) {
-        await calcDailyTokenEach(dt, token.hex40id, showDebugLog)
-        showDebugLog && console.log(`${new Date().toISOString()} calcDailyToken finish : ${token.symbol} ${token.base32}`)
+    console.log(`${new Date().toISOString()} begin calculate token's daily statistics`);
+    let idGreatThan = 0;
+    let counter = 0;
+    let ms = Date.now();
+    while (true) {
+        counter ++;
+        if (counter % 100 == 0) {
+            const now = Date.now();
+            if (now - ms > 60_1000) {
+                // 1-minute elapsed
+                ms = now;
+                console.log(`processed daily token stat ${counter} ${new Date().toISOString()}`);
+            }
+        }
+        idGreatThan = await calcOneTokenDailyStat(dt, idGreatThan);
+        if (!idGreatThan) {
+            break;
+        }
     }
-    console.log(`${new Date().toISOString()} calcAllRegisteredTokenDailyStat done.`)
+    console.log(`${new Date().toISOString()} calcAllRegisteredTokenDailyStat done. count ${counter}`);
+}
+async  function calcOneTokenDailyStat(dt:Date, idGreatThan: number) {
+    let _sql = '';
+    const token = await Token.findOne({
+        attributes: ['hex40id','symbol','name','base32', 'id'],
+        where: {id: {[Op.gt]: idGreatThan}},
+        logging: sql => _sql = sql,
+    })
+    if (!token) {
+        console.log(`token not found, id > `, idGreatThan);
+        console.log(`sql is `, _sql);
+        return null;
+    }
+    await calcDailyTokenEach(dt, token.hex40id, showDebugLog)
+    showDebugLog && console.log(`${new Date().toISOString()} calcDailyToken finish : ${token.symbol
+        } ${fmtAddr(token.base32, StatApp.networkId)}`);
+    return token.id;
 }
 
 export async  function countRecentTokenTransfer(days:number) : Promise<{txnCount:number, userCount:number}> {
@@ -107,6 +135,7 @@ export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
     const sql = `select epoch,\`value\` from ${model.getTableName()} where contractId=?
             and epoch between ? and ? order by epoch asc limit ?`
     const pageSize = 10000;
+    const addr = fmtAddr(tokenBean.base32, StatApp.networkId);
     let sum = BigInt(0)
     do {
         await model.sequelize.query(sql,{type:QueryTypes.SELECT,
@@ -115,10 +144,10 @@ export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
                 list.forEach(row=>{
                     sum += BigInt(row.value)
                 })
-            if (list.length > 0) {
+            if (list.length == pageSize) {
                 startE = list[list.length-1].epoch + 1;
-                console.log(`token ${tokenBean.hex40id} ${tokenBean.symbol} ${tokenBean.base32
-                } transfer records:${list.length}  `)
+                // console.log(`token ${tokenBean.hex40id} ${tokenBean.symbol} ${addr
+                // } transfer records:${list.length}  `)
             } else {
                 startE = endE + 1;
             }

@@ -105,7 +105,7 @@ export class TokenTool {
             .call({ to: utilContract })
             .then((arr) => arr.map(BigInt))
             .catch((err) => {
-                console.log('params:', account, contracts, utilContract);
+                console.log('params:', 'account', account, 'contracts', contracts, 'utilContract', utilContract);
                 console.log(`get balances from util contract fail: `, err);
                 throw new Errors.RpcBusyError(`failed to fetch balance.${err.message}`);
             });

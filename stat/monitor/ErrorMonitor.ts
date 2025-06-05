@@ -98,10 +98,15 @@ async function addErrorLog(module: string, biz: string, error: Error) {
 	if (bean) {
 		bean.count += 1;
 		bean.detail = detail;
-		await bean.save();
+		await bean.save().catch(e=>{
+			console.log(`failed to record error`, e.message);
+		});
 	} else {
 		[bean] = await ErrorLog.upsert({
 			module, biz, detail: detail, count: 1,
+		}).catch(e=>{
+			console.log(`failed to upsert error`, e.message);
+			return [bean];
 		})
 	}
 	await reportError(bean, error)

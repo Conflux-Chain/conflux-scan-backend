@@ -17,16 +17,16 @@ import {topUnique} from "./UniqueAddressStat";
 import {IS_EVM2, KV} from "../model/KV";
 import {Errors} from "./common/LogicError";
 import { ethers } from "ethers";
+import {ConfigInstance} from "../config/StatConfig";
 
 export class RankService{
     private app: any;
     txnMap = new Map<number, any>()
     constructor(app) {
         this.app = app;
-        this.updateTxnCache()
     }
 
-    updateTxnCache() {
+    public repeatUpdateTxnCache() {
         // update unique addr cache.
         ['senders','receivers','participants'].forEach(which=>{
             [1,3,7].forEach(day=>{
@@ -42,7 +42,7 @@ export class RankService{
         }).then(()=>{
             return this.rankCfxBalance('balance', cnt , true)
         }).then(()=>{
-            setTimeout(()=>this.updateTxnCache(), 1000*600)
+            setTimeout(()=>this.repeatUpdateTxnCache(), 1000*600)
         })
     }
     async rankCfxBalance(order:string, limit, updateTxnCache=false) {
@@ -198,13 +198,4 @@ export class RankService{
 
         return {/*code: 0,*/ total: list.length, list, accountMap: accountBasic};
     }
-}
-
-if (require.main === module) {
-    init().then(()=>{
-        return new RankService({}).rankCfxBalance('total', 100)
-    }).then(list=>{
-        const str = list.map(r=>`${r["addressId"]}, ${r['hex']}, ${r['valueN']}, ${r['value4']}`).join('\n')
-        console.log(`${str}`)
-    })
 }

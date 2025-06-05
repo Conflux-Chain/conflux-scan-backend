@@ -114,7 +114,7 @@ export class TokenQuery {
         //query
         let rawList;
         let count;
-        if (addressArray) {
+        if (addressArray?.length) {
             delete options.where['auditResult'];
             rawList = await Token.findAll(options);
             count = rawList?.length || 0;
@@ -124,6 +124,12 @@ export class TokenQuery {
             const page = await Token.findAndCountAll(options);
             rawList = page?.rows;
             count = page?.count;
+        }
+        if (rawList.length > 100) {
+            const msg = `token list with bad size ${rawList.length}`;
+            console.log(msg);
+            console.log(`addressArray`, addressArray, 'name', name, 'limit', limit)
+            throw new Errors.BizError(msg)
         }
         let list = [];
         let registeredTokens;
@@ -234,7 +240,13 @@ export class TokenQuery {
         const addressId = hex40.id;
 
         const hexIdArray = [];
-        const balanceArray = await TokenBalance.findAll({where: {addressId}, order: [['updatedAt', 'desc']]})
+        const balanceArray = await TokenBalance.findAll({
+            where: {addressId},
+            order: [['updatedAt', 'desc']],
+            //without limit, will hit <out of gas> error
+            //TODO fix it
+            limit: 100,
+        })
         balanceArray.forEach(balance => {
             hexIdArray.push(balance.contractId)
             balanceMap[balance.contractId] = balance;

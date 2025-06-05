@@ -543,8 +543,8 @@ export async function pagingFullTx(skip:number) : Promise<TxPage> {
     let nearestOne = await TxnRowMark.findByPk(nearestId)
     // must exists
     const remainSkip = pagedSkip - TX_PAGE_MARK_SIZE * skipMarkRows
-    console.log(`TX : want skip ${skip},has total ${nonMarkRows+maxOne.id} nonMarkRows ${nonMarkRows}, max id ${maxOne?.id}, pagedSkip ${pagedSkip
-        } skipMarkRows ${skipMarkRows}, nearestId ${nearestId}, remain ${remainSkip}`)
+    // console.log(`TX : want skip ${skip},has total ${nonMarkRows+maxOne.id} nonMarkRows ${nonMarkRows}, max id ${maxOne?.id}, pagedSkip ${pagedSkip
+    //     } skipMarkRows ${skipMarkRows}, nearestId ${nearestId}, remain ${remainSkip}`)
     if (nearestOne === null) {
         return {id:-1, epoch:-1, blockPosition:-1,
             txPosition: -1, skip:remainSkip, nonMarkRows, calcTotal: nonMarkRows+maxOne?.id} // should found nothing.

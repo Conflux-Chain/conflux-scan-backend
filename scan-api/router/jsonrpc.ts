@@ -3,6 +3,7 @@ import {KEY_CONFURA_URL, KEY_CORE_API_URL, KEY_CORE_OPEN_API_URL, KEY_OPEN_API_U
 import {fmtAddr} from "../../stat/StatApp";
 import {ApiApp} from "../app";
 import {NoCoreSpace} from "../../stat/config/StatConfig";
+import {Errors} from "../../stat/service/common/LogicError";
 
 const lodash = require('lodash');
 const Big = require('big.js');
@@ -484,6 +485,9 @@ export const jsonrpc_countAndListToken = jsonrpc.method_('countAndListToken',
     const {
       app: { service },
     } = this as ScanCtx;
+    if (options.addressArray?.length > 100) {
+        throw new Errors.ParameterError(`invalid length of address array, ${options.addressArray.length} > 100`);
+    }
 
     return service.token.countAndList(options);
   },

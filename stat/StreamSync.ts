@@ -19,6 +19,8 @@ import {fmtAddr, StatApp} from "./StatApp";
 import {KEY_NFT_FROM_MINT_TABLE, KV} from "./model/KV";
 import {CONST} from "./service/common/constant"
 import {doHeartBeat, KEY_TRANSFER_COUNT} from "./model/HeartBeat";
+import {BalanceService} from "./service/watcher/BalanceService";
+import {safeAddErrorLog} from "./monitor/ErrorMonitor";
 
 const lodash = require('lodash');
 
@@ -30,15 +32,18 @@ export function scheduleTransferUpdater(serverTag:string) {
     async function repeat() {
         counter ++;
         console.log(` scheduleTransferUpdater works `)
-        await doHeartBeat(KEY_TRANSFER_COUNT+serverTag).then()
+        doHeartBeat(KEY_TRANSFER_COUNT+serverTag).then()
         // 10s * 60 times = 10 minutes
         if (counter % 60 === 1) {
             try {
                 const ids = waitUpdateTransferTokens.hex40ids;
                 waitUpdateTransferTokens.hex40ids = new Set<number>();
                 await updateTokenTransferCount(ids.keys(), true);
+                for (let hexId of ids.keys()) {
+                    await BalanceService.updateTokenHolder(hexId);
+                }
             } catch(e) {
-                console.log(`updateTokenTransferCount error `, e);
+                safeAddErrorLog('stat', 'token-holder-transfer', e).then();
             }
         }
         setTimeout(repeat, 10_000) // 10s

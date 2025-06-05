@@ -107,7 +107,7 @@ export interface StatConfig{
     binanceToken: string,
 
     syncTokenSecurityAudit: boolean,
-
+    noTopToken: boolean,
     blacklist: boolean,
 
     databaseRW: DatabaseRW,

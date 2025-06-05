@@ -13,7 +13,7 @@ export interface IContractUser {
     epoch: number
 }
 // alter table contract_user add column epoch bigint unsigned not null default 0;
-// used to update total supply and holder. records is deleted after processing.
+// used to update total supply and holder. records are deleted after processing.
 export class ContractUser extends Model<IContractUser> implements IContractUser {
     id:number
     contractId: number
@@ -243,6 +243,7 @@ export interface IDailyTokenTxn {
     type: string // erc20 erc721 erc777 erc1155
     createdAt: Date
 }
+// without relation to contract
 export class DailyTokenTxn extends Model<IDailyTokenTxn> implements IDailyTokenTxn{
     id?:number
     txnCount:number

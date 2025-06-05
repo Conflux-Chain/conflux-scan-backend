@@ -281,7 +281,10 @@ export class ConfluxService {
     );
   }
 
-  async getConfirmationRiskByHash(blockHash) {
+  async getConfirmationRiskByHash(blockHash: string) {
+    if (!blockHash) {
+      return null;
+    }
     const {
       app: { cfx, ttlMap },
     } = this;

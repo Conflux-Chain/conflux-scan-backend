@@ -74,6 +74,7 @@ import {GasConsumer} from "../model/GasConsumer";
 import {ReqAccount} from "./watcher/AccountChecker";
 import {ErrorLog} from "../monitor/ErrorMonitor";
 import {AddressNfts} from "../model/AddrNft";
+import {sleep} from "./tool/ProcessTool";
 
 let conf
 export function createDB(config) {
@@ -123,7 +124,9 @@ export async function initPartialModel(sequelize) {
         console.log('DB authenticated.')
     }).catch(err=>{
         console.log(`connect to DB fail:`, err)
-        process.exit(9)
+        return sleep(10_000).then(()=>{
+            process.exit(9)
+        })
     });
     await Promise.all([
         createAddressErc20TransferTable(sequelize),
