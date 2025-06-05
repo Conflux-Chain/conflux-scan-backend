@@ -3,10 +3,13 @@ import {Op} from "sequelize";
 import {buildHexSet, getAddrId, idHex40Map, mapProp} from "../../model/HexMap";
 import {fmtAddr, StatApp} from "../../StatApp";
 import { CONST } from "../common/constant";
+import {AddressErc20Transfer} from "../../model/Erc20Transfer";
+import {AddressErc721Transfer} from "../../model/Erc721Transfer";
+import {AddressErc1155Transfer} from "../../model/Erc1155Transfer";
+import {AddressCfxTransfer} from "../../model/CfxTransfer";
 
 let zeroAddr = '';
-
-export async function detectFishingAddress(addrId: number, list: any[]) {
+export async function detectFishingAddress(addrId: number, list: any[], type?: string): Promise<AddressTransactionIndex> {
 	if (list.length === 0) {
 		return;
 	}
@@ -22,13 +25,25 @@ export async function detectFishingAddress(addrId: number, list: any[]) {
 		headChars = 6; // include 0x
 		tailChars = 4;
 	}
-	const {epoch: maxEpoch} = list[0];
-	const {epoch: minEpoch} = list[list.length - 1];
+	let model: any = AddressTransactionIndex;
+	switch (type) {
+		case CONST.TRANSFER_TYPE.CFX: model = AddressCfxTransfer; break;
+		case CONST.TRANSFER_TYPE.ERC20: model = AddressErc20Transfer; break;
+		case CONST.TRANSFER_TYPE.ERC721: model = AddressErc721Transfer; break;
+		case CONST.TRANSFER_TYPE.ERC1155: model = AddressErc1155Transfer; break;
+		default: model = type ? undefined : model; break;
+	}
+	if (!model) {
+		console.log(`${__filename} unknown type ${type}`);
+		return ;
+	}
+	const {epochNumber: maxEpoch} = list[0];
+	const {epochNumber: minEpoch} = list[list.length - 1];
 	const [laterTxArr, earlierTxArr] = await Promise.all([
-		AddressTransactionIndex.findAll({
+		model.findAll({
 			where: {addressId: addrId, epoch: {[Op.gte]: maxEpoch}}, order: [['epoch', 'asc']], limit: 100, raw: true,
 		}),
-		AddressTransactionIndex.findAll({
+		model.findAll({
 			where: {addressId: addrId, epoch: {[Op.lte]: minEpoch}}, order: [['epoch', 'desc']], limit: 100, raw: true,
 		}),
 	]);
@@ -55,7 +70,7 @@ export async function detectFishingAddress(addrId: number, list: any[]) {
 	fillAbbreviationMap(abMap, laterTxArr, headChars, tailChars);
 	fillAbbreviationMap(abMap, earlierTxArr, headChars, tailChars);
 
-	const objResult = {time: Date.now() - startMs} as any;
+	const objResult = {duration: Date.now() - startMs, type} as any;
 	abMap.forEach((v, k)=>{
 		objResult[k] = [...v];
 	})
@@ -68,6 +83,7 @@ function fillAbbreviationMap(abMap: Map<string, Set<string>>, list: any[], headC
 		if (!addr || addr.length < 40 || addr === zeroAddr) {// not an address
 			return;
 		}
+		addr = addr.toLowerCase();
 		const ab = addr.substr(0, headChars) + '...' + addr.substr(addr.length - tailChars);
 		let set = abMap.get(ab);
 		if (!set) {
