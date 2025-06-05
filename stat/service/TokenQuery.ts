@@ -126,7 +126,10 @@ export class TokenQuery {
             count = page?.count;
         }
         if (rawList.length > 100) {
-            throw Errors.ParameterError(`token list with bad size ${rawList.length}`)
+            const msg = `token list with bad size ${rawList.length}`;
+            console.log(msg);
+            console.log(`addressArray`, addressArray, 'name', name, 'limit', limit)
+            throw new Errors.BizError(msg)
         }
         let list = [];
         let registeredTokens;
