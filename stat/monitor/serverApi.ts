@@ -7,15 +7,16 @@ import {IS_EVM2, KV} from "../model/KV";
 const Koa = require('koa');
 
 export const appPorts = {
-	block: 6001,
-	epoch: 6002,
-	token_transfer: 6003,
-	token_x: 6004,
-	cfx_transfer: 6005,
-	pos: 6006,
-	stat_task: 6007,
-	nft_meta: 6008,
-	prune: 6009,
+	block:              6001,
+	epoch:              6002,
+	token_transfer:     6003,
+	token_x:            6004,
+	cfx_transfer:       6005,
+	pos:                6006, // core space only
+	stat_task:          6007,
+	nft_meta:           6008,
+	prune:              6009,
+	// e-space uses these ports in style 5xxx.
 }
 export let evmDiffPort = -1000;
 export async function listenPort(app: string) {
