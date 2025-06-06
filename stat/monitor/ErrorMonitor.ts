@@ -70,7 +70,7 @@ export function isKnownError(e) {
 }
 
 export async function safeAddErrorLog(module: string, biz: string, error: Error) {
-	if (isKnownError(error)) {
+	if (!error || isKnownError(error)) {
 		return;
 	}
 	try {

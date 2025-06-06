@@ -29,6 +29,7 @@ import {registerProcessHook, sleep} from "../tool/ProcessTool"
 import {createDB, getSlaveStatus, initModel} from "../DBProvider"
 import {doHeartBeat, KEY_PRUNE} from "../../model/HeartBeat"
 import {listenPort} from "../../monitor/serverApi";
+import { StuckChecker } from "../../monitor/Monitor"
 
 const lodash = require('lodash');
 
@@ -52,10 +53,12 @@ export class PruneService {
         sleepMsPerLoop: 20,
         delayEpochsAgainstLatest: 1000,
     }
+    private stuckChecker: StuckChecker;
 
     public constructor(config: StatConfig, opts?: Options) {
         this.config = config
         this.opts = opts
+        this.stuckChecker = new StuckChecker(`prune`, 10);
     }
 
     public async checkSlaveStatus() {
@@ -89,7 +92,12 @@ export class PruneService {
     public async run(delay = 1000) {
         const that = this
         async function repeat() {
-            await that.prune()
+            await that.prune().catch(err=>{
+                console.log(`failed to prune`, err);
+                const msg = `failed to prune: ${err.name} ${err}`;
+                that.stuckChecker.push(msg);
+                return sleep(1000);
+            })
             setTimeout(repeat, that.pruneHappens ? 0 : delay)
             that.pruneHappens = false
         }

@@ -23,7 +23,7 @@ import {regExitHook, sleep} from "./service/tool/ProcessTool";
 import {NftMint, Token} from "./model/Token";
 import {FullBlock, FullTransaction, loadMaxBlockEpoch} from "./model/FullBlock";
 import {updateTransferCountReal} from "./StreamSync";
-import {dingMsg} from "./monitor/Monitor";
+import {dingMsg, StuckChecker} from "./monitor/Monitor";
 import {ConfigInstance, FirstBlockNo} from "./config/StatConfig";
 import {loadBlocksByEpoch, loadTxsByEpoch} from "./service/FullBlockService";
 import {ApprovalRelation, batchSaveApproval, buildRelation, TaskEpochApproval, TokenApproval} from "./ApprovalSync";
@@ -32,6 +32,7 @@ import {PreloadMap} from "./service/SyncBase";
 import {BatchTokenTransfer} from "./service/BatchDBTx";
 import {LogFetcher} from "./service/tool/LogFetcher";
 import {listenPort} from "./monitor/serverApi";
+import {safeAddErrorLog} from "./monitor/ErrorMonitor";
 
 export interface IEpochHashTokenTransfer {
     epoch:number
@@ -332,6 +333,9 @@ async function run(cfx:Conflux, preFinished: number) {
             }
         })
     }
+    const stuckDataError = new StuckChecker(`Token-TX-sync-data-error`, 10);
+    const stuckBadData = new StuckChecker(`Token-TX-sync-invalid-data`, 10);
+    const stuckException = new StuckChecker(`Token-TX-sync-exception`, 10);
     let lastDump = Date.now();
     async function repeat0() {
         if (epoch>maxEpochOfBlock) {
@@ -352,7 +356,9 @@ async function run(cfx:Conflux, preFinished: number) {
                         delay = 10_000
                         break;
                     } else if (data instanceof Error) {
-                        console.log(` error at epoch ${epoch}`, data)
+                        const _msg = ` error at epoch ${epoch}`;
+                        console.log(_msg, data)
+                        stuckDataError.push(`${_msg} \n ${data.name}  ${data.message}`);
                         delay = 10_000;
                         break;
                     } else if (data?.parentHash && parentHash && data.parentHash !== parentHash) {
@@ -364,6 +370,7 @@ async function run(cfx:Conflux, preFinished: number) {
                     } else if (data.code != 0) {
                         delay = 5_000
                         console.log(`data is incorrect. epoch ${epoch}`, data)
+                        stuckBadData.push(`Data is incorrect. epoch ${epoch}. \n ${data.message || 'Contract developer!'}`);
                         break;
                     }
                     await processData(data.toEpoch ?? epoch, data);
@@ -388,20 +395,14 @@ async function run(cfx:Conflux, preFinished: number) {
                         epoch++
                     }
                 } catch (e) {
-                    if (e instanceof UniqueConstraintError) {
-                        console.log(` UniqueConstraintError, epoch ${epoch}, ${e.message}`, e)
-                        await sleep(10_000)
-                        break;
-                    } else if (e instanceof DatabaseError) {
-                        const message = ` DatabaseError, epoch ${epoch}, ${e.message}`;
-                        console.log(message, e)
-                        await sleep(10_000)
-                        break;
-                    }
                     const failMsg = `process epoch fail at ${epoch}`;
                     console.log(failMsg, e)
-                    await notifyError(failMsg, e);
-                    process.exit(1)
+                    safeAddErrorLog('sync', 'token-transfer', e).then();
+                    stuckException.push(`exception at ${epoch} \n ${e.name} ${e.message}`);
+                    await sleep(10_000);
+                    if (batchData.enable) {
+                        process.exit(1)
+                    }
                 }
         }
         setTimeout(repeat, delay)

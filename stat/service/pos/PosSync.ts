@@ -25,6 +25,7 @@ import {
 } from "./PosStat";
 import {buildPosRewardRank} from "./PosRewardRank";
 import {listenPort} from "../../monitor/serverApi";
+import {StuckChecker} from "../../monitor/Monitor";
 // import {abi as posAbi} from "../abi/PosRegister"
 const {abi: posAbi} = require("../abi/PoSRegister")
 
@@ -34,8 +35,14 @@ export class PosSync {
     private latestBlockNumber: 0;
     private posContract: any;
     private dbLocked = false;
+    private stuckBlock: StuckChecker;
+    private stuckCommittee: StuckChecker;
+    private stuckReward: StuckChecker;
     constructor(cfx: Conflux) {
         this.cfx = cfx;
+        this.stuckBlock = new StuckChecker(`pos-sync-block`, 10);
+        this.stuckCommittee = new StuckChecker(`pos-sync-committee`, 10);
+        this.stuckReward = new StuckChecker(`pos-sync-reward`, 10);
     }
     async init() {
         await this.cfx.updateNetworkId();
@@ -69,7 +76,9 @@ export class PosSync {
                     that.position += 1
                 })
                 .catch(err=>{
-                    console.log(` repeatSyncBlock error at ${that.position} `, err)
+                    const message = ` repeatSyncBlock error at ${that.position} `;
+                    console.log(message, err)
+                    that.stuckBlock.push(`${message} \n${err.name} ${err.message}`);
                     delay = 10_000
                 })
             setTimeout(()=>this.repeatSyncBlock(), delay)
@@ -260,7 +269,9 @@ export class PosSync {
             try {
                 await that.syncCommittee()
             }catch(e){
-                console.log(` pos syncCommittee fail:`, e)
+                const message = ` pos syncCommittee fail:`;
+                console.log(message, e)
+                that.stuckCommittee.push(`${message} \n${e.name}  ${e.message}`);
             }
             setTimeout(()=>repeat(), 10_000)
         }
@@ -493,7 +504,9 @@ export class PosSync {
                     nextEpoch += inc
                 }
             } catch (e) {
-                console.log(` error sync pos reward at epoch ${nextEpoch}:`, e)
+                const message = ` error sync pos reward at epoch ${nextEpoch}:`;
+                console.log(message, e)
+                that.stuckReward.push(`${message}\n${e.name} ${e.message}`);
                 await sleep(5_000)
             }
             setTimeout(repeat, 0)

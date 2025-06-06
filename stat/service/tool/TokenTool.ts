@@ -636,11 +636,16 @@ export async function initOss(conf) {
         region = bucket === 'scanchina' ? 'oss-cn-beijing' : 'oss-cn-hongkong';
         ossConf.region = region;
     }
-    console.log(`init oss, bucket ${bucket}, prefix ${prefix} region ${region}`);
+    const timer = setTimeout(()=>{
+        console.log(`We are checking oss ...`)
+    }, 5_000)
+    console.log(`init oss, bucket ${bucket}, prefix ${prefix} region ${region} ...`);
     return checkOssBucket(accessId, accessKey, bucket, region).then(res=>{
     }).catch(err=>{
         console.log(`check oss bucket fail: `, err)
         //process.exit(1)
+    }).finally(()=>{
+        clearTimeout(timer);
     });
 }
 export async function uploadOss(srcFile, ossFilename) {

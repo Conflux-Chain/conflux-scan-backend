@@ -35,6 +35,7 @@ import {ITraceCreateContract, TraceCreateContract} from "./model/TraceCreateCont
 import {safeAddErrorLog} from "./monitor/ErrorMonitor";
 import {StatApp} from "./StatApp";
 import {listenPort} from "./monitor/serverApi";
+import {StuckChecker} from "./monitor/Monitor";
 
 export interface ICfxUser {
     id?: number
@@ -494,6 +495,7 @@ async function run(cfx:Conflux, preFinished: number) {
             }
         })
     }
+    const stuckChecker = new StuckChecker(`CFX-TX-SYNC`, 10);
     let lastDump = Date.now();
     async function repeat0() {
         if (epoch > maxEpochOfBlock) {
@@ -510,7 +512,9 @@ async function run(cfx:Conflux, preFinished: number) {
         switch (action) {
             case "ok":
                 if (data instanceof Error) {
-                    console.log(` error at epoch ${epoch}`, data)
+                    const err = data as Error;
+                    stuckChecker.push(`${err.name} ${err.message}`);
+                    console.log(` error at epoch ${epoch}`, err)
                     delay = 5_000;
                     break;
                 }
