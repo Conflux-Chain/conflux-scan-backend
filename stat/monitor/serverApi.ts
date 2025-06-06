@@ -29,7 +29,7 @@ export async function listenPort(app: string) {
 		port += evmDiffPort;
 	}
 	const router = new Router({ prefix: `/${app}` });
-	regApi(router, app);
+	regApi(router, app, isEVM);
 	const web = new Koa();
 	web.use(async (ctx, next) => {
 		try {
@@ -44,8 +44,23 @@ export async function listenPort(app: string) {
 	web.listen(port);
 }
 
-function regApi(router: Router, app: string) {
+function regApi(router: Router, app: string, isEVM: boolean) {
 	router.get('/', (ctx, next) => {
-		ctx.body = {app, server: ConfigInstance.serverTag, net: StatApp.networkId, entry: getAppEntryName()}
+		ctx.body = {app, server: ConfigInstance.serverTag, net: StatApp.networkId, entry: getAppEntryName(), isEVM}
 	})
+}
+const superagent = require('superagent');
+export async function checkAllPort(evm: boolean) {
+	console.log(`check all port: evm ? ${evm}`);
+	for(const app of Object.keys(appPort)) {
+		let p = appPort[app];
+		if (evm) {
+			p += evmDiffPort;
+		}
+		await superagent.get(`http://127.0.0.1:${p}/${app}`).then(res=>res.json()).then((res) => {
+			console.log(`port ${p} -> `, res)
+		}).catch(err=>{
+			console.log(`port ${p} -> ${err}`);
+		});
+	}
 }
