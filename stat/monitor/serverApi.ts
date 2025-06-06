@@ -57,7 +57,7 @@ export async function checkAllPort(evm: boolean) {
 		if (evm) {
 			p += evmDiffPort;
 		}
-		await superagent.get(`http://127.0.0.1:${p}/${app}`).then(res=>res.json()).then((res) => {
+		await superagent.get(`http://127.0.0.1:${p}/${app}`).then(res=>res.body).then((res) => {
 			console.log(`port ${p} -> `, res)
 		}).catch(err=>{
 			console.log(`port ${p} -> ${err}`);
