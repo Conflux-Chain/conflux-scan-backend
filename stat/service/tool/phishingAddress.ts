@@ -7,6 +7,7 @@ import {AddressErc20Transfer} from "../../model/Erc20Transfer";
 import {AddressErc721Transfer} from "../../model/Erc721Transfer";
 import {AddressErc1155Transfer} from "../../model/Erc1155Transfer";
 import {AddressCfxTransfer} from "../../model/CfxTransfer";
+import {head} from "lodash";
 
 let zeroAddr = '';
 export async function detectFishingAddress(addrId: number, list: any[], type?: string): Promise<AddressTransactionIndex> {
@@ -18,8 +19,9 @@ export async function detectFishingAddress(addrId: number, list: any[], type?: s
 	let headChars = 7, tailChars = 4;
 	switch (StatApp.networkId) {
 		case 1: headChars = 'cfxtest:'.length + 3; tailChars=4; break;
-		case 1029: headChars = 'cfxtest:'.length + 3; tailChars=8; break;
-		case 8888: headChars = 'net8888:'.length + 3; tailChars=4; break;
+		case 1029: headChars = 'cfx:'.length + 3; tailChars=8; break;
+		default:
+			headChars = `net${StatApp.networkId}:`.length + 3; tailChars = 4; break;
 	}
 	if (StatApp.isEVM) {
 		headChars = 6; // include 0x
@@ -54,7 +56,7 @@ export async function detectFishingAddress(addrId: number, list: any[], type?: s
 		zeroAddr = fmtAddr(CONST.ZERO_ADDRESS, StatApp.networkId);
 	}
 	let addressMap = await idHex40Map([...ids], true);
-	if (StatApp.isEVM) {
+	if (!StatApp.isEVM) {
 		let base32map: Map<number, string>;
 		base32map = new Map<number, string>();
 		addressMap.forEach((v, k)=>{
