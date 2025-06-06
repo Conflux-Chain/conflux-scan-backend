@@ -11,6 +11,7 @@ import {TransferCount} from "../model/TransferCount";
 import {fmtAddr} from "../StatApp";
 import {closestEpochByTimeStamp, ClosestType} from "../model/Epoch";
 import {Token} from "../model/Token";
+import {detectFishingAddress} from "./tool/phishingAddress";
 const lodash = require('lodash');
 
 export abstract class TransferQueryBase {
@@ -186,7 +187,7 @@ export abstract class TransferQueryBase {
         } else{
             queryOptions.attributes.push(['id', 'transactionLogIndex']);
         }
-
+        let phishingInfo: any = {};
         // query
         const page = await this.doQuery(options, queryOptions);
         const list = [];
@@ -263,6 +264,12 @@ export abstract class TransferQueryBase {
                 }
             });
             await Promise.all(failedQuery);
+        } else if (accountAddressId) {
+            await detectFishingAddress(accountAddressId, list, this.getTransferType()).then(res=>{
+                phishingInfo = res;
+            }).catch(err=>{
+                console.log(`${__filename} failed to detectFishing address`, err);
+            })
         }
 
         // add pruned total
@@ -284,6 +291,7 @@ export abstract class TransferQueryBase {
         }
         const result = {total: (page?.count || 0) + prunedCntr, next, list, accountId: accountAddressId,
             queryWithCache: page.queryWithCache, hitCache: page.hitCache,
+            phishingInfo,
         };
         return result;
     }
