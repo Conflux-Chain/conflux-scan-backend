@@ -1,5 +1,11 @@
 import {ScanCtx} from "../service/index";
-import {KEY_CONFURA_URL, KEY_CORE_API_URL, KEY_CORE_OPEN_API_URL, KEY_OPEN_API_URL} from "../../stat/model/KV";
+import {
+    CONTRACT_ANNOUNCEMENT,
+    KEY_CONFURA_URL,
+    KEY_CORE_API_URL,
+    KEY_CORE_OPEN_API_URL,
+    KEY_OPEN_API_URL
+} from "../../stat/model/KV";
 import {fmtAddr} from "../../stat/StatApp";
 import {ApiApp} from "../app";
 import {NoCoreSpace} from "../../stat/config/StatConfig";
@@ -137,12 +143,17 @@ export const jsonrpc_frontend = jsonrpc.method_('frontend',
         } catch (e) {
             console.log(`failed to patch domain`, e);
         }
+        const dbAnnouncement = await KV.getString(CONTRACT_ANNOUNCEMENT, '');
       const contracts = frontend.contracts.map((contract) => {
-        return { key: contract.key, name: contract.name, address: contract.address[networkId] };
+          let useAddr = contract.address[networkId];
+          if (contract.key === 'announcement' && dbAnnouncement) {
+             useAddr = dbAnnouncement;
+          }
+          return { key: contract.key, name: contract.name, address: useAddr };
       });
       frontedConfig = { networkId, networks, contracts, referer, host };
         if (NoCoreSpace) {
-            frontedConfig.contracts = [];
+            frontedConfig.contracts = contracts.filter(c=>c.key === 'announcement');
         }
       let {from, to} = {from: '.org', to: '.net'};
       if (refHost?.includes('.org/') || refHost?.endsWith('.org') ) {
