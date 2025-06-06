@@ -1,3 +1,4 @@
+const superagent = require('superagent');
 import * as Router from "koa-router";
 const addressSdk = require('js-conflux-sdk/src/util/address')
 import {StatApp} from "../StatApp";
@@ -31,6 +32,7 @@ import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {BlockAndMinerSync, countRecentMiner} from "../service/BlockAndMinerSync";
 import {getClientIP} from "./RateLimiter";
 import {ConfigInstance} from "../config/StatConfig";
+import {appPorts, evmDiffPort} from "../monitor/serverApi";
 
 async function checkLocal(ctx: Context, next) {
     const ip = getClientIP(ctx);
@@ -60,6 +62,22 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
             host: `http://${ctx.hostname}`,
         })
         await p(ctx,next)
+    });
+    router.get('/devops/app-info', async (ctx, next)=>{
+        const {app} = ctx.request.query;
+        let port = appPorts[app];
+        if (!port) {
+            ctx.body = {code: 404, message: `port not found for [${app}]`};
+            return;
+        }
+        if (StatApp.isEVM) {
+            port += evmDiffPort;
+        }
+        await superagent.get(`http://127.0.0.1:${port}/${app}`).then(res=>res.body).then(info=>{
+            ctx.body = info;
+        }).catch(err=>{
+            ctx.body = {code: 500, error: err};
+        });
     });
     router.get('/devops/hexId',async (ctx) => {
         const {hexId} = ctx.request.query

@@ -6,7 +6,7 @@ import {IS_EVM2, KV} from "../model/KV";
 
 const Koa = require('koa');
 
-const appPort = {
+export const appPorts = {
 	block: 6001,
 	epoch: 6002,
 	token_transfer: 6003,
@@ -17,9 +17,9 @@ const appPort = {
 	nft_meta: 6008,
 	prune: 6009,
 }
-let evmDiffPort = -1000;
+export let evmDiffPort = -1000;
 export async function listenPort(app: string) {
-	let port = appPort[app];
+	let port = appPorts[app];
 	if (!port) {
 		console.log(`Port not found, app [${app}]`);
 		return;
@@ -52,15 +52,15 @@ function regApi(router: Router, app: string, isEVM: boolean) {
 const superagent = require('superagent');
 export async function checkAllPort(evm: boolean) {
 	console.log(`check all port: evm ? ${evm}`);
-	for(const app of Object.keys(appPort)) {
-		let p = appPort[app];
+	for(const app of Object.keys(appPorts)) {
+		let p = appPorts[app];
 		if (evm) {
 			p += evmDiffPort;
 		}
 		await superagent.get(`http://127.0.0.1:${p}/${app}`).then(res=>res.body).then((res) => {
-			console.log(`port ${p} -> `, res)
+			console.log(`${app} port ${p} -> `, res)
 		}).catch(err=>{
-			console.log(`port ${p} -> ${err}`);
+			console.log(`${app} port ${p} -> ${err}`);
 		});
 	}
 }
