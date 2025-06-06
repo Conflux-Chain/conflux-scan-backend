@@ -1,4 +1,4 @@
-import {DataType, IndexesOptions, QueryInterface, QueryTypes, Sequelize} from "sequelize";
+import {DataType, DataTypes, IndexesOptions, QueryInterface, QueryTypes, Sequelize} from "sequelize";
 import {ESpaceHex40Map, Hex40Map} from "../model/HexMap";
 import {Epoch, VoteParams} from "../model/Epoch";
 import {PivotSwitch} from "../model/Block";
@@ -17,7 +17,7 @@ import {CfxTransfer, CfxTransferRowMark, createAddressCfxTransferTable, DailyCfx
 import {create721partition, Erc721Transfer} from "../model/Erc721Transfer";
 import {createAddressErc1155TransferTable, Erc1155Transfer} from "../model/Erc1155Transfer";
 import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
-import {AbiInfo} from "../model/ContractInfo";
+import {AbiInfo, ContractABI} from "../model/ContractInfo";
 import {addNameSymbolFailureColumn, Contract} from "../model/Contract";
 import {
     BlockRowMark,
@@ -155,6 +155,7 @@ export async function initPartialModel(sequelize) {
     BlockRowMark.register(sequelize)
     TxnRowMark.register(sequelize)
     AbiInfo.register(sequelize)
+    ContractABI.register(sequelize)
     TokenApproval.register(sequelize)
     TaskEpochApproval.register(sequelize)
     ApprovalRelation.register(sequelize)
@@ -250,6 +251,7 @@ export async function initModel(sequelize: Sequelize) {
     /*await checkApiLogIpField()*/
     console.log(`init models ok`)
     await dropEmptyTables();
+    await migDB(sequelize);
 }
 
 export function createMySql(dbConf) {
@@ -268,6 +270,27 @@ export function createMySql(dbConf) {
     // });
 
     return new Sequelize(dbConf.instanceName, null, null, dbConf)
+}
+
+async function migDB(seq: Sequelize) {
+    // let sql = `desc alter table abi_info drop index idx_sig`;
+    // await seq.query(sql, {type: QueryTypes.UPDATE}).then(()=>{
+    //     console.log(`OK : ${sql}`)
+    // }).catch(err=>{
+    //     console.log(`failed : ${sql} \n error ${err}`);
+    // })
+    //
+    // const tableName = AbiInfo.getTableName().toString();
+    // await addColumnIfNotExistsV2(seq.getQueryInterface(), tableName, 'contractId', {
+    //     type: DataTypes.BIGINT, allowNull: false, defaultValue: 0,
+    // })
+    //
+    // await addIndexIfNotExistsMySQL(seq.getQueryInterface(), tableName, 'idx_type_hash', {
+    //     fields:[{name:'type'},{name:'hash'}],
+    // });
+    // await addIndexIfNotExistsMySQL(seq.getQueryInterface(), tableName, 'idx_type_name', {
+    //     fields:[{name:'type'},{name:'fullName'}], unique: true,
+    // });
 }
 
 async function dropEmptyTables() {
@@ -324,6 +347,67 @@ export async function getSlaveStatus(seq:Sequelize) {
         .then(arr => {return arr[0]})
 }
 
+interface ColumnAdditionOptions {
+    type: DataType;
+    allowNull?: boolean;
+    defaultValue?: any;
+    unique?: boolean;
+    primaryKey?: boolean;
+    autoIncrement?: boolean;
+    comment?: string;
+}
+
+export async function addColumnIfNotExistsV2(
+    queryInterface: QueryInterface,
+    tableName: string,
+    columnName: string,
+    options: ColumnAdditionOptions
+): Promise<void> {
+    try {
+        const tableDescription = await queryInterface.describeTable(tableName);
+
+        if (!tableDescription[columnName]) {
+            console.log(`Adding column "${columnName}" to table "${tableName}"...`);
+
+            await queryInterface.addColumn(tableName, columnName, options);
+
+            console.log(`Column "${columnName}" added successfully`);
+        } else {
+            console.log(`Column "${columnName}" already exists in table "${tableName}"`);
+        }
+    } catch (error) {
+        console.error(`Error checking/adding column "${columnName}" to table "${tableName}":`, error);
+        throw error;
+    }
+}
+
+export async function addIndexIfNotExistsMySQL(
+    queryInterface: QueryInterface,
+    tableName: string,
+    indexName: string,
+    options: IndexesOptions
+): Promise<void> {
+    try {
+        const [results] = await queryInterface.sequelize.query(
+            `SHOW INDEX FROM \`${tableName}\` WHERE Key_name = '${indexName}'`
+        );
+
+        const indexExists = Array.isArray(results) && results.length > 0;
+
+        if (!indexExists) {
+            console.log(`Index "${indexName}" does not exist on table "${tableName}", creating...`);
+
+            await queryInterface.addIndex(tableName, options.fields as string[], options);
+
+            console.log(`Index "${indexName}" created successfully`);
+        } else {
+            console.log(`Index "${indexName}" already exists on table "${tableName}"`);
+        }
+    } catch (error) {
+        console.error(`Error checking/adding index "${indexName}" to table "${tableName}":`, error);
+        throw error;
+    }
+}
 /**
  ALTER TABLE full_block_ext
     REORGANIZE PARTITION p1 INTO (
