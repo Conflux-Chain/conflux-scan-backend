@@ -2,6 +2,7 @@ import * as Router from "koa-router";
 import {StatApp} from "../StatApp";
 import {ConfigInstance} from "../config/StatConfig";
 import {getAppEntryName} from "../config/LoggerConfig";
+import {IS_EVM2, KV} from "../model/KV";
 
 const Koa = require('koa');
 
@@ -23,7 +24,8 @@ export async function listenPort(app: string) {
 		console.log(`Port not found, app [${app}]`);
 		return;
 	}
-	if (StatApp.isEVM) {
+	const isEVM = await KV.getSwitch(IS_EVM2);
+	if (isEVM) {
 		port += evmDiffPort;
 	}
 	const router = new Router({ prefix: `/${app}` });
