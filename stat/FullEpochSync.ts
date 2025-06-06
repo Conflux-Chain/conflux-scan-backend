@@ -12,6 +12,7 @@ import {ContractQuery} from "./service/ContractQuery";
 import {redirectLog} from "./config/LoggerConfig";
 import {makeIdV} from "./model/HexMap";
 import {CONST} from "./service/common/constant";
+import {listenPort} from "./monitor/serverApi";
 
 const fs = require('fs');
 const path = require('path');
@@ -143,5 +144,7 @@ function heapDump(delay = 10 * 60 * 1000) {
 }
 
 if (module === require.main) {
-    start().then();
+    start().then(()=>{
+        return listenPort('epoch')
+    });
 }

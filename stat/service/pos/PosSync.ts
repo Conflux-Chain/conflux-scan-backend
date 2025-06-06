@@ -24,6 +24,7 @@ import {
     scheduleSyncPosGap
 } from "./PosStat";
 import {buildPosRewardRank} from "./PosRewardRank";
+import {listenPort} from "../../monitor/serverApi";
 // import {abi as posAbi} from "../abi/PosRegister"
 const {abi: posAbi} = require("../abi/PoSRegister")
 
@@ -706,7 +707,9 @@ async function start() {
             posSync.repeatFetchCommittee(),
             posSync.repeatSyncRewards(),
             // posSync.updateRecentCommitteeAccount(8),
-        ])
+        ]).then(()=>{
+            return listenPort('pos')
+        })
     }
 }
 

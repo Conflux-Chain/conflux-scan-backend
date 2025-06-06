@@ -28,6 +28,7 @@ import {StatApp} from "../../StatApp"
 import {registerProcessHook, sleep} from "../tool/ProcessTool"
 import {createDB, getSlaveStatus, initModel} from "../DBProvider"
 import {doHeartBeat, KEY_PRUNE} from "../../model/HeartBeat"
+import {listenPort} from "../../monitor/serverApi";
 
 const lodash = require('lodash');
 
@@ -349,5 +350,7 @@ if (module === require.main) {
     if(opts.table === 'prune_info' && args[2]) {
         opts.type = args[2]
     }
-    start(opts).then()
+    start(opts).then(()=>{
+        return listenPort('prune')
+    })
 }
