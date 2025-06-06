@@ -41,6 +41,8 @@ import {incDailyAddressCount} from "../model/StatAddress";
 import {BatchBlockTx} from "./BatchDBTx";
 import {SyncBlockSchema, SyncReporter} from "../monitor/InfluxWorker";
 import {FullMinerBlock} from "../model/FullMinerBlock";
+import {safeAddErrorLog} from "../monitor/ErrorMonitor";
+import {StuckChecker} from "../monitor/Monitor";
 
 // Do not care the value
 const CODE_REWIND = 20201029
@@ -95,6 +97,7 @@ export class FullBlockService {
         this.previousPivotHash = maxAtDb.hash
     }
     public async run(always = false) : Promise<void> {
+        let retryStuckChecker = new StuckChecker(`BlockSync`, 10);
         let maxEpoch:number = await loadMaxBlockEpoch(NaN)
         if (isNaN(maxEpoch)) {
            maxEpoch = FirstBlockNo - 1 // will +1 below
@@ -117,7 +120,8 @@ export class FullBlockService {
 			try {
                 await fnUnsafe();
             } catch (e) {
-                console.log(`${__filename} failed: `, e)
+                safeAddErrorLog('sync', 'block', e).then()
+                console.log(`${__filename} failed to sync: `, e)
                 await sleep(5_000)
                 process.exit(1) // restart to clear batch data in memory
             }
@@ -132,14 +136,16 @@ export class FullBlockService {
                 } else {
                     console.log(`sync block fail at epoch ${wantEpoch}`, err)
                 }
-                return {code: CODE_CONTINUE}
+                return {code: CODE_CONTINUE, message: err.message};
             })
             if (ret.code === CODE_REWIND) {
                 maxEpoch -= 1;
             } else if (ret.code === CODE_CONTINUE) {
                 // try again
-                console.log(` try again epoch ${maxEpoch+1
-                    }: ${ret.message || 'no message'}`)
+                const msg = ` try again epoch ${maxEpoch+1
+                }: ${ret.message || 'no message'}`;
+                console.log(msg);
+                retryStuckChecker.push(msg);
                 await sleep(5_000)
                 if (this.batchBlockTx.fullBlock?.length) {
                     console.log(`restart , batch data is not empty`);

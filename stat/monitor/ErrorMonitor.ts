@@ -94,7 +94,10 @@ async function addErrorLog(module: string, biz: string, error: Error) {
 	if (detail.length < 3) {
 		detail = `${error.message}\n${error.stack}`;
 	}
-	let bean = await ErrorLog.findOne({where: {module, biz}});
+	let bean = await ErrorLog.findOne({where: {module, biz}}).catch(e=>{
+		console.log(`failed to find error log bean`, e.message);
+		return null;
+	});
 	if (bean) {
 		bean.count += 1;
 		bean.detail = detail;
