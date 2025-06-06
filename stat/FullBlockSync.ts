@@ -103,6 +103,7 @@ let always = true;//Boolean(args[0])
 if (module === require.main) {
     redirectLog()
     regExitHook()
-    run().then()
-    listenPort('block').then()
+    run().then(()=>{
+        listenPort('block').then()
+    })
 }
