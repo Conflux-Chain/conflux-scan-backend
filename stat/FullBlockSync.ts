@@ -16,6 +16,7 @@ import {StatApp} from "./StatApp";
 import {CONST} from "./service/common/constant";
 import {startMonitorContractCreated} from "./service/contract/PatchNoTraceContract";
 import {safeAddErrorLog} from "./monitor/ErrorMonitor";
+import {listenPort} from "./monitor/serverApi";
 
 export async function run() {
     const config:StatConfig = loadConfig('Prod')
@@ -102,5 +103,7 @@ let always = true;//Boolean(args[0])
 if (module === require.main) {
     redirectLog()
     regExitHook()
-    run().then()
+    run().then(()=>{
+        listenPort('block').then()
+    })
 }

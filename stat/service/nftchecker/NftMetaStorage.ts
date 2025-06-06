@@ -12,6 +12,7 @@ import {IPFSGatewaySync} from "../IPFSGatewaySync";
 import {CENSOR_STATUS} from "../censor/CensorService";
 import {format} from "js-conflux-sdk";
 import {regExitHook} from "../tool/ProcessTool";
+import {listenPort} from "../../monitor/serverApi";
 
 const lodash = require('lodash');
 const {NFTMetaParser} = require('@confluxfans/nft-utils');
@@ -431,7 +432,9 @@ if (module === require.main) {
     } else if (cmd === "gateway") {
         bestGateway().then();
     } else if (cmd === "metadata") {
-        run(gateway).then();
+        run(gateway).then(()=>{
+            return listenPort('nft_meta')
+        });
     }else {
         throw new Error(`cmd ${cmd} not supported`)
     }

@@ -31,6 +31,7 @@ import {loadParentHash} from "./CfxTransferSync";
 import {PreloadMap} from "./service/SyncBase";
 import {BatchTokenTransfer} from "./service/BatchDBTx";
 import {LogFetcher} from "./service/tool/LogFetcher";
+import {listenPort} from "./monitor/serverApi";
 
 export interface IEpochHashTokenTransfer {
     epoch:number
@@ -532,12 +533,10 @@ async function runTask(cfx:Conflux) {
 if (module === require.main) {
     redirectLog()
     regExitHook()
-    // fromEpoch:
-    // -1 : use former unfinished task; exclude mode.
-    // N  : use task N if it's not finished, fallback to *.
-    // *  : auto create based on max task.
     const [, , cfxUrl] = process.argv
-    setup(cfxUrl).then().catch(err => {
+    setup(cfxUrl).then(()=>{
+        return listenPort('token_transfer')
+    }).catch(err => {
         console.log(`${process.argv[1]}\n`, err)
         process.exit(1)
     });

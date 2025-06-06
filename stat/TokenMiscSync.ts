@@ -10,6 +10,7 @@ import {IS_EVM2, KV} from "./model/KV";
 import {TokenTool} from "./service/tool/TokenTool";
 import {QuoteSync} from "./service/QuoteSync";
 import {repeatCheckAccount} from "./service/watcher/AccountChecker";
+import {listenPort} from "./monitor/serverApi";
 
 async function main() {
     redirectLog()
@@ -33,5 +34,5 @@ async function main() {
 }
 
 if (module === require.main) {
-    main().then()
+    main().then(()=>listenPort('token_x'))
 }

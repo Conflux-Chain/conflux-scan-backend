@@ -34,6 +34,7 @@ import {FirstBlockNo} from "./config/StatConfig";
 import {ITraceCreateContract, TraceCreateContract} from "./model/TraceCreateContract";
 import {safeAddErrorLog} from "./monitor/ErrorMonitor";
 import {StatApp} from "./StatApp";
+import {listenPort} from "./monitor/serverApi";
 
 export interface ICfxUser {
     id?: number
@@ -304,7 +305,7 @@ async function setup() {
         process.exit(0)
     } else {
         scheduleCrossSpaceStat(cfx).then()
-        return runTask(cfx)
+        return runTask(cfx).then(()=>listenPort('cfx_transfer'));
     }
 }
 async function test(ep:number) {

@@ -36,6 +36,7 @@ import {scheduleGasConsumerStat} from "./service/TxnQuery";
 import {TokenSecurityAuditSync} from "./service/TokenSecurityAuditSync";
 import {TokenQuery} from "./service/TokenQuery";
 import {scheduleRollupDailyCfxTxn} from "./model/CfxTransfer";
+import {listenPort} from "./monitor/serverApi";
 
 async function main() {
     redirectLog()
@@ -146,7 +147,9 @@ async function countTableDelta(model, keyCountAll, keyCountId) {
     });
 }
 if (module === require.main) {
-    main().then().catch(err => {
+    main().then(()=>{
+        return listenPort('stat_task')
+    }).catch(err => {
         console.log(`Stat task fail:`, err)
     })
 }
