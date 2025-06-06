@@ -149,6 +149,7 @@ export class StuckChecker {
             this.times = 1;
             this.beginTime = new Date();
             this.lastAlertTime = null;
+            this.alertTimes = 0;
         }
     }
 }
