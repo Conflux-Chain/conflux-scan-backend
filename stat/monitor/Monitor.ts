@@ -99,20 +99,28 @@ export class StuckChecker {
     name: string;
 
     key: string;
-    times: number;
     beginTime: Date;
 
     minuteThreshold: number;
     readonly msThreshold: number;
+
+    times: number;
     lastAlertTime: Date;
     alertTimes: number;
 
     constructor(name: string, minuteThreshold:number = 5) {
         this.name = name;
-        this.times = 0;
         this.minuteThreshold = minuteThreshold;
         this.msThreshold = minuteThreshold * 60 * 1000;
+
+        this.reset(0);
+    }
+
+    reset(times: number) {
+        this.times = times;
+        this.lastAlertTime = null;
         this.alertTimes = 0;
+        this.beginTime = new Date();
     }
 
     push(key: string) {
@@ -146,10 +154,7 @@ export class StuckChecker {
                 dingMsg(`This alert was resolved.\n${this.name}\n${this.key}`, alertToken).then();
             }
             this.key = key;
-            this.times = 1;
-            this.beginTime = new Date();
-            this.lastAlertTime = null;
-            this.alertTimes = 0;
+            this.reset(1);
         }
     }
 }
