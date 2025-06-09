@@ -38,4 +38,4 @@ if (module == require.main) {
 // node tools/Tools.js ding
 // node tools/Tools.js ding-dev
 // node tools/Tools.js hardware
-// node tools/Tools.js check-ports [evm]
+// node tools/Tools.js check-ports evm

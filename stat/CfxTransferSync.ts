@@ -549,8 +549,11 @@ async function run(cfx:Conflux, preFinished: number) {
                         lastDump = now;
                     }
                     epoch++;
+                    stuckChecker.ok();
                 } else {
-                    console.log(`data is incorrect. epoch ${epoch}`, data);
+                    const msg = `data is incorrect. epoch ${epoch}`;
+                    console.log(msg, data);
+                    stuckChecker.push(msg);
                     delay = 5_000;
                     break;
                 }

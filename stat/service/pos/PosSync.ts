@@ -73,7 +73,8 @@ export class PosSync {
             let delay = 0
             await this.syncBlock(this.position)
                 .then(()=>{
-                    that.position += 1
+                    that.position += 1;
+                    that.stuckBlock.ok();
                 })
                 .catch(err=>{
                     const message = ` repeatSyncBlock error at ${that.position} `;
@@ -268,6 +269,7 @@ export class PosSync {
         async function repeat() {
             try {
                 await that.syncCommittee()
+                that.stuckCommittee.ok();
             }catch(e){
                 const message = ` pos syncCommittee fail:`;
                 console.log(message, e)
@@ -502,6 +504,7 @@ export class PosSync {
                     nextEpoch = await findRoot(nextEpoch)
                 } else {
                     nextEpoch += inc
+                    that.stuckReward.ok();
                 }
             } catch (e) {
                 const message = ` error sync pos reward at epoch ${nextEpoch}:`;

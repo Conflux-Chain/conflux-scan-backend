@@ -238,9 +238,11 @@ async function syncNFTMeta() {
             case Code.NEXT:
                 delay = 0
                 context.count += 1
+                stuckMeta.ok();
                 break
             case Code.NO_TASK:
                 console.log(`no task for metadata`)
+                stuckMeta.ok();
                 break
             default:
                 const message = `type ${code} not supported`;

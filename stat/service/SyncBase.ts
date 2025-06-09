@@ -78,6 +78,7 @@ export abstract class SyncBase {
 
         try {
             data = await this.measure.call('preload', () => this.getDataForwardWithPreload(epochNumber))
+            this.stuckCheckerOfData.ok();
         } catch (e) {
             console.log(`[epoch=${epochNumber}]sync_forward fetch error:`, e);
             const msg = `get data at ${epochNumber} \n${e.name}  ${e.message}`;
@@ -93,9 +94,11 @@ export abstract class SyncBase {
             await sleep(10_000);
             return epochNumber;
         }
+        this.stuckCheckerOfRetrying.ok();
 
         try {
             syncCode = await this.measure.call('save', () => this.saveForward(epochNumber, data))
+            this.stuckCheckerOfSaving.ok();
         } catch (e) {
             const msg = `[epoch=${epochNumber}]sync_forward save error:`;
             console.log(msg, e);

@@ -92,7 +92,9 @@ export class PruneService {
     public async run(delay = 1000) {
         const that = this
         async function repeat() {
-            await that.prune().catch(err=>{
+            await that.prune().then(()=>{
+                that.stuckChecker.ok();
+            }).catch(err=>{
                 console.log(`failed to prune`, err);
                 const msg = `failed to prune: ${err.name} ${err}`;
                 that.stuckChecker.push(msg);

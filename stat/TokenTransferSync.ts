@@ -336,6 +336,11 @@ async function run(cfx:Conflux, preFinished: number) {
     const stuckDataError = new StuckChecker(`Token-TX-sync-data-error`, 10);
     const stuckBadData = new StuckChecker(`Token-TX-sync-invalid-data`, 10);
     const stuckException = new StuckChecker(`Token-TX-sync-exception`, 10);
+    function resolveStuck() {
+        stuckDataError.ok();
+        stuckBadData.ok();
+        stuckException.ok();
+    }
     let lastDump = Date.now();
     async function repeat0() {
         if (epoch>maxEpochOfBlock) {
@@ -394,6 +399,7 @@ async function run(cfx:Conflux, preFinished: number) {
                     } else {
                         epoch++
                     }
+                    resolveStuck();
                 } catch (e) {
                     const failMsg = `process epoch fail at ${epoch}`;
                     console.log(failMsg, e)

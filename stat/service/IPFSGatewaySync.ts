@@ -44,7 +44,9 @@ export class IPFSGatewaySync {
 
     const that = this;
     async function repeat() {
-      await that.detectGateways().catch(err=>{
+      await that.detectGateways().then(()=>{
+        that.stuckGateway.ok();
+      }).catch(err=>{
         console.log(`sync detect_gateway fail: `, err)
         that.stuckGateway.push(`failed to detect_gateways: \n ${err.name} ${err.message}`);
       });
