@@ -59,7 +59,10 @@ frequentPaths.forEach(name => {
 })
 let timer;
 export async function loadRateConfig() {
-    const list = await RateConfig.findAll()
+    const list = await RateConfig.findAll().catch(e=>{
+        console.log(`${__filename} failed to load rate config: ${e}`);
+        return [];
+    })
     list.forEach(c => {
         configMap.set(c.name, c)
     })
