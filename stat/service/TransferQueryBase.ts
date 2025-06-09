@@ -12,6 +12,7 @@ import {fmtAddr} from "../StatApp";
 import {closestEpochByTimeStamp, ClosestType} from "../model/Epoch";
 import {Token} from "../model/Token";
 import {detectFishingAddress} from "./tool/phishingAddress";
+import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 const lodash = require('lodash');
 
 export abstract class TransferQueryBase {
@@ -191,6 +192,7 @@ export abstract class TransferQueryBase {
         // query
         const page = await this.doQuery(options, queryOptions);
         const list = [];
+        const toIdArr = [];
         if(page?.rows){
             const hex40IdSet = new Set<number>();
             // const txHashQueryCondition = []
@@ -231,6 +233,7 @@ export abstract class TransferQueryBase {
 
             // fields mapping
             list.forEach(row=>{
+                toIdArr.push(row['to'] ?? 0);
                 const key:string = `${row['epochNumber']}_${row['blockIndex']}_${row['txIndex']}`;
                 row['transactionHash'] = txMap.get(key)?.hash
                     || `0x${row['transactionHash']}`
@@ -246,7 +249,9 @@ export abstract class TransferQueryBase {
 
         // add tx info
         if(this.getTransferType() === CONST.TRANSFER_TYPE.ALL) {
-            await fillMethodInfo(list, true).catch(error=>{ throw new Errors.BizError(`fill method info error, ${error}`);})
+            await fillMethodInfo(list, toIdArr, true).catch(error=>{
+                safeAddErrorLog('open-api', 'list-transfer-fill-method', error);
+            })
             const failedQuery:Promise<FailedTx>[] = []
             list.forEach(row=>{
                 if(row['type'] !== CONST.ADDRESS_TRANSFER_TYPE.TX.name) return;

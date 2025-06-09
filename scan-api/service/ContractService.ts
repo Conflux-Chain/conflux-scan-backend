@@ -205,7 +205,7 @@ export class ContractService { // TODO: extends AccountService
   async getCreationData({ address }) {
     const {
       app: { cfx, CONST, service, type, tokenTool },
-    } = this;
+    } = this as ScanCtx;
 
     const hash = lodash.findKey(CONST.GENESIS_TX_TO_CONTRACT[StatApp.networkId], (v) => v === address);
     if(hash){
