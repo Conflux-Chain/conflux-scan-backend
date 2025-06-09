@@ -9,6 +9,7 @@ import {fmtDtUTC} from "../model/Utils";
 import {Measure} from "./common/Measure";
 import {TokenTool} from "./tool/TokenTool";
 import {ContractQuery} from "./ContractQuery";
+import {StuckChecker} from "../monitor/Monitor";
 
 const lodash = require('lodash');
 
@@ -27,12 +28,18 @@ export abstract class SyncBase {
     protected app: IEpochSyncCtx;
     protected catchUp: CatchUp
     protected measure: Measure
+    private stuckCheckerOfData: StuckChecker;
+    private stuckCheckerOfRetrying: StuckChecker;
+    private stuckCheckerOfSaving: StuckChecker;
 
     protected constructor(app: IEpochSyncCtx) {
         this.app = app;
         this.forwardQueue = new PreloadMap(this.getData.bind(this));
         this.catchUp = new CatchUp(this.app.cfx, this)
         this.measure = new Measure()
+        this.stuckCheckerOfData = new StuckChecker(`epoch-sync-load-data`, 10);
+        this.stuckCheckerOfRetrying = new StuckChecker(`epoch-sync-retrying`, 10);
+        this.stuckCheckerOfSaving = new StuckChecker(`epoch-sync-saving`, 10);
     }
 
     private async getDataForwardWithPreload(epochNumber: number): Promise<SyncData> {
@@ -71,22 +78,31 @@ export abstract class SyncBase {
 
         try {
             data = await this.measure.call('preload', () => this.getDataForwardWithPreload(epochNumber))
+            this.stuckCheckerOfData.ok();
         } catch (e) {
             console.log(`[epoch=${epochNumber}]sync_forward fetch error:`, e);
+            const msg = `get data at ${epochNumber} \n${e.name}  ${e.message}`;
+            this.stuckCheckerOfData.push(msg);
             await sleep(10_000);
             return epochNumber;
         }
 
         if (data.syncCode === SyncCode.RETRY) {
-            console.log(`[epoch=${epochNumber}]sync_forward fetch retry: ${data.message}`, data.error);
+            const msg = `[epoch=${epochNumber}]sync_forward fetch retry: ${data.message}`;
+            console.log(msg, data.error);
+            this.stuckCheckerOfRetrying.push(`${msg} \n${data.error?.name}  ${data.error?.message}`);
             await sleep(10_000);
             return epochNumber;
         }
+        this.stuckCheckerOfRetrying.ok();
 
         try {
             syncCode = await this.measure.call('save', () => this.saveForward(epochNumber, data))
+            this.stuckCheckerOfSaving.ok();
         } catch (e) {
-            console.log(`[epoch=${epochNumber}]sync_forward save error:`, e);
+            const msg = `[epoch=${epochNumber}]sync_forward save error:`;
+            console.log(msg, e);
+            this.stuckCheckerOfSaving.push(`${msg} \n${e.name}  ${e.message}`);
             await sleep(10_000);
             if (this.catchUp.status()) {
                 console.log(`restart , batch data is not empty`);
@@ -123,7 +139,6 @@ export abstract class SyncBase {
         epoch = lodash.max([epoch, ConfigInstance.firstBlockNo])
 
         let latestStateEpoch = this.epochLatestState
-
         const that = this
         async function repeat() {
             if (epoch <= latestStateEpoch - (that.preloadSize)) {

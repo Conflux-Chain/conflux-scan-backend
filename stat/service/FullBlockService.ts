@@ -170,6 +170,7 @@ export class FullBlockService {
                     console.log(`check tx count kv:`, e)
                 });
             }
+            retryStuckChecker.ok();
             if (always) {
                 setTimeout(repeat, 0)
             }
