@@ -225,8 +225,11 @@ async function syncIPFSGateway() {
     const ipfsGatewaySync = new IPFSGatewaySync()
     await ipfsGatewaySync.schedule()
 }
-const stuckMeta = new StuckChecker(`sync-nft-meta`, 10);
+let stuckMeta: StuckChecker;
 async function syncNFTMeta() {
+    if (!stuckMeta) {
+        stuckMeta = new StuckChecker(`sync-nft-meta`, 10);
+    }
     let delay = 5_000
 
     try {

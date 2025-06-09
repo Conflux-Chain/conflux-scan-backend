@@ -3,9 +3,10 @@ import {Epoch} from "../model/Epoch";
 import {Erc20Transfer} from "../model/Erc20Transfer";
 import {CFX_TRANSFER_DELAY, ERC20_TRANSFER_DELAY, KV} from "../model/KV";
 import {init} from "../service/tool/FixDailyTokenStat";
-import {ConfigInstance} from "../config/StatConfig";
+import {ConfigInstance, loadConfig} from "../config/StatConfig";
 import {StatApp} from "../StatApp";
 import {getAppEntryName} from "../config/LoggerConfig";
+
 const superagent = require('superagent')
 
 export class Monitor{
@@ -123,52 +124,78 @@ export class StuckChecker {
         this.beginTime = times > 0 ? new Date() : null;
     }
     ok() {
-        this.push(OK);
+        if (this.alertTimes == 0) {
+            return;
+        }
+        const alertToken = this.getAlertToken();
+        dingMsg(`This alert was resolved.\n${this.name}\n${this.key}`, alertToken).then();
+        this.key = OK;
+        this.reset(0);
     }
     push(key: string) {
         try {
             this.pushUnsafe(key)
         } catch (e) {
-            console.log(`${__filename} failed to push`, e);
+            console.log(`${__filename} failed to push error entry:`, e);
         }
     }
     private pushUnsafe(newKey: string) {
-        const alertToken = ConfigInstance.dingDevToken;
-        if (newKey === OK) {
-            if (this.alertTimes > 0) {
-                dingMsg(`This alert was resolved.\n${this.name}\n${this.key}`, alertToken).then();
-                this.alertTimes = 0;
-            }
-            if (this.key !== OK) {
-                this.key = newKey;
-                this.reset(0);
-            }
-            // ok to ok, non-op.
-        }else if (this.key == newKey) { // duplicate key, check alert
-            this.check(alertToken);
+        if (this.key == newKey) { // duplicate key, check alert
+            this.check();
+        } else {
+            this.reset(1);
+            this.key = newKey;
         }
     }
 
-    private check(alertToken: string) {
+    private getAlertToken() {
+        return ConfigInstance.dingDevToken;
+    }
+
+    private check() {
         this.times += 1;
         if (Date.now() - this.beginTime.getTime() < this.msThreshold) {
             return;
         }
         let msg = ''
-        if (!this.lastAlertTime) {
+        if (this.lastAlertTime) {
+            if (Date.now() - this.lastAlertTime.getTime() > 3600 * 1000) {
+                this.alertTimes += 1;
+                this.lastAlertTime = new Date();
+                msg = `This alert is unresolved. Alerted for ${this.alertTimes} times.`
+                this.sendAlert(msg);
+            }
+        } else {
             this.alertTimes = 1;
             this.lastAlertTime = new Date();
             msg = `There was an error for ${this.minuteThreshold} minutes.`;
-        } else if (Date.now() - this.lastAlertTime.getTime() > 3600 * 1000) {
-            this.alertTimes += 1;
-            this.lastAlertTime = new Date();
-            msg = `This alert is unresolved. Alerted for ${this.alertTimes} times.`
-        } else {
-            return;
+            this.sendAlert(msg);
         }
-        dingMsg(`${msg}\n${this.name
-        }\n${this.key}`, alertToken).then();
     }
+
+    private sendAlert(msg: string) {
+        const alertToken = this.getAlertToken();
+        dingMsg(`${msg}\nChecker: ${this.name
+        }\nContent: ${this.key}`, alertToken).then();
+    }
+}
+
+async function testStuckAlert() {
+    const stuck = new StuckChecker("test-stuck-name", 1);
+    stuck.push('error message here');
+
+    stuck.beginTime.setMinutes(stuck.beginTime.getMinutes() - 10);
+    stuck.push('error message here');
+
+    stuck.lastAlertTime.setHours(stuck.lastAlertTime.getHours() - 10);
+    stuck.push('error message here');
+
+    stuck.beginTime.setHours(stuck.beginTime.getHours() - 10);
+    stuck.push('error message here');
+
+    stuck.ok();
+    stuck.ok();
+    stuck.ok();
 }
 
 async function main() {
@@ -176,6 +203,11 @@ async function main() {
     if (!dingKey) {
         console.log(`need ding key`)
         return
+    }
+    if (dingKey === 'test-stuck') {
+        loadConfig('Prod');
+        await testStuckAlert();
+        return;
     }
     const cfg = await init();
     if (process.argv.includes("test")) {
