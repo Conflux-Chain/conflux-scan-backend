@@ -94,7 +94,7 @@ async function dingMsgRaw(msg:string, dingTalkToken:string) {
 
         })
 }
-
+const OK = 'ok';
 export class StuckChecker {
     name: string;
 
@@ -120,9 +120,11 @@ export class StuckChecker {
         this.times = times;
         this.lastAlertTime = null;
         this.alertTimes = 0;
-        this.beginTime = new Date();
+        this.beginTime = times > 0 ? new Date() : null;
     }
-
+    ok() {
+        this.push(OK);
+    }
     push(key: string) {
         try {
             this.pushUnsafe(key)
@@ -130,32 +132,42 @@ export class StuckChecker {
             console.log(`${__filename} failed to push`, e);
         }
     }
-    private pushUnsafe(key: string) {
+    private pushUnsafe(newKey: string) {
         const alertToken = ConfigInstance.dingDevToken;
-        if (this.key == key) {
-            this.times += 1;
-            let msg = `There was an error for ${this.minuteThreshold} minutes.`;
-            if (Date.now() - this.beginTime.getTime() > this.msThreshold) {
-                if (!this.lastAlertTime) {
-                    this.alertTimes = 1;
-                    this.lastAlertTime = new Date();
-                } else if (Date.now() - this.lastAlertTime.getTime() > 3600 * 1000) {
-                    this.alertTimes += 1;
-                    this.lastAlertTime = new Date();
-                    msg = `This alert is unresolved. Alerted for ${this.alertTimes} times.`
-                } else {
-                    return;
-                }
-                dingMsg(`${msg}\n${this.name
-                    }\n${this.key}`, alertToken).then();
-            }
-        } else {
+        if (newKey === OK) {
             if (this.alertTimes > 0) {
                 dingMsg(`This alert was resolved.\n${this.name}\n${this.key}`, alertToken).then();
+                this.alertTimes = 0;
             }
-            this.key = key;
-            this.reset(1);
+            if (this.key !== OK) {
+                this.key = newKey;
+                this.reset(0);
+            }
+            // ok to ok, non-op.
+        }else if (this.key == newKey) { // duplicate key, check alert
+            this.check(alertToken);
         }
+    }
+
+    private check(alertToken: string) {
+        this.times += 1;
+        if (Date.now() - this.beginTime.getTime() < this.msThreshold) {
+            return;
+        }
+        let msg = ''
+        if (!this.lastAlertTime) {
+            this.alertTimes = 1;
+            this.lastAlertTime = new Date();
+            msg = `There was an error for ${this.minuteThreshold} minutes.`;
+        } else if (Date.now() - this.lastAlertTime.getTime() > 3600 * 1000) {
+            this.alertTimes += 1;
+            this.lastAlertTime = new Date();
+            msg = `This alert is unresolved. Alerted for ${this.alertTimes} times.`
+        } else {
+            return;
+        }
+        dingMsg(`${msg}\n${this.name
+        }\n${this.key}`, alertToken).then();
     }
 }
 

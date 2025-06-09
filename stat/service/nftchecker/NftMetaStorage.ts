@@ -13,6 +13,7 @@ import {CENSOR_STATUS} from "../censor/CensorService";
 import {format} from "js-conflux-sdk";
 import {regExitHook} from "../tool/ProcessTool";
 import {listenPort} from "../../monitor/serverApi";
+import {StuckChecker} from "../../monitor/Monitor";
 
 const lodash = require('lodash');
 const {NFTMetaParser} = require('@confluxfans/nft-utils');
@@ -224,7 +225,7 @@ async function syncIPFSGateway() {
     const ipfsGatewaySync = new IPFSGatewaySync()
     await ipfsGatewaySync.schedule()
 }
-
+const stuckMeta = new StuckChecker(`sync-nft-meta`, 10);
 async function syncNFTMeta() {
     let delay = 5_000
 
@@ -239,11 +240,13 @@ async function syncNFTMeta() {
                 console.log(`no task for metadata`)
                 break
             default:
-                console.log(`type ${code} not supported`)
+                const message = `type ${code} not supported`;
+                console.log(message)
+                stuckMeta.push(message);
         }
     } catch (e) {
-        console.log(`process metadata fail:`, e)
-        process.exit(9)
+        console.log(`process metadata fail:`, e);
+        stuckMeta.push(`failed to sync nft meta : ${e.message}`);
     }
 
     setTimeout(() => syncNFTMeta(), delay)

@@ -1,4 +1,5 @@
 import {KEY_FASTEST_IPFS_GATEWAY, KV} from "../model/KV";
+import {StuckChecker} from "../monitor/Monitor";
 
 const superagent = require('superagent');
 const lodash = require('lodash');
@@ -18,6 +19,11 @@ export class IPFSGatewaySync {
   private URL_GATEWAY = 'https://raw.githubusercontent.com/ipfs/public-gateway-checker/refs/heads/main/gateways.json';
   private CID_FOR_SAMPLE = 'bafybeifx7yeb55armcsxwwitkymga5xf53dxiarykms3ygqic223w5sk3m'; // Hello from IPFS Gateway Checker
   private tick = 0; // 1 min per tick
+  private stuckGateway: StuckChecker;
+
+  constructor() {
+    this.stuckGateway = new StuckChecker(`detect-ipfs-gateway`, 10);
+  }
 
   public static tmplFromGateway(userGateway) {
     let target = userGateway;
@@ -38,7 +44,10 @@ export class IPFSGatewaySync {
 
     const that = this;
     async function repeat() {
-      await that.detectGateways().catch(err=>{ console.log(`sync detect_gateway fail: `, err) });
+      await that.detectGateways().catch(err=>{
+        console.log(`sync detect_gateway fail: `, err)
+        that.stuckGateway.push(`failed to detect_gateways: \n ${err.name} ${err.message}`);
+      });
       setTimeout(repeat, delay);
     }
 
