@@ -372,7 +372,7 @@ async function checkColumnType(table: string, col: string, wantType: string, sql
             await KV.sequelize.query(sql, {
                 type: QueryTypes.UPDATE,
             })
-            console.log(`column modified. ${table}.${col} , new type ${wantType}`);
+            console.log(`column modified. ${table}.${col} , old type ${tableDescription[col].type} new type ${wantType}`);
         }
     } catch (e) {
         console.log(`table ${table} , column ${col}, want type ${wantType} `);

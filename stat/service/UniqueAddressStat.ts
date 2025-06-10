@@ -217,8 +217,8 @@ export async function buildUniqueAddrHourly() {
             ) on duplicate key update updatedAt = values(updatedAt)`;
         const result = await UniqueAddressHourly.sequelize.query(sql, {
             replacements: [startTime, endTimeHour, startTime, endTimeHour],
-            logging: (sql) => {
-                console.log(`${__filename} hourly unique addr in one sql:\n`, sql);
+            logging: (sql , ms) => {
+                // console.log(`${__filename} hourly unique addr in one sql (${ms}ms):\n`, sql);
             },
             benchmark: true,
         })
