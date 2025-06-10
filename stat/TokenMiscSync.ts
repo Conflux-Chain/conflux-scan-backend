@@ -22,7 +22,7 @@ async function main() {
     StatApp.isEVM = await KV.getSwitch(IS_EVM2);
     // startSync3525('useConfigRpc', "-1", "10000").then()
     startContractUserAnd1155data(cfx, config, 500).then();
-    startUniqueAddrStat(cfx).then()
+    startUniqueAddrStat().then()
     repeatCheckAccount(cfx).then(); // should move it to stat-task
     // quote service
     if (config?.syncQuote?.open) {
