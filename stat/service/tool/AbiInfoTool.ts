@@ -61,6 +61,7 @@ async function main() {
     } else {
         await run()
     }
+    return AbiInfo.sequelize.close();
 }
 
 // node stat/service/tool/AbiInfoTool.js build-abi

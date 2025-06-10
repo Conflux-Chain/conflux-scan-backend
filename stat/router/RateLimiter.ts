@@ -59,21 +59,26 @@ frequentPaths.forEach(name => {
 })
 let timer;
 export async function loadRateConfig() {
+    let hasError = false;
     const list = await RateConfig.findAll().catch(e=>{
         console.log(`${__filename} failed to load rate config: ${e}`);
+        hasError = true;
         return [];
     })
     list.forEach(c => {
         configMap.set(c.name, c)
     })
-    if (!list.length) {
+    if (!list.length && !hasError) {
         RateConfig.bulkCreate([
             {name: RateConfig.defaultWeightName, weight: 1},
             {name: RateConfig.addressWeightName, weight: 0.1},
             ...frequentPaths.map(path => {
                 return {name: path, weight: 0.01}
             }),
-        ]).then()
+        ], {updateOnDuplicate: ['weight']})
+        .catch(e=>{
+            console.log(`failed to create default rate config`, e);
+        })
     }
     if (!timer) {
         timer = setInterval(loadRateConfig, 10_000)
