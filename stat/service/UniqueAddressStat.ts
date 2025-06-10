@@ -20,7 +20,7 @@ import {EpochHashTokenTransfer} from "../TokenTransferSync";
 import {ConfigInstance, FirstBlockNo} from "../config/StatConfig";
 import {PreloadMap} from "./SyncBase";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
-import {ADDR_LEN, UniqueAddressHourly} from "../model/UniqueAddr";
+import {ADDR_LEN, UniqueAddressDaily, UniqueAddressHourly} from "../model/UniqueAddr";
 
 process.env.TZ='UTC'
 
@@ -186,7 +186,7 @@ export async function calcDailyUniqueAddrSchedule() {
 export async function buildUniqueAddrHourly() {
     // find max unique addr bean
     const maxUniqueAddr = await UniqueAddress.findOne({
-        order: [['id', 'desc']], limit: 1, raw: true,
+        order: [['timeStart', 'desc']], limit: 1, raw: true,
     })
     if (!maxUniqueAddr) {
         console.log(`${__filename} no unique addr found`);
@@ -201,7 +201,7 @@ export async function buildUniqueAddrHourly() {
         startTime.setHours(startTime.getHours() + 1); // next hour of the previous record.
     } else {
         const now = new Date();
-        now.setDate(now.getHours() - (24 * 7 + 1)); // 7 days 1 hour ago
+        now.setHours(now.getHours() - (24 * 7 + 1)); // 7 days 1 hour ago
         startTime = now;
         startTime.setMinutes(0, 0, 0);
     }
@@ -209,7 +209,7 @@ export async function buildUniqueAddrHourly() {
     endTimeHour.setMinutes(59, 59, 999);
     const table = UniqueAddress.getTableName();
     const hourlyTable = UniqueAddressHourly.getTableName();
-    while (maxUniqueAddr.timeEnd > endTimeHour) {
+    while (maxUniqueAddr.timeEnd >= endTimeHour) {
         const sql = `
         insert into ${hourlyTable} (timeStart, timeEnd, contractId, addr, fromMark, toMark, createdAt, updatedAt)
             (select ?, ?,  contractId, addr, sum(fromMark), sum(toMark), now(), now() from ${
@@ -228,6 +228,53 @@ export async function buildUniqueAddrHourly() {
         endTimeHour.setHours(endTimeHour.getHours() + 1);
     }
     console.log(`unique address time not reach , ${maxUniqueAddr.timeEnd.toISOString()} < ${endTimeHour.toISOString()}`);
+}
+
+export async function buildUniqueAddrDaily() {
+    // find max unique addr bean
+    const maxUniqueAddrHourly = await UniqueAddressHourly.findOne({
+        order: [['timeStart', 'desc']], limit: 1, raw: true,
+    })
+    if (!maxUniqueAddrHourly) {
+        console.log(`${__filename} no unique addr found`);
+        return;
+    }
+    let startTime: Date;
+    const maxUADaily = await UniqueAddressDaily.findOne({
+        order: [['timeStart', 'desc']], limit: 1, raw: true,
+    })
+    if (maxUADaily) {
+        startTime = maxUADaily.timeStart;
+        startTime.setDate(startTime.getDate() + 1); // next data of the previous record.
+    } else {
+        const now = new Date();
+        now.setDate(now.getDate() - 8); // 8 days ago
+        startTime = now;
+        startTime.setHours(0, 0, 0, 0);
+    }
+    const endTimeDay = new Date(startTime);
+    endTimeDay.setHours(23,59, 59, 999);
+    const table = UniqueAddressHourly.getTableName();
+    const dailyTable = UniqueAddressDaily.getTableName();
+    while (maxUniqueAddrHourly.timeEnd >= endTimeDay) {
+        const sql = `
+        insert into ${dailyTable} (timeStart, timeEnd, contractId, addr, fromMark, toMark, createdAt, updatedAt)
+            (select ?, ?,  contractId, addr, sum(fromMark), sum(toMark), now(), now() from ${
+            table} where timeStart between ? and ? group by contractId, addr
+            ) on duplicate key update updatedAt = values(updatedAt)`;
+        const result = await UniqueAddressHourly.sequelize.query(sql, {
+            replacements: [startTime, endTimeDay, startTime, endTimeDay],
+            logging: (sql , ms) => {
+                // console.log(`${__filename} hourly unique addr in one sql (${ms}ms):\n`, sql);
+            },
+            benchmark: true,
+        })
+        console.log(`unique addr daily, ${startTime.toISOString()} result `, result);
+        //increase the time window
+        startTime.setHours(startTime.getHours() + 1);
+        endTimeDay.setHours(endTimeDay.getHours() + 1);
+    }
+    console.log(`daily, unique address time not reach , ${maxUniqueAddrHourly.timeEnd.toISOString()} < ${endTimeDay.toISOString()}`);
 }
 
 async function calcDailyUniqueAddr() {
@@ -522,6 +569,12 @@ async function main() {
         await init();
         await buildUniqueAddrHourly()
         await UniqueAddressHourly.sequelize.close();
+    } else if (cmd === 'test-unique-daily') {
+        await init();
+        await buildUniqueAddrDaily();
+        await UniqueAddressHourly.sequelize.close();
+    } else {
+        console.log(`nothing [${cmd}]`);
     }
     //
     // redirectLog()

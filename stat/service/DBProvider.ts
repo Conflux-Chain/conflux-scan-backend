@@ -75,7 +75,7 @@ import {ReqAccount} from "./watcher/AccountChecker";
 import {ErrorLog} from "../monitor/ErrorMonitor";
 import {AddressNfts} from "../model/AddrNft";
 import {sleep} from "./tool/ProcessTool";
-import {UniqueAddressHourly} from "../model/UniqueAddr";
+import {UniqueAddressDaily, UniqueAddressHourly} from "../model/UniqueAddr";
 
 let conf
 export function createDB(config) {
@@ -232,6 +232,7 @@ export async function initModel(sequelize: Sequelize) {
     EpochHashCfxTransfer.register(sequelize);
     UniqueAddress.register(sequelize);
     UniqueAddressHourly.register(sequelize);
+    UniqueAddressDaily.register(sequelize);
     CrossSpaceStat.register(sequelize)
     PosBlock.register(sequelize);
     PosAccount.register(sequelize);
