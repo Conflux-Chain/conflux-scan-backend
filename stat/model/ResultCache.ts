@@ -15,7 +15,7 @@ export class ResultCache extends Model<IResultCache> implements IResultCache {
 	static register(seq: Sequelize) {
 		ResultCache.init({
 			id: {type: DataTypes.BIGINT, autoIncrement: true, primaryKey: true},
-			name: {type: DataTypes.STRING(1000), unique: true},
+			name: {type: DataTypes.STRING(700), unique: true, },
 			content: {type: DataTypes.TEXT("long"), },
 		}, {
 			tableName: `result_cache`, sequelize: seq,
