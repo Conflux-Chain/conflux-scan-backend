@@ -6,6 +6,7 @@ import {format} from "js-conflux-sdk";
 import {StatApp} from "../StatApp";
 import {getAddrId, } from "./HexMap";
 import {Interface, keccak256} from "ethers/lib/utils";
+import {Errors} from "../service/common/LogicError";
 
 export interface IAbiInfo {
     id?:number
@@ -93,6 +94,14 @@ export async function saveAbiInfo(abiObj:any, contractId?:number, dryRun = false
             continue;
         }
         const fullFormat = field.format('full');
+        if (dryRun) {
+            // check name
+            for (const param of field.inputs) {
+                if (!param.name) {
+                    throw new Errors.ParameterError(`parameter name is empty: ${fullFormat}`);
+                }
+            }
+        }
         if (fullFormat.length > maxFullName) {
             console.log(`skip entry exceeds max length `, fullFormat);
             continue;
