@@ -374,7 +374,7 @@ async function checkColumnType(table: string, col: string, wantType: string, sql
             })
             console.log(`column modified. ${table}.${col} , old type ${tableDescription[col].type} new type ${wantType}`);
         } else {
-            console.log(`column type is the same. ${table}.${col} , old type ${wantType}`);
+            console.log(`column type is the same. ${table}.${col} , old type ${tableDescription[col].type}`);
         }
     } catch (e) {
         console.log(`table ${table} , column ${col}, want type ${wantType} `);
