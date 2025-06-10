@@ -32,7 +32,7 @@ export interface IUniqueAddress {
     timeStart: Date
     timeEnd: Date
     contractId:number
-    addr:string
+    addr:number;
     fromMark: boolean
     toMark: boolean
 }
@@ -40,7 +40,7 @@ export class UniqueAddress extends Model<IUniqueAddress> implements IUniqueAddre
     id?:number
     // main prop
     contractId:number
-    addr:string
+    addr:number;
     fromMark: boolean
     toMark: boolean
     epochStart:number // it's the start epoch of the task.
@@ -56,7 +56,7 @@ export class UniqueAddress extends Model<IUniqueAddress> implements IUniqueAddre
             timeStart: {type: DataTypes.DATE, allowNull: false},
             timeEnd: {type: DataTypes.DATE, allowNull: false},
             contractId: {type: DataTypes.BIGINT, allowNull: false, },
-            addr: {type: DataTypes.STRING(ADDR_LEN), allowNull: false, },
+            addr: {type: DataTypes.BIGINT, allowNull: false, },
             fromMark: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
             toMark: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
         }, {

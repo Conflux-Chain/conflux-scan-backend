@@ -275,6 +275,8 @@ export function createMySql(dbConf) {
 }
 
 async function migDB(seq: Sequelize) {
+    await checkColumnType(UniqueAddress.getTableName().toString(), 'addr', 'bigint',
+        `alter table ${UniqueAddress.getTableName()} modify column addr bigint not null default 0`);
     // let sql = `desc alter table abi_info drop index idx_sig`;
     // await seq.query(sql, {type: QueryTypes.UPDATE}).then(()=>{
     //     console.log(`OK : ${sql}`)
@@ -357,6 +359,21 @@ interface ColumnAdditionOptions {
     primaryKey?: boolean;
     autoIncrement?: boolean;
     comment?: string;
+}
+
+async function checkColumnType(table: string, col: string, wantType: string, sql: string) {
+    try {
+        const tableDescription = await KV.sequelize.getQueryInterface().describeTable(table);
+        if (tableDescription[col].type !== wantType) {
+            await KV.sequelize.query(sql, {
+                type: QueryTypes.UPDATE,
+            })
+            console.log(`column modified. ${table}.${col} , new type ${wantType}`);
+        }
+    } catch (e) {
+        console.log(`table ${table} , column ${col}, want type ${wantType} `);
+        console.log(`failed to check column type:`, e);
+    }
 }
 
 export async function addColumnIfNotExistsV2(

@@ -8,7 +8,7 @@ export interface IUniqueAddrHourly {
 	timeStart: Date
 	timeEnd: Date
 	contractId:number
-	addr:string
+	addr:number
 	fromMark: boolean
 	toMark: boolean
 }
@@ -17,7 +17,7 @@ export class UniqueAddressHourly extends Model<IUniqueAddrHourly> implements IUn
 	timeStart: Date
 	// main prop
 	contractId:number
-	addr:string
+	addr:number
 	fromMark: boolean
 	toMark: boolean
 	timeEnd: Date
@@ -27,7 +27,7 @@ export class UniqueAddressHourly extends Model<IUniqueAddrHourly> implements IUn
 			timeStart: {type: DataTypes.DATE, allowNull: false},
 			timeEnd: {type: DataTypes.DATE, allowNull: false},
 			contractId: {type: DataTypes.BIGINT, allowNull: false, },
-			addr: {type: DataTypes.STRING(ADDR_LEN), allowNull: false, },
+			addr: {type: DataTypes.BIGINT, allowNull: false, },
 			fromMark: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
 			toMark: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
 		}, {
