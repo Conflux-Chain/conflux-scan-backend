@@ -359,11 +359,11 @@ export async function topUnique({limit = 10, day = 7, showSql = false}) {
     if (day > 1) {
         alignTimeEnd.setHours(0, 0, 0, 0);
         timeBegin = new Date(alignTimeEnd);
-        timeBegin.setHours(timeBegin.getHours() - 23);
+        timeBegin.setDate(timeBegin.getDate() - day + 1);
     } else {
         alignTimeEnd.setMinutes(0, 0, 0);
         timeBegin = new Date(alignTimeEnd);
-        timeBegin.setDate(timeBegin.getDate() - day + 1);
+        timeBegin.setHours(timeBegin.getHours() - 23);
     }
     return (day > 1 ? UniqueAddressDaily : UniqueAddressHourly).findAll(({
         attributes: [
