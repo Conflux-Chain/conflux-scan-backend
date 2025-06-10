@@ -182,7 +182,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         }
         const list = await AbiInfo.findAll({
             where: {hash: id, type: 'function', }, raw: true,
-            attributes: ['fullName', 'type', 'hash']
+            attributes: ['fullName', 'type', 'hash', 'formatWithArg']
         });
         ctx.body = {list};
     })
@@ -194,7 +194,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const arr = [...new Set(hash.split(',').filter(Boolean))];
         const list = await Promise.all(arr.map(h=>AbiInfo.findOne({
             where: {hash: h, type: 'event'}, raw: true,
-            attributes: ['fullName', 'type', 'hash']
+            attributes: ['fullName', 'type', 'hash', 'formatWithArg']
         })))
         ctx.body = {list};
     })

@@ -5,13 +5,15 @@ import {ContractVerify} from "./ContractVerify";
 import {format} from "js-conflux-sdk";
 import {StatApp} from "../StatApp";
 import {getAddrId, } from "./HexMap";
-import {Interface} from "ethers/lib/utils";
+import {Interface, keccak256} from "ethers/lib/utils";
+import {Errors} from "../service/common/LogicError";
 
 export interface IAbiInfo {
     id?:number
     hash:string
     type:string
     fullName:string
+    formatWithArg?: string
     updatedAt?:Date
 }
 export class AbiInfo extends Model<IAbiInfo> implements IAbiInfo {
@@ -26,6 +28,7 @@ export class AbiInfo extends Model<IAbiInfo> implements IAbiInfo {
             hash: {type: DataTypes.STRING(66), allowNull: false, defaultValue: ''},
             type: {type: DataTypes.STRING(16), allowNull: false, defaultValue: ''},
             fullName: {type: DataTypes.STRING(1024), allowNull: false, defaultValue: ''},
+            formatWithArg: {type: DataTypes.STRING(1024), allowNull: false, defaultValue: ''},
         }, {
             sequelize: seq, tableName: 'abi_stub', charset: 'ascii', collate: 'ascii_general_ci',
             indexes:[
@@ -61,42 +64,66 @@ export class ContractABI extends Model<IContractABI> implements IContractABI {
         })
     }
 }
+let UPDATE_FIELDS_FOR_DUPLICATE_ABI: (keyof IAbiInfo)[] = ['updatedAt'];
+export function setFieldsForUpdate(v: (keyof IAbiInfo)[]) {
+    UPDATE_FIELDS_FOR_DUPLICATE_ABI = v;
+}
 // Refer:
 // https://docs.soliditylang.org/en/v0.5.3/abi-spec.html
 // https://docs.soliditylang.org/en/v0.5.3/abi-spec.html#events
 export async function saveAbiInfo(abiObj:any, contractId?:number, dryRun = false) {
     const abi = (typeof abiObj === 'string') ? JSON.parse(abiObj) : abiObj;
-    const cfx = await initCfxSdk({url:''});
-    let contract: any;
+    let iFace: Interface;
     try {
-        contract = cfx.Contract({abi});
+        iFace = new Interface(abi);
     } catch (e) {
         console.log(`failed to parse abi, contract id `, contractId, `abi`, abi, 'error is ', e);
         if (dryRun) {
             throw e;
         }
-        return e.message?.includes('can not found matched coder'); // js conflux sdk
+        return e.message?.includes('can not found matched coder');
     }
-    if (dryRun) {
-        return true;
-    }
+
     const arr:IAbiInfo[] = [];
     // each key is a prop of the contract, only care the exact method/event like abc(address,uint)
-    const maxFullName = 1024
-    for (let key of Object.keys(contract)) {
-        const field = contract[key]
-        if (key.includes('(')) {
-            // console.log(`${key} : ${typeof field} ${Object.keys(field).join(',')}, ${field.signature}`)
-            const template = {fullName: key.substr(0, maxFullName), hash: field.signature, type: "function"}
-            if (field.signature.length === 66/*keccak hash*/) {
-                // event
-                template.type = "event"
-            }
-            arr.push(template)
+    const maxFullName = 1024;
+    const fnAndEvents = [...Object.keys(iFace.events), ...Object.keys(iFace.functions)];
+    for (let key of fnAndEvents) {
+        const field = iFace.events[key] || iFace.functions[key];
+        if (!field) {
+            continue;
         }
+        const fullFormat = field.format('full');
+        if (dryRun) {
+            // check name
+            for (const param of field.inputs) {
+                if (!param.name) {
+                    throw new Errors.ParameterError(`parameter name is empty: ${fullFormat}`);
+                }
+            }
+        }
+        if (fullFormat.length > maxFullName) {
+            console.log(`skip entry exceeds max length `, fullFormat);
+            continue;
+        }
+        // console.log(`---- ${key} : ${typeof field} `, fullFormat);
+        const type = field.type;
+        let useName = key;
+        let sig = '';
+        if (field.type === 'event') {
+            sig = keccak256(Buffer.from(key))
+        } else {
+            sig = iFace.getSighash(field);
+        }
+        const template = {fullName: useName, hash: sig, type, formatWithArg: fullFormat};
+        arr.push(template)
+    }
+    if (dryRun) {
+        console.log(`abi beans are:`, arr);
+        return true;
     }
     return AbiInfo.bulkCreate(arr, {
-        updateOnDuplicate:['updatedAt']
+        updateOnDuplicate: UPDATE_FIELDS_FOR_DUPLICATE_ABI,
     }).then(arr=>{
         console.log(`saved abi info: ${arr.length}`);
         if (contractId) {

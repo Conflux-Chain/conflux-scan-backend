@@ -30,7 +30,8 @@ async function main() {
 		setInterval(monitorHD, 5_000);
 	} else if (cmd === 'decodeAnnouncement') {
 		cfg.conflux.url = 'http://net8888cfx.confluxrpc.com';
-		let hash = '0xcdcc5a24474e627fca12f0a29d0f5cfcedac6d9337b8f933c11f559fad4a273c';
+		// let hash = '0xcdcc5a24474e627fca12f0a29d0f5cfcedac6d9337b8f933c11f559fad4a273c';
+		let hash = '0xfe03325665a1b538f9763ec9f744954a2789e80a70b39a851d4b8854ed9cba46';
 		const cfx = await initCfxSdk(cfg.conflux);
 		const tool = new TokenTool(cfx);
 		const rcpt = await cfx.getTransactionReceipt(hash)

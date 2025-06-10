@@ -1,5 +1,5 @@
 import {init} from "./FixDailyTokenStat";
-import {AbiInfo, saveAbiInfo} from "../../model/ContractInfo";
+import {AbiInfo, saveAbiInfo, setFieldsForUpdate,} from "../../model/ContractInfo";
 import {sleep} from "./ProcessTool";
 import {ContractVerify} from "../../model/ContractVerify";
 import {getAddrId, makeIdV} from "../../model/HexMap";
@@ -56,10 +56,12 @@ async function main() {
     await init();
     const [,,cmd] = process.argv;
     if (cmd === 'build-abi') {
+        setFieldsForUpdate(['updatedAt', 'formatWithArg']);
         await buildAbiForVerifiedContract();
     } else {
         await run()
     }
+    return AbiInfo.sequelize.close();
 }
 
 // node stat/service/tool/AbiInfoTool.js build-abi
