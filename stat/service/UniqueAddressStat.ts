@@ -212,7 +212,7 @@ export async function buildUniqueAddrHourly() {
     while (maxUniqueAddr.timeEnd > endTimeHour) {
         const sql = `
         insert into ${hourlyTable} (timeStart, timeEnd, contractId, addr, fromMark, toMark, createdAt, updatedAt)
-            (select '${startTime}', '${endTimeHour}',  contractId, addr, sum(fromMark), sum(toMark), now(), now() from ${
+            (select '${startTime.toISOString()}', '${endTimeHour.toISOString()}',  contractId, addr, sum(fromMark), sum(toMark), now(), now() from ${
                 table} where timeStart between ? and ? group by contractId, addr
             ) on duplicate key update updatedAt = values(updatedAt)`;
         const result = await UniqueAddressHourly.sequelize.query(sql, {
