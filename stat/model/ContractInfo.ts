@@ -63,7 +63,10 @@ export class ContractABI extends Model<IContractABI> implements IContractABI {
         })
     }
 }
-export let UPDATE_FIELDS_FOR_DUPLICATE_ABI: [keyof IAbiInfo]= ['updatedAt'];
+let UPDATE_FIELDS_FOR_DUPLICATE_ABI: (keyof IAbiInfo)[] = ['updatedAt'];
+export function setFieldsForUpdate(v: (keyof IAbiInfo)[]) {
+    UPDATE_FIELDS_FOR_DUPLICATE_ABI = v;
+}
 // Refer:
 // https://docs.soliditylang.org/en/v0.5.3/abi-spec.html
 // https://docs.soliditylang.org/en/v0.5.3/abi-spec.html#events
