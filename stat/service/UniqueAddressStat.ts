@@ -354,14 +354,17 @@ export async function topUnique({limit = 10, day = 7, showSql = false}) {
         }
         return {list: {sender:[],receiver:[],all:[]}, timeBegin: new Date(0), maxTimeStart: new Date(0), alignTimeEnd: undefined}
     }
+    let timeBegin: Date;
     let alignTimeEnd = new Date(maxUnique.timeStart);
     if (day > 1) {
         alignTimeEnd.setHours(0, 0, 0, 0);
+        timeBegin = new Date(alignTimeEnd);
+        timeBegin.setHours(timeBegin.getHours() - 23);
     } else {
         alignTimeEnd.setMinutes(0, 0, 0);
+        timeBegin = new Date(alignTimeEnd);
+        timeBegin.setDate(timeBegin.getDate() - day + 1);
     }
-    let timeBegin = new Date(alignTimeEnd);
-    timeBegin.setDate(timeBegin.getDate() - day);
     return (day > 1 ? UniqueAddressDaily : UniqueAddressHourly).findAll(({
         attributes: [
             'contractId',
@@ -599,4 +602,6 @@ if (module === require.main) {
     main().then()
 }
 // node stat/service/UniqueAddressStat.js test-unique-hourly
+// node stat/service/UniqueAddressStat.js test-unique-daily
+// node stat/service/UniqueAddressStat.js top-unique 7
 // node stat/service/tool/FixDailyTokenStat.js dailyTokenTxn 2020-10-29
