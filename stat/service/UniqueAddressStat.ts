@@ -271,8 +271,8 @@ export async function buildUniqueAddrDaily() {
         })
         console.log(`unique addr daily, ${startTime.toISOString()} result `, result);
         //increase the time window
-        startTime.setHours(startTime.getHours() + 1);
-        endTimeDay.setHours(endTimeDay.getHours() + 1);
+        startTime.setDate(startTime.getDate() + 1);
+        endTimeDay.setDate(endTimeDay.getDate() + 1);
     }
     console.log(`daily, unique address time not reach , ${maxUniqueAddrHourly.timeEnd.toISOString()} < ${endTimeDay.toISOString()}`);
 }
