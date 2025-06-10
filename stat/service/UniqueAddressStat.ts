@@ -346,7 +346,7 @@ export async function topUnique({limit = 10, day = 7, showSql = false}) {
     // index is on timeStart, not timeEnd.
     // do not use universal time because the result may be too few.
     const maxUnique = ConfigInstance.noTopToken ? null
-        : await UniqueAddress.findOne({order:[['timeStart','desc']]});
+        : await (day > 1 ? UniqueAddressDaily : UniqueAddressHourly).findOne({order:[['timeStart','desc']]});
     if (maxUnique === null) {
         if (!this.___show_log){
             console.log(`UniqueAddr no unique address record found.`)
@@ -355,10 +355,14 @@ export async function topUnique({limit = 10, day = 7, showSql = false}) {
         return {list: {sender:[],receiver:[],all:[]}, timeBegin: new Date(0), maxTimeStart: new Date(0), alignTimeEnd: undefined}
     }
     let alignTimeEnd = new Date(maxUnique.timeStart);
-    alignTimeEnd.setMinutes(0,0,0);
-    let timeBegin = new Date(alignTimeEnd)
-    timeBegin.setDate(timeBegin.getDate() - day)
-    return UniqueAddress.findAll(({
+    if (day > 1) {
+        alignTimeEnd.setHours(0, 0, 0, 0);
+    } else {
+        alignTimeEnd.setMinutes(0, 0, 0);
+    }
+    let timeBegin = new Date(alignTimeEnd);
+    timeBegin.setDate(timeBegin.getDate() - day);
+    return (day > 1 ? UniqueAddressDaily : UniqueAddressHourly).findAll(({
         attributes: [
             'contractId',
             [literal('count(distinct(if(fromMark, addr, "")))'), 'sender'],
@@ -564,7 +568,7 @@ export async function startUniqueAddrStat(cfx: Conflux) {
 }
 
 async function main() {
-    const [,,cmd] = process.argv;
+    const [,,cmd, arg1] = process.argv;
     if (cmd === 'test-unique-hourly') {
         await init();
         await buildUniqueAddrHourly()
@@ -572,6 +576,11 @@ async function main() {
     } else if (cmd === 'test-unique-daily') {
         await init();
         await buildUniqueAddrDaily();
+        await UniqueAddressHourly.sequelize.close();
+    } else if (cmd === 'top-unique') {
+        await init();
+        const rank = await topUnique({limit: 10, day: parseInt(arg1 || '7')});
+        console.log(`rank is`, rank);
         await UniqueAddressHourly.sequelize.close();
     } else {
         console.log(`nothing [${cmd}]`);
