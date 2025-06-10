@@ -18,6 +18,8 @@ import {IS_EVM2, KV} from "../model/KV";
 import {Errors} from "./common/LogicError";
 import { ethers } from "ethers";
 import {ConfigInstance} from "../config/StatConfig";
+import {ResultCache, TopUniqueCache} from "../model/ResultCache";
+import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 
 export class RankService{
     private app: any;
@@ -28,21 +30,27 @@ export class RankService{
 
     public repeatUpdateTxnCache() {
         // update unique addr cache.
-        ['senders','receivers','participants'].forEach(which=>{
-            [1,3,7].forEach(day=>{
-                this.rankTokenUniqueAddr({day, which, useCache: false}).catch(err=>{
-                    console.log(` update token unique addr fail.`, err)
-                })
-            })
-        })
-        //
-        const cnt = 100
-        this.rankCfxBalance('total', cnt, true).then(()=>{
-            return this.rankCfxBalance('stakingBalance', cnt , true)
-        }).then(()=>{
-            return this.rankCfxBalance('balance', cnt , true)
-        }).then(()=>{
-            setTimeout(()=>this.repeatUpdateTxnCache(), 1000*600)
+        // always update 24h(1 day).
+        this.rankTokenUniqueAddr({day: 1}).then(async ()=>{
+            const hour = new Date().getHours();
+            // check result cache in db, build if absent
+            const cache = await this.loadUniqueAddrCache(3);
+            // update 3d and 7d by condition.
+            if (hour === 0 || !cache['maxTimeStart']) {
+                await this.rankTokenUniqueAddr({day: 3})
+                await this.rankTokenUniqueAddr({day: 7});
+            }
+        }).then(async () => {
+            //
+            const cnt = 100
+            await this.rankCfxBalance('total', cnt, true);
+            await this.rankCfxBalance('stakingBalance', cnt, true);
+            return this.rankCfxBalance('balance', cnt, true);
+        }).catch(err => {
+            safeAddErrorLog('rank-service',` update token unique addr fail.`, err).then();
+        }).finally(()=>{
+            // at least, fire an alert for each round.
+            setTimeout(()=>this.repeatUpdateTxnCache(), 1000*60 * 40) // x minutes
         })
     }
     async rankCfxBalance(order:string, limit, updateTxnCache=false) {
@@ -95,13 +103,13 @@ export class RankService{
         });
         return prunedMap;
     }
-
-    tokenUniqueArrCache = {} // 1 3 7 day
-    async rankTokenUniqueAddr({day = 7, which = 'participants', useCache=true}) {
-        let cached = useCache ? this.tokenUniqueArrCache[day] : undefined;
-        if (cached) {
-            return cached[which]
-        }
+    async loadUniqueAddrCache(day: number) {
+        const bean = await ResultCache.findOne({
+            where: {name: `${TopUniqueCache}_${day}`}, raw: true,
+        })
+        return JSON.parse(bean?.content || '{}');
+    }
+    async rankTokenUniqueAddr({day = 7}) {
         const {maxTimeStart, list, timeBegin, alignTimeEnd} = await topUnique({limit: 10, day});
         const now = new Date();
         const [senders, receivers, participants] = await Promise.all(
@@ -114,8 +122,14 @@ export class RankService{
                 })
             })
         )
-        cached = this.tokenUniqueArrCache[day] = {maxTimeStart, timeBegin, senders, receivers, participants}
-        return cached[which]
+        const result = {maxTimeStart, timeBegin, senders, receivers, participants};
+        return ResultCache.upsert(
+            {content: JSON.stringify(result, null, 4), name: `${TopUniqueCache}_${day}`},
+        ).then(()=>{
+            console.log(`update top unique cache of ${TopUniqueCache}_${day} , ${new Date().toISOString()}`);
+        }).catch(err=>{
+                safeAddErrorLog('rank-service', 'top-unique-cache', err);
+        });
     }
     async buildUniqueAddrTop(arr:any[], prop:string) {
         const contractIdSet = buildHexSet(undefined, arr, 'contractId')
@@ -167,7 +181,8 @@ export class RankService{
             //rank_contract_by_number_of_[senders|receivers|participants]_[1d,3d,7d]
             const [which, span] = type.substr('rank_contract_by_number_of_'.length).split("_")
             const day = parseInt(span[0])
-            return this.rankTokenUniqueAddr({day, which})
+            const cache = await this.loadUniqueAddrCache(day);
+            return cache[which] || {message: 'not ready'};
         } else {
             /*return {code: 40400, message: 'no support.', type}*/
             throw new Errors.ParameterError(`type=${type} not supported`);

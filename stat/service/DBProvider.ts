@@ -76,6 +76,7 @@ import {ErrorLog} from "../monitor/ErrorMonitor";
 import {AddressNfts} from "../model/AddrNft";
 import {sleep} from "./tool/ProcessTool";
 import {UniqueAddressDaily, UniqueAddressHourly} from "../model/UniqueAddr";
+import {ResultCache} from "../model/ResultCache";
 
 let conf
 export function createDB(config) {
@@ -229,6 +230,7 @@ export async function initModel(sequelize: Sequelize) {
     EpochHashTokenTransfer.register(sequelize)
     ContractUser.register(sequelize);
     CfxUser.register(sequelize);
+    ResultCache.register(sequelize);
     EpochHashCfxTransfer.register(sequelize);
     UniqueAddress.register(sequelize);
     UniqueAddressHourly.register(sequelize);

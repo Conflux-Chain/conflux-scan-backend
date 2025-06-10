@@ -347,10 +347,7 @@ export async function topUnique({limit = 10, day = 7, showSql = false}) {
     const maxUnique = ConfigInstance.noTopToken ? null
         : await (day > 1 ? UniqueAddressDaily : UniqueAddressHourly).findOne({order:[['timeStart','desc']]});
     if (maxUnique === null) {
-        if (!this.___show_log){
-            console.log(`UniqueAddr no unique address record found.`)
-            this.___show_log = true;
-        }
+        console.log(`UniqueAddr no unique address record found.`)
         return {list: {sender:[],receiver:[],all:[]}, timeBegin: new Date(0), maxTimeStart: new Date(0), alignTimeEnd: undefined}
     }
     let timeBegin: Date;
@@ -432,6 +429,7 @@ export function getTokenTool(cfx:Conflux) {
     }
     return toolInfo;
 }
+let lastDay = 0;
 let timer: NodeJS.Timeout;
 async function buildTimelyUniqueAddr() {
     if (timer) {
@@ -440,6 +438,7 @@ async function buildTimelyUniqueAddr() {
     try {
         await buildUniqueAddrHourly();
         await buildUniqueAddrDaily();
+
     } catch (e) {
         console.log(`failed to build unique addr timely: `, e);
     }
@@ -597,6 +596,7 @@ async function main() {
         await UniqueAddressHourly.sequelize.close();
     } else if (cmd === 'top-unique') {
         await init();
+        ConfigInstance.noTopToken = false;
         const rank = await topUnique({limit: 10, day: parseInt(arg1 || '7')});
         console.log(`rank is`, rank);
         await UniqueAddressHourly.sequelize.close();
