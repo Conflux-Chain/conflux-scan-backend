@@ -128,7 +128,7 @@ export class RankService{
         ).then(()=>{
             console.log(`update top unique cache of ${TopUniqueCache}_${day} , ${new Date().toISOString()}`);
         }).catch(err=>{
-                safeAddErrorLog('rank-service', 'top-unique-cache', err);
+            safeAddErrorLog('rank-service', 'top-unique-cache', err);
         });
     }
     async buildUniqueAddrTop(arr:any[], prop:string) {
