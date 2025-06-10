@@ -75,6 +75,7 @@ import {ReqAccount} from "./watcher/AccountChecker";
 import {ErrorLog} from "../monitor/ErrorMonitor";
 import {AddressNfts} from "../model/AddrNft";
 import {sleep} from "./tool/ProcessTool";
+import {UniqueAddressHourly} from "../model/UniqueAddr";
 
 let conf
 export function createDB(config) {
@@ -230,6 +231,7 @@ export async function initModel(sequelize: Sequelize) {
     CfxUser.register(sequelize);
     EpochHashCfxTransfer.register(sequelize);
     UniqueAddress.register(sequelize);
+    UniqueAddressHourly.register(sequelize);
     CrossSpaceStat.register(sequelize)
     PosBlock.register(sequelize);
     PosAccount.register(sequelize);
@@ -376,8 +378,12 @@ export async function addColumnIfNotExistsV2(
             console.log(`Column "${columnName}" already exists in table "${tableName}"`);
         }
     } catch (error) {
-        console.error(`Error checking/adding column "${columnName}" to table "${tableName}":`, error);
-        throw error;
+        if (error.message.startsWith('No description found for')) {
+            console.log(` --- table doesn't exist. --- should be created by model. check it.`)
+        } else {
+            console.error(`Error checking/adding column "${columnName}" to table "${tableName}":`, error);
+            throw error;
+        }
     }
 }
 

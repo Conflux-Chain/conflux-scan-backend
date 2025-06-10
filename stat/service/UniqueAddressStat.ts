@@ -20,6 +20,7 @@ import {EpochHashTokenTransfer} from "../TokenTransferSync";
 import {ConfigInstance, FirstBlockNo} from "../config/StatConfig";
 import {PreloadMap} from "./SyncBase";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
+import {ADDR_LEN, UniqueAddressHourly} from "../model/UniqueAddr";
 
 process.env.TZ='UTC'
 
@@ -181,6 +182,54 @@ export async function calcDailyUniqueAddrSchedule() {
     setTimeout(()=>calcDailyUniqueAddrSchedule(), MINUTES_SPAN*60_000)//
 }
 
+
+export async function buildUniqueAddrHourly() {
+    // find max unique addr bean
+    const maxUniqueAddr = await UniqueAddress.findOne({
+        order: [['id', 'desc']], limit: 1, raw: true,
+    })
+    if (!maxUniqueAddr) {
+        console.log(`${__filename} no unique addr found`);
+        return;
+    }
+    let startTime: Date;
+    const maxUAHourly = await UniqueAddressHourly.findOne({
+        order: [['id', 'desc']], limit: 1, raw: true,
+    })
+    if (maxUAHourly) {
+        startTime = maxUAHourly.timeStart;
+        startTime.setHours(startTime.getHours() + 1); // next hour of the previous record.
+    } else {
+        const now = new Date();
+        now.setDate(now.getHours() - (24 * 7 + 1)); // 7 days 1 hour ago
+        startTime = now;
+        startTime.setMinutes(0, 0, 0);
+    }
+    const endTimeHour = new Date(startTime);
+    endTimeHour.setMinutes(59, 59, 999);
+    const table = UniqueAddress.getTableName();
+    const hourlyTable = UniqueAddressHourly.getTableName();
+    while (maxUniqueAddr.timeEnd > endTimeHour) {
+        const sql = `
+        insert into ${hourlyTable} (timeStart, timeEnd, contractId, addr, fromMark, toMark, createdAt, updatedAt)
+            (select '${startTime}', '${endTimeHour}',  contractId, addr, sum(fromMark), sum(toMark), now(), now() from ${
+                table} where timeStart between ? and ? group by contractId, addr
+            ) on duplicate key update updatedAt = values(updatedAt)`;
+        const result = await UniqueAddressHourly.sequelize.query(sql, {
+            replacements: [startTime, endTimeHour],
+            logging: (sql) => {
+                console.log(`${__filename} hourly unique addr in one sql:\n`, sql);
+            },
+            benchmark: true,
+        })
+        console.log(`unique addr hourly, ${startTime} result `, result);
+        //increase the time window
+        startTime.setHours(startTime.getHours() + 1);
+        endTimeHour.setHours(endTimeHour.getHours() + 1);
+    }
+    console.log(`unique address time not reach , ${maxUniqueAddr.timeEnd} < ${endTimeHour}`);
+}
+
 async function calcDailyUniqueAddr() {
     const latestOne = await UniqueAddress.findOne({order: [['timeStart', 'desc']], raw: true});
     await fixParticipants(latestOne?.timeStart).catch(e=>{
@@ -289,7 +338,6 @@ export function classifyTopList(list:any[], len = 10) : {sender:any[], receiver:
 }
 
 const measure = new Measure()
-const ADDR_LEN = 8 // 40. only save the tail of an address.
 async function saveUniqueAddrToDb(aggregator: Aggregator<number, string>, {
     epoch
 }) {
@@ -468,14 +516,25 @@ export async function startUniqueAddrStat(cfx: Conflux) {
     return runTask(cfx, -1, 300);
 }
 
+async function main() {
+    const [,,cmd] = process.argv;
+    if (cmd === 'test-unique-hourly') {
+        await init();
+        await buildUniqueAddrHourly()
+        await UniqueAddressHourly.sequelize.close();
+    }
+    //
+    // redirectLog()
+    // regExitHook()
+    // const [, , cfxUrl, fromEpoch, taskLen] = process.argv
+    // setup(cfxUrl, fromEpoch, taskLen).then().catch(err => {
+    //     console.log(`UniqueAddr ${process.argv[1]}\n`, err)
+    //     process.exit(1)
+    // })
+}
+
 if (module === require.main) {
-    redirectLog()
-    regExitHook()
-    const [, , cfxUrl, fromEpoch, taskLen] = process.argv
-    setup(cfxUrl, fromEpoch, taskLen).then().catch(err => {
-        console.log(`UniqueAddr ${process.argv[1]}\n`, err)
-        process.exit(1)
-    })
+    main().then()
 }
 
 // node stat/service/tool/FixDailyTokenStat.js dailyTokenTxn 2020-10-29
