@@ -280,10 +280,10 @@ async function migDB(seq: Sequelize) {
     //     console.log(`failed : ${sql} \n error ${err}`);
     // })
     //
-    // const tableName = AbiInfo.getTableName().toString();
-    // await addColumnIfNotExistsV2(seq.getQueryInterface(), tableName, 'contractId', {
-    //     type: DataTypes.BIGINT, allowNull: false, defaultValue: 0,
-    // })
+    const tableName = AbiInfo.getTableName().toString();
+    await addColumnIfNotExistsV2(seq.getQueryInterface(), tableName, 'formatWithArg', {
+        type: DataTypes.STRING(1024), allowNull: false, defaultValue: '',
+    })
     //
     // await addIndexIfNotExistsMySQL(seq.getQueryInterface(), tableName, 'idx_type_hash', {
     //     fields:[{name:'type'},{name:'hash'}],
