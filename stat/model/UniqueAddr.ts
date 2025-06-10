@@ -31,7 +31,7 @@ export class UniqueAddressHourly extends Model<IUniqueAddrHourly> implements IUn
 			fromMark: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
 			toMark: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
 		}, {
-			sequelize: seq, tableName: 'unique_addr_hourly', timestamps: false,
+			sequelize: seq, tableName: 'unique_addr_hourly',
 			indexes: [
 				{name: 'uk_epoch_cid_addr', unique: true, fields:['timeStart','contractId', 'addr'], },
 			]
