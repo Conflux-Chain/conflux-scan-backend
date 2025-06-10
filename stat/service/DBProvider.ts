@@ -275,7 +275,11 @@ export function createMySql(dbConf) {
 }
 
 async function migDB(seq: Sequelize) {
-    await checkColumnType(UniqueAddress.getTableName().toString(), 'addr', 'bigint',
+    const uat = UniqueAddress.getTableName().toString();
+    await KV.sequelize.query(`delete from ${uat} where timeStart < ?`, {
+        type: QueryTypes.UPDATE, replacements: ['2025-01-01'],
+    })
+    await checkColumnType(uat, 'addr', 'bigint',
         `alter table ${UniqueAddress.getTableName()} modify column addr bigint not null default 0`);
     // let sql = `desc alter table abi_info drop index idx_sig`;
     // await seq.query(sql, {type: QueryTypes.UPDATE}).then(()=>{
