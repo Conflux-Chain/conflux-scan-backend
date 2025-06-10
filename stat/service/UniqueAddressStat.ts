@@ -222,12 +222,12 @@ export async function buildUniqueAddrHourly() {
             },
             benchmark: true,
         })
-        console.log(`unique addr hourly, ${startTime} result `, result);
+        console.log(`unique addr hourly, ${startTime.toISOString()} result `, result);
         //increase the time window
         startTime.setHours(startTime.getHours() + 1);
         endTimeHour.setHours(endTimeHour.getHours() + 1);
     }
-    console.log(`unique address time not reach , ${maxUniqueAddr.timeEnd} < ${endTimeHour}`);
+    console.log(`unique address time not reach , ${maxUniqueAddr.timeEnd.toISOString()} < ${endTimeHour.toISOString()}`);
 }
 
 async function calcDailyUniqueAddr() {
