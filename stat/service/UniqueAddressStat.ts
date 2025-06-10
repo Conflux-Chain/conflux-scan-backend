@@ -2,10 +2,9 @@
  * Unique address for each token.
  */
 
-import {adjustTodayEndTime, patchDateOnlyField} from "../model/Utils";
-import {redirectLog} from "../config/LoggerConfig";
+import {adjustTodayEndTime,} from "../model/Utils";
 import {DailyTokenTxn, Erc20Transfer, TOKEN_TYPE_ALL_4} from "../model/Erc20Transfer";
-import {regExitHook, sleep} from "./tool/ProcessTool";
+import {sleep} from "./tool/ProcessTool";
 import {col, DataTypes, literal, Model, Op, QueryTypes, Sequelize} from 'sequelize'
 import {DailyToken, IDailyToken} from "../model/Token";
 import {Conflux} from "js-conflux-sdk";
@@ -20,7 +19,7 @@ import {EpochHashTokenTransfer} from "../TokenTransferSync";
 import {ConfigInstance, FirstBlockNo} from "../config/StatConfig";
 import {PreloadMap} from "./SyncBase";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
-import {ADDR_LEN, UniqueAddressDaily, UniqueAddressHourly} from "../model/UniqueAddr";
+import {UniqueAddressDaily, UniqueAddressHourly} from "../model/UniqueAddr";
 
 process.env.TZ='UTC'
 
@@ -433,8 +432,22 @@ export function getTokenTool(cfx:Conflux) {
     }
     return toolInfo;
 }
+let timer: NodeJS.Timeout;
+async function buildTimelyUniqueAddr() {
+    if (timer) {
+        clearTimeout(timer);
+    }
+    try {
+        await buildUniqueAddrHourly();
+        await buildUniqueAddrDaily();
+    } catch (e) {
+        console.log(`failed to build unique addr timely: `, e);
+    }
+    timer = setTimeout(buildTimelyUniqueAddr, 3600 * 1000);
+}
 let maxDbTransferEpoch = 0;
-async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:()=>void) {
+async function run(fromEpoch:number, stopBeforeEpoch:number, endFn:()=>void) {
+    buildTimelyUniqueAddr().then();
     const sql = [Erc20Transfer, Erc721Transfer, Erc1155Transfer].map(t=>{
         return ` select contractId, fromId as \`from\`, toId as \`to\` from ${t.getTableName()} where epoch=? `
     }).join(" union ");
@@ -549,14 +562,14 @@ async function setup(cfxUrl:string, fromEpoch = '30495305', taskLen = '3000') {
     let cfx = await initCfxSdk(confluxOption);
     // console.log(` ${process.argv[1]} \n -------- network ${cfx.networkId} --------`)
 
-    return runTask(cfx, parseInt(fromEpoch), parseInt(taskLen))
+    return runTask(parseInt(fromEpoch), parseInt(taskLen))
 }
 // noinspection DuplicatedCode
-async function runTask(cfx:Conflux, fromEpoch:number = 0, len: number) {
+async function runTask(fromEpoch:number = 0, len: number) {
     const task = await fetchTask(len, fromEpoch)
     console.log(`UniqueAddr start task, [${task.epoch}, ${task.range+task.epoch}), len ${task.range}`)
     await new Promise(r=>{
-        run(cfx, task.epoch, task.epoch + task.range, ()=>{
+        run(task.epoch, task.epoch + task.range, ()=>{
             r(0)
         })
     })
@@ -564,12 +577,12 @@ async function runTask(cfx:Conflux, fromEpoch:number = 0, len: number) {
         console.log(`UniqueAddr length parameter is zero, quit.`)
         process.exit(0)
     } else {
-        setTimeout(() => runTask(cfx, fromEpoch, len), 0)
+        setTimeout(() => runTask(fromEpoch, len), 0)
     }
 }
 
-export async function startUniqueAddrStat(cfx: Conflux) {
-    return runTask(cfx, -1, 300);
+export async function startUniqueAddrStat() {
+    return runTask(-1, 300);
 }
 
 async function main() {
