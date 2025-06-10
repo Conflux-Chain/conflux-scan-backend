@@ -368,11 +368,13 @@ interface ColumnAdditionOptions {
 async function checkColumnType(table: string, col: string, wantType: string, sql: string) {
     try {
         const tableDescription = await KV.sequelize.getQueryInterface().describeTable(table);
-        if (tableDescription[col].type !== wantType) {
+        if (tableDescription[col].type.toUpperCase() !== wantType.toUpperCase()) {
             await KV.sequelize.query(sql, {
                 type: QueryTypes.UPDATE,
             })
             console.log(`column modified. ${table}.${col} , old type ${tableDescription[col].type} new type ${wantType}`);
+        } else {
+            console.log(`column type is the same. ${table}.${col} , old type ${wantType}`);
         }
     } catch (e) {
         console.log(`table ${table} , column ${col}, want type ${wantType} `);
