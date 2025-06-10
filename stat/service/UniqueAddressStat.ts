@@ -365,6 +365,7 @@ export async function topUnique({limit = 10, day = 7, showSql = false}) {
         timeBegin = new Date(alignTimeEnd);
         timeBegin.setHours(timeBegin.getHours() - 23);
     }
+    const ms = Date.now();
     return (day > 1 ? UniqueAddressDaily : UniqueAddressHourly).findAll(({
         attributes: [
             'contractId',
@@ -375,7 +376,8 @@ export async function topUnique({limit = 10, day = 7, showSql = false}) {
         where: {timeStart:{[Op.between]: [timeBegin, alignTimeEnd]}}, limit: limit * 6,
         logging: showSql ? console.log : false,
     })).then(list=>{
-        return {list: classifyTopList(list), timeBegin, maxTimeStart: maxUnique.timeStart, alignTimeEnd}
+        const duration = Date.now() - ms;
+        return {list: classifyTopList(list), timeBegin, maxTimeStart: maxUnique.timeStart, alignTimeEnd, duration};
     })
 }
 export function classifyTopList(list:any[], len = 10) : {sender:any[], receiver:any[], all:any[]} {
