@@ -143,7 +143,9 @@ export const jsonrpc_frontend = jsonrpc.method_('frontend',
         } catch (e) {
             console.log(`failed to patch domain`, e);
         }
-        const dbAnnouncement = await KV.getString(CONTRACT_ANNOUNCEMENT, '');
+        const dbAnnouncement = await KV.getString(CONTRACT_ANNOUNCEMENT, '').catch(e=>{
+            console.log(`failed to load announcement`, e);
+        });
       const contracts = frontend.contracts.map((contract) => {
           let useAddr = contract.address[networkId];
           if (contract.key === 'announcement' && dbAnnouncement) {

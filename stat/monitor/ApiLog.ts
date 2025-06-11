@@ -51,6 +51,13 @@ skipUrls.add('/stat/nft/checker/preview')
 skipUrls.add('/open/nft/preview')
 
 export async function saveApiLog(ctx:any, rt:number) {
+    try {
+        await saveApiLogUnsafe(ctx, rt)
+    } catch (e) {
+        console.log(`failed to save api log:`, e);
+    }
+}
+export async function saveApiLogUnsafe(ctx:any, rt:number) {
     const {url} = ctx;
     if (rt < rtThreshold) {
         return
@@ -68,7 +75,11 @@ export async function saveApiLog(ctx:any, rt:number) {
         return
     }
     if (query) {
-        query = decodeURIComponent(query);
+        try {
+            query = decodeURIComponent(query);
+        } catch (e) {
+            console.log(`bad query`, query, '\n error is :', e);
+        }
     }
     const ip = getClientIP(ctx);
     ApiLog.create({
