@@ -20,6 +20,7 @@ import {ConfigInstance, FirstBlockNo} from "../config/StatConfig";
 import {PreloadMap} from "./SyncBase";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import {UniqueAddressDaily, UniqueAddressHourly} from "../model/UniqueAddr";
+import {ResultCache, TopUniqueBaseCache} from "../model/ResultCache";
 
 process.env.TZ='UTC'
 
@@ -341,6 +342,15 @@ async function calcOneDayUniqueAddr(timeBegin: Date, timeEnd: Date) {
     }
     console.log(`UniqueAddr calculate daily token unique addr done. count ${list.length}, day ${timeBegin.toISOString()}`);
 }
+export async function loadTopUniqueBaseCache(day: number) {
+    const cacheKey = TopUniqueBaseCache + "_" + day;
+    const bean = await ResultCache.findOne({where: {name: cacheKey}, raw: true});
+    if (bean) {
+        return JSON.parse(bean.content);
+    }
+    return emptyUniqueData;
+}
+const emptyUniqueData = {list: {sender:[],receiver:[],all:[]}, timeBegin: new Date(0), maxTimeStart: new Date(0), alignTimeEnd: undefined};
 export async function topUnique({limit = 10, day = 7, showSql = false}) {
     // index is on timeStart, not timeEnd.
     // do not use universal time because the result may be too few.
@@ -348,7 +358,7 @@ export async function topUnique({limit = 10, day = 7, showSql = false}) {
         : await (day > 1 ? UniqueAddressDaily : UniqueAddressHourly).findOne({order:[['timeStart','desc']]});
     if (maxUnique === null) {
         console.log(`UniqueAddr no unique address record found.`)
-        return {list: {sender:[],receiver:[],all:[]}, timeBegin: new Date(0), maxTimeStart: new Date(0), alignTimeEnd: undefined}
+        return emptyUniqueData;
     }
     let timeBegin: Date;
     let alignTimeEnd = new Date(maxUnique.timeStart);
@@ -373,7 +383,16 @@ export async function topUnique({limit = 10, day = 7, showSql = false}) {
         logging: showSql ? console.log : false,
     })).then(list=>{
         const duration = Date.now() - ms;
-        return {list: classifyTopList(list), timeBegin, maxTimeStart: maxUnique.timeStart, alignTimeEnd, duration};
+        const result = {list: classifyTopList(list), timeBegin, maxTimeStart: maxUnique.timeStart, alignTimeEnd, duration};
+        console.log(`${__filename} duration ms `, duration);
+        const name = TopUniqueBaseCache + "_" + day;
+        ResultCache.upsert({
+            name: name,
+            content: JSON.stringify(result, null, 4),
+        }).catch(e=>{
+            safeAddErrorLog('unique-addr', 'top-unique', e);
+        })
+        return result;
     })
 }
 export function classifyTopList(list:any[], len = 10) : {sender:any[], receiver:any[], all:any[]} {

@@ -10,14 +10,12 @@ import {StatApp} from "../StatApp";
 import {CfxBalance} from "../model/Balance";
 import {Op} from "sequelize"
 import {AddressTransactionIndex} from "../model/FullBlock";
-import {init} from "./tool/FixDailyTokenStat";
 import {DailyToken} from "../model/Token";
 import {PruneInfo} from "../model/PruneInfo";
-import {topUnique} from "./UniqueAddressStat";
+import {loadTopUniqueBaseCache} from "./UniqueAddressStat";
 import {IS_EVM2, KV} from "../model/KV";
 import {Errors} from "./common/LogicError";
 import { ethers } from "ethers";
-import {ConfigInstance} from "../config/StatConfig";
 import {ResultCache, TopUniqueCache} from "../model/ResultCache";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 
@@ -110,7 +108,7 @@ export class RankService{
         return JSON.parse(bean?.content || '{}');
     }
     async rankTokenUniqueAddr({day = 7}) {
-        const {maxTimeStart, list, timeBegin, alignTimeEnd} = await topUnique({limit: 10, day});
+        const {maxTimeStart, list, timeBegin, alignTimeEnd} = await loadTopUniqueBaseCache(day);
         const now = new Date();
         const [senders, receivers, participants] = await Promise.all(
             ['sender','receiver','all'].map(k=>{
