@@ -2,15 +2,14 @@
  * Unique address for each token.
  */
 
-import {adjustTodayEndTime, patchDateOnlyField} from "../model/Utils";
-import {redirectLog} from "../config/LoggerConfig";
+import {adjustTodayEndTime,} from "../model/Utils";
 import {DailyTokenTxn, Erc20Transfer, TOKEN_TYPE_ALL_4} from "../model/Erc20Transfer";
-import {regExitHook, sleep} from "./tool/ProcessTool";
+import {sleep} from "./tool/ProcessTool";
 import {col, DataTypes, literal, Model, Op, QueryTypes, Sequelize} from 'sequelize'
 import {DailyToken, IDailyToken} from "../model/Token";
 import {Conflux} from "js-conflux-sdk";
 import {fixParticipants, init} from "./tool/FixDailyTokenStat";
-import {initCfxSdk} from "./common/utils";
+import {getOneMonthAgo, getTimeToNextHour, initCfxSdk, MINUTE} from "./common/utils";
 import {TokenTool} from "./tool/TokenTool";
 import {Measure} from "./common/Measure";
 import {Epoch} from "../model/Epoch";
@@ -20,6 +19,8 @@ import {EpochHashTokenTransfer} from "../TokenTransferSync";
 import {ConfigInstance, FirstBlockNo} from "../config/StatConfig";
 import {PreloadMap} from "./SyncBase";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
+import {UniqueAddressDaily, UniqueAddressHourly} from "../model/UniqueAddr";
+import {ResultCache, TopUniqueBaseCache} from "../model/ResultCache";
 
 process.env.TZ='UTC'
 
@@ -31,7 +32,7 @@ export interface IUniqueAddress {
     timeStart: Date
     timeEnd: Date
     contractId:number
-    addr:string
+    addr:number;
     fromMark: boolean
     toMark: boolean
 }
@@ -39,7 +40,7 @@ export class UniqueAddress extends Model<IUniqueAddress> implements IUniqueAddre
     id?:number
     // main prop
     contractId:number
-    addr:string
+    addr:number;
     fromMark: boolean
     toMark: boolean
     epochStart:number // it's the start epoch of the task.
@@ -55,7 +56,7 @@ export class UniqueAddress extends Model<IUniqueAddress> implements IUniqueAddre
             timeStart: {type: DataTypes.DATE, allowNull: false},
             timeEnd: {type: DataTypes.DATE, allowNull: false},
             contractId: {type: DataTypes.BIGINT, allowNull: false, },
-            addr: {type: DataTypes.STRING(ADDR_LEN), allowNull: false, },
+            addr: {type: DataTypes.BIGINT, allowNull: false, },
             fromMark: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
             toMark: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
         }, {
@@ -181,6 +182,112 @@ export async function calcDailyUniqueAddrSchedule() {
     setTimeout(()=>calcDailyUniqueAddrSchedule(), MINUTES_SPAN*60_000)//
 }
 
+
+export async function buildUniqueAddrHourly() {
+    // find max unique addr bean
+    const maxUniqueAddr = await UniqueAddress.findOne({
+        order: [['timeStart', 'desc']], limit: 1, raw: true,
+    })
+    if (!maxUniqueAddr) {
+        console.log(`${__filename} no unique addr found`);
+        return;
+    }
+    let startTime: Date;
+    const maxUAHourly = await UniqueAddressHourly.findOne({
+        order: [['id', 'desc']], limit: 1, raw: true,
+    })
+    if (maxUAHourly) {
+        startTime = maxUAHourly.timeStart;
+        startTime.setHours(startTime.getHours() + 1); // next hour of the previous record.
+    } else {
+        const now = new Date();
+        now.setHours(now.getHours() - (24 * 7 + 1)); // 7 days 1 hour ago
+        startTime = now;
+        startTime.setMinutes(0, 0, 0);
+    }
+    const endTimeHour = new Date(startTime);
+    endTimeHour.setMinutes(59, 59, 999);
+    const table = UniqueAddress.getTableName();
+    const hourlyTable = UniqueAddressHourly.getTableName();
+    let changed = false;
+    while (maxUniqueAddr.timeEnd >= endTimeHour) {
+        const sql = `
+        insert into ${hourlyTable} (timeStart, timeEnd, contractId, addr, fromMark, toMark, createdAt, updatedAt)
+            (select ?, ?,  contractId, addr, max(fromMark), max(toMark), now(), now() from ${
+                table} where timeStart between ? and ? group by contractId, addr
+            ) on duplicate key update updatedAt = values(updatedAt)`;
+        const result = await UniqueAddressHourly.sequelize.query(sql, {
+            replacements: [startTime, endTimeHour, startTime, endTimeHour],
+            logging: (sql , ms) => {
+                // console.log(`${__filename} hourly unique addr in one sql (${ms}ms):\n`, sql);
+            },
+            benchmark: true,
+        })
+        console.log(`unique addr hourly, ${startTime.toISOString()} result `, result);
+        //increase the time window
+        startTime.setHours(startTime.getHours() + 1);
+        endTimeHour.setHours(endTimeHour.getHours() + 1);
+        changed = true;
+    }
+    console.log(`unique address time not reach , ${maxUniqueAddr.timeEnd.toISOString()} < ${endTimeHour.toISOString()}`);
+    if (changed) {
+        await topUnique({day: 1});
+    }
+}
+
+export async function buildUniqueAddrDaily() {
+    // find max unique addr bean
+    const maxUniqueAddrHourly = await UniqueAddressHourly.findOne({
+        order: [['timeStart', 'desc']], limit: 1, raw: true,
+    })
+    if (!maxUniqueAddrHourly) {
+        console.log(`${__filename} no unique addr found`);
+        return;
+    }
+    let startTime: Date;
+    const maxUADaily = await UniqueAddressDaily.findOne({
+        order: [['timeStart', 'desc']], limit: 1, raw: true,
+    })
+    if (maxUADaily) {
+        startTime = maxUADaily.timeStart;
+        startTime.setDate(startTime.getDate() + 1); // next data of the previous record.
+    } else {
+        const now = new Date();
+        now.setDate(now.getDate() - 8); // 8 days ago
+        startTime = now;
+        startTime.setHours(0, 0, 0, 0);
+    }
+    const endTimeDay = new Date(startTime);
+    endTimeDay.setHours(23,59, 59, 999);
+    const table = UniqueAddressHourly.getTableName();
+    const dailyTable = UniqueAddressDaily.getTableName();
+    let changed = false;
+    while (maxUniqueAddrHourly.timeEnd >= endTimeDay) {
+        const sql = `
+        insert into ${dailyTable} (timeStart, timeEnd, contractId, addr, fromMark, toMark, createdAt, updatedAt)
+            (select ?, ?,  contractId, addr, max(fromMark), max(toMark), now(), now() from ${
+            table} where timeStart between ? and ? group by contractId, addr
+            ) on duplicate key update updatedAt = values(updatedAt)`;
+        const result = await UniqueAddressHourly.sequelize.query(sql, {
+            replacements: [startTime, endTimeDay, startTime, endTimeDay],
+            logging: (sql , ms) => {
+                // console.log(`${__filename} hourly unique addr in one sql (${ms}ms):\n`, sql);
+            },
+            benchmark: true,
+        })
+        console.log(`unique addr daily, ${startTime.toISOString()} result `, result);
+        //increase the time window
+        startTime.setDate(startTime.getDate() + 1);
+        endTimeDay.setDate(endTimeDay.getDate() + 1);
+        changed = true;
+    }
+    console.log(`daily, unique address time not reach , ${maxUniqueAddrHourly.timeEnd.toISOString()} < ${endTimeDay.toISOString()}`);
+    if (changed) {
+        await topUnique({day: 3});
+        await topUnique({day: 7});
+    }
+}
+
 async function calcDailyUniqueAddr() {
     const latestOne = await UniqueAddress.findOne({order: [['timeStart', 'desc']], raw: true});
     await fixParticipants(latestOne?.timeStart).catch(e=>{
@@ -246,23 +353,37 @@ async function calcOneDayUniqueAddr(timeBegin: Date, timeEnd: Date) {
     }
     console.log(`UniqueAddr calculate daily token unique addr done. count ${list.length}, day ${timeBegin.toISOString()}`);
 }
+export async function loadTopUniqueBaseCache(day: number) {
+    const cacheKey = TopUniqueBaseCache + "_" + day;
+    const bean = await ResultCache.findOne({where: {name: cacheKey}, raw: true});
+    if (bean) {
+        return JSON.parse(bean.content);
+    }
+    return emptyUniqueData;
+}
+const emptyUniqueData = {list: {sender:[],receiver:[],all:[]}, timeBegin: new Date(0), maxTimeStart: new Date(0), alignTimeEnd: undefined};
 export async function topUnique({limit = 10, day = 7, showSql = false}) {
     // index is on timeStart, not timeEnd.
     // do not use universal time because the result may be too few.
     const maxUnique = ConfigInstance.noTopToken ? null
-        : await UniqueAddress.findOne({order:[['timeStart','desc']]});
+        : await (day > 1 ? UniqueAddressDaily : UniqueAddressHourly).findOne({order:[['timeStart','desc']]});
     if (maxUnique === null) {
-        if (!this.___show_log){
-            console.log(`UniqueAddr no unique address record found.`)
-            this.___show_log = true;
-        }
-        return {list: {sender:[],receiver:[],all:[]}, timeBegin: new Date(0), maxTimeStart: new Date(0), alignTimeEnd: undefined}
+        console.log(`UniqueAddr no unique address record found.`)
+        return emptyUniqueData;
     }
+    let timeBegin: Date;
     let alignTimeEnd = new Date(maxUnique.timeStart);
-    alignTimeEnd.setMinutes(0,0,0);
-    let timeBegin = new Date(alignTimeEnd)
-    timeBegin.setDate(timeBegin.getDate() - day)
-    return UniqueAddress.findAll(({
+    if (day > 1) {
+        alignTimeEnd.setHours(0, 0, 0, 0);
+        timeBegin = new Date(alignTimeEnd);
+        timeBegin.setDate(timeBegin.getDate() - day + 1);
+    } else {
+        alignTimeEnd.setMinutes(0, 0, 0);
+        timeBegin = new Date(alignTimeEnd);
+        timeBegin.setHours(timeBegin.getHours() - 23);
+    }
+    const ms = Date.now();
+    return (day > 1 ? UniqueAddressDaily : UniqueAddressHourly).findAll(({
         attributes: [
             'contractId',
             [literal('count(distinct(if(fromMark, addr, "")))'), 'sender'],
@@ -272,7 +393,17 @@ export async function topUnique({limit = 10, day = 7, showSql = false}) {
         where: {timeStart:{[Op.between]: [timeBegin, alignTimeEnd]}}, limit: limit * 6,
         logging: showSql ? console.log : false,
     })).then(list=>{
-        return {list: classifyTopList(list), timeBegin, maxTimeStart: maxUnique.timeStart, alignTimeEnd}
+        const duration = Date.now() - ms;
+        const result = {list: classifyTopList(list), timeBegin, maxTimeStart: maxUnique.timeStart, alignTimeEnd, duration};
+        const name = TopUniqueBaseCache + "_" + day;
+        console.log(`${__filename} ${name} duration ms `, duration);
+        ResultCache.upsert({
+            name: name,
+            content: JSON.stringify(result, null, 4),
+        }).catch(e=>{
+            safeAddErrorLog('unique-addr', 'top-unique', e);
+        })
+        return result;
     })
 }
 export function classifyTopList(list:any[], len = 10) : {sender:any[], receiver:any[], all:any[]} {
@@ -289,7 +420,6 @@ export function classifyTopList(list:any[], len = 10) : {sender:any[], receiver:
 }
 
 const measure = new Measure()
-const ADDR_LEN = 8 // 40. only save the tail of an address.
 async function saveUniqueAddrToDb(aggregator: Aggregator<number, string>, {
     epoch
 }) {
@@ -329,8 +459,32 @@ export function getTokenTool(cfx:Conflux) {
     }
     return toolInfo;
 }
+let timer: NodeJS.Timeout;
+async function buildPeriodicUniqueAddr() {
+    if (timer) {
+        clearTimeout(timer);
+    }
+    try {
+        await buildUniqueAddrHourly();
+        await buildUniqueAddrDaily();
+        const oneMonthAgo = getOneMonthAgo();
+        for (const m of [UniqueAddress, UniqueAddressHourly, UniqueAddressDaily]) {
+            const t = m.getTableName();
+            await UniqueAddressHourly.sequelize.query(
+                `delete from ${t} where timeStart < ?`,
+                {type: QueryTypes.UPDATE, replacements: [oneMonthAgo]}
+            ).catch(e=>{
+                console.log(`failed to prune ${t}`, e);
+            })
+        }
+    } catch (e) {
+        console.log(`failed to build unique addr timely: `, e);
+    }
+    timer = setTimeout(buildPeriodicUniqueAddr, getTimeToNextHour() + MINUTE);
+}
 let maxDbTransferEpoch = 0;
-async function run(cfx:Conflux, fromEpoch:number, stopBeforeEpoch:number, endFn:()=>void) {
+async function run(fromEpoch:number, stopBeforeEpoch:number, endFn:()=>void) {
+    buildPeriodicUniqueAddr().then();
     const sql = [Erc20Transfer, Erc721Transfer, Erc1155Transfer].map(t=>{
         return ` select contractId, fromId as \`from\`, toId as \`to\` from ${t.getTableName()} where epoch=? `
     }).join(" union ");
@@ -445,14 +599,14 @@ async function setup(cfxUrl:string, fromEpoch = '30495305', taskLen = '3000') {
     let cfx = await initCfxSdk(confluxOption);
     // console.log(` ${process.argv[1]} \n -------- network ${cfx.networkId} --------`)
 
-    return runTask(cfx, parseInt(fromEpoch), parseInt(taskLen))
+    return runTask(parseInt(fromEpoch), parseInt(taskLen))
 }
 // noinspection DuplicatedCode
-async function runTask(cfx:Conflux, fromEpoch:number = 0, len: number) {
+async function runTask(fromEpoch:number = 0, len: number) {
     const task = await fetchTask(len, fromEpoch)
     console.log(`UniqueAddr start task, [${task.epoch}, ${task.range+task.epoch}), len ${task.range}`)
     await new Promise(r=>{
-        run(cfx, task.epoch, task.epoch + task.range, ()=>{
+        run(task.epoch, task.epoch + task.range, ()=>{
             r(0)
         })
     })
@@ -460,22 +614,47 @@ async function runTask(cfx:Conflux, fromEpoch:number = 0, len: number) {
         console.log(`UniqueAddr length parameter is zero, quit.`)
         process.exit(0)
     } else {
-        setTimeout(() => runTask(cfx, fromEpoch, len), 0)
+        setTimeout(() => runTask(fromEpoch, len), 0)
     }
 }
 
-export async function startUniqueAddrStat(cfx: Conflux) {
-    return runTask(cfx, -1, 300);
+export async function startUniqueAddrStat() {
+    return runTask(-1, 300);
+}
+
+async function main() {
+    const [,,cmd, arg1] = process.argv;
+    if (cmd === 'test-unique-hourly') {
+        await init();
+        await buildUniqueAddrHourly()
+        await UniqueAddressHourly.sequelize.close();
+    } else if (cmd === 'test-unique-daily') {
+        await init();
+        await buildUniqueAddrDaily();
+        await UniqueAddressHourly.sequelize.close();
+    } else if (cmd === 'top-unique') {
+        await init();
+        ConfigInstance.noTopToken = false;
+        const rank = await topUnique({limit: 10, day: parseInt(arg1 || '7')});
+        console.log(`rank is`, rank);
+        await UniqueAddressHourly.sequelize.close();
+    } else {
+        console.log(`nothing [${cmd}]`);
+    }
+    //
+    // redirectLog()
+    // regExitHook()
+    // const [, , cfxUrl, fromEpoch, taskLen] = process.argv
+    // setup(cfxUrl, fromEpoch, taskLen).then().catch(err => {
+    //     console.log(`UniqueAddr ${process.argv[1]}\n`, err)
+    //     process.exit(1)
+    // })
 }
 
 if (module === require.main) {
-    redirectLog()
-    regExitHook()
-    const [, , cfxUrl, fromEpoch, taskLen] = process.argv
-    setup(cfxUrl, fromEpoch, taskLen).then().catch(err => {
-        console.log(`UniqueAddr ${process.argv[1]}\n`, err)
-        process.exit(1)
-    })
+    main().then()
 }
-
+// node stat/service/UniqueAddressStat.js test-unique-hourly
+// node stat/service/UniqueAddressStat.js test-unique-daily
+// node stat/service/UniqueAddressStat.js top-unique 7
 // node stat/service/tool/FixDailyTokenStat.js dailyTokenTxn 2020-10-29

@@ -281,6 +281,22 @@ export function removeLongData(obj) {
     }
 }
 
+export const SECOND = 1000;
+export const MINUTE = SECOND * 60;
+export const HOUR = MINUTE * 60;
+
+export function getOneMonthAgo() {
+    const now = new Date();
+    // 30天的毫秒数（近似值，不精确）
+    const oneMonthInMs = 30 * 24 * 60 * 60 * 1000;
+    return new Date(now.getTime() - oneMonthInMs);
+}
+
+
+export function getTimeToNextHour() {
+    return 3600000 - (Date.now() % 3600000);
+}
+
 export async function initCfxSdk(confluxOption: ConfluxOption, tag: string = undefined) {
 	patchFormat();
     try {
