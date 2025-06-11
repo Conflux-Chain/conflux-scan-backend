@@ -395,8 +395,8 @@ export async function topUnique({limit = 10, day = 7, showSql = false}) {
     })).then(list=>{
         const duration = Date.now() - ms;
         const result = {list: classifyTopList(list), timeBegin, maxTimeStart: maxUnique.timeStart, alignTimeEnd, duration};
-        console.log(`${__filename} duration ms `, duration);
         const name = TopUniqueBaseCache + "_" + day;
+        console.log(`${__filename} ${name} duration ms `, duration);
         ResultCache.upsert({
             name: name,
             content: JSON.stringify(result, null, 4),
