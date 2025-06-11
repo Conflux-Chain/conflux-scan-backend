@@ -16,6 +16,7 @@ export interface IAbiInfo {
     formatWithArg?: string
     updatedAt?:Date
 }
+export const FormatWithArgMaxLength = 4096;
 export class AbiInfo extends Model<IAbiInfo> implements IAbiInfo {
     id?:number
     hash:string
@@ -28,7 +29,7 @@ export class AbiInfo extends Model<IAbiInfo> implements IAbiInfo {
             hash: {type: DataTypes.STRING(66), allowNull: false, defaultValue: ''},
             type: {type: DataTypes.STRING(16), allowNull: false, defaultValue: ''},
             fullName: {type: DataTypes.STRING(1024), allowNull: false, defaultValue: ''},
-            formatWithArg: {type: DataTypes.STRING(1024), allowNull: false, defaultValue: ''},
+            formatWithArg: {type: DataTypes.STRING(FormatWithArgMaxLength), allowNull: false, defaultValue: ''},
         }, {
             sequelize: seq, tableName: 'abi_stub', charset: 'ascii', collate: 'ascii_general_ci',
             indexes:[
@@ -102,8 +103,8 @@ export async function saveAbiInfo(abiObj:any, contractId?:number, dryRun = false
                 }
             }
         }
-        if (fullFormat.length > maxFullName) {
-            console.log(`skip entry exceeds max length `, fullFormat);
+        if (fullFormat.length > FormatWithArgMaxLength) {
+            console.log(`skip entry exceeds max length , full format ${fullFormat.length} > ${FormatWithArgMaxLength} \n`, fullFormat);
             continue;
         }
         // console.log(`---- ${key} : ${typeof field} `, fullFormat);
@@ -114,6 +115,10 @@ export async function saveAbiInfo(abiObj:any, contractId?:number, dryRun = false
             sig = keccak256(Buffer.from(key))
         } else {
             sig = iFace.getSighash(field);
+        }
+        if (useName.length > maxFullName) {
+            console.log(`skip entry exceeds max length , full name ${useName.length} > ${maxFullName} \n`, useName);
+            continue;
         }
         const template = {fullName: useName, hash: sig, type, formatWithArg: fullFormat};
         arr.push(template)

@@ -64,7 +64,7 @@ async function main() {
     return AbiInfo.sequelize.close();
 }
 
-// node stat/service/tool/AbiInfoTool.js build-abi
+// node stat/service/tool/AbiInfoTool.js build-abi | tee build-abi.log
 // node stat/service/tool/AbiInfoTool.js https://www.confluxscan.org
 if (require.main === module) {
     main().catch(err => {
