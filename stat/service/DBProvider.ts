@@ -75,6 +75,8 @@ import {ReqAccount} from "./watcher/AccountChecker";
 import {ErrorLog} from "../monitor/ErrorMonitor";
 import {AddressNfts} from "../model/AddrNft";
 import {sleep} from "./tool/ProcessTool";
+import {UniqueAddressDaily, UniqueAddressHourly} from "../model/UniqueAddr";
+import {ResultCache} from "../model/ResultCache";
 
 let conf
 export function createDB(config) {
@@ -228,8 +230,11 @@ export async function initModel(sequelize: Sequelize) {
     EpochHashTokenTransfer.register(sequelize)
     ContractUser.register(sequelize);
     CfxUser.register(sequelize);
+    ResultCache.register(sequelize);
     EpochHashCfxTransfer.register(sequelize);
     UniqueAddress.register(sequelize);
+    UniqueAddressHourly.register(sequelize);
+    UniqueAddressDaily.register(sequelize);
     CrossSpaceStat.register(sequelize)
     PosBlock.register(sequelize);
     PosAccount.register(sequelize);
@@ -283,8 +288,8 @@ async function migDB(seq: Sequelize) {
     await KV.sequelize.query(`delete from ${uat} where timeStart < ?`, {
         type: QueryTypes.UPDATE, replacements: ['2025-01-01'],
     })
-    // await checkColumnType(uat, 'addr', 'bigint',
-    //     `alter table ${UniqueAddress.getTableName()} modify column addr bigint not null default 0`);
+    await checkColumnType(uat, 'addr', 'bigint',
+        `alter table ${UniqueAddress.getTableName()} modify column addr bigint not null default 0`);
     // let sql = `desc alter table abi_info drop index idx_sig`;
     // await seq.query(sql, {type: QueryTypes.UPDATE}).then(()=>{
     //     console.log(`OK : ${sql}`)
@@ -369,6 +374,23 @@ interface ColumnAdditionOptions {
     comment?: string;
 }
 
+async function checkColumnType(table: string, col: string, wantType: string, sql: string) {
+    try {
+        const tableDescription = await KV.sequelize.getQueryInterface().describeTable(table);
+        if (tableDescription[col].type.toUpperCase() !== wantType.toUpperCase()) {
+            await KV.sequelize.query(sql, {
+                type: QueryTypes.UPDATE,
+            })
+            console.log(`column modified. ${table}.${col} , old type ${tableDescription[col].type} new type ${wantType}`);
+        } else {
+            console.log(`column type is the same. ${table}.${col} , old type ${tableDescription[col].type}`);
+        }
+    } catch (e) {
+        console.log(`table ${table} , column ${col}, want type ${wantType} `);
+        console.log(`failed to check column type:`, e);
+    }
+}
+
 export async function addColumnIfNotExistsV2(
     queryInterface: QueryInterface,
     tableName: string,
@@ -388,8 +410,12 @@ export async function addColumnIfNotExistsV2(
             console.log(`Column "${columnName}" already exists in table "${tableName}"`);
         }
     } catch (error) {
-        console.error(`Error checking/adding column "${columnName}" to table "${tableName}":`, error);
-        throw error;
+        if (error.message.startsWith('No description found for')) {
+            console.log(` --- table doesn't exist. --- should be created by model. check it.`)
+        } else {
+            console.error(`Error checking/adding column "${columnName}" to table "${tableName}":`, error);
+            throw error;
+        }
     }
 }
 
