@@ -9,7 +9,7 @@ import {col, DataTypes, literal, Model, Op, QueryTypes, Sequelize} from 'sequeli
 import {DailyToken, IDailyToken} from "../model/Token";
 import {Conflux} from "js-conflux-sdk";
 import {fixParticipants, init} from "./tool/FixDailyTokenStat";
-import {initCfxSdk} from "./common/utils";
+import {getOneMonthAgo, getTimeToNextHour, initCfxSdk, MINUTE} from "./common/utils";
 import {TokenTool} from "./tool/TokenTool";
 import {Measure} from "./common/Measure";
 import {Epoch} from "../model/Epoch";
@@ -209,6 +209,7 @@ export async function buildUniqueAddrHourly() {
     endTimeHour.setMinutes(59, 59, 999);
     const table = UniqueAddress.getTableName();
     const hourlyTable = UniqueAddressHourly.getTableName();
+    let changed = false;
     while (maxUniqueAddr.timeEnd >= endTimeHour) {
         const sql = `
         insert into ${hourlyTable} (timeStart, timeEnd, contractId, addr, fromMark, toMark, createdAt, updatedAt)
@@ -226,8 +227,12 @@ export async function buildUniqueAddrHourly() {
         //increase the time window
         startTime.setHours(startTime.getHours() + 1);
         endTimeHour.setHours(endTimeHour.getHours() + 1);
+        changed = true;
     }
     console.log(`unique address time not reach , ${maxUniqueAddr.timeEnd.toISOString()} < ${endTimeHour.toISOString()}`);
+    if (changed) {
+        await topUnique({day: 1});
+    }
 }
 
 export async function buildUniqueAddrDaily() {
@@ -256,6 +261,7 @@ export async function buildUniqueAddrDaily() {
     endTimeDay.setHours(23,59, 59, 999);
     const table = UniqueAddressHourly.getTableName();
     const dailyTable = UniqueAddressDaily.getTableName();
+    let changed = false;
     while (maxUniqueAddrHourly.timeEnd >= endTimeDay) {
         const sql = `
         insert into ${dailyTable} (timeStart, timeEnd, contractId, addr, fromMark, toMark, createdAt, updatedAt)
@@ -273,8 +279,13 @@ export async function buildUniqueAddrDaily() {
         //increase the time window
         startTime.setDate(startTime.getDate() + 1);
         endTimeDay.setDate(endTimeDay.getDate() + 1);
+        changed = true;
     }
     console.log(`daily, unique address time not reach , ${maxUniqueAddrHourly.timeEnd.toISOString()} < ${endTimeDay.toISOString()}`);
+    if (changed) {
+        await topUnique({day: 3});
+        await topUnique({day: 7});
+    }
 }
 
 async function calcDailyUniqueAddr() {
@@ -448,24 +459,32 @@ export function getTokenTool(cfx:Conflux) {
     }
     return toolInfo;
 }
-let lastDay = 0;
 let timer: NodeJS.Timeout;
-async function buildTimelyUniqueAddr() {
+async function buildPeriodicUniqueAddr() {
     if (timer) {
         clearTimeout(timer);
     }
     try {
         await buildUniqueAddrHourly();
         await buildUniqueAddrDaily();
-
+        const oneMonthAgo = getOneMonthAgo();
+        for (const m of [UniqueAddress, UniqueAddressHourly, UniqueAddressDaily]) {
+            const t = m.getTableName();
+            await UniqueAddressHourly.sequelize.query(
+                `delete from ${t} where timeStart < ?`,
+                {type: QueryTypes.UPDATE, replacements: [oneMonthAgo]}
+            ).catch(e=>{
+                console.log(`failed to prune ${t}`, e);
+            })
+        }
     } catch (e) {
         console.log(`failed to build unique addr timely: `, e);
     }
-    timer = setTimeout(buildTimelyUniqueAddr, 3600 * 1000);
+    timer = setTimeout(buildPeriodicUniqueAddr, getTimeToNextHour() + MINUTE);
 }
 let maxDbTransferEpoch = 0;
 async function run(fromEpoch:number, stopBeforeEpoch:number, endFn:()=>void) {
-    buildTimelyUniqueAddr().then();
+    buildPeriodicUniqueAddr().then();
     const sql = [Erc20Transfer, Erc721Transfer, Erc1155Transfer].map(t=>{
         return ` select contractId, fromId as \`from\`, toId as \`to\` from ${t.getTableName()} where epoch=? `
     }).join(" union ");
