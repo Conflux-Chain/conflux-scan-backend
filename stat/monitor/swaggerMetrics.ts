@@ -1,5 +1,6 @@
 import {loadConfig, StatConfig} from "../config/StatConfig";
 import {FieldType, InfluxDB} from "influx";
+import {safeAddErrorLog} from "./ErrorMonitor";
 
 const superagent = require('superagent');
 
@@ -46,7 +47,13 @@ export async function scheduleSwaggerReporter(config: StatConfig, dataPort: numb
 	if (!inf) {
 		return
 	}
-	setInterval(()=>report(config, inf, dataPort, name, path), 30_000);
+	setInterval(()=>{
+		try {
+			report(config, inf, dataPort, name, path)
+		} catch (e) {
+			safeAddErrorLog(`swagger-metrics`, `upload-data`, e);
+		}
+	}, 30_000);
 }
 
 async function main() {
