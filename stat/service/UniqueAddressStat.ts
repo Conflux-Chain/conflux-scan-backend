@@ -372,17 +372,9 @@ export async function loadTopUniqueBaseCache(day: number) {
     return emptyUniqueData;
 }
 const emptyUniqueData = {list: {sender:[],receiver:[],all:[]}, timeBegin: new Date(0), maxTimeStart: new Date(0), alignTimeEnd: undefined};
-export async function topUnique({limit = 10, day = 7, showSql = false}) {
-    // index is on timeStart, not timeEnd.
-    // do not use universal time because the result may be too few.
-    const maxUnique = ConfigInstance.noTopToken ? null
-        : await (day > 1 ? UniqueAddressDaily : UniqueAddressHourly).findOne({order:[['timeStart','desc']]});
-    if (maxUnique === null) {
-        console.log(`UniqueAddr no unique address record found.`)
-        return emptyUniqueData;
-    }
+
+export function chooseTimeRange(day: number, alignTimeEnd: Date) {
     let timeBegin: Date;
-    let alignTimeEnd = new Date(maxUnique.timeStart);
     if (day > 1) {
         alignTimeEnd.setHours(0, 0, 0, 0);
         timeBegin = new Date(alignTimeEnd);
@@ -392,6 +384,20 @@ export async function topUnique({limit = 10, day = 7, showSql = false}) {
         timeBegin = new Date(alignTimeEnd);
         timeBegin.setHours(timeBegin.getHours() - 23);
     }
+    return timeBegin;
+}
+
+export async function topUnique({limit = 10, day = 7, showSql = false}) {
+    // index is on timeStart, not timeEnd.
+    // do not use universal time because the result may be too few.
+    const maxUnique = ConfigInstance.noTopToken ? null
+        : await (day > 1 ? UniqueAddressDaily : UniqueAddressHourly).findOne({order:[['timeStart','desc']]});
+    if (maxUnique === null) {
+        console.log(`UniqueAddr no unique address record found.`)
+        return emptyUniqueData;
+    }
+    let alignTimeEnd = new Date(maxUnique.timeStart);
+    let timeBegin = chooseTimeRange(day, alignTimeEnd);
     const ms = Date.now();
     return (day > 1 ? UniqueAddressDaily : UniqueAddressHourly).findAll(({
         attributes: [

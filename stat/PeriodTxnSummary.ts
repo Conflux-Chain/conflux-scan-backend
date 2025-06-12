@@ -1,7 +1,11 @@
 //
-import {DataTypes, Model, Sequelize} from "sequelize";
+import {col, DataTypes, literal, Model, Op, Sequelize} from "sequelize";
 import {FullBlock, FullTransaction} from "./model/FullBlock";
-import {buildGeneralDaily} from "./service/UniqueAddressStat";
+import {buildGeneralDaily, chooseTimeRange, classifyTopList} from "./service/UniqueAddressStat";
+import {ConfigInstance} from "./config/StatConfig";
+import {UniqueAddressDaily, UniqueAddressHourly} from "./model/UniqueAddr";
+import {ResultCache, TopTxParticipantBaseCache, TopUniqueBaseCache} from "./model/ResultCache";
+import {safeAddErrorLog} from "./monitor/ErrorMonitor";
 
 export interface ITxSenderHourly {
 	id?: number;
@@ -140,7 +144,19 @@ export async function buildTxSenderReceiverHourly() {
 
 	const sqlReceiver = buildDailyTxParticipantSql(TxReceiverHourly, TxReceiverDaily);
 	await buildGeneralDaily(sqlReceiver, TxReceiverHourly as any, TxReceiverDaily as any);
+
+	await buildTopTxPartisAll(3)
+	await buildTopTxPartisAll(7)
 }
+
+export async function buildTopTxPartisAll(day: number) {
+	await topTxParticipant('sender', day, 'count', TxSenderHourly, TxSenderDaily);
+	await topTxParticipant('sender', day, 'amount', TxSenderHourly, TxSenderDaily);
+
+	await topTxParticipant('receiver', day, 'count', TxReceiverHourly, TxReceiverDaily);
+	await topTxParticipant('receiver', day, 'amount', TxReceiverHourly, TxReceiverDaily);
+}
+
 export async function buildTxSummaryHourly(saveTable: typeof TxSenderHourly, groupBy: string) {
 	// find max bean
 	const maxSourceDataBean = await FullBlock.findOne({
@@ -190,6 +206,40 @@ export async function buildTxSummaryHourly(saveTable: typeof TxSenderHourly, gro
 	}
 	console.log(`block time not reach , ${maxSourceDataBean.createdAt.toISOString()} < ${endTimeHour.toISOString()}`);
 	if (changed) {
-		// await topUnique({day: 1});
+		await buildTopTxPartisAll(1);
 	}
+}
+
+async function topTxParticipant(party: 'sender' | 'receiver', day: number, col: 'count' | 'amount', hourlyModel: typeof TxSenderHourly, dailyModel: typeof TxReceiverDaily) {
+	const useModel = day > 1 ? dailyModel : hourlyModel;
+	const maxUnique = await useModel.findOne({order:[['timeStart','desc']]});
+	if (maxUnique === null) {
+		console.log(`max record not found. ${useModel.getTableName()}`);
+		return {list: [], sum: 0, duration: 0};
+	}
+	let alignTimeEnd = new Date(maxUnique.timeStart);
+	let timeBegin = chooseTimeRange(day, alignTimeEnd);
+	const ms = Date.now();
+	const list = await useModel.findAll(({
+		attributes: [
+			'addrId',
+			[literal(`sum(${col})`), 'v'],
+		], raw: true, group: ['addrId'], order: [['v', 'desc']],
+		where: {timeStart:{[Op.between]: [timeBegin, alignTimeEnd]}}, limit: 10,
+		// logging: console.log,
+	}));
+	let sumOption = {where:{
+			timeStart:{[Op.between]: [timeBegin, alignTimeEnd]},
+		}};
+	const sum = await useModel.sum(col, sumOption);
+	const duration = Date.now() - ms;
+	const result = {list, duration, sum};
+	const name = TopTxParticipantBaseCache + "_" + day + 'd_' + col + '_' + party;
+	console.log(`${__filename} ${name} duration ms `, duration);
+	await ResultCache.upsert({
+		name: name,
+		content: JSON.stringify(result, null, 4),
+	}).catch(e=>{
+		safeAddErrorLog('TopTxParticipantBaseCache', name, e);
+	})
 }
