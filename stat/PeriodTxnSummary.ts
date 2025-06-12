@@ -138,7 +138,7 @@ export async function buildTxSenderReceiverHourly() {
 	const sqlSender = buildDailyTxParticipantSql(TxSenderHourly, TxSenderDaily);
 	await buildGeneralDaily(sqlSender, TxSenderHourly as any, TxSenderDaily as any);
 
-	const sqlReceiver = buildDailyTxParticipantSql(TxSenderHourly, TxSenderDaily);
+	const sqlReceiver = buildDailyTxParticipantSql(TxReceiverHourly, TxReceiverDaily);
 	await buildGeneralDaily(sqlReceiver, TxReceiverHourly as any, TxReceiverDaily as any);
 }
 export async function buildTxSummaryHourly(saveTable: typeof TxSenderHourly, groupBy: string) {
