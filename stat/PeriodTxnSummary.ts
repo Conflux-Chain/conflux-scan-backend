@@ -164,7 +164,7 @@ export async function buildTxSummaryHourly(saveTable: typeof TxSenderHourly, gro
 		startTime.setMinutes(0, 0, 0);
 	}
 	const endTimeHour = new Date(startTime);
-	endTimeHour.setMinutes(59, 59, 999);
+	endTimeHour.setMinutes(59, 59, 0);
 	const table = FullTransaction.getTableName();
 	const hourlyTable = saveTable.getTableName();
 	let changed = false;

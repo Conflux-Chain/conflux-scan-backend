@@ -277,7 +277,7 @@ export async function buildGeneralDaily(sql: string,
         startTime.setHours(0, 0, 0, 0);
     }
     const endTimeDay = new Date(startTime);
-    endTimeDay.setHours(23,59, 59, 999);
+    endTimeDay.setHours(23,59, 59, 0);
 
     let changed = false;
     while (maxUniqueAddrHourly.timeEnd >= endTimeDay) {
@@ -330,7 +330,7 @@ export async function calcOneDayUniqueAddrAndTokenTxn(dt:Date) {
     const timeBegin = new Date(dt);
     timeBegin.setHours(0, 0, 0, 0)
     const timeEnd = new Date(timeBegin);
-    timeEnd.setHours(23, 59, 59, 999);
+    timeEnd.setHours(23, 59, 59, 0);
     adjustTodayEndTime(timeEnd)
     await calcOneDayUniqueAddr(timeBegin, timeEnd);
     await calcDailyTokenTxn(timeBegin, timeEnd);
