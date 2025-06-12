@@ -77,6 +77,7 @@ import {AddressNfts} from "../model/AddrNft";
 import {sleep} from "./tool/ProcessTool";
 import {UniqueAddressDaily, UniqueAddressHourly} from "../model/UniqueAddr";
 import {ResultCache} from "../model/ResultCache";
+import {TxReceiverHourly, TxSenderHourly} from "../PeriodTxnSummary";
 
 let conf
 export function createDB(config) {
@@ -235,6 +236,8 @@ export async function initModel(sequelize: Sequelize) {
     UniqueAddress.register(sequelize);
     UniqueAddressHourly.register(sequelize);
     UniqueAddressDaily.register(sequelize);
+    TxSenderHourly.register(sequelize);
+    TxReceiverHourly.register(sequelize);
     CrossSpaceStat.register(sequelize)
     PosBlock.register(sequelize);
     PosAccount.register(sequelize);

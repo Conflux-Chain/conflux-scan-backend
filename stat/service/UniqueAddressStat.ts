@@ -194,7 +194,7 @@ export async function buildUniqueAddrHourly() {
     }
     let startTime: Date;
     const maxUAHourly = await UniqueAddressHourly.findOne({
-        order: [['id', 'desc']], limit: 1, raw: true,
+        order: [['timeStart', 'desc']], limit: 1, raw: true,
     })
     if (maxUAHourly) {
         startTime = maxUAHourly.timeStart;

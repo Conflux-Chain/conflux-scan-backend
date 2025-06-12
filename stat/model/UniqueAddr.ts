@@ -1,8 +1,6 @@
 //
 import {DataTypes, Model, Sequelize} from "sequelize";
 
-export const ADDR_LEN = 8 // 40. only save the tail of an address.
-
 export interface IUniqueAddrHourly {
 	id?:number
 	timeStart: Date

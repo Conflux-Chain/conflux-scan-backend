@@ -1,6 +1,6 @@
 import {redirectLog} from "./config/LoggerConfig";
 import {init} from "./service/tool/FixDailyTokenStat";
-import {initCfxSdk} from "./service/common/utils";
+import {getTimeToNextHour, initCfxSdk, MINUTE} from "./service/common/utils";
 import {StatApp} from "./StatApp";
 import {BlockAndMinerSync} from "./service/BlockAndMinerSync";
 import {removeDate1970, scheduleDailyActiveAddress} from "./model/StatAddress";
@@ -32,13 +32,33 @@ import {StatDailyPosReward} from "./service/timerstat/StatDailyPosReward";
 import {StatDailyPowReward} from "./service/timerstat/StatDailyPowReward";
 import {KEY_STAT_TASK, repeatHeartBeat} from "./model/HeartBeat";
 import {StatDailyBurntFee} from "./service/timerstat/StatDailyBurntFee";
-import {scheduleGasConsumerStat} from "./service/TxnQuery";
+import {statGasConsumer} from "./service/TxnQuery";
 import {TokenSecurityAuditSync} from "./service/TokenSecurityAuditSync";
 import {TokenQuery} from "./service/TokenQuery";
 import {scheduleRollupDailyCfxTxn} from "./model/CfxTransfer";
 import {listenPort} from "./monitor/serverApi";
+import {buildTxSenderReceiverHourly, buildTxSummaryHourly} from "./PeriodTxnSummary";
+import {safeAddErrorLog} from "./monitor/ErrorMonitor";
+
+async function runTools() {
+    const [,, cmd, arg1] = process.argv;
+    let quit = true;
+    if (cmd === '') {
+        await init();
+        await buildTxSenderReceiverHourly()
+    } else {
+        quit = false;
+    }
+    if (quit) {
+        if (KV.sequelize) {
+            await KV.sequelize.close();
+        }
+        process.exit(0);
+    }
+}
 
 async function main() {
+    await runTools();
     redirectLog()
     regExitHook()
     const config = await init()
@@ -64,7 +84,7 @@ async function main() {
     //
     const reporter = new Reporter({config, cfx});
     reporter.start().then();
-    scheduleGasConsumerStat();
+    runAllPeriodicStat().then();
     //
     const statDailyBlockData = new StatDailyBlockData({cfx});
     statDailyBlockData.schedule(1000 * 60).then();
@@ -146,6 +166,23 @@ async function countTableDelta(model, keyCountAll, keyCountId) {
         await KV.upsert({key: keyCountId, value: `${latestId}`}, {transaction: dbTx});
     });
 }
+let timer: NodeJS.Timeout;
+async function runAllPeriodicStat() {
+    if (timer) {
+        clearTimeout(timer);
+    }
+    await buildTxSenderReceiverHourly().catch(e=>{
+        safeAddErrorLog(`stat-task`, 'tx-sender-receiver', e);
+    });
+    await statGasConsumer(new Date()).catch(e=>{
+        safeAddErrorLog('stat-task', 'gas-consumer', e).then();
+        console.log(`stat Gas Consumer error`, e)
+    });
+
+    // next round
+    timer = setTimeout(runAllPeriodicStat, getTimeToNextHour() + MINUTE * 10);
+}
+
 if (module === require.main) {
     main().then(()=>{
         return listenPort('stat_task')
