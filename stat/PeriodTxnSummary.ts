@@ -123,8 +123,8 @@ export class TxSenderDaily extends Model<ITxSenderDaily> implements ITxSenderDai
 function buildDailyTxParticipantSql(hourlyModel: typeof TxSenderHourly, dailyModel: typeof TxReceiverDaily) {
 	const table = hourlyModel.getTableName();
 	const dailyTable = dailyModel.getTableName();
-	const senderSql = `select ? as timeStart, ? as timeEnd, ${''
-	} as addrId, sum(count) as count, sum(amount) as amount , now(), now() from ${table
+	const senderSql = `select ? as timeStart, ? as timeEnd, 
+	addrId, sum(count) as count, sum(amount) as amount , now(), now() from ${table
 	} where timeStart between ? and ? and status = 0 group by addrId`;
 	return `
         insert into ${dailyTable} (timeStart, timeEnd, addrId, count, amount, createdAt, updatedAt)
