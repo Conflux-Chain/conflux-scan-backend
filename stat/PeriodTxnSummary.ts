@@ -120,12 +120,12 @@ export class TxSenderDaily extends Model<ITxSenderDaily> implements ITxSenderDai
 	}
 }
 
-function buildDailyTxParticipantSql(groupBy: string, hourlyModel: typeof TxSenderHourly, dailyModel: typeof TxReceiverDaily) {
+function buildDailyTxParticipantSql(hourlyModel: typeof TxSenderHourly, dailyModel: typeof TxReceiverDaily) {
 	const table = hourlyModel.getTableName();
 	const dailyTable = dailyModel.getTableName();
-	const senderSql = `select ? as timeStart, ? as timeEnd, ${groupBy
+	const senderSql = `select ? as timeStart, ? as timeEnd, ${''
 	} as addrId, sum(count) as count, sum(amount) as amount , now(), now() from ${table
-	} where timeStart between ? and ? and status = 0 group by ${groupBy}`;
+	} where timeStart between ? and ? and status = 0 group by addrId`;
 	return `
         insert into ${dailyTable} (timeStart, timeEnd, addrId, count, amount, createdAt, updatedAt)
             (${senderSql}) on duplicate key update updatedAt = values(updatedAt), count=values(count), amount=values(amount)`;
@@ -135,10 +135,10 @@ export async function buildTxSenderReceiverHourly() {
 	await buildTxSummaryHourly(TxSenderHourly, 'fromId');
 	await buildTxSummaryHourly(TxReceiverHourly, 'toId');
 
-	const sqlSender = buildDailyTxParticipantSql('fromId', TxSenderHourly, TxSenderDaily);
+	const sqlSender = buildDailyTxParticipantSql(TxSenderHourly, TxSenderDaily);
 	await buildGeneralDaily(sqlSender, TxSenderHourly as any, TxSenderDaily as any);
 
-	const sqlReceiver = buildDailyTxParticipantSql('toId', TxSenderHourly, TxSenderDaily);
+	const sqlReceiver = buildDailyTxParticipantSql(TxSenderHourly, TxSenderDaily);
 	await buildGeneralDaily(sqlReceiver, TxReceiverHourly as any, TxReceiverDaily as any);
 }
 export async function buildTxSummaryHourly(saveTable: typeof TxSenderHourly, groupBy: string) {
