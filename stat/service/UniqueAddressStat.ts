@@ -207,7 +207,7 @@ export async function buildUniqueAddrHourly() {
         startTime.setMinutes(0, 0, 0);
     }
     const endTimeHour = new Date(startTime);
-    endTimeHour.setMinutes(59, 59, 999);
+    endTimeHour.setMinutes(59, 59, 0);
     const table = UniqueAddress.getTableName();
     const hourlyTable = UniqueAddressHourly.getTableName();
     let changed = false;
