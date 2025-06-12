@@ -1,10 +1,8 @@
 //
-import {col, DataTypes, literal, Model, Op, Sequelize} from "sequelize";
+import {DataTypes, literal, Model, Op, Sequelize} from "sequelize";
 import {FullBlock, FullTransaction} from "./model/FullBlock";
-import {buildGeneralDaily, chooseTimeRange, classifyTopList} from "./service/UniqueAddressStat";
-import {ConfigInstance} from "./config/StatConfig";
-import {UniqueAddressDaily, UniqueAddressHourly} from "./model/UniqueAddr";
-import {ResultCache, TopTxParticipantBaseCache, TopUniqueBaseCache} from "./model/ResultCache";
+import {buildGeneralDaily, chooseTimeRange} from "./service/UniqueAddressStat";
+import {ResultCache, TopTxParticipantBaseCache} from "./model/ResultCache";
 import {safeAddErrorLog} from "./monitor/ErrorMonitor";
 
 export interface ITxSenderHourly {
@@ -213,7 +211,7 @@ export async function buildTxSummaryHourly(saveTable: typeof TxSenderHourly, gro
 async function saveCache(day: number, col: "count" | "amount", party: "sender" | "receiver", duration: number, result: {
 	list: TxReceiverDaily[];
 	duration: number;
-	sum: number
+	sum: number|string
 }) {
 	const name = TopTxParticipantBaseCache + "_" + day + 'd_' + col + '_' + party;
 	console.log(`${__filename} ${name} duration ms `, duration);
@@ -225,13 +223,14 @@ async function saveCache(day: number, col: "count" | "amount", party: "sender" |
 	})
 }
 
+export const EmptyTxTopData = {list: [], sum: '0', duration: 0};
+
 async function topTxParticipant(party: 'sender' | 'receiver', day: number, col: 'count' | 'amount', hourlyModel: typeof TxSenderHourly, dailyModel: typeof TxReceiverDaily) {
 	const useModel = day > 1 ? dailyModel : hourlyModel;
 	const maxUnique = await useModel.findOne({order:[['timeStart','desc']]});
 	if (maxUnique === null) {
 		console.log(`max record not found. ${useModel.getTableName()}`);
-		const result = {list: [], sum: 0, duration: 0};
-		await saveCache(day, col, party, 0, result);
+		await saveCache(day, col, party, 0, EmptyTxTopData);
 	}
 	let alignTimeEnd = new Date(maxUnique.timeStart);
 	let timeBegin = chooseTimeRange(day, alignTimeEnd);
@@ -239,15 +238,17 @@ async function topTxParticipant(party: 'sender' | 'receiver', day: number, col: 
 	const list = await useModel.findAll(({
 		attributes: [
 			'addrId',
-			[literal(`sum(${col})`), 'v'],
-		], raw: true, group: ['addrId'], order: [['v', 'desc']],
+			[literal(`sum(${col})`), 'value'],
+		], raw: true, group: ['addrId'], order: [['value', 'desc']],
 		where: {timeStart:{[Op.between]: [timeBegin, alignTimeEnd]}}, limit: 10,
 		// logging: console.log,
 	}));
 	let sumOption = {where:{
 			timeStart:{[Op.between]: [timeBegin, alignTimeEnd]},
 		}};
-	const sum = await useModel.sum(col, sumOption);
+	const sum = await useModel.sum(col, sumOption).then(res=>{
+		return BigInt(res).toString();
+	});
 	const duration = Date.now() - ms;
 	const result = {list, duration, sum};
 	await saveCache(day, col, party, duration, result);
