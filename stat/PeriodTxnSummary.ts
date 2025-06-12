@@ -96,8 +96,9 @@ export async function buildTxSummaryHourly(saveTable: typeof TxSenderHourly, gro
 	const hourlyTable = saveTable.getTableName();
 	let changed = false;
 	while (maxSourceDataBean.createdAt >= endTimeHour) {
-		const senderSql = `select ? as timeStart, ? as timeEnd, ${groupBy} as addrId, count(*) as count, sum(dripValue) as amount from ${table}
-                where createdAt between ? and ? and status = 0 group by ${groupBy}`;
+		const senderSql = `select ? as timeStart, ? as timeEnd, ${groupBy
+				} as addrId, count(*) as count, sum(dripValue) as amount , now(), now() from ${table
+				} where createdAt between ? and ? and status = 0 group by ${groupBy}`;
 		const sql = `
         insert into ${hourlyTable} (timeStart, timeEnd, addrId, count, amount, createdAt, updatedAt)
             (${senderSql}) on duplicate key update updatedAt = values(updatedAt), count=values(count), amount=values(amount)`;

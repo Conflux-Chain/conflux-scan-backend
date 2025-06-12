@@ -57,7 +57,7 @@ async function runTools() {
     }
 }
 
-// node stat/StatTask.js
+// node stat/StatTask.js stat/StatTask.ts
 
 async function main() {
     await runTools();
