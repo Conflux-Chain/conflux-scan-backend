@@ -43,7 +43,7 @@ import {safeAddErrorLog} from "./monitor/ErrorMonitor";
 async function runTools() {
     const [,, cmd, arg1] = process.argv;
     let quit = true;
-    if (cmd === '') {
+    if (cmd === 'build-periodic-tx') {
         await init();
         await buildTxSenderReceiverHourly()
     } else {
@@ -56,6 +56,8 @@ async function runTools() {
         process.exit(0);
     }
 }
+
+// node stat/StatTask.js
 
 async function main() {
     await runTools();
