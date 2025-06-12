@@ -134,25 +134,47 @@ function buildDailyTxParticipantSql(hourlyModel: typeof TxSenderHourly, dailyMod
 }
 
 export async function buildTxSenderReceiverHourly() {
-	await buildTxSummaryHourly(TxSenderHourly, 'fromId');
-	await buildTxSummaryHourly(TxReceiverHourly, 'toId');
+	await buildTxSummaryHourly(TxSenderHourly, 'fromId').then(async (changed)=>{
+		if (changed){
+			await buildSender(1);
+		}
+	});
+	await buildTxSummaryHourly(TxReceiverHourly, 'toId').then(async (changed)=>{
+		if (changed){
+			await buildReceiver(1);
+		}
+	});
 
 	const sqlSender = buildDailyTxParticipantSql(TxSenderHourly, TxSenderDaily);
-	await buildGeneralDaily(sqlSender, TxSenderHourly as any, TxSenderDaily as any);
+	await buildGeneralDaily(sqlSender, TxSenderHourly as any, TxSenderDaily as any).then(async (changed)=>{
+		if (changed){
+			await buildSender(3);
+			await buildSender(7);
+		}
+	});
 
 	const sqlReceiver = buildDailyTxParticipantSql(TxReceiverHourly, TxReceiverDaily);
-	await buildGeneralDaily(sqlReceiver, TxReceiverHourly as any, TxReceiverDaily as any);
+	await buildGeneralDaily(sqlReceiver, TxReceiverHourly as any, TxReceiverDaily as any).then(async (changed)=>{
+		if (changed){
+			await buildReceiver(3);
+			await buildReceiver(7);
+		}
+	});
+}
 
-	await buildTopTxPartisAll(3)
-	await buildTopTxPartisAll(7)
+async function buildSender(day: number) {
+	await topTxParticipant('sender', day, 'count', TxSenderHourly, TxSenderDaily);
+	await topTxParticipant('sender', day, 'amount', TxSenderHourly, TxSenderDaily);
+}
+
+async function buildReceiver(day: number) {
+	await topTxParticipant('receiver', day, 'count', TxReceiverHourly, TxReceiverDaily);
+	await topTxParticipant('receiver', day, 'amount', TxReceiverHourly, TxReceiverDaily);
 }
 
 export async function buildTopTxPartisAll(day: number) {
-	await topTxParticipant('sender', day, 'count', TxSenderHourly, TxSenderDaily);
-	await topTxParticipant('sender', day, 'amount', TxSenderHourly, TxSenderDaily);
-
-	await topTxParticipant('receiver', day, 'count', TxReceiverHourly, TxReceiverDaily);
-	await topTxParticipant('receiver', day, 'amount', TxReceiverHourly, TxReceiverDaily);
+	await buildSender(day);
+	await buildReceiver(day);
 }
 
 export async function buildTxSummaryHourly(saveTable: typeof TxSenderHourly, groupBy: string) {
@@ -162,7 +184,7 @@ export async function buildTxSummaryHourly(saveTable: typeof TxSenderHourly, gro
 	})
 	if (!maxSourceDataBean) {
 		console.log(`${__filename} no source data found`);
-		return;
+		return {change: false};
 	}
 	let startTime: Date;
 	const maxHourly = await saveTable.findOne({
@@ -203,9 +225,7 @@ export async function buildTxSummaryHourly(saveTable: typeof TxSenderHourly, gro
 		changed = true;
 	}
 	console.log(`block time not reach , ${maxSourceDataBean.createdAt.toISOString()} < ${endTimeHour.toISOString()}`);
-	if (changed) {
-		await buildTopTxPartisAll(1);
-	}
+	return {changed};
 }
 
 async function saveCache(day: number, col: "count" | "amount", party: "sender" | "receiver", duration: number, result: {
