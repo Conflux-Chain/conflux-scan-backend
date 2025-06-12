@@ -56,7 +56,6 @@ export class TxnSync {
         // const drip2cfx = 1e+18
         const addressArray = [];
         list.forEach(tx=>{
-            tx.value = tx['v'];
             tx.percent = BigFixed(tx.value).div(BigFixed(sum||1)).mul(100)
             tx.rank = rank++
             tx.hex = idHexMap.get(tx['addrId']) || ZERO_ADDRESS_HEX;
