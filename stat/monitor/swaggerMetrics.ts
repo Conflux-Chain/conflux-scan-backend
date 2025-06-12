@@ -47,11 +47,11 @@ export async function scheduleSwaggerReporter(config: StatConfig, dataPort: numb
 	if (!inf) {
 		return
 	}
-	setInterval(()=>{
+	setInterval(async ()=>{
 		try {
-			report(config, inf, dataPort, name, path)
+			await report(config, inf, dataPort, name, path)
 		} catch (e) {
-			safeAddErrorLog(`swagger-metrics`, `upload-data`, e);
+			safeAddErrorLog(`swagger-metrics`, `upload-data`, e).then();
 		}
 	}, 30_000);
 }
