@@ -1,16 +1,14 @@
 import {Op, QueryTypes} from "sequelize";
 // @ts-ignore
-import {Conflux, ConfluxOption, format} from "js-conflux-sdk";
-import {calculateBeginTime, fmtDtUTC, pickNumber} from "../model/Utils";
+import {Conflux, format} from "js-conflux-sdk";
+import {fmtDtUTC, pickNumber} from "../model/Utils";
 import {StatApp} from "../StatApp";
-import {FullBlock, FullTransaction} from "../model/FullBlock";
 import {sleep} from "./tool/ProcessTool";
 import {BlockAndMinerSync} from "./BlockAndMinerSync";
-import {Errors} from "./common/LogicError";
 import {ResultCache, TopTxParticipantBaseCache} from "../model/ResultCache";
 import {EmptyTxTopData} from "../PeriodTxnSummary";
 import {idHex40Map} from "../model/HexMap";
-import {ZERO_ADDRESS_HEX} from "js-conflux-sdk/dist/types/CONST";
+import {CONST} from "./common/constant";
 
 const BigFixed = require('bigfixed');
 
@@ -58,7 +56,7 @@ export class TxnSync {
         list.forEach(tx=>{
             tx.percent = BigFixed(tx.value).div(BigFixed(sum||1)).mul(100)
             tx.rank = rank++
-            tx.hex = idHexMap.get(tx['addrId']) || ZERO_ADDRESS_HEX;
+            tx.hex = idHexMap.get(tx['addrId']) || CONST.ZERO_ADDRESS;
             tx.base32 = this.base32(tx.hex, networkId)
             addressArray.push(tx.base32);
         })
