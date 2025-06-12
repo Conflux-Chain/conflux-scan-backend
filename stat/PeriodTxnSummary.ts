@@ -125,7 +125,7 @@ function buildDailyTxParticipantSql(hourlyModel: typeof TxSenderHourly, dailyMod
 	const dailyTable = dailyModel.getTableName();
 	const senderSql = `select ? as timeStart, ? as timeEnd, 
 	addrId, sum(count) as count, sum(amount) as amount , now(), now() from ${table
-	} where timeStart between ? and ? and status = 0 group by addrId`;
+	} where timeStart between ? and ? group by addrId`;
 	return `
         insert into ${dailyTable} (timeStart, timeEnd, addrId, count, amount, createdAt, updatedAt)
             (${senderSql}) on duplicate key update updatedAt = values(updatedAt), count=values(count), amount=values(amount)`;
