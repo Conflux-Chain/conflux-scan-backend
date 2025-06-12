@@ -23,7 +23,12 @@ async function tryGetBlock(cfx: Conflux, b: FullBlock) {
 }
 
 async function main() {
+	const [,,cmd] = process.argv;
 	const cfg = await init();
+	if (cmd === 'clearProgress') {
+		await KV.destroy({where: {key: cursorKey}});
+		console.log(cmd);
+	}
 	const block = await FullBlock.findOne({order: [['epoch', 'desc']]});
 	const blockMin = await FullBlock.findOne({order: [['epoch', 'asc']]});
 	let ep = await KV.getNumber(cursorKey, block.epoch);
@@ -55,3 +60,5 @@ async function main() {
 if (module === require.main) {
 	main().then();
 }
+
+// stat/service/tool/RebuildBlock.js
