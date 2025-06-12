@@ -74,7 +74,7 @@ export class ContractVerify extends Model<IContractVerify> implements IContractV
             sourceCode: {type: DataTypes.TEXT({length: 'long'}), allowNull: true,},
             abi: {type: DataTypes.TEXT, allowNull: true,},
             optimizeFlag: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
-            optimizeRuns: {type: DataTypes.INTEGER, allowNull: true,},
+            optimizeRuns: {type: DataTypes.INTEGER, allowNull: false, defaultValue: 0},
             license: {type: DataTypes.CHAR(255), allowNull: true},
             libraries: {type: DataTypes.STRING(1024), allowNull: true},
             evmVersion: {type: DataTypes.CHAR(20), allowNull: true},
