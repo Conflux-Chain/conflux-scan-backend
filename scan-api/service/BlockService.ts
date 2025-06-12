@@ -114,13 +114,13 @@ export class BlockService {
 
     let newTransactionCount = 0;
     let gasPriceCount = BigInt(0);
-    let gasUsed = BigInt(0);
+    // let gasUsed = BigInt(0);
     let crossSpaceTransactionCount = 0;
     lodash.forEach(transactions, (transaction) => {
       if (transaction.blockHash === hash) {
         newTransactionCount += 1;
         gasPriceCount += BigInt(transaction.gasPrice);
-        gasUsed += BigInt(transaction.gas)
+        // gasUsed += BigInt(transaction.gas)
       }
       if(!transaction.gasPrice){
         crossSpaceTransactionCount++
@@ -131,16 +131,16 @@ export class BlockService {
       newTransactionCount,
       avgGasPrice: newTransactionCount ? BigFixed(gasPriceCount).div(newTransactionCount) : BigFixed(0),
     };
-    if(NoCoreSpace) {
+    // if(NoCoreSpace) {
       // For non-cfx chains, use block's gasLIMIT and gasUsed
-    } else {
-      result['gasUsed'] = gasUsed;
-      if (!StatApp.isEVM) {
-        // Some calculations are performed when syncing blocks
-        const block = await FullBlock.findOne({where: {hash}})
-        block && (result['gasLimit'] = block['gasLimit'])
-      }
-    }
+    // } else {
+      // result['gasUsed'] = gasUsed;
+      // if (!StatApp.isEVM) {
+      //   Some calculations are performed when syncing blocks
+        // const block = await FullBlock.findOne({where: {hash}})
+        // block && (result['gasLimit'] = block['gasLimit'])
+      // }
+    // }
     StatApp.isEVM && (result['crossSpaceTransactionCount'] = crossSpaceTransactionCount)
 
     return result;
