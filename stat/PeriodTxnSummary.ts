@@ -251,6 +251,7 @@ async function topTxParticipant(party: 'sender' | 'receiver', day: number, col: 
 	if (maxUnique === null) {
 		console.log(`max record not found. ${useModel.getTableName()}`);
 		await saveCache(day, col, party, 0, EmptyTxTopData);
+		return;
 	}
 	let alignTimeEnd = new Date(maxUnique.timeStart);
 	let timeBegin = chooseTimeRange(day, alignTimeEnd);
