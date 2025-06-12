@@ -210,12 +210,28 @@ export async function buildTxSummaryHourly(saveTable: typeof TxSenderHourly, gro
 	}
 }
 
+async function saveCache(day: number, col: "count" | "amount", party: "sender" | "receiver", duration: number, result: {
+	list: TxReceiverDaily[];
+	duration: number;
+	sum: number
+}) {
+	const name = TopTxParticipantBaseCache + "_" + day + 'd_' + col + '_' + party;
+	console.log(`${__filename} ${name} duration ms `, duration);
+	await ResultCache.upsert({
+		name: name,
+		content: JSON.stringify(result, null, 4),
+	}).catch(e => {
+		safeAddErrorLog('TopTxParticipantBaseCache', name, e);
+	})
+}
+
 async function topTxParticipant(party: 'sender' | 'receiver', day: number, col: 'count' | 'amount', hourlyModel: typeof TxSenderHourly, dailyModel: typeof TxReceiverDaily) {
 	const useModel = day > 1 ? dailyModel : hourlyModel;
 	const maxUnique = await useModel.findOne({order:[['timeStart','desc']]});
 	if (maxUnique === null) {
 		console.log(`max record not found. ${useModel.getTableName()}`);
-		return {list: [], sum: 0, duration: 0};
+		const result = {list: [], sum: 0, duration: 0};
+		await saveCache(day, col, party, 0, result);
 	}
 	let alignTimeEnd = new Date(maxUnique.timeStart);
 	let timeBegin = chooseTimeRange(day, alignTimeEnd);
@@ -234,12 +250,5 @@ async function topTxParticipant(party: 'sender' | 'receiver', day: number, col: 
 	const sum = await useModel.sum(col, sumOption);
 	const duration = Date.now() - ms;
 	const result = {list, duration, sum};
-	const name = TopTxParticipantBaseCache + "_" + day + 'd_' + col + '_' + party;
-	console.log(`${__filename} ${name} duration ms `, duration);
-	await ResultCache.upsert({
-		name: name,
-		content: JSON.stringify(result, null, 4),
-	}).catch(e=>{
-		safeAddErrorLog('TopTxParticipantBaseCache', name, e);
-	})
+	await saveCache(day, col, party, duration, result);
 }
