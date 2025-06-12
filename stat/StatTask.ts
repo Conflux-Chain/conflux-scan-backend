@@ -37,7 +37,7 @@ import {TokenSecurityAuditSync} from "./service/TokenSecurityAuditSync";
 import {TokenQuery} from "./service/TokenQuery";
 import {scheduleRollupDailyCfxTxn} from "./model/CfxTransfer";
 import {listenPort} from "./monitor/serverApi";
-import {buildTxSenderReceiverHourly, buildTxSummaryHourly} from "./PeriodTxnSummary";
+import {buildTxSenderReceiverHourly} from "./PeriodTxnSummary";
 import {safeAddErrorLog} from "./monitor/ErrorMonitor";
 
 async function runTools() {
@@ -57,7 +57,7 @@ async function runTools() {
     }
 }
 
-// node stat/StatTask.js stat/StatTask.ts
+// node stat/StatTask.js build-periodic-tx
 
 async function main() {
     await runTools();

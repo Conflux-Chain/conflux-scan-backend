@@ -1,6 +1,7 @@
 //
 import {DataTypes, Model, Sequelize} from "sequelize";
 import {FullBlock, FullTransaction} from "./model/FullBlock";
+import {buildGeneralDaily} from "./service/UniqueAddressStat";
 
 export interface ITxSenderHourly {
 	id?: number;
@@ -63,10 +64,82 @@ export class TxReceiverHourly extends Model<ITxSenderHourly> implements ITxRecei
 	}
 }
 
+export interface ITxReceiverDaily extends  ITxSenderHourly {
+
+}
+
+export class TxReceiverDaily extends Model<ITxReceiverDaily> implements ITxReceiverDaily {
+	id?: number;
+	timeStart: Date;
+	timeEnd: Date;
+	addrId: number;
+	count: number;
+	amount: number;
+	static register(sequelize: Sequelize) {
+		TxReceiverDaily.init({
+			id: {type: DataTypes.BIGINT, autoIncrement: true, primaryKey: true},
+			timeStart: {type: DataTypes.DATE, allowNull: false},
+			timeEnd: {type: DataTypes.DATE, allowNull: false},
+			addrId: {type: DataTypes.BIGINT, allowNull: false, },
+			count: {type: DataTypes.BIGINT, allowNull: false, },
+			amount: {type: DataTypes.DECIMAL(65, 0), allowNull: false, },
+		}, {
+			tableName: 'tx_receiver_daily', sequelize,
+			indexes: [
+				{name: 'uk_timeStart_aid', fields: ['timeStart', 'addrId'], unique: true},
+			]
+		})
+	}
+}
+
+export interface ITxSenderDaily extends  ITxSenderHourly {
+
+}
+
+export class TxSenderDaily extends Model<ITxSenderDaily> implements ITxSenderDaily {
+	id?: number;
+	timeStart: Date;
+	timeEnd: Date;
+	addrId: number;
+	count: number;
+	amount: number;
+	static register(sequelize: Sequelize) {
+		TxSenderDaily.init({
+			id: {type: DataTypes.BIGINT, autoIncrement: true, primaryKey: true},
+			timeStart: {type: DataTypes.DATE, allowNull: false},
+			timeEnd: {type: DataTypes.DATE, allowNull: false},
+			addrId: {type: DataTypes.BIGINT, allowNull: false, },
+			count: {type: DataTypes.BIGINT, allowNull: false, },
+			amount: {type: DataTypes.DECIMAL(65, 0), allowNull: false, },
+		}, {
+			tableName: 'tx_sender_daily', sequelize,
+			indexes: [
+				{name: 'uk_timeStart_aid', fields: ['timeStart', 'addrId'], unique: true},
+			]
+		})
+	}
+}
+
+function buildDailyTxParticipantSql(groupBy: string, hourlyModel: typeof TxSenderHourly, dailyModel: typeof TxReceiverDaily) {
+	const table = hourlyModel.getTableName();
+	const dailyTable = dailyModel.getTableName();
+	const senderSql = `select ? as timeStart, ? as timeEnd, ${groupBy
+	} as addrId, sum(count) as count, sum(amount) as amount , now(), now() from ${table
+	} where timeStart between ? and ? and status = 0 group by ${groupBy}`;
+	return `
+        insert into ${dailyTable} (timeStart, timeEnd, addrId, count, amount, createdAt, updatedAt)
+            (${senderSql}) on duplicate key update updatedAt = values(updatedAt), count=values(count), amount=values(amount)`;
+}
 
 export async function buildTxSenderReceiverHourly() {
 	await buildTxSummaryHourly(TxSenderHourly, 'fromId');
 	await buildTxSummaryHourly(TxReceiverHourly, 'toId');
+
+	const sqlSender = buildDailyTxParticipantSql('fromId', TxSenderHourly, TxSenderDaily);
+	await buildGeneralDaily(sqlSender, TxSenderHourly as any, TxSenderDaily as any);
+
+	const sqlReceiver = buildDailyTxParticipantSql('toId', TxSenderHourly, TxSenderDaily);
+	await buildGeneralDaily(sqlReceiver, TxReceiverHourly as any, TxReceiverDaily as any);
 }
 export async function buildTxSummaryHourly(saveTable: typeof TxSenderHourly, groupBy: string) {
 	// find max bean
@@ -105,7 +178,7 @@ export async function buildTxSummaryHourly(saveTable: typeof TxSenderHourly, gro
 		const result = await TxSenderHourly.sequelize.query(sql, {
 			replacements: [startTime, endTimeHour, startTime, endTimeHour],
 			logging: (sql , ms) => {
-				console.log(`${__filename} hourly unique addr in one sql (${ms}ms):\n`, sql);
+				// console.log(`${__filename} hourly unique addr in one sql (${ms}ms):\n`, sql);
 			},
 			benchmark: true,
 		})

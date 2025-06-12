@@ -21,6 +21,7 @@ import {PreloadMap} from "./SyncBase";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import {UniqueAddressDaily, UniqueAddressHourly} from "../model/UniqueAddr";
 import {ResultCache, TopUniqueBaseCache} from "../model/ResultCache";
+import { TxSenderHourly } from "../PeriodTxnSummary";
 
 process.env.TZ='UTC'
 
@@ -234,18 +235,36 @@ export async function buildUniqueAddrHourly() {
         await topUnique({day: 1});
     }
 }
-
+function buildDailyUniqueAddrSql() {
+    const table = UniqueAddressHourly.getTableName();
+    const dailyTable = UniqueAddressDaily.getTableName();
+    return `
+        insert into ${dailyTable} (timeStart, timeEnd, contractId, addr, fromMark, toMark, createdAt, updatedAt)
+            (select ?, ?,  contractId, addr, max(fromMark), max(toMark), now(), now() from ${
+    table} where timeStart between ? and ? group by contractId, addr
+            ) on duplicate key update updatedAt = values(updatedAt)`;
+}
 export async function buildUniqueAddrDaily() {
+    const sql = buildDailyUniqueAddrSql();
+    const {changed} = await buildGeneralDaily(sql, UniqueAddressHourly, UniqueAddressDaily);
+    if (changed) {
+        await topUnique({day: 3});
+        await topUnique({day: 7});
+    }
+}
+export async function buildGeneralDaily(sql: string,
+                                        baseModel: typeof UniqueAddressHourly,
+                                        resultModel: typeof UniqueAddressDaily) {
     // find max unique addr bean
-    const maxUniqueAddrHourly = await UniqueAddressHourly.findOne({
+    const maxUniqueAddrHourly = await baseModel.findOne({
         order: [['timeStart', 'desc']], limit: 1, raw: true,
     })
     if (!maxUniqueAddrHourly) {
-        console.log(`${__filename} no unique addr found`);
-        return;
+        console.log(`${__filename} no hourly data found on ${baseModel.getTableName()}`);
+        return {changed: false};
     }
     let startTime: Date;
-    const maxUADaily = await UniqueAddressDaily.findOne({
+    const maxUADaily = await resultModel.findOne({
         order: [['timeStart', 'desc']], limit: 1, raw: true,
     })
     if (maxUADaily) {
@@ -259,33 +278,24 @@ export async function buildUniqueAddrDaily() {
     }
     const endTimeDay = new Date(startTime);
     endTimeDay.setHours(23,59, 59, 999);
-    const table = UniqueAddressHourly.getTableName();
-    const dailyTable = UniqueAddressDaily.getTableName();
+
     let changed = false;
     while (maxUniqueAddrHourly.timeEnd >= endTimeDay) {
-        const sql = `
-        insert into ${dailyTable} (timeStart, timeEnd, contractId, addr, fromMark, toMark, createdAt, updatedAt)
-            (select ?, ?,  contractId, addr, max(fromMark), max(toMark), now(), now() from ${
-            table} where timeStart between ? and ? group by contractId, addr
-            ) on duplicate key update updatedAt = values(updatedAt)`;
-        const result = await UniqueAddressHourly.sequelize.query(sql, {
+        const result = await baseModel.sequelize.query(sql, {
             replacements: [startTime, endTimeDay, startTime, endTimeDay],
             logging: (sql , ms) => {
                 // console.log(`${__filename} hourly unique addr in one sql (${ms}ms):\n`, sql);
             },
             benchmark: true,
         })
-        console.log(`unique addr daily, ${startTime.toISOString()} result `, result);
+        console.log(`calculate daily ${resultModel.getTableName()}, ${startTime.toISOString()} result `, result);
         //increase the time window
         startTime.setDate(startTime.getDate() + 1);
         endTimeDay.setDate(endTimeDay.getDate() + 1);
         changed = true;
     }
-    console.log(`daily, unique address time not reach , ${maxUniqueAddrHourly.timeEnd.toISOString()} < ${endTimeDay.toISOString()}`);
-    if (changed) {
-        await topUnique({day: 3});
-        await topUnique({day: 7});
-    }
+    console.log(`daily, hourly data time not reach , ${baseModel.getTableName()}, ${maxUniqueAddrHourly.timeEnd.toISOString()} < ${endTimeDay.toISOString()}`);
+    return {changed}
 }
 
 async function calcDailyUniqueAddr() {
