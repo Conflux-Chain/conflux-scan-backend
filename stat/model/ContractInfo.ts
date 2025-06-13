@@ -238,6 +238,7 @@ export async function fillMethodInfo(list:{method?:string, to?:string}[],
     }).forEach(methodId=>{
         poorAbiMap.set(methodId, null)
     })
+    const dupAbiMap = new Map<string, number>();
     await AbiInfo.findAll({
         where:{
             hash:{[Op.in]:[...poorAbiMap.keys()]},
@@ -248,8 +249,14 @@ export async function fillMethodInfo(list:{method?:string, to?:string}[],
     }).then(list=>{
         poorAbiMap.clear();
         list.forEach(info=>{
-            if (!poorAbiMap.has(info.hash)) {
-                // we have multiple abi. use the first.
+            if (dupAbiMap.has(info.hash)) {
+                // nothing, do not use it
+            } else if (poorAbiMap.has(info.hash)) {
+                // we have multiple abi. mark.
+                dupAbiMap.set(info.hash, 2);
+                // remove
+                poorAbiMap.delete(info.hash);
+            } else {
                 poorAbiMap.set(info.hash, info)
             }
         })
