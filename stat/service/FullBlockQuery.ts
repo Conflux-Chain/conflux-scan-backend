@@ -238,10 +238,6 @@ export class FullBlockQuery {
                         const evmBlockCnt = epochHasEvmBlockMap[row['epochNumber']];
                         row['coreBlock'] = evmBlockCnt ? 0 : 1;
                         if (evmBlockCnt) {
-                            if (shouldRefToCore) {
-                                const proportion = CONST.GAS_LIMIT_PROPORTION.evm;
-                                row['gasLimit'] = BigInt(row['gasLimit']) * BigInt(100 * evmBlockCnt * proportion) / BigInt(100);
-                            }
                         } else {
                             row['gasLimit'] = BigInt(0);
                         }
