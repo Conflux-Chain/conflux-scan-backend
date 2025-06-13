@@ -200,7 +200,7 @@ export class BlockService {
   async countAndList({ fields, ...options } = {} as any) {
     const {
       app: { service, syncSDK, tool, type },
-    } = this;
+    } = this as ScanCtx;
 
     let result;
     if (options.referredBy !== undefined) {
