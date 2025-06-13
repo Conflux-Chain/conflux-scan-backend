@@ -9,6 +9,7 @@ import {ResultCache, TopTxParticipantBaseCache} from "../model/ResultCache";
 import {EmptyTxTopData} from "../PeriodTxnSummary";
 import {idHex40Map} from "../model/HexMap";
 import {CONST} from "./common/constant";
+import { MINUTE } from "./common/utils";
 
 const BigFixed = require('bigfixed');
 
@@ -42,10 +43,14 @@ export class TxnSync {
         // cache end
 
         let col = action.startsWith("txn") ? "count" : `amount`;
-        let party = action.endsWith('Send') ? '`sender`' : '`receiver`';
+        let party = action.endsWith('Send') ? 'sender' : 'receiver';
+        const baseCacheKey = `${TopTxParticipantBaseCache}_${n == 24 ? 1 : n}d_${col}_${party}`;
         const baseCache = await ResultCache.findOne({where: {
-            name: `${TopTxParticipantBaseCache}_${n}d_${col}_${party}`
+            name: baseCacheKey
         }})
+        if (!baseCache) {
+            console.log(`miss base cache `, baseCacheKey);
+        }
         let {list, sum} = baseCache ? await JSON.parse(baseCache.content) : EmptyTxTopData;
         sum = sum === '0' ? 0 : BigInt(sum);
 
@@ -85,7 +90,7 @@ export class TxnSync {
         return format.address(hex, networkId)
     }
 
-    public scheduleCache(delay:number = 600_000) {
+    public scheduleCache(delay:number = MINUTE * 10) {
         const that = this
 
         async function refreshAction(action: string) {
