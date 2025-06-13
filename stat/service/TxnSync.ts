@@ -1,12 +1,15 @@
 import {Op, QueryTypes} from "sequelize";
 // @ts-ignore
-import {Conflux, ConfluxOption, format} from "js-conflux-sdk";
-import {calculateBeginTime, fmtDtUTC, pickNumber} from "../model/Utils";
+import {Conflux, format} from "js-conflux-sdk";
+import {fmtDtUTC, pickNumber} from "../model/Utils";
 import {StatApp} from "../StatApp";
-import {FullBlock, FullTransaction} from "../model/FullBlock";
 import {sleep} from "./tool/ProcessTool";
 import {BlockAndMinerSync} from "./BlockAndMinerSync";
-import {Errors} from "./common/LogicError";
+import {ResultCache, TopTxParticipantBaseCache} from "../model/ResultCache";
+import {EmptyTxTopData} from "../PeriodTxnSummary";
+import {idHex40Map} from "../model/HexMap";
+import {CONST} from "./common/constant";
+import { MINUTE } from "./common/utils";
 
 const BigFixed = require('bigfixed');
 
@@ -38,63 +41,27 @@ export class TxnSync {
             return Promise.resolve(cacheV);
         }
         // cache end
-        const maxTx = await FullTransaction.findOne({order: [['epoch','desc']]});
-        if (maxTx == null) {
-            return Promise.resolve({
-                code: 500, message: 'Empty Data.'
-            })
+
+        let col = action.startsWith("txn") ? "count" : `amount`;
+        let party = action.endsWith('Send') ? 'sender' : 'receiver';
+        const baseCacheKey = `${TopTxParticipantBaseCache}_${n == 24 ? 1 : n}d_${col}_${party}`;
+        const baseCache = await ResultCache.findOne({where: {
+            name: baseCacheKey
+        }})
+        if (!baseCache) {
+            console.log(`miss base cache `, baseCacheKey);
         }
-        // align different servers with same end time.
-        let alignToEpoch = maxTx.epoch;
-        alignToEpoch = alignToEpoch -  (alignToEpoch % 1000);
-        // tx may be absent but block must exist
-        const alignBlock = await FullBlock.findOne({where:{epoch: alignToEpoch}});
-        if (alignBlock == null) {
-            return Promise.resolve({
-                code: 500, message: 'Empty Data!'
-            })
-        }
-        const maxEpoch = alignBlock.epoch;
-        const endTime = alignBlock.createdAt;
-        // console.log(` end time is ${endTime}`, endTime)
-        let beginTime: Date;
-        try {
-            beginTime = await calculateBeginTime(n, type, endTime);
-        } catch (err) {
-/*            console.log(` error calculateBeginTime:`, err)
-            return Promise.resolve({
-                code: 501, message: `${err}`
-            })*/
-            throw new Errors.ParameterError(`calculateBeginTime error: ${err.message}`);
-        }
-        const[{epoch:minEpoch}] = await Promise.all([
-            FullTransaction.findOne({where: {createdAt:{[Op.gte]:beginTime}},
-                order:[['createdAt','asc']], limit: 1}),
-        ])
-        let aggregate = action.startsWith("txn") ? "COUNT(*)" : `sum(dripValue)`;
-        let group = action.endsWith('Send') ? '`fromId`' : '`toId`'
-        const sql = `select t.*, hex from (select ${aggregate} as value, ${group} from full_tx
-                where epoch between ? and ? and status = 0 group by ${group} order by value desc limit ?) t 
-                join hex40 on t.${group} = hex40.id `;
-        // console.log('sql is: ', sql)
-        const list:any[] = await FullTransaction.sequelize.query(sql, {
-            replacements: [minEpoch, maxEpoch, limit],
-            type: QueryTypes.SELECT,
-            // benchmark: true, logging: console.log
-        })
-        let sumOption = {where:{
-                epoch: {[Op.between]: [minEpoch, maxEpoch]}
-            }};
-        const sum =  action.startsWith("txn") ? await FullTransaction.count(sumOption)
-          : await FullTransaction.sum('dripValue', sumOption)
+        let {list, sum} = baseCache ? await JSON.parse(baseCache.content) : EmptyTxTopData;
+        sum = sum === '0' ? 0 : BigInt(sum);
+
+        const idHexMap = await idHex40Map(list.map(v=>v['addrId']), true);
         let rank = 1
         // const drip2cfx = 1e+18
         const addressArray = [];
         list.forEach(tx=>{
-            // tx.value = BigFixed(tx.value).div(BigFixed(drip2cfx))
             tx.percent = BigFixed(tx.value).div(BigFixed(sum||1)).mul(100)
             tx.rank = rank++
-            tx.hex = `0x${tx.hex}`
+            tx.hex = idHexMap.get(tx['addrId']) || CONST.ZERO_ADDRESS;
             tx.base32 = this.base32(tx.hex, networkId)
             addressArray.push(tx.base32);
         })
@@ -109,7 +76,7 @@ export class TxnSync {
         });
 
         let finalRet = {
-            /*code: 0, message: 'ok', */list, sum, beginTime, endTime, alignToEpoch,
+            /*code: 0, message: 'ok', */list, sum, //beginTime, endTime, alignToEpoch,
         };
         this.rankCache.set(cacheKey, finalRet)
         return Promise.resolve(finalRet)
@@ -123,7 +90,7 @@ export class TxnSync {
         return format.address(hex, networkId)
     }
 
-    public scheduleCache(delay:number = 600_000) {
+    public scheduleCache(delay:number = MINUTE * 10) {
         const that = this
 
         async function refreshAction(action: string) {

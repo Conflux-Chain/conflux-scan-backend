@@ -4,6 +4,7 @@ import {DataTypes, Model, Sequelize} from "sequelize";
 export const TopUniqueCache = 'TopUniqueCache';
 // this is the db level cache, with only address id and its score.
 export const TopUniqueBaseCache = 'TopUniqueBaseCache';
+export const TopTxParticipantBaseCache = 'TopTxParticipantBaseCache';
 
 export interface IResultCache {
 	id?:number;

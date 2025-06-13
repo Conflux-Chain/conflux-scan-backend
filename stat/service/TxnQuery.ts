@@ -12,7 +12,6 @@ import {IntervalType} from "./timerstat/TimerStat";
 import {GasConsumer, IGasConsumer} from "../model/GasConsumer";
 import {sqlLogFn} from "../model/Utils";
 import {NoCoreSpace} from "../config/StatConfig";
-import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 
 export class TxnQuery{
     static cacheFilePrefix = PATH_TOP_BY_GAS;
@@ -120,16 +119,7 @@ export class TxnQuery{
     }
 }
 
-export function scheduleGasConsumerStat() {
-    setInterval(()=>{
-        statGasConsumer(new Date()).catch(e=>{
-            safeAddErrorLog('stat-task', 'gas-consumer', e).then();
-            console.log(`stat Gas Consumer error`, e)
-        });
-    }, 60_0_000);
-}
-
-async function statGasConsumer(dt: Date) {
+export async function statGasConsumer(dt: Date) {
     let [lastDay, lastHour] = await Promise.all([
       GasConsumer.findOne({where: {statType: '1d'}, order:[['statTime', 'desc']], raw: true}),
       GasConsumer.findOne({where: {statType: '1h'}, order:[['statTime', 'desc']], raw: true}).then(res=>res as IGasConsumer),

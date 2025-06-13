@@ -157,7 +157,7 @@ export class RankService{
         const startDate = new Date()
         startDate.setHours(0,0,0,0)
         startDate.setDate(startDate.getDate() - span)
-        const sql = `select valueN, h.hex from (select sum(${field}) as valueN,hexId from ${table} where day >= ? group by hexId order by valueN desc limit ?) b
+        const sql = `select valueN, h.hex from (select sum(${field}) as valueN,hexId from ${table} where day >= ? and ${field} > 0 group by hexId order by valueN desc limit ?) b
         left join hex40 h on h.id = b.hexId`
         const list = await DailyToken.sequelize.query(sql, {type:QueryTypes.SELECT, replacements:[startDate, limit]})
         return this.fillInfo(list, networkId)
