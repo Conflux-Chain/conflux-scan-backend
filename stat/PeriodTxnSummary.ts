@@ -211,14 +211,19 @@ export async function buildTxSummaryHourly(saveTable: typeof TxSenderHourly, gro
 		const sql = `
         insert into ${hourlyTable} (timeStart, timeEnd, addrId, count, amount, createdAt, updatedAt)
             (${senderSql}) on duplicate key update updatedAt = values(updatedAt), count=values(count), amount=values(amount)`;
+		let executedSql = '';
 		const result = await TxSenderHourly.sequelize.query(sql, {
 			replacements: [startTime, endTimeHour, startTime, endTimeHour],
 			logging: (sql , ms) => {
 				// console.log(`${__filename} hourly unique addr in one sql (${ms}ms):\n`, sql);
+				executedSql = sql;
 			},
 			benchmark: true,
 		})
 		console.log(`tx hourly for ${hourlyTable}, ${startTime.toISOString()} result `, result);
+		if (result[1] == 0) {
+			console.log(`no result ? sql is `, executedSql);
+		}
 		//increase the time window
 		startTime.setHours(startTime.getHours() + 1);
 		endTimeHour.setHours(endTimeHour.getHours() + 1);
