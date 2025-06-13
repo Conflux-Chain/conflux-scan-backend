@@ -310,6 +310,9 @@ export function convert2base32map(map: Map<any, string>) : Map<any, string> {
     return base32map
 }
 export async function idHex40Map(idArray: Array<number|string|unknown>, with0x=false): Promise<Map<number, string>>{
+    if (!idArray?.length) {
+        return new Map();
+    }
     const result = await Hex40Map.findAll({
         where: {id: { [Op.in]: idArray}},
     })
