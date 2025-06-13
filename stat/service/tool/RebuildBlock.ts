@@ -34,7 +34,7 @@ async function main() {
 	let ep = await KV.getNumber(cursorKey, block.epoch);
 	const cfx = await initCfxSdk(cfg.conflux);
 	while (ep >= blockMin.epoch) {
-		let lower = ep - 100;
+		let lower = Math.max(0, ep - 100);
 		const list = await FullBlock.findAll({
 			attributes: ['epoch', 'hash', 'txCount', 'gasUsed', 'gasLimit'],
 			where: {epoch: {[Op.between]: [lower, ep]}, txCount: {[Op.gt]: 0}},
@@ -45,7 +45,7 @@ async function main() {
 			const rpcBlock = await tryGetBlock(cfx, b);
 			const dbRet = await FullBlock.update({
 				gasLimit: rpcBlock.gasLimit,
-				gasUsed: rpcBlock.gasUsed,
+				gasUsed: rpcBlock.gasUsed ?? 0,
 			}, {
 				where: {epoch: b.epoch, hash: b.hash}
 			})
@@ -53,7 +53,7 @@ async function main() {
 				} limit ${b.gasLimit} -> ${rpcBlock.gasLimit}`, dbRet);
 		}
 		await KV.saveNumber(cursorKey, ep, null);
-		ep = lower;
+		ep = lower - 1;
 	}
 }
 
@@ -61,4 +61,4 @@ if (module === require.main) {
 	main().then();
 }
 
-// stat/service/tool/RebuildBlock.js
+// node stat/service/tool/RebuildBlock.js

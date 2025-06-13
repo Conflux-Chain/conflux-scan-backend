@@ -287,6 +287,7 @@ export class FullBlockService {
         for (let idx = 0; idx < blockList.length; idx++){
             let blk = blockList[idx];
             if (minEpochNumber === 0) {
+                blk.gasUsed = blk.gasUsed ?? 0;
             } else if (blk.transactions.length !== receipts[idx].length) {
                 code = CODE_CONTINUE
                 message = `block's txs length ${blk.transactions.length} != ${receipts[idx].length
