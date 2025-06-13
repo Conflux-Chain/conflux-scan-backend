@@ -158,6 +158,7 @@ export class FullBlockService {
                 await this.updateEpochNumber()
             } else {
                 maxEpoch += 1
+                retryStuckChecker.ok();
             }
             if ( maxEpoch % BLOCK_PAGE_MARK_SIZE === 0 && maxEpoch > BLOCK_PAGE_MARK_SIZE) {
                 let avoidReOrg = 1000;
@@ -170,7 +171,6 @@ export class FullBlockService {
                     console.log(`check tx count kv:`, e)
                 });
             }
-            retryStuckChecker.ok();
             if (always) {
                 setTimeout(repeat, 0)
             }
