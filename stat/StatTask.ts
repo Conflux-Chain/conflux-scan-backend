@@ -39,6 +39,7 @@ import {scheduleRollupDailyCfxTxn} from "./model/CfxTransfer";
 import {listenPort} from "./monitor/serverApi";
 import {buildTxSenderReceiverHourly} from "./PeriodTxnSummary";
 import {safeAddErrorLog} from "./monitor/ErrorMonitor";
+import {checkAllTableDataTime} from "./monitor/DataTimeChecker";
 
 async function runTools() {
     const [,, cmd, arg1] = process.argv;
@@ -180,6 +181,10 @@ async function runAllPeriodicStat() {
         safeAddErrorLog('stat-task', 'gas-consumer', e).then();
         console.log(`stat Gas Consumer error`, e)
     });
+
+    await checkAllTableDataTime().catch(e=>{
+        safeAddErrorLog('stat-task', 'check-data-delay', e).then();
+    })
 
     // next round
     timer = setTimeout(runAllPeriodicStat, getTimeToNextHour() + MINUTE * 10);
