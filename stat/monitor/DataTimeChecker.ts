@@ -8,9 +8,29 @@ const moment = require('moment');
 
 const tableConfig = {
 	'abi_info': {ignore: true },
+	'abi_stub': {ignore: true },
+	'address_cfx_transfer_2': {ignore: true },
+	'address_tx': {ignore: true },
+	'approval_relation': {ignore: true },
+	'cfx_balance': {ignore: true },
+	'contract': {ignore: true },
+	'contract_abi': {ignore: true },
+	'contract_verify': {ignore: true },
 	'error_log': {ignore: true },
+	'e_space_hex40': {ignore: true },
 	'nft_metadata': {ignore: true },
+	'hex40': {ignore: true },
+	'pos_account': {ignore: true },
 	'rate_config': {ignore: true },
+	'rate_hit': {ignore: true },
+	'req_account': {ignore: true },
+	'task_cfx_transfer': {ignore: true },
+	'task_event_3525': {ignore: true },
+	'task_token_transfer_3': {ignore: true },
+	'token': {ignore: true },
+	'token_approval': {ignore: true },
+	'token_balance': {ignore: true },
+	'token_security_audit': {ignore: true },
 	'result_cache': {ignore: true },
 	'proxy_verify': {ignore: true },
 	'full_miner_block': {ignore: true },
@@ -45,7 +65,9 @@ function sendAlert(tableName, lastRecord) {
 	console.error(msg);
 	console.error(`记录详情:`, JSON.stringify(lastRecord, null, 2));
 	// 这里可以加入邮件、短信等报警逻辑
-	dingMsg(msg, ConfigInstance.dingDevToken).then()
+	if (sendAlert0) {
+		dingMsg(msg, ConfigInstance.dingDevToken).then()
+	}
 }
 
 // 3. 获取所有表名
@@ -176,9 +198,11 @@ let showNormalTable = false;
 let tableCount = 0;
 let normalCount = 0;
 let delayedCount = 0;
+let sendAlert0 = true;
 
 if (module === require.main) {
 	// 运行主函数
+	sendAlert0 = false;
 	main().catch(console.error);
 }
 // node stat/monitor/DataTimeChecker.js
