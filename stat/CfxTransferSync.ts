@@ -131,7 +131,13 @@ export async function getCfxTransferTraces(epoch: number)
     const result:ICfxTransfer[] = [];
     const addrBeans = []
     let start = Date.now();
-    const traceArray2d:any[] = await batchTraceBlock(cfx, hashes);
+    let traceArray2d: any[];
+    try {
+        traceArray2d = await batchTraceBlock(cfx, hashes);
+    } catch (e) {
+        console.log(`failed to get trace block`, e);
+        return {code: 500, message: `failed to trace block ${e}`} as any;
+    }
     let now = Date.now();
     const traceRpcMs = now - start; start = now;
     const contractCreationStack:ITraceCreateContract[] = [];
