@@ -52,8 +52,9 @@ const tableConfig = {
 	'slot_3525': {ignore: true,  },
 	'trace_create_contract': {ignore: true,  },
 	'tx_failed': {ignore: true,  },
+	'transfer_count': {ignore: true,  },
 	'unique_addr': {ignore: false, time: 'timeStart'  },
-	'vote_params': {ignore: false, time: 'timestamp'  },
+	'vote_params': {ignore: true, time: 'timestamp'  },
 	'minerblock': {ignore: false, time: 'beginTime'  },
 }
 
