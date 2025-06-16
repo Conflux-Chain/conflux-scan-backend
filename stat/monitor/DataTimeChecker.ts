@@ -52,6 +52,7 @@ const tableConfig = {
 	'slot_3525': {ignore: true,  },
 	'trace_create_contract': {ignore: true,  },
 	'tx_failed': {ignore: true,  },
+	'testTimezone': {ignore: true,  },
 	'transfer_count': {ignore: true,  },
 	'unique_addr': {ignore: false, time: 'timeStart'  },
 	'vote_params': {ignore: true, time: 'timestamp'  },
@@ -123,8 +124,8 @@ async function checkTable(schema, tableName) {
 			type: QueryTypes.SELECT,
 			replacements: [schema, tableName]
 		});
-		const timeCol = tableConfig[tableName]?.time || 'createdAt'
-		if (columns.length === 0 && !tableConfig[tableName]?.time) {
+		const timeCol = tableConfig[tableName]?.time || tableConfig[tableName.toLowerCase()]?.time || 'createdAt'
+		if (columns.length === 0 && !timeCol) {
 			if (showNonTimeTable) {
 				console.log(`表 ${tableName} 没有 createdAt 列，跳过检查`);
 			}
