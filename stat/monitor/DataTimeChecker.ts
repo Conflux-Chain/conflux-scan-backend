@@ -21,6 +21,7 @@ const tableConfig = {
 	'approval_relation': {ignore: true },
 	'cfx_balance': {ignore: true },
 	'contract': {ignore: true },
+	'contract2': {ignore: true },
 	'contract_abi': {ignore: true },
 	'contract_verify': {ignore: true },
 	'event_3525': {ignore: true },
