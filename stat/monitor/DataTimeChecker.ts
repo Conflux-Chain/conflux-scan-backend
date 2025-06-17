@@ -12,8 +12,10 @@ const tableConfig = {
 	'address_cfx_transfer_2': {ignore: true },
 	'address_erc1155transfer_3': {ignore: true },
 	'address_erc721transfer_3': {ignore: true },
+	'address_erc20transfer_3': {ignore: true },
 	'address_nft_transfer': {ignore: true },
 	'address_nfts': {ignore: true },
+	'addr_event_3525': {ignore: true },
 	'api_log': {ignore: true },
 	'address_tx': {ignore: true },
 	'approval_relation': {ignore: true },
@@ -21,12 +23,16 @@ const tableConfig = {
 	'contract': {ignore: true },
 	'contract_abi': {ignore: true },
 	'contract_verify': {ignore: true },
+	'event_3525': {ignore: true },
 	'erc1155_addr_amount': {ignore: true },
 	'erc1155_data': {ignore: true },
 	'erc1155transfer_3': {ignore: true },
 	'erc721transfer_3': {ignore: true },
 	'error_log': {ignore: true },
 	'e_space_hex40': {ignore: true },
+	'full_tx_row_mark': {ignore: true },
+	'name_tag': {ignore: true },
+	'owner_count': {ignore: true },
 	'nft_metadata': {ignore: true },
 	'nft_balance': {ignore: true },
 	'nft_metadata_fts': {ignore: true },
@@ -35,16 +41,19 @@ const tableConfig = {
 	'prune_info': {ignore: true },
 	'hex40': {ignore: true },
 	'pos_account': {ignore: true },
+	'slot_changed_3525': {ignore: true },
 	'rate_config': {ignore: true },
 	'rate_hit': {ignore: true },
 	'req_account': {ignore: true },
 	'task_cfx_transfer': {ignore: true },
 	'task_event_3525': {ignore: true },
 	'task_token_transfer_3': {ignore: true },
+	'task_approval': {ignore: true },
 	'token': {ignore: true },
 	'token_approval': {ignore: true },
 	'token_balance': {ignore: true },
 	'token_security_audit': {ignore: true },
+	'token_slot_3525': {ignore: true },
 	'result_cache': {ignore: true },
 	'proxy_verify': {ignore: true },
 	'full_miner_block': {ignore: true },
@@ -102,9 +111,9 @@ async function getAllTables(schema: string) {
 }
 
 // 4. 检查单个表
-async function checkTable(schema, tableName) {
+async function checkTable(schema, tableName:string) {
 	try {
-		if (tableConfig[tableName]?.ignore) {
+		if (tableConfig[tableName]?.ignore || tableName.endsWith("_bak")) {
 			ignoreCount ++;
 			return;
 		}
