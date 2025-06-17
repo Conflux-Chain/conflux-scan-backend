@@ -118,8 +118,13 @@ export async function getSourceCode(ctx) {
         impl = StatApp.isEVM ? format.hexAddress(contract.implementation) : contract.implementation;
     }
 
+    let sourceCode = contract.sourceCode
+    if(sourceCode && sourceCode.startsWith("{") && !sourceCode.startsWith("{{")) {
+        sourceCode = `{${sourceCode}}`
+    }
+
     const contractItem = lodash.defaults({}, {
-        SourceCode: contract.sourceCode,
+        SourceCode: sourceCode,
         ABI: contract.abi,
         ContractName: contract.name,
         CompilerVersion: contract.version,
@@ -236,10 +241,6 @@ export async function verifySourcecode(ctx) {
         optimizationUsed = sc.settings.optimizer.enabled;
         runs = sc.settings.optimizer.runs;
         libraries = sc.settings.libraries;
-    }
-    if(codeformat === 'solidity-single-file'){
-        sourceCode = sourceCode?.replace(/\\n/g, '\n').replace(/\\\"/g, '"');
-        sourceCode = sourceCode?.replace(/\\\n/g, '\\n');
     }
     optimizationUsed = optimizationUsed === undefined || optimizationUsed === null ? 0 : Number(optimizationUsed);
     runs = runs === undefined || runs === null ? 200 : Number(runs);
