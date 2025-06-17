@@ -21,7 +21,7 @@ import {PreloadMap} from "./SyncBase";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import {UniqueAddressDaily, UniqueAddressHourly} from "../model/UniqueAddr";
 import {ResultCache, TopUniqueBaseCache} from "../model/ResultCache";
-import { TxSenderHourly } from "../PeriodTxnSummary";
+import {StuckChecker} from "../monitor/Monitor";
 
 process.env.TZ='UTC'
 
@@ -437,7 +437,7 @@ export function classifyTopList(list:any[], len = 10) : {sender:any[], receiver:
 
 const measure = new Measure()
 async function saveUniqueAddrToDb(aggregator: Aggregator<number, string>, {
-    epoch
+    epoch, nextEpoch, lastTime
 }) {
     const it = aggregator.allMap.entries()
     const beanArr = []
@@ -450,7 +450,7 @@ async function saveUniqueAddrToDb(aggregator: Aggregator<number, string>, {
     return UniqueAddress.sequelize.transaction(async (dbTx)=>{
         return Promise.all([
             UniqueAddress.bulkCreate(beanArr, {transaction: dbTx, updateOnDuplicate:['fromMark', 'toMark']}),
-            EpochTask.update({finished: true}, {
+            EpochTask.update({finished: true, createdAt: lastTime}, {
                 transaction: dbTx, where: {epoch}
             })
         ])
@@ -499,6 +499,7 @@ async function buildPeriodicUniqueAddr() {
     timer = setTimeout(buildPeriodicUniqueAddr, getTimeToNextHour() + MINUTE);
 }
 let maxDbTransferEpoch = 0;
+let stuckChecker: StuckChecker;
 async function run(fromEpoch:number, stopBeforeEpoch:number, endFn:()=>void) {
     buildPeriodicUniqueAddr().then();
     const sql = [Erc20Transfer, Erc721Transfer, Erc1155Transfer].map(t=>{
@@ -525,9 +526,13 @@ async function run(fromEpoch:number, stopBeforeEpoch:number, endFn:()=>void) {
     let timeStart, timeEnd;
     const loader = new PreloadMap(getLogs, 1);
     let epoch = fromEpoch;//await cfx.getEpochNumber().then(res=> res - 1000)
-    let delay = 0
+    let delay = 0;
+    let lastTime: Date;
     async function biz() {
         while (epoch >= maxDbTransferEpoch) {
+            await EpochTask.destroy({where: {epoch: {[Op.lt]: fromEpoch - 10_000}}, limit: 1000}).catch(e=>{
+                console.log(`${__filename} failed to destroy: ${e}`);
+            })
             await sleep(2_000)
             maxDbTransferEpoch = await EpochHashTokenTransfer.findOne({order: [['epoch', 'desc']]}).then(res => res?.epoch - 100)
         }
@@ -538,6 +543,7 @@ async function run(fromEpoch:number, stopBeforeEpoch:number, endFn:()=>void) {
         switch (action) {
             case "ok":
                 if (data instanceof Error || !data?.arr) {
+                    stuckChecker.push(`error at epoch ${epoch} , ${data.message}`);
                     console.log(`UniqueAddr error data, epoch ${epoch}. `, data)
                     delay = 10_000 // retry.
                     break;
@@ -552,6 +558,7 @@ async function run(fromEpoch:number, stopBeforeEpoch:number, endFn:()=>void) {
                 }
                 const log = epoch % 100 === 0
                 const {arr: [sample], epochTime} = transfers
+                lastTime = epochTime;
                 if (timeStart) {
                     timeEnd = epochTime
                 } else {
@@ -567,11 +574,12 @@ async function run(fromEpoch:number, stopBeforeEpoch:number, endFn:()=>void) {
                     }, preload size ${loader.size}, epoch time ${transfers.epochTime.toISOString()
                     } transfer count ${transfers.arr.length}`)
                 } else {
-                    console.log(`UniqueAddr no transfer at ${epoch}`)
+                    console.log(`UniqueAddr no transfer at ${epoch} ${transfers.epochTime}`);
                 }
                 if (epoch % 100 === 0) {
                     measure.dump(`\n UniqueAddr --`, undefined, epochMeasureKey, 'rpc', 'polishLogs', 'buildMap', 'idLength');
                 }
+                stuckChecker.ok();
                 epoch++
                 break;
             case "pop":
@@ -592,7 +600,7 @@ async function run(fromEpoch:number, stopBeforeEpoch:number, endFn:()=>void) {
             } else {
                 console.log(`UniqueAddr round end, [${fromEpoch}, ${stopBeforeEpoch})`)
                 await saveUniqueAddrToDb(aggregator, {
-                    epoch: fromEpoch
+                    epoch: fromEpoch, nextEpoch: epoch, lastTime,
                 })
                 endFn()
             }
@@ -619,6 +627,7 @@ async function setup(cfxUrl:string, fromEpoch = '30495305', taskLen = '3000') {
 }
 // noinspection DuplicatedCode
 async function runTask(fromEpoch:number = 0, len: number) {
+    stuckChecker = new StuckChecker('unique-addr-worker', 10)
     const task = await fetchTask(len, fromEpoch)
     console.log(`UniqueAddr start task, [${task.epoch}, ${task.range+task.epoch}), len ${task.range}`)
     await new Promise(r=>{
