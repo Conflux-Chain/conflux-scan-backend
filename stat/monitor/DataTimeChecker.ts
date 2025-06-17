@@ -105,6 +105,7 @@ async function getAllTables(schema: string) {
 async function checkTable(schema, tableName) {
 	try {
 		if (tableConfig[tableName]?.ignore) {
+			ignoreCount ++;
 			return;
 		}
 
@@ -192,6 +193,7 @@ async function main() {
 }
 
 export async function checkAllTableDataTime() {
+	reset();
 	sequelize = KV.sequelize;
 	const schema = ConfigInstance.databaseRW.instanceName;
 	try {
@@ -202,16 +204,24 @@ export async function checkAllTableDataTime() {
 		for (const table of tables) {
 			await checkTable(schema, table);
 		}
-		console.log(`table count: ${tableCount} , normal count: ${normalCount}, delayed count: ${delayedCount}`);
+		console.log(`table count: ${tableCount} , ignore ${ignoreCount} , normal count: ${normalCount}, delayed count: ${delayedCount}`);
 	} catch (error) {
 		console.error('主流程出错:', error);
 	}
+}
+
+function reset() {
+	tableCount = 0;
+	ignoreCount = 0;
+	normalCount = 0;
+	delayedCount = 0;
 }
 
 let showEmptyTable = false;
 let showNonTimeTable = true;
 let showNormalTable = false;
 let tableCount = 0;
+let ignoreCount = 0;
 let normalCount = 0;
 let delayedCount = 0;
 let sendAlert0 = true;
