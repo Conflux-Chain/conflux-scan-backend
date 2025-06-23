@@ -18,7 +18,7 @@ import {CONST} from "./service/common/constant";
 import {startMonitorContractCreated} from "./service/contract/PatchNoTraceContract";
 import {safeAddErrorLog} from "./monitor/ErrorMonitor";
 import {listenPort} from "./monitor/serverApi";
-import {doAuthTxTask, initAuthRpc} from "./service/eip/eip7702";
+import {do7702AuthTask, initAuthRpc} from "./service/eip/eip7702";
 
 function saveInternalIP() {
     try {
@@ -50,7 +50,7 @@ export async function run() {
     StatApp.isEVM = await KV.getSwitch(IS_EVM2);
     if (StatApp.isEVM && !NoCoreSpace) {
         initAuthRpc();
-        doAuthTxTask();
+        do7702AuthTask();
     }
 
     await mustInit()

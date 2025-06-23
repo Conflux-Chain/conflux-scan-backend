@@ -55,10 +55,10 @@ export function saveAuthBlockStub(blockNumber: number, blockHash: string) {
 	}
 }
 
-export async function doAuthTxTask() {
+export async function do7702AuthTask() {
 	let delay = 0;
 	try {
-		const {code, message} = await processAuthTxStub();
+		const {code, message} = await process7702AuthStub();
 		if (code === NOT_FOUND) {
 			delay = MINUTE;
 		} else if (code != 0) {
@@ -70,10 +70,10 @@ export async function doAuthTxTask() {
 		console.log(`failed to process auth tx stub: `, error);
 		delay = SECOND * 30;
 	}
-	setTimeout(doAuthTxTask, delay);
+	setTimeout(do7702AuthTask, delay);
 }
 
-export async function processAuthTxStub() {
+export async function process7702AuthStub() {
 	const actionWithMaxRefId = await AuthAction.findOne({
 		order: [['refBlockStubId', 'desc']], raw: true,
 	});
