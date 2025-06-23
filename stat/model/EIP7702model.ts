@@ -1,5 +1,5 @@
 import {DataTypes, Model, QueryTypes, Sequelize} from "sequelize";
-import {getAddrId} from "./HexMap";
+import {getAddrId, Hex40Map} from "./HexMap";
 import {FullTransaction} from "./FullBlock";
 
 export interface IAuthBlockStub {
@@ -50,8 +50,10 @@ export class AuthBlockStub extends Model<IAuthBlockStub> implements IAuthBlockSt
 export async function listAuthAction({author, skip = 0, limit = 10}) {
 	const actionT = AuthAction.getTableName();
 	const txT = FullTransaction.getTableName();
-	const sql = `select a.*, tx.createdAt as txTime, tx.hash as txHash from ${actionT} a join ${txT} tx on a.blockNumber = tx.epoch
+	const hexT = Hex40Map.getTableName();
+	const sql = `select a.*, tx.createdAt as txTime, tx.hash as txHash, concat('0x', h.hex) as txSender from ${actionT} a join ${txT} tx on a.blockNumber = tx.epoch
 	 and tx.blockPosition = 0 and tx.txPosition = a.transactionPosition
+	 join ${hexT} hex on tx.fromId = hex.id 
 	 where a.author = ? order by a.blockNumber desc, a.transactionPosition desc, a.authIndex desc limit ? , ?`;
 	const arr = await AuthAction.sequelize.query(sql, {
 		type: QueryTypes.SELECT, replacements: [author, skip, limit],
