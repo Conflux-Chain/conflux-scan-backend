@@ -494,7 +494,13 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         }
         let cfxByEpoch;
         function checkRpcError(e: Error) {
-            if (e["code"] === -32016) { // out of bound
+            if (e["code"] === -32016 || e['code'] === -32602) { // out of bound
+                if (
+                    e.message?.includes('Invalid param')
+                    || e.message?.includes('out-of-bound')
+                ) {
+                    throw new Errors.ParameterError(e.message);
+                }
                 throw new Errors.RpcBizError(e.message);
             }
             throw e;

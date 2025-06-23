@@ -51,25 +51,4 @@ export class ScanHttpProvider extends HttpProvider {
     }
 }
 
-export const CacheConfig = {
-    cfx_getBlocksByEpoch: ([no])=>{
-        return BigInt(no); // NO is a hex str
-    },
-    cfx_getBlockByHash: ([hash, detail])=>{
-        return `${hash}_${detail}`
-    },
-    cfx_getEpochReceipts: ([noOrPivotHashOrObj])=>{
-        // noOrPivotHashOrObj could be {
-        //   blockHash: '0x335b37e235c9d4d3163fe2549469e9847a1aac77e0d5efcfe6668bdfa7c6bbb2',
-        //   requirePivot: true
-        // }
-        return noOrPivotHashOrObj.blockHash ?? (typeof noOrPivotHashOrObj === 'string' ? noOrPivotHashOrObj : BigInt(noOrPivotHashOrObj));
-    },
-    cfx_getBlockByHashWithPivotAssumption: ([bHash, pHash, epHex])=>{
-        return `${bHash}_${pHash}_${BigInt(epHex)}`
-    },
-    trace_block:([hash])=>{
-        return hash;
-    }
-}
 

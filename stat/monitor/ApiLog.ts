@@ -82,7 +82,7 @@ export async function saveApiLogUnsafe(ctx:any, rt:number) {
         }
     }
     const ip = getClientIP(ctx);
-    ApiLog.create({
+    return ApiLog.create({
         path, query, createdAt: new Date(), rt, ip,
-    }).then()
+    })
 }

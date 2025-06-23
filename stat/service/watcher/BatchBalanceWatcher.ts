@@ -56,7 +56,7 @@ export class BatchBalanceWatcher {
         return utilContract;
     }
 
-    public static async getBalances(account:string|string[]|any, tokens:string|string[]|any) {
+    public static async getBalances(account:string|string[]|any, tokens:string|string[]|any, hasRetry = false) {
         if (useRawErc20) {
             const accArr = Array.isArray(account) ? account : [account];
             const contractArr = Array.isArray(tokens) ? tokens : [tokens];
@@ -78,7 +78,9 @@ export class BatchBalanceWatcher {
             return Promise.all(taskArr);
         }
         return BatchBalanceWatcher.allTokenContract.getBalances(account, tokens).catch(err=>{
-            safeAddErrorLog('batch-balance-watcher',`get-balances`, err);
+            if (!hasRetry) {
+                safeAddErrorLog('batch-balance-watcher', `get-balances`, err);
+            }
             console.log(` getBalances fail: `, err.data)
             console.log(` getBalances fail: `, err)
         });

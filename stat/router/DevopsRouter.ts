@@ -16,7 +16,7 @@ import {
     TxnRowMark
 } from "../model/FullBlock";
 import {FullBlockQuery} from "../service/FullBlockQuery";
-import {KEY_FULL_BLOCK_COUNT, KEY_FULL_TX_COUNT, KV} from "../model/KV";
+import {INTERNAL_IP_BLOCK, KEY_FULL_BLOCK_COUNT, KEY_FULL_TX_COUNT, KV} from "../model/KV";
 
 import {TxnQuery} from "../service/TxnQuery";
 import {Erc20Transfer} from "../model/Erc20Transfer";
@@ -72,7 +72,8 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
         if (StatApp.isEVM) {
             port += evmDiffPort;
         }
-        await superagent.get(`http://127.0.0.1:${port}/${app}`).then(res=>res.body).then(info=>{
+        const ip = await KV.getString(INTERNAL_IP_BLOCK, '127.0.0.1');
+        await superagent.get(`http://${ip}:${port}/${app}`).then(res=>res.body).then(info=>{
             ctx.body = info;
         }).catch(err=>{
             ctx.body = {code: 500, error: err};
@@ -95,7 +96,10 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
             }
             bean = await Hex40Map.findOne({where: {hex: hex.substr(2)}})
         }
-        const token = await Token.findOne({where: {hex40id: bean?.id || 0}});
+        const token = await Token.findOne({
+            attributes: {exclude: ['icon']},
+            where: {hex40id: bean?.id || 0}
+        });
         const base32 = bean ? TxnQuery.base32('0x'+bean.hex, StatApp.networkId) : ''
         ctx.body = {
             base32,

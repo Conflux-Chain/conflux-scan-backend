@@ -18,6 +18,7 @@ const tableConfig = {
 	'addr_event_3525': {ignore: true },
 	'api_log': {ignore: true },
 	'address_tx': {ignore: true },
+	'address_transfer': {ignore: true },
 	'approval_relation': {ignore: true },
 	'cfx_balance': {ignore: true },
 	'contract': {ignore: true },
