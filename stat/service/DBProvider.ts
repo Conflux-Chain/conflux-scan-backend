@@ -78,6 +78,7 @@ import {sleep} from "./tool/ProcessTool";
 import {UniqueAddressDaily, UniqueAddressHourly} from "../model/UniqueAddr";
 import {ResultCache} from "../model/ResultCache";
 import {TxReceiverDaily, TxReceiverHourly, TxSenderDaily, TxSenderHourly} from "../PeriodTxnSummary";
+import {AuthAction, AuthBlockStub} from "../model/EIP7702model";
 
 let conf
 export function createDB(config) {
@@ -232,6 +233,8 @@ export async function initModel(sequelize: Sequelize) {
     ContractUser.register(sequelize);
     CfxUser.register(sequelize);
     ResultCache.register(sequelize);
+    AuthBlockStub.register(sequelize);
+    AuthAction.register(sequelize);
     EpochHashCfxTransfer.register(sequelize);
     UniqueAddress.register(sequelize);
     UniqueAddressHourly.register(sequelize);
