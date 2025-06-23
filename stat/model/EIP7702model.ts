@@ -50,7 +50,7 @@ export class AuthBlockStub extends Model<IAuthBlockStub> implements IAuthBlockSt
 export async function listAuthAction({author, skip = 0, limit = 10}) {
 	const actionT = AuthAction.getTableName();
 	const txT = FullTransaction.getTableName();
-	const sql = `select a.*, tx.createdAt as txTime from ${actionT} a join ${txT} tx on a.blockNumnber = tx.epoch
+	const sql = `select a.*, tx.createdAt as txTime from ${actionT} a join ${txT} tx on a.blockNumber = tx.epoch
 	 and tx.blockPosition = 0 and tx.txPosition = a.transactionPosition
 	 where a.author = ? order by a.blockNumber desc, a.transactionPosition desc, a.authIndex desc limit ? , ?`;
 	const arr = await AuthAction.sequelize.query(sql, {

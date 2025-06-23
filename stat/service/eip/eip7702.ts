@@ -139,7 +139,7 @@ async function checkLaterStub(blockNumber: number, dbId: number) {
 	console.log(`block stub not found, block `, blockNumber, ' base id', dbId);
 	return false;
 }
-
+// node stat/service/eip/eip7702.js tx
 async function main() {
 	const [, , cmd, arg1] = process.argv;
 	if (cmd === 'tx') {
