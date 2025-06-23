@@ -22,7 +22,7 @@ export async function loadSetAuth(netProvider: JsonRpcProvider, blockNumber: num
 			entry.result = entry.result.substr(0, 32);
 		}
 	}
-	console.log(`result of set auth is `, result);
+	// console.log(`result of set auth is `, result);
 	return result;
 }
 
@@ -109,7 +109,7 @@ export async function process7702AuthStub() {
 			safeAddErrorLog('eip7702', 'auth-action', new Error(`block hash mismatch`))
 			return {code: 500, message: `block hash mismatch at ${stub.blockHash}`};
 		}
-		action['refTxStubId'] = stub.id;
+		action['refBlockStubId'] = stub.id;
 		action['blockNumber'] = stub.blockNumber;
 		action['transactionPosition'] = transactionPosition;
 		action['authIndex'] = authIndex;
