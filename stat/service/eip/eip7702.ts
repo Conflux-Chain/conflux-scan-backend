@@ -1,10 +1,11 @@
 import {JsonRpcProvider} from "@ethersproject/providers/src.ts/json-rpc-provider";
-import {AuthAction, AuthBlockStub} from "../../model/EIP7702model";
+import {AuthAction, AuthBlockStub, listAuthAction} from "../../model/EIP7702model";
 import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
 import {initEthSdk, MINUTE, SECOND} from "../common/utils";
 import {ConfigInstance, NoCoreSpace} from "../../config/StatConfig";
 import {Op} from "sequelize";
 import {sleep} from "../tool/ProcessTool";
+import {init} from "../tool/FixDailyTokenStat";
 
 export async function loadSetAuth(netProvider: JsonRpcProvider, blockNumber: number) {
 	const method = 'trace_blockSetAuth'
@@ -117,7 +118,7 @@ export async function process7702AuthStub() {
 		dbBeanArr.push(action);
 	}
 	await AuthAction.bulkCreate(dbBeanArr, {
-		updateOnDuplicate: ['refBlockStubId', 'result']
+		updateOnDuplicate: ['refBlockStubId', 'result', 'updatedAt'] as any,
 	});
 
 	return {code: 0};
@@ -140,6 +141,15 @@ async function checkLaterStub(blockNumber: number, dbId: number) {
 }
 
 async function main() {
+	const [, , cmd, arg1] = process.argv;
+	if (cmd === 'tx') {
+		await init();
+		const arr = await listAuthAction({author: arg1, skip: 0, limit: 10});
+		console.log(JSON.stringify(arr, null, 4));
+		await AuthAction.sequelize.close();
+	}
+}
+async function testLoadAuth() {
 	let url = '';
 	url = 'http://194.233.87.244/8889cfx'
 	url = 'http://194.233.94.75:8545'
