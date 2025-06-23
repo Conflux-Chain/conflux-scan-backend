@@ -2,6 +2,7 @@ import {Conflux, format as sdk_format, sign} from "js-conflux-sdk";
 import {Errors} from "./LogicError";
 import {ScanHttpProvider} from "./ScanHttpProvider";
 import {ConfluxOption} from "../../config/StatConfig";
+import { networkInterfaces } from 'os';
 import {ethers} from "ethers";
 import {ConsortiumConflux} from "./ConsortiumConflux";
 import {KEY_EVM_VERSIONS, KV} from "../../model/KV";
@@ -278,6 +279,35 @@ export function removeLongData(obj) {
                 removeLongData(v)
             }
         })
+    }
+}
+
+/**
+ * 获取 eth0 网卡的 IPv4 地址
+ * @returns eth0 的 IPv4 地址，如果找不到则返回空字符串
+ */
+export function getEth0IP(): string {
+    try {
+        // 获取所有网络接口信息
+        const interfaces = networkInterfaces();
+
+        // 检查 eth0 接口是否存在
+        const eth0Interface = interfaces.eth0;
+        if (!eth0Interface) {
+            console.warn('eth0 interface not found');
+            return '';
+        }
+
+        // 查找第一个非内部的 IPv4 地址
+        const ipv4Info = eth0Interface.find(
+            info => info.family === 'IPv4' && !info.internal
+        );
+
+        // 返回找到的 IP 地址或空字符串
+        return ipv4Info?.address || '';
+    } catch (error) {
+        console.warn('Error getting eth0 IP:', error instanceof Error ? error.message : String(error));
+        return '';
     }
 }
 

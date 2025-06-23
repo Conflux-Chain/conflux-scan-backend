@@ -1,15 +1,16 @@
 import {redirectLog} from "./config/LoggerConfig";
-import {loadConfig, StatConfig} from "./config/StatConfig";
+import {loadConfig, NoCoreSpace, StatConfig} from "./config/StatConfig";
 import {autoAddPartition, createDB, initModel} from "./service/DBProvider";
 import {format} from "js-conflux-sdk";
 import {FullBlockService} from "./service/FullBlockService";
 import {FullBlock, loadMaxBlockEpoch} from "./model/FullBlock";
 import {
+    INTERNAL_IP_BLOCK,
     IS_EVM2, KEY_EPOCH_CIP1559_ENABLED,
     KEY_FILL_BLOCK_PROPS_EPOCH,
     KV
 } from "./model/KV";
-import {initCfxSdk} from "./service/common/utils";
+import {getEth0IP, initCfxSdk} from "./service/common/utils";
 import {PowSidePosSync} from "./service/pos/PowSidePosSync";
 import {regExitHook} from "./service/tool/ProcessTool";
 import {StatApp} from "./StatApp";
@@ -17,6 +18,15 @@ import {CONST} from "./service/common/constant";
 import {startMonitorContractCreated} from "./service/contract/PatchNoTraceContract";
 import {safeAddErrorLog} from "./monitor/ErrorMonitor";
 import {listenPort} from "./monitor/serverApi";
+import {doAuthTxTask, initAuthRpc} from "./service/eip/eip7702";
+
+function saveInternalIP() {
+    try {
+        KV.upsert({key: INTERNAL_IP_BLOCK, value: getEth0IP()}).then();
+    } catch (e) {
+        console.log(`failed to upsert IP address: ${e}`);
+    }
+}
 
 export async function run() {
     const config:StatConfig = loadConfig('Prod')
@@ -38,6 +48,10 @@ export async function run() {
     setInterval(()=>autoAddPartition(seq), 600_000)
 
     StatApp.isEVM = await KV.getSwitch(IS_EVM2);
+    if (StatApp.isEVM && !NoCoreSpace) {
+        initAuthRpc();
+        doAuthTxTask();
+    }
 
     await mustInit()
 
@@ -64,6 +78,7 @@ export async function run() {
         if (config.traceNotAvailable) {
             startMonitorContractCreated().then()
         }
+        saveInternalIP();
         await syncFullBlock(svc)
 
     }

@@ -43,6 +43,7 @@ import {SyncBlockSchema, SyncReporter} from "../monitor/InfluxWorker";
 import {FullMinerBlock} from "../model/FullMinerBlock";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import {StuckChecker} from "../monitor/Monitor";
+import {saveAuthBlockStub} from "./eip/eip7702";
 
 // Do not care the value
 const CODE_REWIND = 20201029
@@ -284,6 +285,7 @@ export class FullBlockService {
         let code = 0
         let message = 'ok'
         let dumpInfo = false;
+        let hasAuthTx = false;
         for (let idx = 0; idx < blockList.length; idx++){
             let blk = blockList[idx];
             if (minEpochNumber === 0) {
@@ -297,6 +299,9 @@ export class FullBlockService {
             }
             for (let txIdx = 0; txIdx < blk.transactions.length; txIdx++){
                 let tx = blk.transactions[txIdx];
+                if (tx.type === 4) {
+                    hasAuthTx = true;
+                }
                 tx.receipt = (receipts[idx]||[])[txIdx]
                 const st = tx.receipt?.outcomeStatus
                 if (st != 1 && st != 0
@@ -344,7 +349,8 @@ export class FullBlockService {
                 }
             }
         }
-        const preLoadResult = {code, message, blockList, rewardList, latest_state: this.latestStateEpoch, receipts, blockHashes: hashes, rpcTime, procTime: Date.now()-start, buildTime: 0}
+        const preLoadResult = {code, message, blockList, rewardList, latest_state: this.latestStateEpoch, receipts, blockHashes: hashes, rpcTime, procTime: Date.now()-start,
+            buildTime: 0, hasAuthTx};
         if (code != 0) {
             return preLoadResult;
         }
@@ -613,8 +619,11 @@ export class FullBlockService {
         let start = Date.now();
         let {
             fullBlock: blockBeanArr, fullTransaction: executedTxArr, addressTransactionIndex: txByAddressArr,
-            failedTX: failedTxArr, fullBlockExt: blockExtArr, posRegArr
+            failedTX: failedTxArr, fullBlockExt: blockExtArr, posRegArr, hasAuthTx,
         } = preLoadResult;
+        if (hasAuthTx) {
+            saveAuthBlockStub(minEpochNumber, blockBeanArr[0].hash);
+        }
         const blockList = blockBeanArr;
         this.batchBlockTx.enqueue(failedTxArr, blockBeanArr, executedTxArr, txByAddressArr, blockExtArr, posRegArr)
         //
