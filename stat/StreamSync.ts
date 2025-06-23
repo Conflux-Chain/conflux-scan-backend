@@ -207,7 +207,7 @@ async function fetchAll(addressArr, contractHex40, result:any[], cfx:Conflux) {
         let finished = true
         for (let ids of chunks2d) {
             try {
-                const banList = await BatchBalanceWatcher.getBalances(ids, contractHex40);
+                const banList = await BatchBalanceWatcher.getBalances(ids, contractHex40, true);
                 if (!banList || banList.length != ids.length) {
                     console.log(`${__filename} balance list is wrong [${banList}], try again later.`)
                     await sleep(5_000);
@@ -258,14 +258,6 @@ async function run() {
     StatApp.networkId = cfx.networkId
     console.log(` network id ${StatApp.networkId}`)
     new BatchBalanceWatcher(cfx, await BatchBalanceWatcher.getUtilContractAddr())
-    if (args[0] === 'test') {
-        const addr = ['','']
-        const contract = ''
-        const list = await BatchBalanceWatcher.getBalances(addr, contract)
-        console.log(` balance list is `, list)
-        return
-    }
-
     //
     tokenTool = new TokenTool(cfx)
     scheduleTransferUpdater(config.serverTag)

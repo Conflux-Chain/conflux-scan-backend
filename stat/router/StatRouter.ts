@@ -494,7 +494,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         }
         let cfxByEpoch;
         function checkRpcError(e: Error) {
-            if (e["code"] === -32016) { // out of bound
+            if (e["code"] === -32016 || e['code'] === -32602) { // out of bound
                 throw new Errors.RpcBizError(e.message);
             }
             throw e;

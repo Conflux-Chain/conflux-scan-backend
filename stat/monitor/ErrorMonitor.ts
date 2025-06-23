@@ -66,6 +66,7 @@ export function isKnownError(e) {
 		|| e.message === 'Error processing request: state is not ready'
 		|| e.message?.includes('timeout')
 		|| e.message?.includes('connection')
+		|| (e.data instanceof String && e.data?.includes('is not executed, the latest state epoch is'))
 		;
 }
 
