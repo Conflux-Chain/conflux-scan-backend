@@ -22,7 +22,9 @@ import {do7702AuthTask, initAuthRpc} from "./service/eip/eip7702";
 
 function saveInternalIP() {
     try {
-        KV.upsert({key: INTERNAL_IP_BLOCK, value: getEth0IP()}).then();
+        KV.upsert({key: INTERNAL_IP_BLOCK, value: getEth0IP()}).catch(e=>{
+            console.log(`get eth0 ip:`, e);
+        });
     } catch (e) {
         console.log(`failed to upsert IP address: ${e}`);
     }
