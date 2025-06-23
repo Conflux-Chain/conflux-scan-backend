@@ -497,6 +497,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             if (e["code"] === -32016 || e['code'] === -32602) { // out of bound
                 if (
                     e.message?.includes('Invalid param')
+                    || e.message?.includes('out-of-bound')
                 ) {
                     throw new Errors.ParameterError(e.message);
                 }
