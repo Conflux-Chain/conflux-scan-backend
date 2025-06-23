@@ -78,6 +78,7 @@ export class AuthAction extends Model<IAuthAction> implements IAuthAction {
 			indexes: [
 				{name: 'idx_author', fields: ['author', 'blockNumber', 'transactionPosition', 'authIndex'], unique: true},
 				{name: 'idx_refBlockStubId', fields: ['refBlockStubId']},
+				{name: 'idx_blockNumber', fields: ['blockNumber']},
 			]
 		})
 	}

@@ -97,7 +97,12 @@ export async function process7702AuthStub() {
 			// pivot changed? find stub with the same block number, but large DB id.
 			const hasNext = await checkLaterStub(blockNumber, stub.id);
 			if (hasNext) {
-				await AuthBlockStub.destroy({where: {id: stub.id}});
+				await AuthBlockStub.sequelize.transaction(dbTx=>{
+					return Promise.all([
+						AuthBlockStub.destroy({where: {id: stub.id}, transaction: dbTx}),
+						AuthAction.destroy({where: {blockNumber: blockNumber}, transaction: dbTx}),
+					])
+				})
 				console.log(`there is another stub, destroy this one`, stub);
 				return {code: 0};
 			}
