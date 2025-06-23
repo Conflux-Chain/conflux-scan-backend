@@ -89,7 +89,7 @@ export async function process7702AuthStub() {
 	let authIndex = -1;
 	for (const entry of rpcResult) {
 		authIndex ++;
-		const {action, blockHash, blockNumber, transactionPosition} = entry;
+		const {action, blockHash, blockNumber, transactionPosition, result} = entry;
 		if (blockNumber != stub.blockNumber) {
 			safeAddErrorLog('eip7702', 'auth-action', new Error(`block number mismatch`))
 			return {code: 500, message: `block number mismatch at ${stub.blockNumber}`};
@@ -113,6 +113,7 @@ export async function process7702AuthStub() {
 		action['blockNumber'] = stub.blockNumber;
 		action['transactionPosition'] = transactionPosition;
 		action['authIndex'] = authIndex;
+		action['result'] = result;
 		dbBeanArr.push(action);
 	}
 	await AuthAction.bulkCreate(dbBeanArr, {
