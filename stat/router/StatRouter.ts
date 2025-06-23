@@ -217,12 +217,14 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })*/
 
     router.get('/list-auth-action', async (ctx)=>{
-        const {author, skip, limit} = ctx.request.query;
+        let {author, skip, limit} = ctx.request.query;
         mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'author');
         if (!author) {
             throw new Errors.ParameterError(`param <author> is invalid`);
         }
         mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
+        skip = parseInt(skip || '0');
+        limit = parseInt(limit || '10');
         ctx.body = await listAuthAction({author, skip, limit});
     });
 
