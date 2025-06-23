@@ -43,6 +43,7 @@ import {paginateCore, paginateCoreStat} from "./ParamChecker";
 import * as bodyParser from "koa-bodyparser";
 import {NoCoreSpace} from "../config/StatConfig";
 import {AbiInfo, parseAbiStr, saveAbiInfo} from "../model/ContractInfo";
+import {listAuthAction} from "../model/EIP7702model";
 
 const e2k = require('express-to-koa');
 const swStats = require('swagger-stats');
@@ -214,6 +215,13 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const {id} = ctx.request.query
         ctx.body = await statApp.contractQuery.syncVerify({id})
     })*/
+
+    router.get('/list-auth-action', async (ctx)=>{
+        const {author, skip, limit} = ctx.request.query;
+        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'author');
+        mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
+        ctx.body = await listAuthAction({author, skip, limit});
+    });
 
     router.get('/tokens/list', async (ctx)=>{
         mustBeEnumParamIfPresent(ctx.request.query, 'transferType', ['ERC20', 'ERC721', 'ERC1155']);
