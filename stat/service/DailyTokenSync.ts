@@ -5,7 +5,7 @@ import {
     Erc20Transfer,
     TOKEN_TYPE_ALL_4
 } from "../model/Erc20Transfer";
-import {DailyToken, Token} from "../model/Token";
+import {DailyToken, IToken, Token} from "../model/Token";
 import {Erc721Transfer} from "../model/Erc721Transfer";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {QueryTypes} from "sequelize";
@@ -16,6 +16,8 @@ import {getMaxTokenSyncDate} from "./tool/FixDailyTokenStat";
 import {FullBlock} from "../model/FullBlock";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import {fmtAddr, StatApp} from "../StatApp";
+import {MINUTE} from "./common/utils";
+import {NoCoreSpace} from "../config/StatConfig";
 
 let showDebugLog = true
 export async  function scheduleDailyTokenStat() {
@@ -45,7 +47,7 @@ export async  function calcAllRegisteredTokenDailyStat(dt:Date) {
         counter ++;
         if (counter % 100 == 0) {
             const now = Date.now();
-            if (now - ms > 60_1000) {
+            if (now - ms > MINUTE) {
                 // 1-minute elapsed
                 ms = now;
                 console.log(`processed daily token stat ${counter} ${new Date().toISOString()}`);
@@ -61,7 +63,7 @@ export async  function calcAllRegisteredTokenDailyStat(dt:Date) {
 async  function calcOneTokenDailyStat(dt:Date, idGreatThan: number) {
     let _sql = '';
     const token = await Token.findOne({
-        attributes: ['hex40id','symbol','name','base32', 'id'],
+        attributes: ['hex40id','symbol','name','base32', 'id', 'transfer', 'type'],
         where: {id: {[Op.gt]: idGreatThan}},
         logging: sql => _sql = sql,
     })
@@ -70,7 +72,10 @@ async  function calcOneTokenDailyStat(dt:Date, idGreatThan: number) {
         console.log(`sql is `, _sql);
         return null;
     }
-    await calcDailyTokenEach(dt, token.hex40id, showDebugLog)
+    if (token.transfer < 10 && NoCoreSpace) {
+        return token.id;
+    }
+    await calcDailyTokenEach(dt, token.hex40id, showDebugLog, token);
     showDebugLog && console.log(`${new Date().toISOString()} calcDailyToken finish : ${token.symbol
         } ${fmtAddr(token.base32, StatApp.networkId)}`);
     return token.id;
@@ -96,8 +101,11 @@ export async  function countRecentTokenTransfer(days:number) : Promise<{txnCount
     })
 }
 
-export async  function getTokenModel(tokenHexId:number) : Promise<[any,Token]> {
-        const tokenBean = await Token.findOne({where: {hex40id: tokenHexId}})
+export async  function getTokenModel(tokenHexId: number, token: IToken = null) : Promise<[any, IToken]> {
+        const tokenBean = token || await Token.findOne({
+            attributes: ['type', 'base32', 'symbol'],
+            where: {hex40id: tokenHexId},
+        })
         if (tokenBean === null) {
             console.log(`${new Date().toISOString()} token not found, hex id ${tokenHexId}`)
             return [null,null]
@@ -114,8 +122,8 @@ export async  function getTokenModel(tokenHexId:number) : Promise<[any,Token]> {
         return [model, tokenBean]
 }
 
-export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
-    const [model, tokenBean, start, end] = await checkModelAndTime(dt, tokenHexId);
+export async  function calcDailyTokenAmount(dt: Date, tokenHexId: number, token: IToken = null) : Promise<[any, IToken]> {
+    const [model, tokenBean, start, end] = await checkModelAndTime(dt, tokenHexId, token);
     if (!model) {
         return
     }
@@ -163,8 +171,8 @@ export async  function calcDailyTokenAmount(dt:Date, tokenHexId:number) {
         })
 }
 
-async function checkModelAndTime(dt:Date, tokenHexId:number) {
-    const [model, tokenBean] = await getTokenModel(tokenHexId);
+async function checkModelAndTime(dt: Date, tokenHexId: number, token: IToken = null) {
+    const [model, tokenBean] = await getTokenModel(tokenHexId, token);
     if (model === null) {
         return [];
     }
@@ -174,8 +182,8 @@ async function checkModelAndTime(dt:Date, tokenHexId:number) {
     return [model, tokenBean, start, end];
 }
 
-export async  function calcDailyTokenEach(dt:Date, tokenHexId:number, showLog = false) {
-    const [model, tokenBean, start, end] = await checkModelAndTime(dt, tokenHexId);
+export async  function calcDailyTokenEach(dt:Date, tokenHexId:number, showLog = false, token: IToken = null) {
+    const [model, tokenBean, start, end] = await checkModelAndTime(dt, tokenHexId, token);
     if (!model) {
         return
     }
@@ -207,7 +215,7 @@ export async  function calcDailyTokenEach(dt:Date, tokenHexId:number, showLog = 
             showDebugLog && console.log(` update daily token stat : ${tokenBean.symbol} ${tokenHexId}`)
         }
         if (tokenBean.type.includes('20') || tokenBean.type.includes('777')) {
-             await calcDailyTokenAmount(dt, tokenHexId).catch(err=>{
+             await calcDailyTokenAmount(dt, tokenHexId, token).catch(err=>{
                  safeAddErrorLog('token-x',`daily-amount-${tokenBean.address}`, err);
                  console.log(`calcDailyTokenAmount fail, ${dt.toISOString()} ${tokenHexId}`, err)
              })

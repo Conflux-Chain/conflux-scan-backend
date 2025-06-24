@@ -21,6 +21,7 @@ import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {adjustTodayEndTime, getEpochRange} from "../../model/Utils";
 import {FullBlock} from "../../model/FullBlock";
 import {EpochHashTokenTransfer} from "../../TokenTransferSync";
+import {TraceCreateContract} from "../../model/TraceCreateContract";
 
 let configCache: StatConfig|null = null;
 
@@ -92,18 +93,31 @@ async function fixDailyTokenTxnOverall(hexId=0, fromDtStr = '') {
     console.log(`${__filename} done.`)
 }
 async function fixDateAmount(hexId=0) {
-    let dt = new Date('2020-10-28')
+    if (!hexId) {
+        console.log(`hex id is absent`);
+        return;
+    }
+    const token = await Token.findOne({
+        attributes: ['base32','type', 'name', 'symbol', 'transfer', 'hex40id', 'id'],
+        where:{hex40id: hexId}
+    });
+    if (!token) {
+        console.log(`token not found , hex id `, hexId);
+        return;
+    }
+    const creation = await TraceCreateContract.findOne({
+        where:{to: hexId},
+    })
+    if (!creation) {
+        console.log(`creation info not found , hex id `, hexId);
+        return;
+    }
+    let dt = new Date(creation.blockTime * 1000);
+    console.log(`start date `, dt.toISOString());
     let now = new Date()
     while( dt < now) {
         if (hexId) {
-            await calcDailyTokenAmount(dt, hexId)
-        } else {
-            const tokenList = await Token.findAll()
-            for(const token of tokenList) {
-                if (token.type.includes('20') || token.type.includes('777')) {
-                    await calcDailyTokenAmount(dt, token.hex40id)
-                }
-            }
+            await calcDailyTokenAmount(dt, hexId, token);
         }
         dt.setDate(dt.getDate()+1)
     }
@@ -172,7 +186,7 @@ async function main() {
             return testRank()
         } else if (cmd === 'amount-dt-hex') {
             const[,,cmd,dt,hex] = process.argv
-            return calcDailyTokenAmount(new Date(dt), Number(hex))
+            return calcDailyTokenAmount(new Date(dt), Number(hex), null)
         } else if (cmd === 'amount') {
             return fixDateAmount(Number(arg1));
         } else if (cmd === 'fix-date') {

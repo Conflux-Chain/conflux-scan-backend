@@ -79,12 +79,13 @@ export async function process7702AuthStub() {
 		order: [['refBlockStubId', 'desc']], raw: true,
 	});
 	const stub = await AuthBlockStub.findOne({
-		order: [['id', 'DESC']], raw: true,
+		order: [['id', 'asc']], raw: true,
 		where: {id: {[Op.gt]: actionWithMaxRefId?.refBlockStubId || 0}}
 	})
 	if (!stub) {
 		return {code: NOT_FOUND};
 	}
+	// console.log(`process block `, stub.blockNumber, ' stub id ', stub.id);
 	const rpcResult = await loadSetAuth(ctx.netProvider, stub.blockNumber) as any[];
 	const dbBeanArr = [];
 	let authIndex = -1;
