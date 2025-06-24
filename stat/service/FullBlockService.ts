@@ -306,6 +306,7 @@ export class FullBlockService {
                 ) {
                     continue
                 }
+                console.log(`type `, tx.receipt?.type, ' on ', tx.hash);
                 if (tx.receipt?.type === 4) {
                     hasAuthTx = true;
                 }
@@ -621,6 +622,7 @@ export class FullBlockService {
             fullBlock: blockBeanArr, fullTransaction: executedTxArr, addressTransactionIndex: txByAddressArr,
             failedTX: failedTxArr, fullBlockExt: blockExtArr, posRegArr, hasAuthTx,
         } = preLoadResult;
+        console.log(`hasAuthTx`, hasAuthTx);
         if (hasAuthTx) {
             saveAuthBlockStub(minEpochNumber, blockBeanArr[0].hash);
         }
