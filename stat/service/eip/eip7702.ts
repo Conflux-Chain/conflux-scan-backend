@@ -85,6 +85,7 @@ export async function process7702AuthStub() {
 	if (!stub) {
 		return {code: NOT_FOUND};
 	}
+	console.log(`process block `, stub.blockNumber, ' stub id ', stub.id);
 	const rpcResult = await loadSetAuth(ctx.netProvider, stub.blockNumber) as any[];
 	const dbBeanArr = [];
 	let authIndex = -1;
