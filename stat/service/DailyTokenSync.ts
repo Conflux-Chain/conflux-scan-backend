@@ -67,13 +67,13 @@ async  function calcOneTokenDailyStat(dt:Date, idGreatThan: number) {
         where: {id: {[Op.gt]: idGreatThan}},
         logging: sql => _sql = sql,
     })
-    if (token.transfer < 10 && NoCoreSpace) {
-        return token.id;
-    }
     if (!token) {
         console.log(`token not found, id > `, idGreatThan);
         console.log(`sql is `, _sql);
         return null;
+    }
+    if (token.transfer < 10 && NoCoreSpace) {
+        return token.id;
     }
     await calcDailyTokenEach(dt, token.hex40id, showDebugLog, token);
     showDebugLog && console.log(`${new Date().toISOString()} calcDailyToken finish : ${token.symbol
