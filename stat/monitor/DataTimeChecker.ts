@@ -3,6 +3,7 @@ import {KV} from "../model/KV";
 import {init} from "../service/tool/FixDailyTokenStat";
 import {dingMsg} from "./Monitor";
 import {ConfigInstance} from "../config/StatConfig";
+import {DataTimeTableList} from "./DataTimeTables";
 
 const moment = require('moment');
 
@@ -119,6 +120,17 @@ async function getAllTables(schema: string) {
 async function checkTable(schema, tableName:string) {
 	try {
 		if (tableConfig[tableName]?.ignore || tableName.endsWith("_bak")) {
+			ignoreCount ++;
+			return;
+		}
+		// another config
+		const cfgEntry = DataTimeTableList[tableName];
+		if (!cfgEntry) {
+			ignoreCount ++;
+			console.log(`table without config: `, tableName);
+			return;
+		}
+		if (cfgEntry.ignore) {
 			ignoreCount ++;
 			return;
 		}
