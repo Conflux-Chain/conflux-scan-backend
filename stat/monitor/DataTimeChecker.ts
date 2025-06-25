@@ -40,12 +40,15 @@ async function getAllTables(schema: string) {
 async function checkTable(schema, tableName:string) {
 	try {
 		const cfgEntry = DataTimeTableList[tableName] || DataTimeTableList[tableName.toLowerCase()];
+		const isBakTable = tableName.endsWith("_bak");
 		if (!cfgEntry) {
 			ignoreCount ++;
-			console.log(`table without config: `, tableName);
+			if (!isBakTable) {
+				console.log(`table without config: `, tableName);
+			}
 			return;
 		}
-		if (cfgEntry.ignore || tableName.endsWith("_bak")) {
+		if (cfgEntry.ignore || isBakTable) {
 			ignoreCount ++;
 			return;
 		}
