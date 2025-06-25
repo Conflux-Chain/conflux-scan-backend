@@ -543,7 +543,7 @@ async function run(fromEpoch:number, stopBeforeEpoch:number, endFn:()=>void) {
         switch (action) {
             case "ok":
                 if (data instanceof Error || !data?.arr) {
-                    stuckChecker.push(`error at epoch ${epoch} , ${data.message}`);
+                    stuckChecker.push(`error at epoch ${epoch} , ${data.message|| 'unknown error, contract developer.'}`);
                     console.log(`UniqueAddr error data, epoch ${epoch}. `, data)
                     delay = 10_000 // retry.
                     break;

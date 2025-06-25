@@ -247,6 +247,11 @@ export async function getCfxTransferTraces(epoch: number)
                         type = toPocket
                     }
                 } else if (type === 'create' || type ==='call') {
+                } else if ( type === 'suicide') {
+                    const trace = traceArr[traceIdx];
+                    console.log(`suicide `, trace);
+                    from = trace.action.address;
+                    to = trace.action.refundAddress;
                 } else if (type === 'create_result' || type ==='call_result') {
                     //value should be zero, won't trigger
                 } else {
