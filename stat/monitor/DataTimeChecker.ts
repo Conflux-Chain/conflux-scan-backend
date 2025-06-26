@@ -3,89 +3,10 @@ import {KV} from "../model/KV";
 import {init} from "../service/tool/FixDailyTokenStat";
 import {dingMsg} from "./Monitor";
 import {ConfigInstance} from "../config/StatConfig";
+import {DataTimeTableList} from "./DataTimeTables";
 
 const moment = require('moment');
 
-const tableConfig = {
-	'abi_info': {ignore: true },
-	'abi_stub': {ignore: true },
-	'address_cfx_transfer_2': {ignore: true },
-	'address_erc1155transfer_3': {ignore: true },
-	'address_erc721transfer_3': {ignore: true },
-	'address_erc20transfer_3': {ignore: true },
-	'address_nft_transfer': {ignore: true },
-	'address_nfts': {ignore: true },
-	'addr_event_3525': {ignore: true },
-	'api_log': {ignore: true },
-	'address_tx': {ignore: true },
-	'address_transfer': {ignore: true },
-	'approval_relation': {ignore: true },
-	'cfx_balance': {ignore: true },
-	'contract': {ignore: true },
-	'contract2': {ignore: true },
-	'contract_abi': {ignore: true },
-	'contract_verify': {ignore: true },
-	'event_3525': {ignore: true },
-	'erc1155_addr_amount': {ignore: true },
-	'erc1155_data': {ignore: true },
-	'erc1155transfer_3': {ignore: true },
-	'erc721transfer_3': {ignore: true },
-	'error_log': {ignore: true },
-	'e_space_hex40': {ignore: true },
-	'full_tx_row_mark': {ignore: true },
-	'name_tag': {ignore: true },
-	'owner_count': {ignore: true },
-	'nft_metadata': {ignore: true },
-	'nft_balance': {ignore: true },
-	'nft_metadata_fts': {ignore: true },
-	'nft_mint_2': {ignore: true },
-	'nft_transfer': {ignore: true },
-	'prune_info': {ignore: true },
-	'hex40': {ignore: true },
-	'pos_account': {ignore: true },
-	'slot_changed_3525': {ignore: true },
-	'rate_config': {ignore: true },
-	'rate_hit': {ignore: true },
-	'req_account': {ignore: true },
-	'task_cfx_transfer': {ignore: true },
-	'task_event_3525': {ignore: true },
-	'task_token_transfer_3': {ignore: true },
-	'task_approval': {ignore: true },
-	'token': {ignore: true },
-	'token_approval': {ignore: true },
-	'token_balance': {ignore: true },
-	'token_security_audit': {ignore: true },
-	'token_security_audit2': {ignore: true },
-	'token_slot_3525': {ignore: true },
-	'result_cache': {ignore: true },
-	'proxy_verify': {ignore: true },
-	'pos_account_new': {ignore: true },
-	'pos_com_old': {ignore: true },
-	'full_miner_block': {ignore: true },
-	'block_row_mark': {ignore: true },
-	'cfx_transfer_row_mark_2': {ignore: true },
-	'cfx_user': {ignore: true },
-	'check_epoch_info': {ignore: true },
-	'config': {ignore: true },
-	'contract_destroy': {ignore: true },
-	'contract_user': {ignore: true },
-	'epoch_nft_transfer': {ignore: true },
-	'full_block_ext': {ignore: true },
-	'heart_beat': {ignore: true },
-	'hex64': {ignore: true },
-	'lock': {ignore: true },
-	'epoch': {ignore: true, key: 'epoch' , time: 'timestamp' },
-	'pos_account_block': {ignore: true,  },
-	'pos_register': {ignore: true,  },
-	'slot_3525': {ignore: true,  },
-	'trace_create_contract': {ignore: true,  },
-	'tx_failed': {ignore: true,  },
-	'testTimezone': {ignore: true,  },
-	'transfer_count': {ignore: true,  },
-	'unique_addr': {ignore: false, time: 'timeStart'  },
-	'vote_params': {ignore: true, time: 'timestamp'  },
-	'minerblock': {ignore: false, time: 'beginTime'  },
-}
 
 // 1. 配置数据库连接
 let sequelize: Sequelize;
@@ -118,7 +39,16 @@ async function getAllTables(schema: string) {
 // 4. 检查单个表
 async function checkTable(schema, tableName:string) {
 	try {
-		if (tableConfig[tableName]?.ignore || tableName.endsWith("_bak")) {
+		const cfgEntry = DataTimeTableList[tableName] || DataTimeTableList[tableName.toLowerCase()];
+		const isBakTable = tableName.endsWith("_bak");
+		if (!cfgEntry) {
+			ignoreCount ++;
+			if (!isBakTable) {
+				console.log(`table without config: `, tableName);
+			}
+			return;
+		}
+		if (cfgEntry.ignore || isBakTable) {
 			ignoreCount ++;
 			return;
 		}
@@ -153,7 +83,7 @@ async function checkTable(schema, tableName:string) {
 			type: QueryTypes.SELECT,
 			replacements: [schema, tableName]
 		});
-		const timeCol = tableConfig[tableName]?.time || tableConfig[tableName.toLowerCase()]?.time || 'createdAt'
+		const timeCol = cfgEntry?.time || 'createdAt'
 		if (columns.length === 0 && !timeCol) {
 			if (showNonTimeTable) {
 				console.log(`表 ${tableName} 没有 createdAt 列，跳过检查`);
