@@ -575,7 +575,7 @@ async function run(cfx:Conflux, preFinished: number) {
                     epoch++;
                     stuckChecker.ok();
                 } else {
-                    const msg = `data is incorrect. epoch ${epoch}`;
+                    const msg = `data is incorrect. epoch ${epoch} . ${(data as any)?.message || ''}`;
                     console.log(msg, data);
                     stuckChecker.push(msg);
                     delay = 5_000;
