@@ -214,15 +214,25 @@ export class ContractService { // TODO: extends AccountService
     }
 
     const trace = await service.traceCreate.query(address);
+    if(trace?.msg) {
+      throw new Error(`Trace create of contract not found.`)
+    }
     const transaction = await cfx.getTransactionByHash(trace.transactionHash);
+    if(!transaction) {
+      throw new Error(`Transaction ${trace.transactionHash} not found from blockchain.`)
+    }
     if (ConfigInstance.traceNotAvailable) {
       return transaction.data;
     }
+
     const transactionTraceArray = await cfx.traceTransaction(transaction.hash);
     const traceArray = await tokenTool.matchTrace(transactionTraceArray, transaction);
     const creatTraceArray = traceArray.filter(trace => (trace.type === CONST.TRACE_TYPE.CREATE &&
         trace.transactionHash === transaction.hash &&
         type.address(trace.action.to) === type.address(address)));
+    if(!creatTraceArray?.length) {
+      throw new Error(`Trace create in transaction ${trace.transactionHash} not found from blockchain.`)
+    }
     const traceCreate = creatTraceArray[0];
 
     return traceCreate.action.init;
