@@ -606,7 +606,7 @@ export function registerRouter(router: Router) {
 
     // utils
     router.get('/util/detectAccountType', (async ctx=>{
-        const result = await detectAccountType(ctx.query.hex);
+        const result = await detectAccountType(ctx.query.hex || ctx.query.account);
         setBody(ctx, result);
     }));
     router.get('/util/decode/method', abiDecode);
