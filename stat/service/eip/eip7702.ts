@@ -39,6 +39,7 @@ export async function detectAccountType(hex: string) : Promise<AccountType> {
 	});
 	if (creation) {
 		result.isContract = true;
+		result.extraMessage = `creation exists`;
 		return result;
 	}
 	// check code
