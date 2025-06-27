@@ -75,6 +75,7 @@ import { CONST } from '../../stat/service/common/constant';
 import {ethers} from "ethers";
 import {CIP1559StatType} from "../../stat/service/DailyBlockDataStatQuery";
 import {registerDataApi} from "./ApiRouter";
+import {detectAccountType} from "../../stat/service/eip/eip7702";
 
 const lodash = require('lodash');
 
@@ -604,6 +605,10 @@ export function registerRouter(router: Router) {
     router.get('/nft/transfers', listNFTTransfers);
 
     // utils
+    router.get('/util/detectAccountType', (async ctx=>{
+        const result = await detectAccountType(ctx.query.hex);
+        setBody(ctx, result);
+    }));
     router.get('/util/decode/method', abiDecode);
     router.get('/util/decode/method/raw', abiDecodeRaw);
 

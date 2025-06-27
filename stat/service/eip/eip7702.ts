@@ -1,11 +1,69 @@
 import {JsonRpcProvider} from "@ethersproject/providers/src.ts/json-rpc-provider";
 import {AuthAction, AuthBlockStub, listAuthAction} from "../../model/EIP7702model";
 import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
-import {initEthSdk, MINUTE, SECOND} from "../common/utils";
+import {getCfxSdk, initEthSdk, MINUTE, SECOND} from "../common/utils";
 import {ConfigInstance, NoCoreSpace} from "../../config/StatConfig";
 import {Op} from "sequelize";
 import {sleep} from "../tool/ProcessTool";
 import {init} from "../tool/FixDailyTokenStat";
+import {TraceCreateContract} from "../../model/TraceCreateContract";
+import {getAddrId} from "../../model/HexMap";
+import {Errors} from "../common/LogicError";
+
+type AccountType = {
+	isContract: boolean,
+	delegatedTo: string,
+	extraMessage: string,
+}
+
+export async function detectAccountType(hex: string) : Promise<AccountType> {
+	if (!hex) {
+		throw new Errors.ParameterError(`parameter <hex> is required`)
+	}
+	const result: AccountType = {
+		isContract: false,
+		delegatedTo: '',
+		extraMessage: '',
+	};
+	const sdk = getCfxSdk();
+	if (!sdk) {
+		throw new Error(`SDK not initialized`);
+	}
+	const addrId = await getAddrId(hex);
+	if (!addrId) {
+		result.extraMessage = "No such address";
+		return result;
+	}
+	const creation = await TraceCreateContract.findOne({
+		where: {to: addrId},
+	});
+	if (creation) {
+		result.isContract = true;
+		return result;
+	}
+	// check code
+	let rpcError = false;
+	const codeOnChain = await sdk.getCode(hex).catch(e=>{
+		result.extraMessage = `failed to get code: ${e}`;
+		rpcError = true;
+	});
+	if (rpcError) {
+		return result;
+	}
+	if (!codeOnChain || codeOnChain === '0x') {
+		result.extraMessage = `code is empty`;
+		return result;
+	}
+	const prefix = "0xef0100";
+	if (codeOnChain.length === 48 && codeOnChain.startsWith(prefix)) {
+		result.delegatedTo = '0x' + codeOnChain.substr(prefix.length);
+		result.extraMessage = `EOA with delegated code`;
+		return result;
+	}
+	result.isContract = true;
+	result.extraMessage = `code length: ${codeOnChain.length}`;
+	return result;
+}
 
 export async function loadSetAuth(netProvider: JsonRpcProvider, blockNumber: number) {
 	const method = 'trace_blockSetAuth'
