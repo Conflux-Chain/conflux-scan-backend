@@ -591,6 +591,37 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/TransferList"
+  /util/detectAccountType:
+    get:
+      tags:
+        - 'Utils'
+      description: "detectAccountType"
+      parameters:
+        - $ref: '#/components/parameters/accountParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: integer
+                  message:
+                    type: string
+                  result:
+                    type: object
+                    properties:
+                      isContract:
+                        description: 'isContract'
+                        type: boolean
+                      delegatedTo:
+                        description: "delegatedTo, will be empty or an address"
+                        type: string
+                      extraMessage:
+                        description: "extraMessage"
+                        type: string
   /util/decode/method:
     get:
       tags:

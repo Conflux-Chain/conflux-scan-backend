@@ -326,7 +326,10 @@ export function getOneMonthAgo() {
 export function getTimeToNextHour() {
     return 3600000 - (Date.now() % 3600000);
 }
-
+let cfxSdk: Conflux;
+export function getCfxSdk() {
+    return cfxSdk;
+}
 export async function initCfxSdk(confluxOption: ConfluxOption, tag: string = undefined) {
 	patchFormat();
     try {
@@ -345,7 +348,7 @@ export async function initCfxSdk(confluxOption: ConfluxOption, tag: string = und
     }
     confluxOption.url && patchHttpProvider(cfx, confluxOption, tag);
     // console.log('conflux networkId', cfx.networkId, 'config', confluxOption);
-
+    cfxSdk = cfx;
     return cfx;
 }
 
