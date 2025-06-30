@@ -94,7 +94,7 @@ export async function loadSetAuth(netProvider: JsonRpcProvider, blockNumber: num
 			console.log(`tx not found`, entry.transactionHash, ' block ', blockNumber, ' ', blockHex);
 			continue;
 		}
-		const reqAuth = tx.authorizationList[entry.idx];
+		const reqAuth = tx.authorizationList[idx];
 		if (!reqAuth) {
 			console.log(`req auth entry not found`, entry);
 			continue;
