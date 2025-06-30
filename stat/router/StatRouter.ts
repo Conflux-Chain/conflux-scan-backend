@@ -43,7 +43,7 @@ import {paginateCore, paginateCoreStat} from "./ParamChecker";
 import * as bodyParser from "koa-bodyparser";
 import {NoCoreSpace} from "../config/StatConfig";
 import {AbiInfo, parseAbiStr, saveAbiInfo} from "../model/ContractInfo";
-import {listAuthAction} from "../model/EIP7702model";
+import {getAuthActionInTx, listAuthAction} from "../model/EIP7702model";
 
 const e2k = require('express-to-koa');
 const swStats = require('swagger-stats');
@@ -226,6 +226,13 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         skip = parseInt(skip || '0');
         limit = parseInt(limit || '10');
         ctx.body = await listAuthAction({author, skip, limit});
+    });
+    router.get('/list-auth-action-in-tx', async (ctx)=>{
+        let {txHash} = ctx.request.query;
+        if (txHash?.length != 66) {
+            throw new Errors.ParameterError(`param <txHash> is invalid`);
+        }
+        ctx.body = await getAuthActionInTx(txHash);
     });
 
     router.get('/tokens/list', async (ctx)=>{

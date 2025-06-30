@@ -1,6 +1,7 @@
 import {DataTypes, Model, QueryTypes, Sequelize} from "sequelize";
 import {getAddrId, Hex40Map} from "./HexMap";
 import {FullTransaction} from "./FullBlock";
+import {getCfxSdk} from "../service/common/utils";
 
 export interface IAuthBlockStub {
 	id?: number;
@@ -48,6 +49,24 @@ export class AuthBlockStub extends Model<IAuthBlockStub> implements IAuthBlockSt
 			]
 		})
 	}
+}
+
+export async function getAuthActionInTx(txHash: string) {
+	const receipt = await getCfxSdk().getTransactionReceipt(txHash);
+	if (!receipt) {
+		return {list: [], message: 'transaction receipt not found'};
+	}
+	const txBean = await FullTransaction.findOne({
+		where: {epoch: receipt.epochNumber, hash: txHash}, raw: true,
+	})
+	if (!txBean) {
+		return {list: [], message: 'transaction not found'};
+	}
+	const list = await AuthAction.findAll({
+		where: {blockNumber: receipt.epochNumber, transactionPosition: txBean.txPosition},
+		order: [['authIndex', 'asc']],
+	})
+	return {list};
 }
 
 export async function listAuthAction({author, skip = 0, limit = 10}) {

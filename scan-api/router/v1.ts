@@ -37,7 +37,13 @@ const {patchFlowError} = require("../../koaflow/lib/flow/JsonRPCFlow");
 // const router = new Router();
 const router = new KoaRouter();
 router.use(async (ctx, next) => {
-  ctx.set('Access-Control-Allow-Origin', '*'); // for "swagger.io"
+  const origin = ctx.headers.origin || ctx.headers.Origin;
+  if (origin === 'https://dashboard.galxe.com') {
+    ctx.set('Access-Control-Allow-Origin', origin);
+    ctx.set("Access-Control-Allow-Credentials", "true");
+  } else {
+    ctx.set('Access-Control-Allow-Origin', '*'); // for "swagger.io"
+  }
   try {
     await next();
     if(ctx.type === 'application/octet-stream') return;
