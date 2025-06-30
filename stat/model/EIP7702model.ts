@@ -68,6 +68,7 @@ export async function getDelegatedAddrAtTx(eoa: string, blockNumber:number, txHa
 			author: eoa,
 			blockNumber: {[Op.lte]: blockNumber},
 			transactionPosition: {[Op.lte]: txBean.txPosition},
+			result: 'success',
 		}, raw: true,
 		order: [['blockNumber', 'desc'], ['transactionPosition', 'desc'], ['authIndex', 'desc']],
 	});
