@@ -68,19 +68,40 @@ export async function detectAccountType(hex: string) : Promise<AccountType> {
 
 export async function loadSetAuth(netProvider: JsonRpcProvider, blockNumber: number) {
 	const method = 'trace_blockSetAuth'
-	const result = await netProvider.send(method, ['0x'+blockNumber.toString(16)]).catch(e=>{
+	const blockHex = '0x'+blockNumber.toString(16);
+	const result = await netProvider.send(method, [blockHex]).catch(e=>{
 		if (e.code === 'SERVER_ERROR') {
 			console.log(`${__filename} , ${method} , ${e.body || e.message} ${e.url}`);
 			return {}
 		}
 		throw e;
 	});
+	const txMap = new Map<string, any>();
+	const blockDetail = await netProvider.send('eth_getBlockByNumber', [blockHex, true]);
+	blockDetail.transactions.forEach(transaction => {
+		txMap.set(transaction.hash, transaction);
+	})
+	let idx = -1;
 	for (const entry of result) {
+		idx ++;
 		entry.action.chainId = parseInt(entry.action.chainId.substr(2), 16);
 		entry.action.nonce = parseInt(entry.action.nonce.substr(2), 16);
 		if (entry.result.length > 32) {
 			entry.result = entry.result.substr(0, 32);
 		}
+		const tx = txMap.get(entry.transactionHash);
+		if (!tx) {
+			console.log(`tx not found`, entry.transactionHash, ' block ', blockNumber, ' ', blockHex);
+			continue;
+		}
+		const reqAuth = tx.authorizationList[idx];
+		if (!reqAuth) {
+			console.log(`req auth entry not found`, entry);
+			continue;
+		}
+		entry.action.yParity = reqAuth.yParity;
+		entry.action.r = reqAuth.r;
+		entry.action.s = reqAuth.s;
 	}
 	// console.log(`result of set auth is `, result);
 	return result;
@@ -120,7 +141,7 @@ export async function do7702AuthTask() {
 	try {
 		const {code, message} = await process7702AuthStub();
 		if (code === NOT_FOUND) {
-			delay = MINUTE;
+			delay = SECOND * 5;
 		} else if (code != 0) {
 			delay = SECOND * 10;
 			console.log(`failed to process auth tx stub,`, message);

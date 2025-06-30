@@ -286,7 +286,18 @@ export function createMySql(dbConf) {
 }
 
 async function migDB(seq: Sequelize) {
-    //
+    // 2025.5.30
+    await addColumnIfNotExistsV2(seq.getQueryInterface(), AuthAction.getTableName().toString(), 'yParity', {
+        type: DataTypes.STRING(3), defaultValue: '',
+    });
+    await addColumnIfNotExistsV2(seq.getQueryInterface(), AuthAction.getTableName().toString(), 'r', {
+        type: DataTypes.STRING(66), defaultValue: '',
+    });
+    await addColumnIfNotExistsV2(seq.getQueryInterface(), AuthAction.getTableName().toString(), 's', {
+        type: DataTypes.STRING(66), defaultValue: '',
+    });
+
+    // before 2025.6.30
     await KV.sequelize.query(`alter table abi_stub modify  column formatWithArg varchar(${FormatWithArgMaxLength
         }) not null default ''`).catch(e=>{
         console.log(`failed to change abi_stub.formatWithArg`, e);

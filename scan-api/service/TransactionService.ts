@@ -1,6 +1,8 @@
 import {ScanApp, ScanCtx} from "./index";
 import {StatApp} from "../../stat/StatApp";
 import {NoCoreSpace} from "../../stat/config/StatConfig";
+import {getDelegatedAddrAtTx} from "../../stat/model/EIP7702model";
+import {format} from "js-conflux-sdk";
 
 const lodash = require('lodash');
 const limitMap = require('limit-map');
@@ -50,6 +52,13 @@ export class TransactionService {
     }
 
     let receipt = await service.conflux.getTransactionReceipt(hash).catch(() => undefined) || {};
+    if (StatApp.isEVM && receipt.epochNumber && transaction.to) {
+      const toHex = format.hexAddress(transaction.to)
+      transaction['effectiveAuth'] = await getDelegatedAddrAtTx(toHex, receipt.epochNumber, hash).catch(e=>{
+        transaction['effectiveAuthError'] = e;
+        return null;
+      });
+    }
 
     let txInputData = transaction.data;
     const censorResult = await service.censor.getCensorResult(hash);

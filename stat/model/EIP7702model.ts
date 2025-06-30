@@ -1,6 +1,8 @@
-import {DataTypes, Model, QueryTypes, Sequelize} from "sequelize";
+import {DataTypes, Model, Op, QueryTypes, Sequelize} from "sequelize";
 import {getAddrId, Hex40Map} from "./HexMap";
 import {FullTransaction} from "./FullBlock";
+import {getCfxSdk} from "../service/common/utils";
+import {detectAccountType} from "../service/eip/eip7702";
 
 export interface IAuthBlockStub {
 	id?: number;
@@ -22,6 +24,9 @@ export interface IAuthAction {
 	blockNumber: number;
 	transactionPosition: number;
 	authIndex: number;
+	yParity: string;
+	r: string;
+	s: string;
 }
 
 export class AuthBlockStub extends Model<IAuthBlockStub> implements IAuthBlockStub {
@@ -45,6 +50,46 @@ export class AuthBlockStub extends Model<IAuthBlockStub> implements IAuthBlockSt
 			]
 		})
 	}
+}
+
+export async function getDelegatedAddrAtTx(eoa: string, blockNumber:number, txHash: string): Promise<IAuthAction> {
+	const accType = await detectAccountType(eoa);
+	if (accType.isContract) {
+		return null;
+	}
+	const txBean = await FullTransaction.findOne({
+		where: {epoch: blockNumber, hash: txHash}, raw: true,
+	});
+	if (!txBean) {
+		return null;
+	}
+	return AuthAction.findOne({
+		where: {
+			author: eoa,
+			blockNumber: {[Op.lte]: blockNumber},
+			transactionPosition: {[Op.lte]: txBean.txPosition},
+			result: 'success',
+		}, raw: true,
+		order: [['blockNumber', 'desc'], ['transactionPosition', 'desc'], ['authIndex', 'desc']],
+	});
+}
+
+export async function getAuthActionInTx(txHash: string) {
+	const receipt = await getCfxSdk().getTransactionReceipt(txHash);
+	if (!receipt) {
+		return {list: [], message: 'transaction receipt not found'};
+	}
+	const txBean = await FullTransaction.findOne({
+		where: {epoch: receipt.epochNumber, hash: txHash}, raw: true,
+	})
+	if (!txBean) {
+		return {list: [], message: 'transaction not found'};
+	}
+	const list = await AuthAction.findAll({
+		where: {blockNumber: receipt.epochNumber, transactionPosition: txBean.txPosition},
+		order: [['authIndex', 'asc']],
+	})
+	return {list};
 }
 
 export async function listAuthAction({author, skip = 0, limit = 10}) {
@@ -79,6 +124,9 @@ export class AuthAction extends Model<IAuthAction> implements IAuthAction {
 	blockNumber: number;
 	transactionPosition: number;
 	authIndex: number;
+	yParity: string;
+	r: string;
+	s: string;
 
 	static register(sequelize: Sequelize) {
 		AuthAction.init({
@@ -92,6 +140,9 @@ export class AuthAction extends Model<IAuthAction> implements IAuthAction {
 			blockNumber: {type: DataTypes.BIGINT, allowNull: false},
 			transactionPosition: {type: DataTypes.INTEGER, allowNull: false},
 			authIndex: {type: DataTypes.INTEGER, allowNull: false},
+			yParity: {type: DataTypes.STRING(3), allowNull: false},
+			r: {type: DataTypes.STRING(66), allowNull: false},
+			s: {type: DataTypes.STRING(66), allowNull: false},
 		}, {
 			sequelize, tableName: "auth_action",
 			indexes: [
