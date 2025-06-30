@@ -81,7 +81,9 @@ export async function loadSetAuth(netProvider: JsonRpcProvider, blockNumber: num
 	blockDetail.transactions.forEach(transaction => {
 		txMap.set(transaction.hash, transaction);
 	})
+	let idx = -1;
 	for (const entry of result) {
+		idx ++;
 		entry.action.chainId = parseInt(entry.action.chainId.substr(2), 16);
 		entry.action.nonce = parseInt(entry.action.nonce.substr(2), 16);
 		if (entry.result.length > 32) {
@@ -92,7 +94,7 @@ export async function loadSetAuth(netProvider: JsonRpcProvider, blockNumber: num
 			console.log(`tx not found`, entry.transactionHash, ' block ', blockNumber, ' ', blockHex);
 			continue;
 		}
-		const reqAuth = tx.authorizationList[entry.transactionPosition];
+		const reqAuth = tx.authorizationList[entry.idx];
 		if (!reqAuth) {
 			console.log(`req auth entry not found`, entry);
 			continue;
