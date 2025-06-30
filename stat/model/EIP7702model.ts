@@ -22,6 +22,9 @@ export interface IAuthAction {
 	blockNumber: number;
 	transactionPosition: number;
 	authIndex: number;
+	yParity: string;
+	r: string;
+	s: string;
 }
 
 export class AuthBlockStub extends Model<IAuthBlockStub> implements IAuthBlockStub {
@@ -79,6 +82,9 @@ export class AuthAction extends Model<IAuthAction> implements IAuthAction {
 	blockNumber: number;
 	transactionPosition: number;
 	authIndex: number;
+	yParity: string;
+	r: string;
+	s: string;
 
 	static register(sequelize: Sequelize) {
 		AuthAction.init({
@@ -92,6 +98,9 @@ export class AuthAction extends Model<IAuthAction> implements IAuthAction {
 			blockNumber: {type: DataTypes.BIGINT, allowNull: false},
 			transactionPosition: {type: DataTypes.INTEGER, allowNull: false},
 			authIndex: {type: DataTypes.INTEGER, allowNull: false},
+			yParity: {type: DataTypes.STRING(3), allowNull: false},
+			r: {type: DataTypes.STRING(66), allowNull: false},
+			s: {type: DataTypes.STRING(66), allowNull: false},
 		}, {
 			sequelize, tableName: "auth_action",
 			indexes: [
