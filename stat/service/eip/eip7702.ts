@@ -86,6 +86,7 @@ export async function loadSetAuth(netProvider: JsonRpcProvider, blockNumber: num
 		idx ++;
 		entry.action.chainId = parseInt(entry.action.chainId.substr(2), 16);
 		entry.action.nonce = parseInt(entry.action.nonce.substr(2), 16);
+		entry.action = entry.action ?? '';
 		if (entry.result.length > 32) {
 			entry.result = entry.result.substr(0, 32);
 		}
