@@ -97,9 +97,9 @@ export async function loadSetAuth(netProvider: JsonRpcProvider, blockNumber: num
 			console.log(`req auth entry not found`, entry);
 			continue;
 		}
-		entry.yParity = reqAuth.yParity;
-		entry.r = reqAuth.r;
-		entry.s = reqAuth.s;
+		entry.action.yParity = reqAuth.yParity;
+		entry.action.r = reqAuth.r;
+		entry.action.s = reqAuth.s;
 	}
 	// console.log(`result of set auth is `, result);
 	return result;
