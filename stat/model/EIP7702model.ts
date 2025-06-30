@@ -1,7 +1,8 @@
-import {DataTypes, Model, QueryTypes, Sequelize} from "sequelize";
+import {DataTypes, Model, Op, QueryTypes, Sequelize} from "sequelize";
 import {getAddrId, Hex40Map} from "./HexMap";
 import {FullTransaction} from "./FullBlock";
 import {getCfxSdk} from "../service/common/utils";
+import {detectAccountType} from "../service/eip/eip7702";
 
 export interface IAuthBlockStub {
 	id?: number;
@@ -49,6 +50,27 @@ export class AuthBlockStub extends Model<IAuthBlockStub> implements IAuthBlockSt
 			]
 		})
 	}
+}
+
+export async function getDelegatedAddrAtTx(eoa: string, blockNumber:number, txHash: string): Promise<IAuthAction> {
+	const accType = await detectAccountType(eoa);
+	if (accType.isContract) {
+		return null;
+	}
+	const txBean = await FullTransaction.findOne({
+		where: {epoch: blockNumber, hash: txHash}, raw: true,
+	});
+	if (!txBean) {
+		return null;
+	}
+	return AuthAction.findOne({
+		where: {
+			author: eoa,
+			blockNumber: {[Op.lte]: blockNumber},
+			transactionPosition: {[Op.lte]: txBean.txPosition},
+		}, raw: true,
+		order: [['blockNumber', 'desc'], ['transactionPosition', 'desc'], ['authIndex', 'desc']],
+	});
 }
 
 export async function getAuthActionInTx(txHash: string) {
