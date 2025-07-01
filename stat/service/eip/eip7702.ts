@@ -111,6 +111,7 @@ export async function loadSetAuth(netProvider: JsonRpcProvider, blockNumber: num
 					...entry.action, signature: buildSignature(entry.action)
 				});
 			} catch (e) {
+				entry.action.author = '';
 				safeAddErrorLog(`eip7702`, `recover-author`, e);
 			}
 		}
