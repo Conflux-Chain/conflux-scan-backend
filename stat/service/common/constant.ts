@@ -1,49 +1,167 @@
 import {EVM_RPC_URL} from "../../model/KV";
 
-const lodash = require('lodash')
+const lodash = require('lodash');
+const { CONST: { EPOCH_NUMBER } } = require('js-conflux-sdk');
+const AdminControl = require("../abi/AdminControl");
+const SponsorWhitelistControl = require("../abi/SponsorWhitelistControl");
+const Staking = require("../abi/Staking");
+const ConfluxContext = require("../abi/ConfluxContext");
+const PoSRegister = require("../abi/PoSRegister");
+const CrossSpaceCall = require("../abi/CrossSpaceCall");
+const ParamsControl = require("../abi/ParamsControl");
+const ERC1820Registry = require("../abi/ERC1820Registry");
 
-const internalContracts = {
-  AdminControl: '0x0888000000000000000000000000000000000000',
-  SponsorWhitelistControl: '0x0888000000000000000000000000000000000001',
-  Staking: '0x0888000000000000000000000000000000000002',
-  ConfluxContext: '0x0888000000000000000000000000000000000004',
-  PoSRegister: '0x0888000000000000000000000000000000000005',
-  CrossSpaceCall: '0x0888000000000000000000000000000000000006',
-  ParamsControl: '0x0888000000000000000000000000000000000007',
+const INTERNAL = [
+  {
+    space: 'core',
+    name: 'AdminControl',
+    address: '0x0888000000000000000000000000000000000000',
+    abi: JSON.stringify(AdminControl.abi),
+    website: 'https://doc.confluxnetwork.org/docs/core/core-space-basics/internal-contracts',
+    compilerVersion: 'v0.8.0+commit.c7dfd78e',
+    optimization: 0,
+    runs: 200,
+  },
+  {
+    space: 'core',
+    name: 'SponsorWhitelistControl',
+    address: '0x0888000000000000000000000000000000000001',
+    abi: JSON.stringify(SponsorWhitelistControl.abi),
+    website: 'https://doc.confluxnetwork.org/docs/core/core-space-basics/internal-contracts',
+    compilerVersion: 'v0.8.0+commit.c7dfd78e',
+    optimization: 0,
+    runs: 200,
+  },
+  {
+    space: 'core',
+    name: 'Staking',
+    address: '0x0888000000000000000000000000000000000002',
+    abi: JSON.stringify(Staking.abi),
+    website: 'https://doc.confluxnetwork.org/docs/core/core-space-basics/internal-contracts',
+    compilerVersion: 'v0.8.0+commit.c7dfd78e',
+    optimization: 0,
+    runs: 200,
+  },
+  {
+    space: 'core',
+    name: 'ConfluxContext',
+    address: '0x0888000000000000000000000000000000000004',
+    abi: JSON.stringify(ConfluxContext.abi),
+    website: 'https://doc.confluxnetwork.org/docs/core/core-space-basics/internal-contracts',
+    compilerVersion: 'v0.8.0+commit.c7dfd78e',
+    optimization: 0,
+    runs: 200,
+  },
+  {
+    space: 'core',
+    name: 'PoSRegister',
+    address: '0x0888000000000000000000000000000000000005',
+    abi: JSON.stringify(PoSRegister.abi),
+    website: 'https://doc.confluxnetwork.org/docs/core/core-space-basics/internal-contracts',
+    compilerVersion: 'v0.8.0+commit.c7dfd78e',
+    optimization: 0,
+    runs: 200,
+  },
+  {
+    space: 'core',
+    name: 'CrossSpaceCall',
+    address: '0x0888000000000000000000000000000000000006',
+    abi: JSON.stringify(CrossSpaceCall.abi),
+    website: 'https://doc.confluxnetwork.org/docs/core/core-space-basics/internal-contracts',
+    compilerVersion: 'v0.8.0+commit.c7dfd78e',
+    optimization: 0,
+    runs: 200,
+  },
+  {
+    space: 'core',
+    name: 'ParamsControl',
+    address: '0x0888000000000000000000000000000000000007',
+    abi: JSON.stringify(ParamsControl.abi),
+    website: 'https://doc.confluxnetwork.org/docs/core/core-space-basics/internal-contracts',
+    compilerVersion: 'v0.8.0+commit.c7dfd78e',
+    optimization: 0,
+    runs: 200,
+  },
+  {
+    space: 'evm',
+    name: 'ERC1820Registry',
+    address: '0x1820a4b7618bde71dce8cdc73aab6c95905fad24',
+    abi: JSON.stringify(ERC1820Registry.abi),
+    website: 'https://github.com/Conflux-Chain/CIPs/blob/master/CIPs/cip-1820.md',
+    compilerVersion: 'v0.5.11+commit.c082d0b4',
+    optimization: 1,
+    runs: 1000,
+  }
+]
+
+const GENESIS = [
+  {
+    address: '0x8a3a92281df6497105513b18543fd3b60c778e40',
+    name: 'Create2Factory',
+    txHash: {
+      1029: '0x2952a64d3afa6d39310c4928860abcd6bc097342dcc1b271b52f7809fd63f228',
+      1: '0x691007a83c57ccf7c248d4db72332ace9c9f72e64c023eb9afaf3227335e397b',
+    }
+  },
+  {
+    address: '0x8ff21aed4e3d6e59594b25ad2d97aae2be33e52a',
+    name: 'TwoYearUnlock',
+    txHash: {
+      1029: '0x6e425111b0c55c6aa75cf6983501cd782e5c9e1dbf7837dd09906a2f93fb1b3d',
+      1: '0x1f57de048519303c6ece8d9dfc38d531558d8715103945d5db66bb0cfb881b05',
+    }
+  },
+  {
+    address: '0x83bf953c8b687f0d1b8d2243a3e0654ec1f70d1b',
+    name: 'FourYearUnlock',
+    txHash: {
+      1029: '0x686839c2163ceb7c3542f810640a8adfa8c9d7b1e2f0567e601a8631468081bb',
+      1: '0x4e93173b112bd1c6ed03e5502467c0cf513dc425b59fe07f09669e5f6167d154',
+    }
+  },
+  {
+    address: '0x821abe3c0d1e0d5943acd65257fd7a20ad297176',
+    txHash: {
+      1029: '0xcb95bac3257af0809012738d1b94f67451d1528e8e32ddb92952c76fff271625',
+      1: '0x5666efdd98185249696a5d47b6390f2d38795cf9612eb786505ba626d49a43a8',
+    }
+  },
+  {
+    address: '0x8e96e5866c03b2d12fac6d2378a87c140f3001f5',
+    txHash: {
+      1029: '0x77801d4eab362c022ec05bfb23ea54c0562fb224316108aede41b909588fab70',
+      1: '0xc15b3d55335b6f0eda2ec8699902f18e0ae7283b36d79199241d868156dd68e5',
+    }
+  },
+  {
+    address: '0x8fb79782e14c082bfbb91692bf071187866007d2',
+    txHash: {
+      1029: '0x9dcb7d851ede5c0394310e05b10139e994fb21a10226a95b6765d2c8a3d4f4b2',
+      1: '0xda8fd6dbd1812dd0d67c8c1d2328666b0416011bc1e936eb3cafc0b4bd767c36',
+    }
+  },
+  {
+    address: '0x84c3653218ffd7ab44918f70228b144aaf7d80f5',
+    txHash: {
+      1029: '0xc2e77edbbf359d23775fa3910761cf89abeb920cbec071f7c9a07dec43083ef6',
+      1: '0x691007a83c57ccf7c248d4db72332ace9c9f72e64c023eb9afaf3227335e397b',
+    }
+  },
+]
+
+const CODE_FORMAT = {
+  SOLIDITY_SINGLE_FILE: {code: 'solidity-single-file', desc: 'Solidity (Single file)'},
+  SOLIDITY_STANDARD_JSON_INPUT: {code: 'solidity-standard-json-input', desc: 'Solidity (Standard-json-input)'},
+  VYPER_SINGLE_FILE: {code: 'vyper-single-file', desc: 'Vyper (Single file)'},
+  VYPER_JSON: {code: 'vyper-json', desc: 'Vyper (Standard-json-input)'},
 }
 
 export const CONST = {
-  // https://www.lihaoyi.com/post/BuildyourownCommandLinewithANSIescapecodes.html
-  CL: '\u001b[2K', // CLEAR line
-  TX_STATUS: {
-    SUCCESS: 0,
-    FAILED: 1,
-  },
+  CL: '\u001b[2K', // CLEAR line, https://www.lihaoyi.com/post/BuildyourownCommandLinewithANSIescapecodes.html
+  LIST_LIMIT: 1000,
+  ANNOUNCE_MAX_SIZE: 150 * 1000, // in bytes
 
-  TRACE_TYPE: {
-    CREATE: 'create',
-    CALL: 'call',
-    CREATE_RESULT: 'create_result',
-    CALL_RESULT: 'call_result',
-    INTERNAL_TRANSFER_ACTION: 'internal_transfer_action',
-  },
-
-  /**
-   * epochNumber label
-   *
-   * - `LATEST_MINED` 'latest_mined': latest epoch.
-   * - `LATEST_STATE` 'latest_state': latest state, about 5 epoch less then `LATEST_MINED`
-   * - `LATEST_CONFIRMED` 'latest_confirmed': latest epoch which confirmation risk less 1e-8.
-   * - `LATEST_CHECKPOINT` 'latest_checkpoint': latest check point epoch.
-   * - `EARLIEST` 'earliest': earliest epoch number, same as 0.
-   */
-  EPOCH_NUMBER: {
-    LATEST_MINED: 'latest_mined',
-    LATEST_STATE: 'latest_state',
-    LATEST_CONFIRMED: 'latest_confirmed',
-    LATEST_CHECKPOINT: 'latest_checkpoint',
-    EARLIEST: 'earliest',
-  },
+  EPOCH_NUMBER,
 
   TX_TYPE: {
     ALL: 'all',
@@ -51,6 +169,17 @@ export const CONST = {
     OUT: 'outgoing',
     FAIL: 'fail',
     CREATE: 'create',
+  },
+
+  TX_EIP_TYPE: {
+    0: 'Legacy',
+    1: 'EIP-2930',
+    2: 'EIP-1559',
+  },
+
+  TX_STATUS: {
+    SUCCESS: 0,
+    FAILED: 1,
   },
 
   TRANSFER_TYPE: {
@@ -84,9 +213,31 @@ export const CONST = {
     ERC1155: {code: 55, name: 'transfer_1155'},
   },
 
+  TRACE_TYPE: {
+    CREATE: 'create',
+    CALL: 'call',
+    CREATE_RESULT: 'create_result',
+    CALL_RESULT: 'call_result',
+    INTERNAL_TRANSFER_ACTION: 'internal_transfer_action',
+    MINER_REWARD: 'miner_reward', // virtual for display
+  },
+
+  CODEHASH_NO_BYTECODE: '0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470',
+
   ZERO_ADDRESS: '0x0000000000000000000000000000000000000000',
+  FULL_ADDRESS: '0xffffffffffffffffffffffffffffffffffffffff',
+  GENESIS_ADDRESS: '0x1949000000000000000000000000000000001001',
   FOUR_YEAR_UNLOCK: '0x83bf953c8b687f0d1b8d2243a3e0654ec1f70d1b',
   TWO_YEAR_UNLOCK: '0x8ff21aed4e3d6e59594b25ad2d97aae2be33e52a',
+  ERC1820_ADDRESS: '0x88887ed889e776bcbe2f0f9932ecfabcdfcd1820',
+  INTERNAL_CONTRACT: INTERNAL.filter((item: any) => item.space === 'core').map((item: any) => item.address),
+  INTERNAL_CONTRACT_ALL: INTERNAL.map((item: any) => item.address),
+  INTERNAL_NAME_CONTRACT_MAP: lodash.keyBy(INTERNAL, 'name'),
+  INTERNAL_ADDR_CONTRACT_MAP: lodash.keyBy(INTERNAL, 'address'),
+  GENESIS_CONTRACT: GENESIS.map((item: any) => item.address),
+  GENESIS_ADDR_CONTRACT_MAP: lodash.keyBy(GENESIS, 'address'),
+  GENESIS_TX_CONTRACT_MAP: GENESIS.reduce(
+      (result, item) => (Object.values(item.txHash).forEach(hash => result[hash] = item.address), result), {}),
 
   POSITION_IMPLEMENTATION_SLOT: '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc',
   //This is the keccak-256 hash of "org.zeppelinos.proxy.implementation",
@@ -96,26 +247,26 @@ export const CONST = {
   POSITION_BEACON_SLOT: '0xa3f0ad74e5423aebfd80d3ef4346578335a9a72aeaee59ff6cb3582b35133d50',
   ZERO_VALUE_IN_SLOT: '0x0000000000000000000000000000000000000000000000000000000000000000',
 
-  CODEHASH_NO_BYTECODE: '0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470',
+  CONTRACT_CODE_FORMAT_INFO: CODE_FORMAT,
+  CONTRACT_CODE_FORMATS: Object.values(CODE_FORMAT).map(f => f.code),
+  CONTRACT_CODE_FORMATS_SOLIDITY: Object.values(CODE_FORMAT).map(f => f.code).filter(f => f.startsWith('solidity')),
+  CONTRACT_CODE_FORMATS_VYPER: Object.values(CODE_FORMAT).map(f => f.code).filter(f => f.startsWith('vyper')),
 
-  INTERNAL_CONTRACT_MAP: internalContracts,
-  INTERNAL_CONTRACT: lodash.values(internalContracts) as string[],
-
-  LICENSE: {
-    '1': {code: 'None', desc: 'No License'},
-    '2': {code: 'Unlicense', desc: 'The Unlicense'},
-    '3': {code: 'MIT', desc: 'MIT License'},
-    '4': {code: 'GNU_GPLv2', desc: 'GNU General Public License v2.0'},
-    '5': {code: 'GNU_GPLv3', desc: 'GNU General Public License v3.0'},
-    '6': {code: 'GNU_LGPLv2_1', desc: 'GNU Lesser General Public License v2.1'},
-    '7': {code: 'GNU_LGPLv3', desc: 'GNU Lesser General Public License v3.0'},
-    '8': {code: 'BSD_2_Clause', desc: 'BSD 2-clause "Simplified" license'},
-    '9': {code: 'BSD_3_Clause', desc: 'BSD 3-clause "New" Or "Revised" license*'},
-    '10': {code: 'MPL_2_0', desc: 'Mozilla Public License 2.0'},
-    '11': {code: 'OSL_3_0', desc: 'Open Software License 3.0'},
-    '12': {code: 'Apache_2_0', desc: 'Apache 2.0'},
-    '13': {code: 'GNU_AGPLv3', desc: 'GNU Affero General Public License'},
-    '14': {code: 'BSL_1_1', desc: 'Business Source License'},
+  CONTRACT_LICENSE: {
+    1: {code: 'None', desc: 'No License'},
+    2: {code: 'Unlicense', desc: 'The Unlicense'},
+    3: {code: 'MIT', desc: 'MIT License'},
+    4: {code: 'GNU_GPLv2', desc: 'GNU General Public License v2.0'},
+    5: {code: 'GNU_GPLv3', desc: 'GNU General Public License v3.0'},
+    6: {code: 'GNU_LGPLv2_1', desc: 'GNU Lesser General Public License v2.1'},
+    7: {code: 'GNU_LGPLv3', desc: 'GNU Lesser General Public License v3.0'},
+    8: {code: 'BSD_2_Clause', desc: 'BSD 2-clause "Simplified" license'},
+    9: {code: 'BSD_3_Clause', desc: 'BSD 3-clause "New" Or "Revised" license*'},
+    10: {code: 'MPL_2_0', desc: 'Mozilla Public License 2.0'},
+    11: {code: 'OSL_3_0', desc: 'Open Software License 3.0'},
+    12: {code: 'Apache_2_0', desc: 'Apache 2.0'},
+    13: {code: 'GNU_AGPLv3', desc: 'GNU Affero General Public License'},
+    14: {code: 'BSL_1_1', desc: 'Business Source License'},
   },
 
   EVM_VERSION: [
@@ -133,6 +284,8 @@ export const CONST = {
     'cancun',
   ],
 
+  VYPER_SETTING_OPTIMIZE: ['gas', 'codesize', 'none', true, false],
+
   TASK_STATUS: {
     SUBMITTED: 20,
     PROCESSING: 21,
@@ -143,18 +296,6 @@ export const CONST = {
     NEED_NOTIFY: 20,
     NOT_NEED_NOTIFY: 21,
     NOTIFIED: 22,
-  },
-
-  MATCH_STATUS: {
-    INTERNAL_CONTRACT: {matchCode: 200, matchDesc: 'internal-contract'},
-    DEPLOYED_FULL: {matchCode: 201, matchDesc: 'deployed-full'},
-    DEPLOYED_PARTIAL: {matchCode: 202, matchDesc: 'deployed-partial'},
-    CREATION_FULL: {matchCode: 203, matchDesc: 'creation-full'},
-    CREATION_PARTIAL: {matchCode: 204, matchDesc: 'creation-partial'},
-    SIMILAR: {matchCode: 205, matchDesc: 'similar-match'},
-    NOT_MATCH: {matchCode: 301, matchDesc: 'not-match'},
-    CODE_NOT_FOUND: {matchCode: 401, matchDesc: 'code-not-found'},
-    ERROR: {matchCode: 501, matchDesc: 'error'},
   },
 
   E_SPACE_OPENAPI: {

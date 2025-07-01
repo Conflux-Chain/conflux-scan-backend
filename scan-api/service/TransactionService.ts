@@ -3,6 +3,7 @@ import {StatApp} from "../../stat/StatApp";
 import {NoCoreSpace} from "../../stat/config/StatConfig";
 import {getDelegatedAddrAtTx} from "../../stat/model/EIP7702model";
 import {format} from "js-conflux-sdk";
+import {CONST} from "../../stat/service/common/constant";
 
 const lodash = require('lodash');
 const limitMap = require('limit-map');
@@ -33,7 +34,7 @@ export class TransactionService {
 
   async query({ hash, fields, aggregate } = {} as any) {
     const {
-      app: { CONST, service },
+      app: { service },
     } = this as ScanCtx;
 
     if (!hash) {
@@ -127,7 +128,7 @@ export class TransactionService {
 
   async countAndList({ fields, ...options } = {} as any) {
     const {
-      app: { service, tool,  },
+      app: { service, tool },
     } = this;
 
     let result;

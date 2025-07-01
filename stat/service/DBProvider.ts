@@ -30,7 +30,7 @@ import {
 } from "../model/FullBlock";
 import {DailyContractCreate, DailyContractRegister, DailyContractStat} from "../model/DailyContractStat";
 import {createFullMinerBlockTable} from "../model/FullMinerBlock";
-import {ContractVerify, ProxyVerify} from "../model/ContractVerify";
+import {ProxyVerify} from "../model/Contract";
 import {TokenSecurityAudit} from "../model/TokenSecurityAudit";
 import {StatApp} from "../StatApp";
 import {Lock} from "../model/Lock";
@@ -80,6 +80,7 @@ import {ResultCache} from "../model/ResultCache";
 import {TxReceiverDaily, TxReceiverHourly, TxSenderDaily, TxSenderHourly} from "../PeriodTxnSummary";
 import {AuthAction, AuthBlockStub} from "../model/EIP7702model";
 import {ContractImpl} from "../model/ContractImpl";
+import {ContractVerify} from "../model/ContractVerify";
 
 let conf
 export function createDB(config) {

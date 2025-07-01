@@ -5,7 +5,6 @@ const lodash = require('lodash');
 const BigFixed = require("bigfixed");
 const { TokenQuery } = require('../../stat/service/TokenQuery');
 const { Token } = require('../../stat/model/Token');
-const { KV, SCAN_UTIL_CONTRACT } = require('../../stat/model/KV');
 
 export class TokenService {
   app: ScanApp & any;
@@ -111,9 +110,8 @@ export class TokenService {
     }
 
     const total = list.length;
-    /*list = lodash.orderBy(list, orderBy, reverse ? 'desc' : 'asc');*/
     list =  this._sortCustomized(list);
-    if (/*options.accountAddress === undefined &&*/options.addressArray === undefined) {
+    if (options.addressArray === undefined) {
       list = list.slice(skip, skip + limit);
     }
 
@@ -150,10 +148,9 @@ export class TokenService {
   // --------------------------------------------------------------------------
   async queryPlus({ address }) {
     const {
-      app: { config, service },
+      app: { service },
     } = this as ScanCtx;
 
-    // name, symbol, decimals, granularity, totalSupply,transferType, transferCount
     const token = await service.tokenRdb.query({ address });
     return lodash.defaults({}, token);
   }
@@ -187,7 +184,7 @@ export class TokenService {
 
   async _listByAccountPlus({ accountAddress, ...options }) {
     const {
-      app: { service, config },
+      app: { service },
     } = this as ScanCtx;
 
     const { balanceMap: dbBalanceMap, tokenArray: tokens } = await TokenQuery.listAccountTokens({ accountAddress });

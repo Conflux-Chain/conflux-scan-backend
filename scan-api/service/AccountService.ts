@@ -11,7 +11,7 @@ export class AccountService {
 
   async query({ address, fields }) {
     const {
-      app: { CONST, service },
+      app: { service },
     } = this as ScanCtx;
 
     const account = await service.conflux.getAccount(address);

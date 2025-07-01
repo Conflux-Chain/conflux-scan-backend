@@ -152,11 +152,8 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
 
     router.get('/contract/by-address', async (ctx)=>{
         mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address');
-        // mustBeEnumParamIfPresent(ctx.request.query, 'fields', ['abi', 'sourceCode']);
-
-        const {fields, address} = ctx.request.query;
-        const result = await statApp.contractQuery.query({address,fields});
-
+        const {address} = ctx.request.query;
+        const result = await statApp.contractQuery.query(address)
         ctx.body = result || {};
     })
     router.get('/contract/check-abi', async (ctx)=>{
@@ -207,16 +204,6 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const total = await statApp.contractQuery.count({name});
         ctx.body = {name, registered: total} || {};
     })
-
-    /*router.get('/contract/sync', async (ctx)=>{
-        const {id} = ctx.request.query
-        ctx.body = await statApp.contractQuery.sync({id})
-    })*/
-
-    /*router.get('/verify/sync', async (ctx)=>{
-        const {id} = ctx.request.query
-        ctx.body = await statApp.contractQuery.syncVerify({id})
-    })*/
 
     router.get('/list-auth-action', async (ctx)=>{
         let {author, skip, limit} = ctx.request.query;

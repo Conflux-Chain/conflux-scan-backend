@@ -1,7 +1,5 @@
 import {DataTypes, Model, Op, QueryTypes, Sequelize} from "sequelize";
-import {initCfxSdk} from "../service/common/utils";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
-import {ContractVerify} from "./ContractVerify";
 import {format} from "js-conflux-sdk";
 import {StatApp} from "../StatApp";
 import {getAddrId, } from "./HexMap";

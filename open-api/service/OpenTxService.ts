@@ -12,13 +12,13 @@ import {setBody} from "../router/middleware";
 import {CODE_PARAMETER_ABSENT, CODE_PARAMETER_ABSENT_MSG} from "../common/Def";
 import {getApiService} from "../ApiServer";
 import {polishContract} from "./OpenContractService";
-import {ContractVerify} from "../../stat/model/ContractVerify";
 import {toBase32} from "../../stat/service/tool/AddressTool";
 import {TraceCreateContract} from "../../stat/model/TraceCreateContract";
 import {QueryTypes} from "sequelize";
 import {paginateCore} from "../../stat/router/ParamChecker";
 import {formatAddr} from "../common/RestTool";
 import {decodeTxData} from "../../stat/service/tool/TxTool";
+import {ContractVerify} from "../../stat/model/ContractVerify";
 
 const lodash = require('lodash');
 const LRU = require('lru-cache');
@@ -96,11 +96,12 @@ async function getVerifiedContract(base32){
         return JSON.parse(cache);
     }
 
-    const verify = await ContractVerify.findOne({ attributes: ['abi','proxy'], where: { base32, verifyResult: true}});
+    const verify: any = await getApiService().contractQuery.queryVerify(base32, true)
     if(!verify){
         return null;
     }
 
+    verify.proxy = verify.proxy === true
     CONTRACT_CACHE.set(base32, JSON.stringify(verify));
     return verify;
 }
