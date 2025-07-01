@@ -1,14 +1,16 @@
 import {JsonRpcProvider} from "@ethersproject/providers/src.ts/json-rpc-provider";
 import {AuthAction, AuthBlockStub, listAuthAction} from "../../model/EIP7702model";
 import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
-import {getCfxSdk, initEthSdk, MINUTE, SECOND} from "../common/utils";
-import {ConfigInstance, NoCoreSpace} from "../../config/StatConfig";
+import {getCfxSdk, initEthSdk, SECOND} from "../common/utils";
+import {ConfigInstance} from "../../config/StatConfig";
 import {Op} from "sequelize";
 import {sleep} from "../tool/ProcessTool";
 import {init} from "../tool/FixDailyTokenStat";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
 import {getAddrId} from "../../model/HexMap";
 import {Errors} from "../common/LogicError";
+import {ethers} from "ethers";
+import {hexlify, RLP} from "ethers/lib/utils";
 
 type AccountType = {
 	isContract: boolean,
@@ -102,6 +104,16 @@ export async function loadSetAuth(netProvider: JsonRpcProvider, blockNumber: num
 		entry.action.yParity = reqAuth.yParity;
 		entry.action.r = reqAuth.r;
 		entry.action.s = reqAuth.s;
+		// invalid_chain_id case, the RPC returns null author.
+		if (!entry.action.author) {
+			try {
+				entry.action.author = recoverEIP7702Author({
+					...entry.action, signature: buildSignature(entry.action)
+				});
+			} catch (e) {
+				safeAddErrorLog(`eip7702`, `recover-author`, e);
+			}
+		}
 	}
 	// console.log(`result of set auth is `, result);
 	return result;
@@ -220,6 +232,48 @@ async function checkLaterStub(blockNumber: number, dbId: number) {
 	console.log(`block stub not found, block `, blockNumber, ' base id', dbId);
 	return false;
 }
+
+const authExample =     {
+	chainId: '0x0',
+	address: '0x2753725095eee1d5d0bcbf7e6acc94b47e2249a8',
+	nonce: '0xc',
+	yParity: '0x0',
+	r: '0x6a3d86169c82dc44b6e5422eabeff2bc9d9435aeee0781110413187865beb08b',
+	s: '0x1fd9873e5d115b1c2e642594548ea9df83405285134b908d0d90571135e2045b'
+}
+
+// {chainId, address, nonce, yParity, r, s}
+function buildSignature(data = authExample) {
+	// 1. 构造签名 (65 字节: r + s + v)
+	const v = ethers.BigNumber.from(data.yParity).toHexString(); // "0x0" → 需要转成 "0x00"
+	const signature = ethers.utils.concat([
+		data.r,
+		data.s,
+		ethers.utils.hexZeroPad(v, 1) // 确保 v 是 1 字节 (0x00 或 0x01)
+	]);
+	console.log("Signature:", hexlify(signature));
+	return signature;
+}
+
+// 2. 恢复 EIP-7702 的 author
+function recoverEIP7702Author({ chainId, address, nonce, signature }) {
+	// RLP 编码 [chainId, address, nonce]
+	const rlpEncoded = RLP.encode([
+		ethers.utils.hexlify(ethers.BigNumber.from(chainId).toHexString()),
+		address,
+		ethers.utils.hexlify(ethers.BigNumber.from(nonce).toHexString()),
+	]);
+
+	// 添加前缀 0x05
+	const prefixedData = ethers.utils.concat(["0x05", rlpEncoded]);
+
+	// 计算 Keccak-256 哈希
+	const hash = ethers.utils.keccak256(prefixedData);
+
+	// 恢复地址
+	return ethers.utils.recoverAddress(hash, signature);
+}
+
 // node stat/service/eip/eip7702.js tx
 async function main() {
 	const [, , cmd, arg1] = process.argv;
@@ -228,6 +282,10 @@ async function main() {
 		const arr = await listAuthAction({author: arg1, skip: 0, limit: 10});
 		console.log(JSON.stringify(arr, null, 4));
 		await AuthAction.sequelize.close();
+	} else if (cmd === 'recover-auth') {
+		const sig = buildSignature(authExample);
+		const author = recoverEIP7702Author({...authExample, signature: sig});
+		console.log(`author: ${author}`);
 	}
 }
 async function testLoadAuth() {
@@ -245,3 +303,4 @@ async function testLoadAuth() {
 if(module == require.main) {
 	main().then();
 }
+// node stat/service/eip/eip7702.js recover-auth
