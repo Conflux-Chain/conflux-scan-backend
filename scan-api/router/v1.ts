@@ -24,6 +24,7 @@ const lodash = require('lodash');
 import * as KoaRouter from "koa-router";
 import {getClientIP} from "../../stat/router/RateLimiter";
 import {safeAddErrorLog} from "../../stat/monitor/ErrorMonitor";
+import {patchAddressInfo} from "../../stat/service/tool/apiTool";
 const {router_get, router_post} = require ("../../koaflow/src/koaHelper");
 const {OpenAPI} = require('../../koaflow/lib/OpenAPI');
 const CONST = require('../../common/const');
@@ -549,20 +550,8 @@ router_get(router,'/transaction',
     toArray, jsonrpc_countAndListTransaction,
 
   async function (result) {
-    let addressArray = [];
+    await patchAddressInfo(result.list, 'from', 'to');
     result.list.forEach((tx) => {
-      addressArray.push(tx.from.toString());
-      tx.to && (addressArray.push(tx.to.toString()));
-    });
-    const {app: { service: {accountQuery} },} = this as ScanCtx;
-    const accountBasic = await accountQuery.listPatchInfo(addressArray);
-    result.list.forEach((tx) => {
-      tx.fromENSInfo = accountBasic.map[tx.from]?.ens;
-      tx.fromNameTagInfo = accountBasic.map[tx.from]?.nameTag;
-      tx.to && (tx.toContractInfo = accountBasic.map[tx.to]?.contract);
-      tx.to && (tx.toTokenInfo = accountBasic.map[tx.to]?.token);
-      tx.to && (tx.toENSInfo = accountBasic.map[tx.to]?.ens);
-      tx.to && (tx.toNameTagInfo = accountBasic.map[tx.to]?.nameTag);
       if(!tx?.toContractInfo?.address) { // show method only when to address is contract
         tx.method = '0x'
       }

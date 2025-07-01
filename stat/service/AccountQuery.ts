@@ -21,6 +21,11 @@ import {ScanCtx} from "../../scan-api/service/index";
 const lodash = require('lodash');
 const BigFixed = require('bigfixed');
 
+let _accountQuery: AccountQuery = null;
+export function getAccountQuery() {
+    return _accountQuery;
+}
+
 export class AccountQuery {
     public app: any;
     protected CAUTION_FLUSH_INTERVAL = 180_000; // 3 min
@@ -30,6 +35,7 @@ export class AccountQuery {
 
     constructor(app: any) {
         this.app = app;
+        _accountQuery = this;
     }
 
     public async listPatchInfo(addrArray, options : {

@@ -107,7 +107,7 @@ export async function listAuthAction({author, skip = 0, limit = 10}) {
 		row['createdAt'] = row['txTime'];
 	});
 	const count = await AuthAction.count({where: {author}});
-	return {total: count, list: arr};
+	return {total: count, list: arr, listLimit: 1000};
 }
 
 export class AuthAction extends Model<IAuthAction> implements IAuthAction {
