@@ -242,7 +242,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             throw new Errors.ParameterError(`param <txHash> is invalid`);
         }
         const result = await getAuthActionInTx(txHash);
-        await patchAddressInfo(result.list, 'txSender', 'address');
+        await patchAddressInfo(result.list, '', 'address');
         ctx.body = result;
     });
 
