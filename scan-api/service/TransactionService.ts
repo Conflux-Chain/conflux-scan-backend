@@ -57,7 +57,7 @@ export class TransactionService {
       const toHex = format.hexAddress(transaction.to)
       transaction['effectiveAuth'] = await getDelegatedAddrAtTx(toHex, receipt.epochNumber, hash)
       .then(res=>{
-        return patchAddressInfo([res], '', 'address');
+        return patchAddressInfo([res], '', 'address').then(()=>res);
       }).catch(e=>{
         transaction['effectiveAuthError'] = e;
         return null;
