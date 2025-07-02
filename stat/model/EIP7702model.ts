@@ -64,7 +64,7 @@ export async function getDelegatedAddrAtTx(eoa: string, blockNumber:number, txHa
 	if (!txBean) {
 		return null;
 	}
-	return AuthAction.findOne({
+	const bean = await AuthAction.findOne({
 		where: {
 			author: eoa,
 			blockNumber: {[Op.lte]: blockNumber},
@@ -73,6 +73,10 @@ export async function getDelegatedAddrAtTx(eoa: string, blockNumber:number, txHa
 		}, raw: true,
 		order: [['blockNumber', 'desc'], ['transactionPosition', 'desc'], ['authIndex', 'desc']],
 	});
+	if (bean?.address) {
+		bean.address = ethers.utils.getAddress(bean.address);
+	}
+	return bean;
 }
 
 export async function getAuthActionInTx(txHash: string) {
