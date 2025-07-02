@@ -3,7 +3,6 @@ import {StatApp} from "../../stat/StatApp";
 import {NoCoreSpace} from "../../stat/config/StatConfig";
 import {getDelegatedAddrAtTx} from "../../stat/model/EIP7702model";
 import {format} from "js-conflux-sdk";
-import {patchAddressInfo} from "../../stat/service/tool/apiTool";
 
 const lodash = require('lodash');
 const limitMap = require('limit-map');
@@ -57,7 +56,7 @@ export class TransactionService {
       const toHex = format.hexAddress(transaction.to)
       transaction['effectiveAuth'] = await getDelegatedAddrAtTx(toHex, receipt.epochNumber, hash)
       .then(res=>{
-        return res ? patchAddressInfo([res], '', 'address').then(()=>res) : null;
+        return res ? service.accountQuery.patchAddressInfo([res], '', 'address').then(()=>res) : null;
       }).catch(e=>{
         transaction['effectiveAuthError'] = e;
         return null;

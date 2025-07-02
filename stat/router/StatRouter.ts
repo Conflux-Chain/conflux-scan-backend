@@ -44,7 +44,7 @@ import * as bodyParser from "koa-bodyparser";
 import {NoCoreSpace} from "../config/StatConfig";
 import {AbiInfo, parseAbiStr, saveAbiInfo} from "../model/ContractInfo";
 import {getAuthActionInTx, listAuthAction} from "../model/EIP7702model";
-import {patchAddressInfo} from "../service/tool/apiTool";
+import {getAccountQuery} from "../service/AccountQuery";
 
 const e2k = require('express-to-koa');
 const swStats = require('swagger-stats');
@@ -233,7 +233,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             throw new Errors.ParameterError(`param <limit> is invalid: exceeds 100`);
         }
         const result = await listAuthAction({author, skip, limit});
-        await patchAddressInfo(result.list, 'txSender', 'address');
+        await getAccountQuery().patchAddressInfo(result.list, 'txSender', 'address');
         ctx.body = result;
     });
     router.get('/list-auth-action-in-tx', async (ctx)=>{
@@ -242,7 +242,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             throw new Errors.ParameterError(`param <txHash> is invalid`);
         }
         const result = await getAuthActionInTx(txHash);
-        await patchAddressInfo(result.list, '', 'address');
+        await getAccountQuery().patchAddressInfo(result.list, '', 'address');
         ctx.body = result;
     });
 
