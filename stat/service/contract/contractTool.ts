@@ -33,7 +33,7 @@ async function mergeVerifiedImplAbi(ref: IContractImplAbiRef) {
 		})
 		return; //
 	}
-	if (!implInfo.implId) {
+	if (!implInfo.implId || implInfo.implId < 0) {
 		return;
 	}
 	const implId = implInfo.implId;
