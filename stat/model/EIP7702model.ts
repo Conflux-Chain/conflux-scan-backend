@@ -3,6 +3,7 @@ import {getAddrId, Hex40Map} from "./HexMap";
 import {FullTransaction} from "./FullBlock";
 import {getCfxSdk} from "../service/common/utils";
 import {detectAccountType} from "../service/eip/eip7702";
+import {ethers} from "ethers";
 
 export interface IAuthBlockStub {
 	id?: number;
@@ -105,6 +106,8 @@ export async function listAuthAction({author, skip = 0, limit = 10}) {
 	})
 	arr.forEach((row) => {
 		row['createdAt'] = row['txTime'];
+		row['txSender'] =  ethers.utils.getAddress(row['txSender']);
+		row['address'] =  ethers.utils.getAddress(row['address']);
 	});
 	const count = await AuthAction.count({where: {author}});
 	return {total: count, list: arr, listLimit: 1000};
