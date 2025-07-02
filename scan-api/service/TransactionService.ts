@@ -54,7 +54,10 @@ export class TransactionService {
     let receipt = await service.conflux.getTransactionReceipt(hash).catch(() => undefined) || {};
     if (StatApp.isEVM && receipt.epochNumber && transaction.to) {
       const toHex = format.hexAddress(transaction.to)
-      transaction['effectiveAuth'] = await getDelegatedAddrAtTx(toHex, receipt.epochNumber, hash).catch(e=>{
+      transaction['effectiveAuth'] = await getDelegatedAddrAtTx(toHex, receipt.epochNumber, hash)
+      .then(res=>{
+        return res ? service.accountQuery.patchAddressInfo([res], '', 'address').then(()=>res) : null;
+      }).catch(e=>{
         transaction['effectiveAuthError'] = e;
         return null;
       });
