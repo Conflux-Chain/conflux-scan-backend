@@ -89,6 +89,7 @@ export async function getAuthActionInTx(txHash: string) {
 	const list = await AuthAction.findAll({
 		where: {blockNumber: receipt.epochNumber, transactionPosition: txBean.txPosition},
 		order: [['authIndex', 'asc']],
+		raw: true,
 	})
 	list.forEach((row) => {
 		row['address'] =  ethers.utils.getAddress(row['address']);
