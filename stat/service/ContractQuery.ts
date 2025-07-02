@@ -27,12 +27,19 @@ const {Contract} = require("../model/Contract");
 const {ContractVerify} = require("../model/ContractVerify");
 const abi = require('./tool/abi');
 
+let _instance: ContractQuery;
+
+export function getContractQuery() {
+    return _instance;
+}
+
 export class ContractQuery {
     public app: ScanApp;
 
 
     constructor(app: ScanApp) {
         this.app = app;
+        _instance = this;
     }
 
     public async sync({id}) {
