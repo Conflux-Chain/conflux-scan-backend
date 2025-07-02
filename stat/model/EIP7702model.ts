@@ -90,6 +90,9 @@ export async function getAuthActionInTx(txHash: string) {
 		where: {blockNumber: receipt.epochNumber, transactionPosition: txBean.txPosition},
 		order: [['authIndex', 'asc']],
 	})
+	list.forEach((row) => {
+		row['address'] =  ethers.utils.getAddress(row['address']);
+	});
 	return {list};
 }
 
