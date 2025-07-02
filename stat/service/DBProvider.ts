@@ -79,6 +79,7 @@ import {UniqueAddressDaily, UniqueAddressHourly} from "../model/UniqueAddr";
 import {ResultCache} from "../model/ResultCache";
 import {TxReceiverDaily, TxReceiverHourly, TxSenderDaily, TxSenderHourly} from "../PeriodTxnSummary";
 import {AuthAction, AuthBlockStub} from "../model/EIP7702model";
+import {ContractImpl} from "../model/ContractImpl";
 
 let conf
 export function createDB(config) {
@@ -171,6 +172,7 @@ export async function initPartialModel(sequelize) {
     TaskEvent3525.register((sequelize))
     Erc20Transfer.register(sequelize)
     Erc721Transfer.register(sequelize)
+    ContractImpl.register(sequelize );
     // Erc777Transfer.register(sequelize)
     Erc1155Transfer.register(sequelize)
     Erc1155Data.register(sequelize)

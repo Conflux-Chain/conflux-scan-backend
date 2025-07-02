@@ -7,6 +7,8 @@ import {StatApp} from "../StatApp";
 import {getAddrId, } from "./HexMap";
 import {Interface, keccak256} from "ethers/lib/utils";
 import {Errors} from "../service/common/LogicError";
+import {ContractImpl} from "./ContractImpl";
+import {getContractQuery} from "../service/ContractQuery";
 
 export interface IAbiInfo {
     id?:number
@@ -183,13 +185,33 @@ async function queryContractMethods(toIdSet: Iterable<number>) {
 async function mergeVerifiedImplAbi(ref: IContractImplAbiRef) {
     const proxyC = await ContractVerify.findOne({
         attributes: ['base32', 'implementation'],
-        where: {verifyResult: true, base32: ref.base32, proxy: true},
+        where: {verifyResult: true, base32: ref.base32},
         raw: true
     });
-    if (! proxyC?.implementation) {
+    if (!proxyC) {
         return;
     }
-    const implId = await getAddrId(proxyC.implementation);
+    const implInfo = await ContractImpl.findOne({
+        where: {cid: ref.contractId}, raw: true,
+    })
+    if (!implInfo) {
+        getContractQuery().queryImplementation(ref.base32).then(async res=>{
+            const {proxy, implementation} = res || {};
+            const implId = await getAddrId(implementation);
+            await ContractImpl.bulkCreate([{
+                cid: ref.contractId, implId: implId, proxyType: '',
+            }], {
+                updateOnDuplicate: ['implId', 'updatedAt'],
+            })
+        }).catch(err=>{
+            console.log(`failed to cache contract implementation, contract ${ref.base32} `, err);
+        })
+        return; //
+    }
+    if (!implInfo.implId) {
+        return;
+    }
+    const implId = implInfo.implId;
     const map = await queryContractMethods([implId])
     ref.implBase32 = proxyC.implementation;
     ref.implAbiMap = map.get(implId);
