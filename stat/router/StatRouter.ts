@@ -241,7 +241,9 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         if (txHash?.length != 66) {
             throw new Errors.ParameterError(`param <txHash> is invalid`);
         }
-        ctx.body = await getAuthActionInTx(txHash);
+        const result = await getAuthActionInTx(txHash);
+        await patchAddressInfo(result.list, 'txSender', 'address');
+        ctx.body = result;
     });
 
     router.get('/tokens/list', async (ctx)=>{
