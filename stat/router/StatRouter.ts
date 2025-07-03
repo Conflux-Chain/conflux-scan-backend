@@ -220,15 +220,15 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
 
     router.get('/list-auth-action', async (ctx)=>{
         let {author, skip, limit} = ctx.request.query;
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'author');
-        if (!author) {
-            throw new Errors.ParameterError(`param <author> is invalid`);
-        }
         if (author == 'dev') {
             const latestOne = await AuthAction.findOne({
                 order: [['id', 'desc']], raw: true,
             })
             author = latestOne?.author || CONST.ZERO_ADDRESS;
+        }
+        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'author');
+        if (!author) {
+            throw new Errors.ParameterError(`param <author> is invalid`);
         }
         mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
         skip = parseInt(skip || '0');
