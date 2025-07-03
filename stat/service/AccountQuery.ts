@@ -269,7 +269,7 @@ export class AccountQuery {
                 return AuthAction.findOne({
                     where: {author: format.hexAddress(addr)},
                     raw: true, attributes: ['id'],
-                }).then(v => v ? 1 : 0);
+                }).then(v => tabMap[tabType] = v ? 1 : 0);
             }
             return model.findOne({
                 where: {[addressIdFieldName]: addrId},
