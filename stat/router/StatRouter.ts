@@ -225,8 +225,9 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
                 order: [['id', 'desc']], raw: true,
             })
             author = latestOne?.author || CONST.ZERO_ADDRESS;
+        } else {
+            mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'author');
         }
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'author');
         if (!author) {
             throw new Errors.ParameterError(`param <author> is invalid`);
         }
