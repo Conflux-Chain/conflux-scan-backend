@@ -119,5 +119,6 @@ module.exports = {
     0: 'Legacy',
     1: 'EIP-2930',
     2: 'EIP-1559',
+    4: 'EIP-7702',
   },
 };
