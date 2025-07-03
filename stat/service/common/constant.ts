@@ -1,3 +1,5 @@
+import {EVM_RPC_URL} from "../../model/KV";
+
 const lodash = require('lodash')
 
 const internalContracts = {
@@ -243,6 +245,7 @@ export const CONST = {
     '1030': {      isEvm: true,       EPOCH_CIP1559: 101900000,
       C_ANNOUNCE: '0xdf07c798e70138ca6963ea0db3226e124db59ddd',
       C_META: '0x4a90f705ce108de778a0a5f20dfad2c0b7077316',
+      [EVM_RPC_URL]: 'https://evm.confluxrpc.com',
     },
     '1':    {      isEvm: false,      EPOCH_CIP1559: 175600000,
       C_ANNOUNCE: '0x81bbe80b1282387e19d7e1a57476869081c7d965',
@@ -251,6 +254,7 @@ export const CONST = {
     '71':   {      isEvm: true,       EPOCH_CIP1559: 175600000,
       C_ANNOUNCE: '0x623a0340bd4b0817379c8482c92dd26fb8c5316d',
       C_META: '0x96c326866db1b879b2a25be4104fd1d2a7ffb108',
+      [EVM_RPC_URL]: 'https://evmtestnet.confluxrpc.com',
     },
     '8888':    {      isEvm: false,      EPOCH_CIP1559: 587382,
       C_ANNOUNCE: '0x81bbe80b1282387e19d7e1a57476869081c7d965', // placeholder
@@ -259,6 +263,7 @@ export const CONST = {
     '8889':   {      isEvm: true,       EPOCH_CIP1559: 587382,
       C_ANNOUNCE: '0x623a0340bd4b0817379c8482c92dd26fb8c5316d', // placeholder
       C_META: '0x96c326866db1b879b2a25be4104fd1d2a7ffb108', // placeholder
+      [EVM_RPC_URL]: 'https://net8888eth.confluxrpc.com',
     },
   },
 

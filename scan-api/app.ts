@@ -10,15 +10,16 @@ import {initPartialModel} from "../stat/service/DBProvider";
 import ApiDef from "../stat/router/ApiDef";
 import {jsonrpc} from "./router/jsonrpc";
 import {saveApiLog} from "../stat/monitor/ApiLog";
-import {IS_EVM2, KEY_EVM_VERSIONS, KV} from "../stat/model/KV";
+import {EVM_RPC_URL, IS_EVM2, KEY_EVM_VERSIONS, KV} from "../stat/model/KV";
 import {setCfxRpcUrl} from "../koaflow/lib/flow/JsonRPCFlow";
-import {CONST as CONST_TS} from "../stat/service/common/constant";
+import {CONST, CONST as CONST_TS} from "../stat/service/common/constant";
 import {format} from "js-conflux-sdk";
 
 const e2k = require('express-to-koa');
 const swStats = require('swagger-stats');
 const {parameterErrorCode} = require('../common/error')
 import {JsonRPCSDK} from "../common/JsonRPCSDK";
+import {status} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 const apiSpec = require('../document/api-place-hoder-for-swagger-stat.json');
 
 export class ApiApp extends AppBase {
@@ -41,7 +42,8 @@ export class ApiApp extends AppBase {
 
     // db
     const {config} = this;
-    setCfxRpcUrl(config.conflux.url)
+    config[EVM_RPC_URL] = (CONST.CHAIN_INFO[StatApp.networkId] || {})[EVM_RPC_URL];
+    setCfxRpcUrl(config.conflux.url);
     this.sequelize = ApiApp.injectedSequelize || new Sequelize(config.databaseRW.instanceName, null, null, config.databaseRW);
 
     // type converter
