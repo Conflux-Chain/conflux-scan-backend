@@ -43,8 +43,9 @@ import {paginateCore, paginateCoreStat} from "./ParamChecker";
 import * as bodyParser from "koa-bodyparser";
 import {NoCoreSpace} from "../config/StatConfig";
 import {AbiInfo, parseAbiStr, saveAbiInfo} from "../model/ContractInfo";
-import {getAuthActionInTx, listAuthAction} from "../model/EIP7702model";
+import {AuthAction, getAuthActionInTx, listAuthAction} from "../model/EIP7702model";
 import {getAccountQuery} from "../service/AccountQuery";
+import { CONST } from "../service/common/constant";
 
 const e2k = require('express-to-koa');
 const swStats = require('swagger-stats');
@@ -222,6 +223,12 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'author');
         if (!author) {
             throw new Errors.ParameterError(`param <author> is invalid`);
+        }
+        if (author == 'dev') {
+            const latestOne = await AuthAction.findOne({
+                order: [['id', 'desc']], raw: true,
+            })
+            author = latestOne?.author || CONST.ZERO_ADDRESS;
         }
         mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
         skip = parseInt(skip || '0');
