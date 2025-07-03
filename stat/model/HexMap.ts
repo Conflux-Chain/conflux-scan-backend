@@ -212,9 +212,9 @@ export async function makeId(hex: string, dbTxNotUsed: Transaction = undefined, 
     // console.info(`created ${created}`)
     return bean;
 }
-export async function getAddrId(addr:string) {
+export async function getAddrId(addr:string, defaultV = -1) {
     if (!addr) {
-        return -1
+        return defaultV;
     }
     if (addr.startsWith('0x')) {
     } else if (addr.startsWith('cfx') || addr.startsWith('net')){

@@ -17,6 +17,7 @@ import {KEY_CAUTION_LABELS, KV} from "../model/KV";
 import {NAME_TAG_SPLIT} from "./EpochSync";
 import {ethers} from "ethers";
 import {ScanCtx} from "../../scan-api/service/index";
+import {AuthAction} from "../model/EIP7702model";
 
 const lodash = require('lodash');
 const BigFixed = require('bigfixed');
@@ -238,7 +239,7 @@ export class AccountQuery {
     }
 
     public async getBasicInfo(addr) {
-        const addrId = await getAddrId(addr);
+        const addrId = await getAddrId(addr, 0);
         if(!addrId) {
            return {
                 cfxTransferTab: 0,
@@ -247,6 +248,7 @@ export class AccountQuery {
                 erc1155TransferTab: 0,
                 nftAssetTab: 0,
                 minedBlockTab: 0,
+                authorizationsTab: 0,
             };
         }
 
@@ -258,11 +260,21 @@ export class AccountQuery {
             nftAssetTab: {model: NftMint, addressIdFieldName: 'toId'},
             nftAssetTab2: {model: Erc1155Data, addressIdFieldName: 'addressId'},
             minedBlockTab: {model: FullMinerBlock, addressIdFieldName: 'minerId'},
+            authorizationsTab: {model: AuthAction, addressIdFieldName: 'author'},
         } as any;
 
         await Promise.all(Object.keys(tabMap).map((tabType)=>{
             const {model, addressIdFieldName} = tabMap[tabType];
-            return model.findOne({where: {[addressIdFieldName]: addrId}}).then(record=>{
+            if (addressIdFieldName == 'author') {
+                return AuthAction.findOne({
+                    where: {author: format.hexAddress(addr)},
+                    raw: true, attributes: ['id'],
+                }).then(v => v ? 1 : 0);
+            }
+            return model.findOne({
+                where: {[addressIdFieldName]: addrId},
+                raw: true, attributes: [addressIdFieldName],
+            }).then(record=>{
                 tabMap[tabType] = record ? 1 : 0;
             });
         }))
