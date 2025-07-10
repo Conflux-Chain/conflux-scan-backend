@@ -7,7 +7,7 @@ import {Op} from "sequelize";
 import {sleep} from "../tool/ProcessTool";
 import {init} from "../tool/FixDailyTokenStat";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
-import {getAddrId} from "../../model/HexMap";
+import {getAddrId, makeIdV} from "../../model/HexMap";
 import {Errors} from "../common/LogicError";
 import {ethers} from "ethers";
 import {hexlify, RLP} from "ethers/lib/utils";
@@ -209,6 +209,7 @@ export async function process7702AuthStub() {
 		action['transactionPosition'] = transactionPosition;
 		action['authIndex'] = authIndex;
 		action['result'] = result;
+		await makeIdV(action['author'], null, {dt: stub['createdAt']})
 		dbBeanArr.push(action);
 	}
 	await AuthAction.bulkCreate(dbBeanArr, {
