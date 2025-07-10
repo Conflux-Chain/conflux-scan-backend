@@ -4,7 +4,7 @@ import {StatApp} from "../StatApp";
 import {Contract} from "../model/Contract";
 import {TraceCreateContract} from "../model/TraceCreateContract";
 import {
-    POCKET_ADDRESS_MAP, ESpaceHex40Map, Hex40Map, getAddrId
+    POCKET_ADDRESS_MAP, ESpaceHex40Map, Hex40Map, getAddrId, makeIdV
 } from "../model/HexMap";
 import {AddressCfxTransfer} from "../model/CfxTransfer";
 import {AddressErc20Transfer} from "../model/Erc20Transfer";
@@ -245,6 +245,9 @@ export class AccountQuery {
             raw: true, attributes: ['id'],
         }).then(v=>v ? 1 : 0);
         if(!addrId) {
+            if (await has7702) {
+                await makeIdV(addr)
+            }
             return {
                 cfxTransferTab: 0,
                 erc20TransferTab: 0,
