@@ -240,15 +240,19 @@ export class AccountQuery {
 
     public async getBasicInfo(addr) {
         const addrId = await getAddrId(addr, 0);
+        const has7702 = AuthAction.findOne({
+            where: {author: format.hexAddress(addr)},
+            raw: true, attributes: ['id'],
+        }).then(v=>v ? 1 : 0);
         if(!addrId) {
-           return {
+            return {
                 cfxTransferTab: 0,
                 erc20TransferTab: 0,
                 erc721TransferTab: 0,
                 erc1155TransferTab: 0,
                 nftAssetTab: 0,
                 minedBlockTab: 0,
-                authorizationsTab: 0,
+                authorizationsTab: await has7702,
             };
         }
 
@@ -266,10 +270,7 @@ export class AccountQuery {
         await Promise.all(Object.keys(tabMap).map((tabType)=>{
             const {model, addressIdFieldName} = tabMap[tabType];
             if (addressIdFieldName == 'author') {
-                return AuthAction.findOne({
-                    where: {author: format.hexAddress(addr)},
-                    raw: true, attributes: ['id'],
-                }).then(v => tabMap[tabType] = v ? 1 : 0);
+                return has7702.then(v => tabMap[tabType] = v);
             }
             return model.findOne({
                 where: {[addressIdFieldName]: addrId},
