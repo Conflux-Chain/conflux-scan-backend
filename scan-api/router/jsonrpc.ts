@@ -1,6 +1,6 @@
 import {ScanCtx} from "../service/index";
 import {
-    CONTRACT_ANNOUNCEMENT,
+    CONTRACT_ANNOUNCEMENT, EVM_RPC_URL,
     KEY_CONFURA_URL,
     KEY_CORE_API_URL,
     KEY_CORE_OPEN_API_URL,
@@ -161,7 +161,7 @@ export const jsonrpc_frontend = jsonrpc.method_('frontend',
       if (refHost?.includes('.org/') || refHost?.endsWith('.org') ) {
         from = '.net'; to = '.org';
       }
-      for (const kv of [KEY_OPEN_API_URL, KEY_CORE_OPEN_API_URL, KEY_CONFURA_URL, KEY_CORE_API_URL]) {
+      for (const kv of [KEY_OPEN_API_URL, KEY_CORE_OPEN_API_URL, KEY_CONFURA_URL, KEY_CORE_API_URL, EVM_RPC_URL]) {
           // use local config prior to shared DB config.
           frontedConfig[kv] = config[kv] ?? await KV.getString(kv);
           if (refHost && frontedConfig[kv]) {
