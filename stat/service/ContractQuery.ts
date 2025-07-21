@@ -633,11 +633,6 @@ export class ContractQuery {
                 optimizationUsed = jsonInput.settings.optimize
             }
             optimizationUsed = checkVyperOptimization(optimizationUsed)
-            console.log('vyper ver', {
-                compilerVersion,
-                codeFormat,
-                optimizationUsed
-            })
             contractPath = '.'
             contractName = ''
             contractLabel = fullQualifiedName || 'Vyper_contract'
@@ -713,7 +708,9 @@ export class ContractQuery {
             licenseType,
             contractLabel,
         }
-        return this.verifyFromJsonInput(input)
+        const verifyResult = await this.verifyFromJsonInput(input)
+
+        return verifyResult
     }
 
     private async verifyFromJsonInput(
