@@ -28,6 +28,7 @@ import {
 import {ContractVerify} from "../model/ContractVerify";
 import {ethers} from "ethers";
 import {saveAbiInfo} from "../model/ContractInfo";
+import {sleep} from "./tool/ProcessTool";
 
 const superagent = require('superagent');
 const { format, sign } = require('js-conflux-sdk');
@@ -167,10 +168,7 @@ export class ContractQuery {
             verified.libraries = {};
         }
 
-        const hexId = await getAddrId(address)
-        saveAbiInfo(abi, hexId).catch(e => {
-            console.log(`saveAbiInfo ${address}`, e)
-        })
+        this.saveABI(address, abi).then()
         this.CACHE_VERIFY_DETAIL.set(address, verified, this.cacheTtl)
 
         return verified;
@@ -709,7 +707,7 @@ export class ContractQuery {
             contractLabel,
         }
         const verifyResult = await this.verifyFromJsonInput(input)
-
+        this.saveABI(contractAddress).then()
         return verifyResult
     }
 
@@ -730,6 +728,29 @@ export class ContractQuery {
        return {
            verificationId: result.data.verificationId
        }
+    }
+
+    private async saveABI(
+        address: string,
+        abi?: string,
+        interval: number = 1000,
+        retries: number = 4,
+    ) {
+        for (let attempts = 0; attempts < retries; attempts++) {
+            if(!abi) {
+                const verified = await this.getVerifyBySourcify(address, true).catch()
+                abi = verified?.abi
+            }
+            if(abi) {
+                const hexId = await getAddrId(address)
+                saveAbiInfo(abi, hexId).catch(e => {
+                    console.log(`saveAbiInfo ${address}`, e)
+                })
+                break
+            }
+            await sleep(interval)
+            interval *= 2
+        }
     }
 
     public async checkVerification(
