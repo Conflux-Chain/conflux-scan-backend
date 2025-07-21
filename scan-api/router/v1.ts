@@ -656,8 +656,7 @@ router_get(router,'/contract/compiler',
     },
   }),
 
-  //jsonrpc_listCompilers,
-  jsonrpc_listVyperCompilers,
+  jsonrpc_listCompilers,
 );
 
 router_get(router,'/contract/vyper-compiler',

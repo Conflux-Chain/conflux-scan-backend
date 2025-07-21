@@ -3,7 +3,7 @@ import {
     Hex40Map,
     hex40IdMap,
     POCKET_ADDRESS_MAP,
-    ESpaceHex40Map,
+    ESpaceHex40Map, getAddrId,
 } from "../model/HexMap";
 import {Op, QueryTypes} from "sequelize";
 import {fmtAddr, StatApp} from "../StatApp";
@@ -27,6 +27,7 @@ import {
 } from "./common/utils";
 import {ContractVerify} from "../model/ContractVerify";
 import {ethers} from "ethers";
+import {saveAbiInfo} from "../model/ContractInfo";
 
 const superagent = require('superagent');
 const { format, sign } = require('js-conflux-sdk');
@@ -165,6 +166,11 @@ export class ContractQuery {
         } else{
             verified.libraries = {};
         }
+
+        const hexId = await getAddrId(address)
+        saveAbiInfo(abi, hexId).catch(e => {
+            console.log(`saveAbiInfo ${address}`, e)
+        })
         this.CACHE_VERIFY_DETAIL.set(address, verified, this.cacheTtl)
 
         return verified;
@@ -184,11 +190,11 @@ export class ContractQuery {
         }
         addressArray = addressArray.map(format.hexAddress)
 
-        let internals: any[] = []
+        let internals = []
         let contractAddresses = []
         addressArray.forEach(address => {
             if(this.isInternalContract(address)) {
-                internals.push({address})
+                internals.push(address)
             } else{
                 contractAddresses.push(address)
             }
@@ -746,8 +752,8 @@ export class ContractQuery {
             timeout = 1000 * 30
         }) {
         try {
-            const startTime = Date.now();
-            console.info('Sending request', { url });
+            /*const startTime = Date.now();
+            console.info('Sending request', { url });*/
 
             const response = await superagent
                 .post(url)
@@ -759,12 +765,12 @@ export class ContractQuery {
                 .timeout(timeout)
                 .send(body);
 
-            const duration = Date.now() - startTime;
+            /*const duration = Date.now() - startTime;
             console.info('Request completed', {
                 url,
                 status: response.status,
                 duration: `${duration}ms`
-            });
+            });*/
 
             return {
                 status: response.status,
@@ -797,8 +803,8 @@ export class ContractQuery {
             timeout = 1000 * 30
         }) {
         try {
-            const startTime = Date.now();
-            console.info('Sending request', { url });
+            /*const startTime = Date.now();
+            console.info('Sending request', { url });*/
 
             const response = await superagent
                 .get(url)
@@ -809,12 +815,12 @@ export class ContractQuery {
                 })
                 .timeout(timeout);
 
-            const duration = Date.now() - startTime;
+            /*const duration = Date.now() - startTime;
             console.info('Request completed', {
                 url,
                 status: response.status,
                 duration: `${duration}ms`
-            });
+            });*/
 
             return {
                 status: response.status,
