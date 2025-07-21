@@ -9,8 +9,7 @@ import {
   jsonrpc_exportTransaction, jsonrpc_exportTransfer,
   jsonrpc_frontend,
   jsonrpc_listBlock,
-  jsonrpc_listCompilers,
-  jsonrpc_listContractVerified,
+  jsonrpc_listCompilers, jsonrpc_listVyperCompilers,
   jsonrpc_plot,
   jsonrpc_queryBlock,
   jsonrpc_queryContract,
@@ -19,7 +18,7 @@ import {
   jsonrpc_verifyContract,
   listEVMVersion
 } from "./jsonrpc";
-import {CONST as CONST_TS} from "../../stat/service/common/constant";
+import {CONST} from "../../stat/service/common/constant";
 const lodash = require('lodash');
 import * as KoaRouter from "koa-router";
 import {getClientIP} from "../../stat/router/RateLimiter";
@@ -27,7 +26,6 @@ import {safeAddErrorLog} from "../../stat/monitor/ErrorMonitor";
 import {getAccountQuery} from "../../stat/service/AccountQuery";
 const {router_get, router_post} = require ("../../koaflow/src/koaHelper");
 const {OpenAPI} = require('../../koaflow/lib/OpenAPI');
-const CONST = require('../../common/const');
 const error = require('../../common/error');
 const {StatApp} = require("../../stat/StatApp");
 const { buildCheckAddressRateFn } = require('../../stat/router/RateLimiter')
@@ -492,10 +490,10 @@ router_get(router,'/transaction',
 
       minTimestamp: { in: 'query', type: 'integer', minimum: 0 },
       maxTimestamp: { in: 'query', type: 'integer', minimum: 0 },
-      from: { in: 'query', type: 'string', nullable: true }, // new add
-      to: { in: 'query', type: 'string', nullable: true }, // new add
-      transactionHash: { in: 'query', type: 'string', nullable: true }, // new add
-      txType: { in: 'query', type: 'string', enum: [...Object.values(CONST.TX_TYPE), 'create'] },
+      from: { in: 'query', type: 'string', nullable: true },
+      to: { in: 'query', type: 'string', nullable: true },
+      transactionHash: { in: 'query', type: 'string', nullable: true },
+      txType: { in: 'query', type: 'string', enum: Object.values(CONST.TX_TYPE) },
       status: { in: 'query', type: 'integer', enum: [CONST.TX_STATUS.FAILED] },
 
       minEpochNumber: { in: 'query', type: 'integer', minimum: 0 },
@@ -611,12 +609,11 @@ router_get(router,'/contract/internals',
         listLimit: OpenAPI.schema({ type: 'integer', description: 'if exist, require skip+limit <= listLimit' }),
         list: [
           {
-            name: 'string',
-            icon: 'string',
-            iconUrl: 'string',
             address: 'string',
+            name: 'string',
+            website: 'string',
+            admin: 'string',
             transactionCount: 'integer',
-            txCount: 'integer', // XXX: drop
           },
         ],
       },
@@ -627,19 +624,27 @@ router_get(router,'/contract/internals',
   async function (options) {
     options = {
       addressArray: CONST.INTERNAL_CONTRACT,
-      fields: ['transactionCount'],
       ...options,
     };
     return options;
   },
-	toArray, jsonrpc_countAndListContract,
 
-  (result) => {
-    lodash.forEach(result.list, (contract) => {
-      contract.txCount = contract.transactionCount;
-    });
-    return result;
-  },
+  toArray,
+  jsonrpc_countAndListContract,
+);
+
+router_get(router,'/contract/code-format',
+    OpenAPI.flow({
+      tags: ['contract'],
+      output: {
+        200: 'object',
+        600: { code: 'integer', message: 'string' },
+      },
+    }),
+
+    async () => {
+      return Object.values(CONST.CONTRACT_CODE_FORMAT_INFO).filter(format => format.code.endsWith('single-file'))
+    }
 );
 
 router_get(router,'/contract/compiler',
@@ -654,6 +659,18 @@ router_get(router,'/contract/compiler',
   jsonrpc_listCompilers,
 );
 
+router_get(router,'/contract/vyper-compiler',
+    OpenAPI.flow({
+      tags: ['contract'],
+      output: {
+        200: 'object',
+        600: { code: 'integer', message: 'string' },
+      },
+    }),
+
+    jsonrpc_listVyperCompilers,
+);
+
 router_get(router,'/contract/license',
   OpenAPI.flow({
     tags: ['contract'],
@@ -664,9 +681,9 @@ router_get(router,'/contract/license',
   }),
 
   async () => {
-    const licenseArray =  {};
-    Object.values(CONST_TS.LICENSE).forEach(value => licenseArray[value["code"]] = value["desc"]);
-    return licenseArray;
+    return Object.keys(CONST.CONTRACT_LICENSE).reduce((result, licenseType) => (
+        result[licenseType] = CONST.CONTRACT_LICENSE[licenseType].desc, result
+    ), {})
   }
 );
 
@@ -688,6 +705,7 @@ router_post(router, '/contract/verify',
     input: {
       address: { type: 'string', required: true },
       name: { type: 'string', description: 'name in contract file' },
+      codeFormat: { type: 'string', description: 'contract code format' },
       sourceCode: { type: 'string', description: 'contract source code' },
       compiler: { type: 'string', description: 'compiler version' },
       optimizeRuns: { type: 'integer', nullable: true },
@@ -716,7 +734,7 @@ router_post(router, '/contract/verify',
       evmVersion: {
         type: 'string',
         description: `leave blank for compiler default, homestead, tangerineWhistle, spuriousDragon, byzantium, 
-        constantinople, petersburg, istanbul (applicable when codeformat=solidity-single-file)`
+        constantinople, petersburg, istanbul (applicable when codeformat=solidity-single-file/vyper-single-file)`
       },
     },
     output: {
@@ -735,39 +753,6 @@ router_post(router, '/contract/verify',
   }),
 
   toArray, jsonrpc_verifyContract,
-);
-
-router_get(router,'/contract/verified',
-  OpenAPI.flow({
-    tags: ['contract'],
-    input: {
-      addressArray: { in: 'query', type: 'array', items: { type: 'string' } },
-      reverse: { in: 'query', type: 'boolean', default: true },
-      skip: { in: 'query', type: 'integer', minimum: 0, default: 0 },
-      limit: { in: 'query', type: 'integer', minimum: 0, maximum: 200, default: 10 },
-    },
-    output: {
-      200: {
-        total: 'integer',
-        list: [
-          {
-            name: 'string',
-            address: 'string',
-            compiler: 'string',
-            version: 'string',
-            optimization: 'boolean',
-            runs: 'integer',
-            timestamp: 'integer',
-            transactionCount: 'integer',
-            balance: 'string',
-          },
-        ],
-      },
-      600: { code: 'integer', message: 'string' },
-    },
-  }),
-
-  toArray, jsonrpc_listContractVerified,
 );
 
 router_get(router,'/contract/:address',
@@ -878,14 +863,6 @@ router_get(router,'/contract',
     tags: ['contract'],
     input: {
       addressArray: { in: 'query', type: 'array', items: { type: 'string' } },
-      minTimestamp: { in: 'query', type: 'integer', minimum: 0 },
-      maxTimestamp: { in: 'query', type: 'integer', minimum: 0 },
-      minEpochNumber: { in: 'query', type: 'integer', minimum: 0 },
-      maxEpochNumber: { in: 'query', type: 'integer', minimum: 0 },
-      reverse: { in: 'query', type: 'boolean', default: false },
-      skip: { in: 'query', type: 'integer', minimum: 0, default: 0 },
-      limit: { in: 'query', type: 'integer', minimum: 0, maximum: 100, default: 10 },
-      fields: { in: 'query', type: 'array', items: { type: 'string', enum: ['name', 'website', 'abi', 'sourceCode', 'icon'] } },
     },
     output: {
       200: {
@@ -893,17 +870,10 @@ router_get(router,'/contract',
         listLimit: OpenAPI.schema({ type: 'integer', description: 'if exist, require skip+limit <= listLimit' }),
         list: [
           {
-            epochNumber: 'integer',
             address: 'string',
-            from: 'string',
-            transactionHash: 'string',
-            admin: 'string',
             name: 'string',
             website: 'string',
-            abi: 'string',
-            sourceCode: 'string',
-            icon: 'string',
-            iconUrl: 'string',
+            admin: 'string',
           },
         ],
       },
@@ -911,7 +881,8 @@ router_get(router,'/contract',
     },
   }),
 
-  toArray, jsonrpc_countAndListContract,
+  toArray,
+  jsonrpc_countAndListContract,
 );
 
 // ------------------------- Contract and Token -----------------------------
@@ -931,8 +902,8 @@ router_get(router,'/contract-and-token',
   }),
 
   async function (options) {
-    const {app: {service: {contractRdb}}} = this as ScanCtx
-    return contractRdb.listBasic({ addressArray: toArray(options.address) });
+    const {app: {service: {contractQuery}}} = this as ScanCtx
+    return contractQuery.listBasic({ addressArray: toArray(options.address) });
   },
 );
 
@@ -1061,12 +1032,12 @@ router_get(router,'/transfer',
       address: { in: 'query', type: 'string' },
       minTimestamp: { in: 'query', type: 'integer', minimum: 0 },
       maxTimestamp: { in: 'query', type: 'integer', minimum: 0 },
-      from: { in: 'query', type: 'string', nullable: true }, // new add
-      to: { in: 'query', type: 'string', nullable: true }, // new add
+      from: { in: 'query', type: 'string', nullable: true },
+      to: { in: 'query', type: 'string', nullable: true },
       transactionHash: { in: 'query', type: 'string', description: 'use alone', nullable: true },
       tokenId: { in: 'query', type: 'string' },
-      txType: { in: 'query', type: 'string', enum: [...Object.values(CONST.TX_TYPE), 'create'] }, // new add
-      status: { in: 'query', type: 'integer', enum: [CONST.TX_STATUS.FAILED] }, // new add
+      txType: { in: 'query', type: 'string', enum: Object.values(CONST.TX_TYPE) },
+      status: { in: 'query', type: 'integer', enum: [CONST.TX_STATUS.FAILED] },
       zeroValue: { in: 'query', type: 'boolean', default: false },
       tokenArray: { in: 'query', type: 'array', items: { type: 'string' } },
 
@@ -1075,7 +1046,6 @@ router_get(router,'/transfer',
       reverse: { in: 'query', type: 'boolean', default: true }, // XXX: front-end is lazy to input 'true'
       skip: { in: 'query', type: 'integer', minimum: 0, default: 0 },
       limit: { in: 'query', type: 'integer', minimum: 0, maximum: 100, default: 10 },
-      // casFilter: { in: 'query', type: 'boolean', default: true },
     },
     output: {
       200: {
@@ -1352,14 +1322,14 @@ router_get(router,'/report/transfer',
       address: { in: 'query', type: 'string' },
       minTimestamp: { in: 'query', type: 'integer', minimum: 0 },
       maxTimestamp: { in: 'query', type: 'integer', minimum: 0 },
-      from: { in: 'query', type: 'string', nullable: true }, // new add
-      to: { in: 'query', type: 'string', nullable: true }, // new add
+      from: { in: 'query', type: 'string', nullable: true },
+      to: { in: 'query', type: 'string', nullable: true },
       transactionHash: { in: 'query', type: 'string', description: 'use alone', nullable: true },
       tokenId: { in: 'query', type: 'string' },
-      txType: { in: 'query', type: 'string', enum: [...Object.values(CONST.TX_TYPE), 'create'] }, // new add
-      status: { in: 'query', type: 'integer', enum: [CONST.TX_STATUS.FAILED] }, // new add
+      txType: { in: 'query', type: 'string', enum: Object.values(CONST.TX_TYPE) },
+      status: { in: 'query', type: 'integer', enum: [CONST.TX_STATUS.FAILED] },
       zeroValue: { in: 'query', type: 'boolean', default: false },
-      tokenArray: { in: 'query', type: 'array', items: { type: 'string' } }, // new add
+      tokenArray: { in: 'query', type: 'array', items: { type: 'string' } },
 
       minEpochNumber: { in: 'query', type: 'integer', minimum: 0 },
       maxEpochNumber: { in: 'query', type: 'integer', minimum: 0 },

@@ -12,9 +12,12 @@ import {
 import {setBody} from "../router/middleware";
 import {CONST} from "../../stat/service/common/constant"
 import {toBase32} from "../../stat/service/tool/AddressTool";
-import {ContractVerify} from "../../stat/model/ContractVerify";
 import {FullTransaction} from "../../stat/model/FullBlock";
 import {QueryTypes} from "sequelize";
+import {ContractVerify} from "../../stat/model/ContractVerify";
+import {CompilationTarget, VerificationJob, VerifyFromJsonInput, VerifyInput} from "../../stat/service/ContractQuery";
+import {SolidityJsonInput, VyperJsonInput} from "@ethereum-sourcify/compilers-types";
+import {Libraries, SoliditySettings, Sources} from "@ethereum-sourcify/compilers-types/build/main/SolidityTypes";
 
 const lodash = require('lodash');
 const util = require('util');
@@ -92,8 +95,7 @@ export async function getABI(ctx) {
     const {address} = ctx.request.query;
     checkPresent({address}, ['address']);
 
-    const base32 = toBase32(address)
-    const contract = await ContractVerify.findOne({where: {base32, verifyResult: true}, raw: true})
+    const contract = await getApiService().contractQuery.queryVerify(address, true)
     if(!contract){
         setBody(ctx, undefined, 1, `contract ${address} not verified` );
         return;
@@ -107,7 +109,7 @@ export async function getSourceCode(ctx) {
     const {address} = ctx.request.query;
     checkPresent({address}, ['address']);
 
-    const contract = await getApiService().contractQuery.queryVerify({address})
+    const contract = await getApiService().contractQuery.queryVerify(address, true)
     if(!contract){
         setBody(ctx, undefined, 1, `contract ${address} not verified` );
         return;
@@ -128,8 +130,8 @@ export async function getSourceCode(ctx) {
         ABI: contract.abi,
         ContractName: contract.name,
         CompilerVersion: contract.version,
-        OptimizationUsed: contract.optimizeFlag ? '1' : '0',
-        Runs: contract.optimizeRuns,
+        OptimizationUsed: contract.optimization ? '1' : '0',
+        Runs: contract.runs,
         ConstructorArguments: contract.constructorArgs,
         EVMVersion: contract.evmVersion ? contract.evmVersion : "Default",
         Library: "",
@@ -211,71 +213,36 @@ export async function getContractCreation(ctx) {
 }
 
 export async function verifySourcecode(ctx) {
-    let {
-        contractaddress, sourceCode, codeformat, contractname, compilerversion, optimizationUsed, runs,
-        constructorArguements, evmversion, licenseType,
-        libraryname1, libraryaddress1, libraryname2, libraryaddress2, libraryname3, libraryaddress3,
-        libraryname4, libraryaddress4, libraryname5, libraryaddress5, libraryname6, libraryaddress6,
-        libraryname7, libraryaddress7, libraryname8, libraryaddress8, libraryname9, libraryaddress9,
-        libraryname10, libraryaddress10
-    } = ctx.request.body;
-    const libMap = {
-        library1: {name: libraryname1, address: libraryaddress1},
-        library2: {name: libraryname2, address: libraryaddress2},
-        library3: {name: libraryname3, address: libraryaddress3},
-        library4: {name: libraryname4, address: libraryaddress4},
-        library5: {name: libraryname5, address: libraryaddress5},
-        library6: {name: libraryname6, address: libraryaddress6},
-        library7: {name: libraryname7, address: libraryaddress7},
-        library8: {name: libraryname8, address: libraryaddress8},
-        library9: {name: libraryname9, address: libraryaddress9},
-        library10: {name: libraryname10, address: libraryaddress10},
-    };
-    checkPresent({contractaddress, sourceCode, contractname, compilerversion/*, optimizationUsed, runs, licenseType*/},
-        ['contractaddress', 'sourceCode', 'contractname', 'compilerversion'/*, 'optimizationUsed', 'runs', 'licenseType'*/]);
-    let libraries = checkLibrary(libMap);
-    const evmVersion = await checkEVMVersion(evmversion);
-
-    if(codeformat === 'solidity-standard-json-input'){
-        const sc = JSON.parse(sourceCode);
-        optimizationUsed = sc.settings.optimizer.enabled;
-        runs = sc.settings.optimizer.runs;
-        libraries = sc.settings.libraries;
+    const body = ctx.request.body;
+    const input: VerifyInput = {
+        contractAddress: body.contractaddress,
+        sourceCode: body.sourceCode,
+        codeFormat: body.codeformat,
+        fullQualifiedName: body.contractname,
+        compilerVersion: body.compilerversion,
+        optimizationUsed: body.optimizationUsed,
+        runs: body.runs,
+        constructorArguments: body.constructorArguements,
+        evmVersion: body.evmversion,
+        licenseType: body.licenseType,
+        libraryName1: body.libraryname1, libraryAddress1: body.libraryaddress1,
+        libraryName2: body.libraryname2, libraryAddress2: body.libraryaddress2,
+        libraryName3: body.libraryname3, libraryAddress3: body.libraryaddress3,
+        libraryName4: body.libraryname4, libraryAddress4: body.libraryaddress4,
+        libraryName5: body.libraryname5, libraryAddress5: body.libraryaddress5,
+        libraryName6: body.libraryname6, libraryAddress6: body.libraryaddress6,
+        libraryName7: body.libraryname7, libraryAddress7: body.libraryaddress7,
+        libraryName8: body.libraryname8, libraryAddress8: body.libraryaddress8,
+        libraryName9: body.libraryname9, libraryAddress9: body.libraryaddress9,
+        libraryName10: body.libraryname10, libraryAddress10: body.libraryaddress10,
     }
-    optimizationUsed = optimizationUsed === undefined || optimizationUsed === null ? 0 : Number(optimizationUsed);
-    runs = runs === undefined || runs === null ? 200 : Number(runs);
-    licenseType = licenseType === undefined || licenseType === null ? 1 : Number(licenseType);
-
-    if(optimizationUsed !== 0 && optimizationUsed !== 1){
-        throw new Error(`Invalid parameter <optimizationUsed> with value [${optimizationUsed}], expect 0 or 1`);
-    }
-    if(optimizationUsed === 1 && (!Number.isInteger(runs) || runs < 0)){
-        throw new Error(`Invalid parameter <runs> with value [${runs}], expect runs >= 0`);
-    }
-    if(licenseType< 1 || licenseType > 14){
-        throw new Error(`Invalid parameter <licenseType> with value [${licenseType}], expect licenseType between 1 and 14`);
-    }
-
-    const options = {
-        address: contractaddress,
-        name: contractname,
-        sourcecode: sourceCode,
-        compilerType: codeformat,
-        compilerVersion: compilerversion,
-        optimizeFlag: !optimizationUsed ? false : true,
-        optimizeRuns: runs,
-        license: CONST.LICENSE[licenseType].code,
-        constructorArgs: constructorArguements,
-        libraries,
-        evmVersion,
-    };
-    const submitResp = await getApiService().contractQuery.submitVerify(options);
+    const submit: any = await getApiService().contractQuery.verify(input)
 
     setBody(
         ctx,
-        submitResp.error ? submitResp.error : submitResp.guid,
-        submitResp.error ? 1 : 0,
-        submitResp.error ? 'NOTOK' : 'OK'
+        submit.error ? submit.error : submit.verificationId,
+        submit.error ? 1 : 0,
+        submit.error ? 'NOTOK' : 'OK'
     );
 }
 
@@ -283,21 +250,23 @@ export async function checkVerifyStatus(ctx) {
     const {guid} = ctx.request.query;
     checkPresent({guid}, ['guid']);
 
-    const verify = await getApiService().contractQuery.checkVerify({guid});
-    if(!verify){
+    const job: VerificationJob = await getApiService().contractQuery.checkVerification(guid)
+    if(!job){
         setBody(ctx, undefined, 1, `verify with GUID ${guid} not found` );
         return;
     }
-    if(!verify.verifyResult){
-        if(verify.taskStatus === CONST.TASK_STATUS.DONE){
-            setBody(ctx, verify.errors, 1, 'NOTOK');
-            return;
-        } else{
-            setBody(ctx, 'Pending in queue', 1, 'NOTOK');
-            return;
-        }
+
+    if(!job.isJobCompleted) {
+        setBody(ctx, 'Pending in queue', 1, 'NOTOK');
+        return;
     }
 
+    if(job?.error) {
+        const e = job.error
+        const data = e?.message ? `${e.customCode}:${e.message}` : `${e.customCode}`
+        setBody(ctx, data, 1, 'NOTOK');
+        return;
+    }
 
     setBody(ctx, 'Pass - Verified');
 }

@@ -16,8 +16,6 @@ import {Erc20Transfer} from "../model/Erc20Transfer";
 import {Erc721Transfer} from "../model/Erc721Transfer";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {TraceCreateContract, ContractDestroy, IContractDestroy} from "../model/TraceCreateContract";
-import {ContractVerify} from "../model/ContractVerify";
-import {toBase32} from "./tool/AddressTool";
 import {CONST} from "./common/constant"
 import {AddressTransfer, EpochAddressIds} from "../model/AddrTransfer";
 import {NftMeta} from "./nftchecker/NftMetaStorage";
@@ -42,7 +40,6 @@ import {sleep} from "./tool/ProcessTool";
 import {FullBlock, FullTransaction} from "../model/FullBlock";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import {saveAbiAnnounce} from "../model/ContractInfo";
-const {sign} = require('js-conflux-sdk');
 const lodash = require('lodash');
 const zlib = require('zlib');
 const NodeCache = require( "node-cache" );
@@ -57,11 +54,6 @@ const FIELDS_CONTRACT_REGISTER = ['name', 'website', 'abi', 'sourceCode'];
 const FIELDS_CONTRACT = [...['hex40id', 'base32'], ...FIELDS_CONTRACT_REGISTER];
 
 const SELECTOR_DESTROY = '0x00f55d9d';
-
-const REGEX_CODE_EIP1167 = new RegExp(/^0x363d3d373d3d3d363d73[0-9a-f]{40}5af43d82803e903d91602b57fd5bf3$/);
-
-const POCKET_TYPES = ['gas_payment', 'storage_collateral', 'sponsor_balance_for_gas', 'sponsor_balance_for_collateral',
-    'staking_balance', 'balance'];
 
 export const NAME_TAG_SPLIT = "__,__";
 
@@ -84,7 +76,7 @@ export class EpochSync extends SyncBase {
     }
 
     public async mustInit() {
-        this.adminContractId = await makeIdV(CONST.INTERNAL_CONTRACT_MAP.AdminControl);
+        this.adminContractId = await makeIdV(CONST.INTERNAL_NAME_CONTRACT_MAP['AdminControl'].address);
         await this.checkConfig()
         await this.loadLatestVoteParam()
         this.startAutoVerify().then();
@@ -106,7 +98,6 @@ export class EpochSync extends SyncBase {
             if (!tcc) {
                 delaySec = 10;
             } else {
-                await this.doContractVerify([tcc]);
                 await KV.saveNumber(AUTO_VERIFY_CURSOR, tcc.id, null);
             }
         } catch (e) {
@@ -262,24 +253,6 @@ export class EpochSync extends SyncBase {
             }
         } catch (e) {
             console.log(`epoch-sync, createTokenIcon url fail`, e);
-        }
-    }
-
-    async doContractVerify(traceCreateArray) {
-        for (const traceCreate of traceCreateArray) {
-            const hex40 = await Hex40Map.findOne({where: {id: traceCreate.to}});
-            const address = `0x${hex40.hex}`;
-            const codeHash = traceCreate.codeHash;
-            const isEIP1167 = await this.verifyMinimalProxy({address}).catch(e => {
-                safeAddErrorLog('epoch-sync',`verify-do-${address}`, e);
-                console.log(`[${address}]epoch-sync.minimalVerify`, e);
-                return false;
-            });
-            if (isEIP1167) continue;
-            await this.linkVerify({address, codeHash}).catch(e => {
-                safeAddErrorLog('epoch-sync',`link-verify-${address}`, e);
-                console.log(`[${address}]epoch-sync.linkVerify`, e)
-            });
         }
     }
 
@@ -955,76 +928,6 @@ export class EpochSync extends SyncBase {
         });
 
         return nftArray;
-    }
-
-
-    // ---------------------------- contract verify -----------------------------
-    public async linkVerify({address, codeHash}) {
-        const {
-            app: {contractQuery},
-        } = this;
-
-        const matchVerify = await ContractVerify.findOne({
-            where: {codeHash, verifyResult: true},
-            order: [['updatedAt', 'ASC']],
-            raw: true
-        });
-        if (!matchVerify) {
-            return;
-        }
-
-        const base32 = toBase32(address);
-        const similarMatch = matchVerify.base32;
-        const createdAt = new Date();
-
-        const bytecode = await contractQuery.exactBytecode({
-            address: matchVerify.base32,
-            constructorArgs: matchVerify.constructorArgs
-        });
-        const constructorArgs = await contractQuery.exactConstructorArgs({address: base32, bytecode});
-
-        const matchRecord = lodash.assign(matchVerify, CONST.MATCH_STATUS.SIMILAR,
-            {
-                id: undefined, implementation: undefined, base32, constructorArgs, similarMatch, createdAt,
-                updatedAt: createdAt
-            });
-        await ContractVerify.create(matchRecord).catch((err) => {
-            safeAddErrorLog('epoch-sync',`save-verify`, err);
-        });
-    }
-
-    public async verifyMinimalProxy({address}): Promise<boolean> {
-        const {
-            app: {cfx},
-        } = this;
-
-        let isEIP1167 = false;
-        const code = await cfx.getCode(address);
-        if (!REGEX_CODE_EIP1167.test(code)) {
-            return isEIP1167;
-        }
-
-        isEIP1167 = true;
-        const implementation = toBase32(`0x${code.substr(22, 40)}`);
-        const implVerify = await ContractVerify.findOne({
-            where: {base32: implementation, verifyResult: true},
-            order: [['updatedAt', 'ASC']], raw: true
-        });
-        const now = new Date();
-        const base32 = toBase32(address);
-        const proxyPattern = 'Minimal Proxy Contract';
-        const codeHash = sign.keccak256(Buffer.from(code)).toString('hex');
-        const verify = {base32, proxy: true, implementation, proxyPattern, codeHash, createdAt: now, updatedAt: now};
-
-        let proxyVerify;
-        if (!implVerify) {
-            proxyVerify = lodash.assign(verify, {name: '__MinimalProxy__', version: '__version__'});
-        } else {
-            proxyVerify = lodash.assign(implVerify, verify, {id: undefined, similarMatch: undefined, guid: undefined});
-        }
-        await ContractVerify.create(proxyVerify);
-
-        return isEIP1167;
     }
 
     // ------------------------------ text censor -------------------------------

@@ -139,7 +139,7 @@ export class ApiServer {
         apiService.accountQuery = accountQuery;
         const tokenTool = new TokenTool(this.cfx)
         apiService.tokenTool = tokenTool
-        apiService.tokenQuery = new TokenQuery({tokenTool, config: this.config})
+        apiService.tokenQuery = new TokenQuery(apiApp)
         apiService.jsonRpc = new JsonRPCSDK(config.jsonRpc);
         apiService.contractQuery = new ContractQuery({cfx: this.cfx, config: this.config, jsonRpc: apiService.jsonRpc,
             tokenQuery: apiService.tokenQuery, tokenTool})
@@ -158,7 +158,6 @@ export class ApiServer {
         new BatchBalanceWatcher(this.cfx, utilContract)
         await apiService.marketDataQuery.scheduleCache();
         await apiService.txnQuery.scheduleCache()
-        config.asyncVerifySourcecode && (await apiService.contractQuery.schedule());
         config.asyncWrappedToken && (await apiService.tokenQuery.scheduleWrappedCFX());
         if(config.syncIPFSGateway) {
             IPFSGatewaySync.fastest = await KV.getString(KEY_FASTEST_IPFS_GATEWAY, '');

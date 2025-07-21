@@ -6,7 +6,6 @@ import {decodeUtf8} from "./tool/StringTool";
 import {Hex40Map} from "../model/HexMap";
 import {toBase32} from "./tool/AddressTool";
 import {Contract} from "../model/Contract";
-import {ContractVerify} from "../model/ContractVerify";
 import {Erc20Transfer, T_ADDRESS_ERC20TRANSFER} from "../model/Erc20Transfer";
 import {Erc721Transfer, T_ADDRESS_ERC721_TRANSFER} from "../model/Erc721Transfer";
 import {Erc1155Transfer, T_ADDRESS_ERC1155_TRANSFER} from "../model/Erc1155Transfer";
@@ -66,7 +65,7 @@ export class TokenQuery {
         reverse?: boolean | string, showDestroyed?: boolean, skip?: number, limit?: number
     }) {
         const {
-            app: {accountQuery},
+            app: {accountQuery, contractQuery, service},
         } = this;
 
         // fields
@@ -145,10 +144,8 @@ export class TokenQuery {
         let registeredTokens;
         if (rawList) {
             registeredTokens = rawList.map(item => item.address);
-            const verifiedTokens = await ContractVerify.findAll({
-                attributes: ['base32'],
-                where: {verifyResult: true, base32: {[Op.in]: registeredTokens}}
-            }).then(arr => arr.map(t => t.base32));
+            const contractSrv = contractQuery || service.contractQuery
+            const verifiedTokens = await contractSrv.listVerify(registeredTokens).then(arr => arr.map(t => t.address))
             rawList.forEach(row => {
                 row['transferType'] = lodash.toUpper(row['transferType']);
                 if (lodash.includes(fields, 'icon')) {
@@ -176,10 +173,11 @@ export class TokenQuery {
                 attributes: [['base32', 'address'], 'nameTag', 'labels'], where: {nameTag: {[Op.like]: `%${name}%`}, eoa: true},
                 order: [['epoch', 'ASC']]
             });
+            const accountSrv = accountQuery || service.accountQuery
             eoaList?.forEach(nameTag => {
                 if(nameTag?.labels) {
                     nameTag.labels = nameTag.labels.split(NAME_TAG_SPLIT);
-                    const caution = nameTag.labels.find(label => accountQuery?.cautionSet.has(label));
+                    const caution = nameTag.labels.find(label => accountSrv?.cautionSet.has(label));
                     delete nameTag.labels;
                     nameTag.caution = caution ? 1 : 0;
                 }
@@ -330,7 +328,7 @@ export class TokenQuery {
         dexMoonSwap?: string, trackCoinMarketCap?: string, blackList?: boolean
     }) {
         const {
-            app: {cfx},
+            app: {cfx, contractQuery, service},
         } = this
 
         try {
@@ -340,8 +338,9 @@ export class TokenQuery {
             const destroyed = account?.codeHash === CONST.CODEHASH_NO_BYTECODE
             if(token){
                 const zeroAdmin = account?.admin && (format.hexAddress(account.admin) === CONST.ZERO_ADDRESS) ? true : false
-                const verifyInfo =  await ContractVerify.findOne({where: {base32, verifyResult: true}})
-                const verify = verifyInfo?.verifyResult ? true : false
+                const contractSrv = contractQuery || service.contractQuery
+                const verifyInfo = await contractSrv.queryVerify(base32)
+                const verify = !!verifyInfo
                 const a = lodash.defaults({updatedAt: new Date()}, { hex40id: token.hex40id, base32, verify, audit, sponsor,
                     zeroAdmin, cexBinance, cexHuobi, cexOKEx, dexMoonSwap, trackCoinMarketCap
                 })
@@ -361,11 +360,11 @@ export class TokenQuery {
 
     private async getTokenInfo(base32) {
         const {
-            app: {tokenTool},
+            app: {tokenTool, service},
         } = this as unknown as ScanCtx;
 
         const hex40 = await Hex40Map.findOne({where: {hex: format.hexAddress(base32).substr(2)}});
-        const toolkit = tokenTool;
+        const toolkit = tokenTool || service.tokenTool
         const [tokenBasic, totalSupply, transferInfo] = await Promise.all([
             toolkit.getToken(base32, undefined, true),
             toolkit.getTokenTotalSupply(base32, undefined, false),
@@ -434,10 +433,10 @@ export class TokenQuery {
 
     public async detectToken(base32){
         const {
-            app: {tokenTool, cfx},
+            app: {tokenTool, service},
         } = this as unknown as ScanCtx;
 
-        const toolkit = tokenTool;
+        const toolkit = tokenTool || service.tokenTool
         let [tokenInfo, interface721, interface1155, typeInfo] = await Promise.all([
             toolkit.getToken(base32),
             toolkit.supportsInterface(base32, CONST.EIP165_INTERFACE_ID.ERC721),

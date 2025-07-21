@@ -1,9 +1,10 @@
 const lodash = require('lodash');
+const {CONST} = require('../../stat/service/common/constant');
 
 function listLimitBy(fields) {
   return async function (options, next) {
     const {
-      app: { CONST, error },
+      app: { error },
     } = this;
 
     if (lodash.some(fields, (field) => options[field] !== undefined)) {

@@ -1,8 +1,6 @@
 import {init} from "./FixDailyTokenStat";
-import {AbiInfo, saveAbiInfo, setFieldsForUpdate,} from "../../model/ContractInfo";
+import {AbiInfo} from "../../model/ContractInfo";
 import {sleep} from "./ProcessTool";
-import {ContractVerify} from "../../model/ContractVerify";
-import {getAddrId, makeIdV} from "../../model/HexMap";
 const superagent = require('superagent')
 async function run() {
     const [,,host_] = process.argv
@@ -29,38 +27,9 @@ async function run() {
     } while (true)
 }
 
-async function buildAbiForVerifiedContract() {
-    const cList = await ContractVerify.findAll({
-        attributes: ['id', 'name', 'abi', 'base32', 'implementation'],
-        where: {verifyResult: true}, raw: true}
-    );
-    console.log(`contract count`, cList.length);
-    let idx = 0;
-    for (const contractVerify of cList) {
-        idx ++;
-        const {id, name, abi, base32, implementation} = contractVerify;
-        const hexId = await makeIdV(base32);
-        if (!hexId) {
-            console.log(`hex id ${hexId} not found, id ${id} name [${name}] ${base32}`);
-            continue;
-        }
-        process.stdout.write(`\r\u001b[2K  ${idx} / ${cList.length} `);
-        const ok = await saveAbiInfo(abi, hexId);
-        if (!ok) {
-            break;
-        }
-    }
-}
-
 async function main() {
     await init();
-    const [,,cmd] = process.argv;
-    if (cmd === 'build-abi') {
-        setFieldsForUpdate(['updatedAt', 'formatWithArg']);
-        await buildAbiForVerifiedContract();
-    } else {
-        await run()
-    }
+    await run()
     return AbiInfo.sequelize.close();
 }
 

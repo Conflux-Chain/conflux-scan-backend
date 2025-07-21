@@ -1,14 +1,12 @@
 import {ScanApp, ScanCtx} from "./index";
 import {QueryTypes} from "sequelize";
-import {queryEvmBlockCountInEachEpoch} from "../../stat/service/FullBlockQuery";
 import {NoCoreSpace} from "../../stat/config/StatConfig";
-import {CONST} from "../../stat/service/common/constant";
 
 const lodash = require('lodash');
 const limitMap = require('limit-map');
 const BigFixed = require('bigfixed');
 const {StatApp} = require("../../stat/StatApp");
-const {FullBlock, FullBlockExt} = require( "../../stat/model/FullBlock")
+const {FullBlockExt} = require( "../../stat/model/FullBlock")
 
 const DETAIL_FIELDS = ['newTransactionCount', 'avgGasPrice'];
 const PIVOT_FIELDS = ['blockIndex', 'pivotHash'];
@@ -108,10 +106,6 @@ export class BlockService {
   }
 
   async _getDetail({ hash, transactions }) {
-    const {
-      app: { service },
-    } = this;
-
     let newTransactionCount = 0;
     let gasPriceCount = BigInt(0);
     // let gasUsed = BigInt(0);
@@ -199,7 +193,7 @@ export class BlockService {
 
   async countAndList({ fields, ...options } = {} as any) {
     const {
-      app: { service, syncSDK, tool, type },
+      app: { service, type },
     } = this as ScanCtx;
 
     let result;

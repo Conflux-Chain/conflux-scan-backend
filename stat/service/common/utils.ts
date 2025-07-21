@@ -7,6 +7,7 @@ import {ethers} from "ethers";
 import {ConsortiumConflux} from "./ConsortiumConflux";
 import {KEY_EVM_VERSIONS, KV} from "../../model/KV";
 import {useFastFormat} from "./fastFormatter";
+import {CONST} from "./constant";
 
 const lodash = require('lodash');
 const format = require('js-conflux-sdk/src/rpc/types/formatter');
@@ -491,6 +492,93 @@ export function reverseMap(map:Map<any, any>) {
     return ret;
 }
 
+export function checkCodeFormat(codeFormat) {
+    if(!codeFormat) {
+        throw new Error('code format required')
+    }
+    if(!CONST.CONTRACT_CODE_FORMATS.includes(codeFormat)) {
+        throw new Error(`code format ${codeFormat} not supported`)
+    }
+}
+
+export function checkSolcVersion(requestVersion, versions) {
+    if(!requestVersion) {
+        throw new Error('solc version required')
+    }
+
+    if(!requestVersion.startsWith('v')) {
+        const version = versions[requestVersion]
+        if(!version) {
+            throw new Error(`solc version ${requestVersion} not supported`)
+        }
+        return version
+    }
+
+    const version = Object.values(versions).find(version => requestVersion === version)
+    if(!version) {
+        throw new Error(`solc version ${requestVersion} not supported`)
+    }
+    return version
+}
+
+export function checkSolcOptimization(optimizationUsed, runs) {
+    optimizationUsed = optimizationUsed === undefined || optimizationUsed === null ? 0 : Number(optimizationUsed);
+    runs = runs === undefined || runs === null ? 200 : Number(runs);
+    if(optimizationUsed !== 0 && optimizationUsed !== 1){
+        throw new Error(`Invalid parameter <optimizationUsed> with value [${optimizationUsed}], expect 0 or 1`);
+    }
+    if(optimizationUsed === 1 && (!Number.isInteger(runs) || runs < 0)){
+        throw new Error(`Invalid parameter <runs> with value [${runs}], expect runs >= 0`);
+    }
+    return {optimizationUsed, runs}
+}
+
+export function checkFullQualifiedName(fullQualifiedName) {
+    checkPresent({fullQualifiedName}, ['fullQualifiedName'])
+}
+
+// requestVersion: 0.3.10
+// requestVersion: vyper:0.3.10
+export function checkVyperVersion(requestVersion, versions) {
+    if(!requestVersion) {
+        throw new Error('vyper version required')
+    }
+
+    if(!requestVersion.startsWith('vyper')) {
+        const verInfo = versions[requestVersion]
+        if(!verInfo) {
+            throw new Error(`vyper version ${requestVersion} not supported`)
+        }
+        return `${requestVersion}+commit.${verInfo.commit}`
+    }
+
+    const verInfo: any = Object.values(versions).find((version: any) => requestVersion === version.desc)
+    if(!verInfo) {
+        throw new Error(`vyper version ${requestVersion} not supported`)
+    }
+    return `${requestVersion.substring(6)}+commit.${verInfo.commit}`
+}
+
+export function convertVyperVersion(versionWithCommit, versions) {
+    return versions[versionWithCommit.split('+')[0]].desc
+}
+
+/**
+ * default 'gas'
+ * >= 0.3.9 default true
+ * >= 0.3.0 undefined
+ */
+export function checkVyperOptimization(optimizationUsed) {
+    if(!optimizationUsed) {
+        return undefined
+    }
+
+    if(!CONST.VYPER_SETTING_OPTIMIZE.includes(optimizationUsed)){
+        throw new Error(`Invalid parameter <optimiz> with value [${optimizationUsed}], expect one of ${CONST.VYPER_SETTING_OPTIMIZE.join(',')}`);
+    }
+    return optimizationUsed
+}
+
 export function checkLibrary(libMap) {
     const libraries = {};
     Object.keys(libMap).forEach(library => {
@@ -506,14 +594,39 @@ export function checkLibrary(libMap) {
 }
 
 export async function checkEVMVersion(evmVersion) {
-    evmVersion = !evmVersion ? '' : evmVersion;
+    if(!evmVersion) {
+        return undefined
+    }
+
     const value = await KV.getString(KEY_EVM_VERSIONS, '')
     const evmVersions = value.split(',')
-    if(evmVersion !== '' && !lodash.includes(evmVersions, evmVersion)) {
-        throw new Error(`EVM version ${evmVersion} not supported`);
+    if(!lodash.includes(evmVersions, evmVersion)) {
+        throw new Error(`EVM version ${evmVersion} not supported`)
     }
-    return evmVersion;
+
+    return evmVersion
 }
+
+export function checkLicense(licenseType) {
+    const types = Object.keys(CONST.CONTRACT_LICENSE).map(Number)
+    const min = Math.min(...types)
+    const max = Math.max(...types)
+
+    licenseType = licenseType === undefined || licenseType === null ? min : Number(licenseType);
+    if(licenseType< min || licenseType > max){
+        throw new Error(`Invalid parameter <licenseType> with value [${licenseType}], expect licenseType between ${min} and ${max}`);
+    }
+
+    return licenseType
+}
+
+export function splitFullyQualifiedName(fullyQualifiedName){
+    const splitIdentifier = fullyQualifiedName.split(':');
+    const contractName = splitIdentifier[splitIdentifier.length - 1];
+    const contractPath = splitIdentifier.slice(0, -1).join(':');
+    return { contractPath, contractName };
+}
+
 
 export function emptyField(data) {
     Object.keys(data).forEach(key => (data[key] === null || data[key] === undefined) && (delete data[key]));
@@ -612,4 +725,15 @@ export function extractActualGasCost(msg) {
     }
 
     return parseInt(msg.substring(start, end))
+}
+
+export function decodeBase64Type250(encodedStr) {
+    if (!encodedStr.startsWith('base64:type250:')) {
+        throw new Error('Invalid encoded string format. Expected prefix: base64:type250:');
+    }
+
+    const base64Data = encodedStr.substring('base64:type250:'.length);
+    const cleanBase64 = base64Data.replace(/\\n/g, '\n');
+
+    return Buffer.from(cleanBase64, 'base64').toString('utf-8');
 }

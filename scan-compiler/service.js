@@ -10,6 +10,16 @@ require('superagent-proxy')(superagent);
 const OPCODES = require('../common/lib/OPCODES.json');
 const DOMAIN = 'https://solc-bin.ethereum.org/bin';
 const {extractEncodedConstructorArgs} = require('../common/tool');
+const MATCH_STATUS = {
+  DEPLOYED_FULL: {matchCode: 201, matchDesc: 'deployed-full'},
+  DEPLOYED_PARTIAL: {matchCode: 202, matchDesc: 'deployed-partial'},
+  CREATION_FULL: {matchCode: 203, matchDesc: 'creation-full'},
+  CREATION_PARTIAL: {matchCode: 204, matchDesc: 'creation-partial'},
+  SIMILAR: {matchCode: 205, matchDesc: 'similar-match'},
+  NOT_MATCH: {matchCode: 301, matchDesc: 'not-match'},
+  CODE_NOT_FOUND: {matchCode: 401, matchDesc: 'code-not-found'},
+  ERROR: {matchCode: 501, matchDesc: 'error'},
+}
 
 /**
  * @see https://docs.soliditylang.org/en/v0.7.5/using-the-compiler.html
@@ -182,7 +192,7 @@ class SolCompileService {
   async verifyPlus({ address, creationData, deployedBytecode, name, fileName, sourceCode, compilerType,
     compilerVersion, optimizeRuns, libraries, evmVersion }) {
     const {
-      app: {CONST: {MATCH_STATUS}, error, type, },
+      app: {error, type, },
     } = this;
 
     const match = {

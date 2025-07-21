@@ -169,14 +169,6 @@ export const NFTMap = {
             zh: 'Crypto Tech Night',
             en: 'Crypto Tech Night',
         }},
-    // TODO add nft
-    // To commemorate the Conflux Network's success as the third-largest decentralized network in the world during the testing phase
-    // minerNft: {
-    //     address: 'cfx:achmupumcabzu59dj90nn400uppgy4gf2u1775528k',
-    //     name: {
-    //       zh: '矿工',
-    //       en: 'Miner',
-    //     }},
 };
 
 export const NFTNames = {

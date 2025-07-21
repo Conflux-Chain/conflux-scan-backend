@@ -10,7 +10,7 @@ export interface IContract{
     website?:string
     abi?:string
     sourceCode?:string
-    icon?:number
+    icon?:string
     destroyed?:boolean
     censorStatus?: number
     nameSymbolFailed?: boolean;
@@ -26,7 +26,7 @@ export class Contract extends Model<IContract> implements IContract{
     website?:string
     abi?:string
     sourceCode?:string
-    icon?:number
+    icon?:string
     destroyed?:boolean
     censorStatus?: number
     nameSymbolFailed?: boolean;
@@ -62,6 +62,43 @@ export class Contract extends Model<IContract> implements IContract{
                 return contract
             }
             throw err;
+        })
+    }
+}
+
+export interface IProxyVerify{
+    id?:number
+    base32:string
+    expectedImpl?: string
+    guid?:string
+}
+
+export class ProxyVerify extends Model<IProxyVerify> implements IProxyVerify{
+    id?:number
+    base32:string
+    expectedImpl?: string
+    guid?:string
+
+    static register(seq:Sequelize) {
+        ProxyVerify.init({
+            id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
+            base32: {type: DataTypes.CHAR(64), allowNull: false},
+            guid: {type: DataTypes.CHAR(50), allowNull: true},
+            expectedImpl: {type: DataTypes.CHAR(64), allowNull: true},
+        },{
+            tableName: 'proxy_verify',
+            sequelize: seq,
+            timestamps: true,
+        })
+    }
+
+    static async add(proxy: ProxyVerify, dbTx = undefined): Promise<IProxyVerify> {
+        return await ProxyVerify.create({
+            base32:proxy.base32,
+            expectedImpl: proxy.expectedImpl,
+            guid:proxy.guid,
+        }, {
+            transaction: dbTx
         })
     }
 }

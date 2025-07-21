@@ -33,6 +33,7 @@
   "dependencies": {
     "@conflux-dev/conflux-address-rust": "0.1.6",
     "@confluxfans/nft-utils": "^1.0.4",
+    "@ethereum-sourcify/compilers-types": "^1.0.3",
     "@influxdata/influxdb-client": "1.33.2",
     "@influxdata/influxdb-client-apis": "1.33.2",
     "@koa/cors": "~3.1.0",

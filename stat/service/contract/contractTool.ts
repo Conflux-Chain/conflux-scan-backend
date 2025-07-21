@@ -1,4 +1,3 @@
-import {ContractVerify} from "../../model/ContractVerify";
 import {ContractImpl} from "../../model/ContractImpl";
 import {getContractQuery} from "../ContractQuery";
 import {getAddrId} from "../../model/HexMap";
@@ -8,11 +7,7 @@ import {Op, QueryTypes} from "sequelize";
 import {AbiInfo, ContractABI} from "../../model/ContractInfo";
 
 async function mergeVerifiedImplAbi(ref: IContractImplAbiRef) {
-	const proxyC = await ContractVerify.findOne({
-		attributes: ['base32', 'implementation'],
-		where: {verifyResult: true, base32: ref.base32},
-		raw: true
-	});
+	const proxyC = await getContractQuery().queryVerify(ref.base32)
 	if (!proxyC) {
 		return;
 	}
@@ -38,7 +33,6 @@ async function mergeVerifiedImplAbi(ref: IContractImplAbiRef) {
 	}
 	const implId = implInfo.implId;
 	const map = await queryContractMethods([implId])
-	ref.implBase32 = proxyC.implementation;
 	ref.implAbiMap = map.get(implId);
 	ref.implId = implId;
 }

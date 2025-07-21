@@ -1,4 +1,5 @@
 import {ScanApp, ScanCtx} from "./index";
+import {CONST} from "../../stat/service/common/constant";
 
 const lodash = require('lodash');
 const limitMap = require('limit-map');
@@ -83,7 +84,7 @@ export class TransferService {
     txType,
   }) {
     const {
-      app: { CONST, type, service },
+      app: { type, service },
     } = this;
 
     let iterator;
@@ -171,7 +172,7 @@ export class TransferService {
   // --------------------------------------------------------------------------
   _getTransferService(transferType) {
     const {
-      app: { CONST, error, service },
+      app: { error, service },
     } = this as ScanCtx;
 
     let iterator;
