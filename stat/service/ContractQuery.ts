@@ -245,7 +245,7 @@ export class ContractQuery {
 
         let resp
         try {
-            resp = await this.getJsonRequest({
+            resp = await this._getJsonRequest({
                 url: `${this.app.config.contractVerificationUrl}/contract/${StatApp.networkId}/${hex}${fields}`
             })
         } catch(e) {
@@ -304,7 +304,7 @@ export class ContractQuery {
 
     private async listVerifyBySourcify(contractAddresses) {
         const commaSeparatedAddresses = contractAddresses.map(a => ethers.utils.getAddress(format.hexAddress(a))).join(',')
-        const resp = await this.getJsonRequest({
+        const resp = await this._getJsonRequest({
             url: `${this.app.config.contractVerificationUrl}/contracts/${StatApp.networkId}?addresses=${commaSeparatedAddresses}`
         })
         const {results} = resp.data
@@ -386,7 +386,7 @@ export class ContractQuery {
         // query contract and token
         const tokenService = tokenQuery || service.tokenRdb;
         const [ contractArray, verifiedArray, tokenArray ] = await Promise.all([
-            this.list(addressArray).then(response => response.list.map(contract => {
+            this.list(addressArray).then(list => list.map(contract => {
                 return { address: contract.address, name: contract.name }})),
             this.listVerify(addressArray).then(response => response.map(verified => verified.address)),
             tokenService.list({addressArray}).then(response => response.list),
@@ -551,7 +551,7 @@ export class ContractQuery {
     private readonly SOLC_VERSIONS_UPDATE_INTERVAL = 1000 * 60 * 10 // update every 10 minutes
     async listSolcVersions(): Promise<{[shortVersion: string]: string}> {
         if(!this.SOLC_VERSIONS || Date.now() - this.SOLC_VERSIONS_UPDATE_TIME >= this.SOLC_VERSIONS_UPDATE_INTERVAL ) {
-            const {data} = await this.getJsonRequest({
+            const {data} = await this._getJsonRequest({
                 url: 'https://solc-bin.ethereum.org/bin/list.json'
             })
             this.SOLC_VERSIONS = lodash.mapValues(data.releases, solcName => solcName.substring(8, solcName.length - 3))
@@ -569,7 +569,7 @@ export class ContractQuery {
             const versions = {}
             let page = 1
             while (true) {
-                const {data: list} = await this.getJsonRequest({
+                const {data: list} = await this._getJsonRequest({
                     url: `https://api.github.com/repos/vyperlang/vyper/tags?page=${page}&per_page=100`,
                     headers: {
                         'User-Agent': 'Vyper-Version-Checker'
@@ -756,7 +756,7 @@ export class ContractQuery {
     public async checkVerification(
         verificationId: string
     ): Promise<VerificationJob> {
-        const result = await this.getJsonRequest({
+        const result = await this._getJsonRequest({
             url: `${this.app.config.contractVerificationUrl}/verify/${verificationId}`,
         });
         return result.data as VerificationJob
@@ -796,7 +796,7 @@ export class ContractQuery {
                 headers: response.headers
             };
         } catch (error) {
-            console.error('Request failed', {
+            /*console.error('Request failed', {
                 url,
                 error: error.message,
                 stack: error.stack,
@@ -805,7 +805,7 @@ export class ContractQuery {
                     body: error.response.body,
                     headers: error.response.headers
                 } : undefined
-            });
+            });*/
 
             const err = new Error(error.message || 'HTTP request failed');
             err['code'] = error.status || 'HTTP_ERROR';
@@ -814,7 +814,7 @@ export class ContractQuery {
         }
     }
 
-    private async getJsonRequest(
+    private async _getJsonRequest(
         {
             url,
             headers = {},
@@ -846,7 +846,7 @@ export class ContractQuery {
                 headers: response.headers
             };
         } catch (error) {
-            console.error('Request failed', {
+            /*console.error('Request failed', {
                 url,
                 error: error.message,
                 stack: error.stack,
@@ -855,7 +855,7 @@ export class ContractQuery {
                     body: error.response.body,
                     headers: error.response.headers
                 } : undefined
-            });
+            });*/
 
             const err = new Error(error.message || 'HTTP request failed');
             err['code'] = error.status || 'HTTP_ERROR';

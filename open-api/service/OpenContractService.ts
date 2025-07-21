@@ -131,7 +131,7 @@ export async function getSourceCode(ctx) {
         ContractName: contract.name,
         CompilerVersion: contract.version,
         OptimizationUsed: contract.optimization ? '1' : '0',
-        Runs: contract.runs,
+        Runs: contract.runs ? `${contract.runs}` : contract.runs,
         ConstructorArguments: contract.constructorArgs,
         EVMVersion: contract.evmVersion ? contract.evmVersion : "Default",
         Library: "",
