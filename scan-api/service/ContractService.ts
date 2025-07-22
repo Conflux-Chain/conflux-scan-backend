@@ -99,12 +99,13 @@ export class ContractService {
     } = this;
 
     console.log(`params.compiler`, params.compiler)
+    if(!params.codeFormat) {
+      params.codeFormat = CONST.CONTRACT_CODE_FORMAT_INFO.SOLIDITY_SINGLE_FILE.code
+    }
     const input: VerifyInput = {
       contractAddress: params.address,
       sourceCode: params.sourceCode,
-      codeFormat: params.compiler.startsWith('v')
-          ? CONST.CONTRACT_CODE_FORMAT_INFO.SOLIDITY_SINGLE_FILE.code
-          : CONST.CONTRACT_CODE_FORMAT_INFO.VYPER_SINGLE_FILE.code,
+      codeFormat: params.codeFormat,
       fullQualifiedName: params.name,
       compilerVersion: params.compiler,
       optimizationUsed: (Number.isInteger(params.optimizeRuns) && params.optimizeRuns >= 0) ? 1 : 0,

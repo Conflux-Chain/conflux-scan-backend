@@ -135,11 +135,13 @@ export class ContractQuery {
 
         // extra info
         if(verified?.beacon){
-            const verifiedInfo = await this.getVerifyBySourcify(verified.beacon)
+            let verifiedInfo: any = await this.getVerifyBySourcify(verified.beacon)
+            verifiedInfo = verifiedInfo || (await this.getVerifyByDB(address))
             verified.beaconVerified = !!verifiedInfo
         }
         if(verified?.implementation){
-            const verifiedInfo = await this.getVerifyBySourcify(verified.implementation)
+            let verifiedInfo: any = await this.getVerifyBySourcify(verified.implementation)
+            verifiedInfo = verifiedInfo || (await this.getVerifyByDB(address))
             verified.implementationVerified = !!verifiedInfo
         }
         if(verified?.libraries && verified?.libraries?.length > 2){
