@@ -568,13 +568,24 @@ export class ContractQuery {
         if(!this.VYPER_VERSIONS || Date.now() - this.VYPER_VERSIONS_UPDATE_TIME >= this.VYPER_VERSIONS_UPDATE_INTERVAL ) {
             const versions = {}
             let page = 1
+
             while (true) {
-                const {data: list} = await this._getJsonRequest({
-                    url: `https://api.github.com/repos/vyperlang/vyper/tags?page=${page}&per_page=100`,
-                    headers: {
-                        'User-Agent': 'Vyper-Version-Checker'
+                let resp
+                try{
+                    resp = await this._getJsonRequest({
+                        url: `https://api.github.com/repos/vyperlang/vyper/tags?page=${page}&per_page=100`,
+                        headers: {
+                            'User-Agent': 'Vyper-Version-Checker'
+                        }
+                    })
+                }catch (e){
+                    if (e.code === 403 || e.code === 429) {
+                        return null
                     }
-                })
+                    throw e
+                }
+
+                const {data: list} = resp
                 if (!list?.length) {
                     break
                 } else {
@@ -588,6 +599,7 @@ export class ContractQuery {
                     page++
                 }
             }
+
             this.VYPER_VERSIONS = versions
             this.VYPER_VERSIONS_UPDATE_TIME = Date.now()
         }
