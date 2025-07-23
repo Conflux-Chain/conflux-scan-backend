@@ -135,11 +135,13 @@ export class ContractQuery {
 
         // extra info
         if(verified?.beacon){
-            const verifiedInfo = await this.getVerifyBySourcify(verified.beacon)
+            let verifiedInfo: any = await this.getVerifyBySourcify(verified.beacon)
+            verifiedInfo = verifiedInfo || (await this.getVerifyByDB(address))
             verified.beaconVerified = !!verifiedInfo
         }
         if(verified?.implementation){
-            const verifiedInfo = await this.getVerifyBySourcify(verified.implementation)
+            let verifiedInfo: any = await this.getVerifyBySourcify(verified.implementation)
+            verifiedInfo = verifiedInfo || (await this.getVerifyByDB(address))
             verified.implementationVerified = !!verifiedInfo
         }
         if(verified?.libraries && verified?.libraries?.length > 2){
@@ -243,16 +245,11 @@ export class ContractQuery {
         const hex = ethers.utils.getAddress(format.hexAddress(contractAddress))
         const fields = withDetail ? '?fields=stdJsonInput,compilation,abi' : ''
 
-        let resp
-        try {
-            resp = await this._getJsonRequest({
+        const resp = await this._getJsonRequest({
                 url: `${this.app.config.contractVerificationUrl}/contract/${StatApp.networkId}/${hex}${fields}`
             })
-        } catch(e) {
-            if (e.code === 404) {
-                return null
-            }
-            throw e
+        if(!resp) {
+            return null
         }
 
         const {address, match, abi, compilation, stdJsonInput, licenseType, contractLabel} = resp.data
@@ -304,9 +301,14 @@ export class ContractQuery {
 
     private async listVerifyBySourcify(contractAddresses) {
         const commaSeparatedAddresses = contractAddresses.map(a => ethers.utils.getAddress(format.hexAddress(a))).join(',')
+
         const resp = await this._getJsonRequest({
             url: `${this.app.config.contractVerificationUrl}/contracts/${StatApp.networkId}?addresses=${commaSeparatedAddresses}`
         })
+        if(!resp) {
+            return []
+        }
+
         const {results} = resp.data
         return results
     }
@@ -551,9 +553,13 @@ export class ContractQuery {
     private readonly SOLC_VERSIONS_UPDATE_INTERVAL = 1000 * 60 * 10 // update every 10 minutes
     async listSolcVersions(): Promise<{[shortVersion: string]: string}> {
         if(!this.SOLC_VERSIONS || Date.now() - this.SOLC_VERSIONS_UPDATE_TIME >= this.SOLC_VERSIONS_UPDATE_INTERVAL ) {
-            const {data} = await this._getJsonRequest({
+            const resp = await this._getJsonRequest({
                 url: 'https://solc-bin.ethereum.org/bin/list.json'
             })
+            if(!resp) {
+                return
+            }
+            const {data} = resp
             this.SOLC_VERSIONS = lodash.mapValues(data.releases, solcName => solcName.substring(8, solcName.length - 3))
             this.SOLC_VERSIONS_UPDATE_TIME = Date.now()
         }
@@ -578,6 +584,9 @@ export class ContractQuery {
                             'User-Agent': 'Vyper-Version-Checker'
                         }
                     })
+                    if(!resp) {
+                        continue
+                    }
                 }catch (e){
                     if (e.code === 403 || e.code === 429) {
                         return null
@@ -771,6 +780,13 @@ export class ContractQuery {
         const result = await this._getJsonRequest({
             url: `${this.app.config.contractVerificationUrl}/verify/${verificationId}`,
         });
+        if(!result) {
+            return {
+                verificationId,
+                isJobCompleted: false,
+            } as VerificationJob
+        }
+
         return result.data as VerificationJob
     }
 
@@ -782,9 +798,6 @@ export class ContractQuery {
             timeout = 1000 * 30
         }) {
         try {
-            /*const startTime = Date.now();
-            console.info('Sending request', { url });*/
-
             const response = await superagent
                 .post(url)
                 .set({
@@ -794,34 +807,18 @@ export class ContractQuery {
                 })
                 .timeout(timeout)
                 .send(body);
-
-            /*const duration = Date.now() - startTime;
-            console.info('Request completed', {
-                url,
-                status: response.status,
-                duration: `${duration}ms`
-            });*/
-
             return {
                 status: response.status,
                 data: response.body,
                 headers: response.headers
             };
         } catch (error) {
-            /*console.error('Request failed', {
-                url,
-                error: error.message,
-                stack: error.stack,
-                response: error.response ? {
-                    status: error.response.status,
-                    body: error.response.body,
-                    headers: error.response.headers
-                } : undefined
-            });*/
-
             const err = new Error(error.message || 'HTTP request failed');
             err['code'] = error.status || 'HTTP_ERROR';
-            err['response'] = error.response;
+            err['stack'] = error.stack;
+            if(err['code'] === 404 || err['code'] === undefined) {
+                return null
+            }
             throw err;
         }
     }
@@ -833,9 +830,6 @@ export class ContractQuery {
             timeout = 1000 * 30
         }) {
         try {
-            /*const startTime = Date.now();
-            console.info('Sending request', { url });*/
-
             const response = await superagent
                 .get(url)
                 .set({
@@ -844,34 +838,18 @@ export class ContractQuery {
                     ...headers
                 })
                 .timeout(timeout);
-
-            /*const duration = Date.now() - startTime;
-            console.info('Request completed', {
-                url,
-                status: response.status,
-                duration: `${duration}ms`
-            });*/
-
             return {
                 status: response.status,
                 data: response.body,
                 headers: response.headers
             };
         } catch (error) {
-            /*console.error('Request failed', {
-                url,
-                error: error.message,
-                stack: error.stack,
-                response: error.response ? {
-                    status: error.response.status,
-                    body: error.response.body,
-                    headers: error.response.headers
-                } : undefined
-            });*/
-
             const err = new Error(error.message || 'HTTP request failed');
-            err['code'] = error.status || 'HTTP_ERROR';
-            err['response'] = error.response;
+            err['code'] = error.status;
+            err['stack'] = error.stack;
+            if(err['code'] === 404 || err['code'] === undefined) {
+                return null
+            }
             throw err;
         }
     }
