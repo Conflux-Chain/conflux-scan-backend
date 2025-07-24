@@ -282,17 +282,18 @@ export class ContractQuery {
         if(language === 'vyper') {
             compilerVersion = convertVyperVersion(compilerVersion, this.VYPER_VERSIONS)
             fullyQualifiedName = contractLabel
+            console.log(`debug vyper compilerSettings.optimize`, JSON.stringify(compilerSettings))
         }
 
         return {
             address: format.address(address, StatApp.networkId),
+            language,
             sourceCode,
             name: fullyQualifiedName,
             abi: abi,
             version: compilerVersion,
             evmVersion: compilerSettings?.evmVersion,
-            optimize: compilerSettings?.optimize,
-            optimization: compilerSettings?.optimizer?.enabled,
+            optimization: language === 'vyper' ? 'N/A' : compilerSettings?.optimizer?.enabled,
             runs: compilerSettings?.optimizer?.runs,
             license: CONST.CONTRACT_LICENSE[licenseType || 1].code,
             constructorArgs: '',
@@ -316,13 +317,18 @@ export class ContractQuery {
     private async getVerifyByDB(contractAddress, withDetail = false) {
         let attributes: any = [['base32', 'address']]
         if(withDetail) {
-            attributes = [['base32', 'address'], 'sourceCode', 'name', 'abi', 'version', 'evmVersion',
+            attributes = [['base32', 'address'], ['compiler', 'language'], 'sourceCode', 'name', 'abi', 'version', 'evmVersion',
                 ['optimizeFlag','optimization'], ['optimizeRuns','runs'], 'license', 'constructorArgs']
         }
         return ContractVerify.findOne({
             attributes,
             where: {base32: format.address(contractAddress, StatApp.networkId), verifyResult: true},
             raw: true
+        }).then((verify: any) => {
+            if(verify?.language?.substring(0, 8) === 'solidity') {
+                verify.language = 'solidity'
+            }
+            return verify
         })
     }
 
