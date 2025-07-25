@@ -98,7 +98,11 @@ export class ContractService {
       app: {service}
     } = this;
 
-    console.log(`params.compiler`, params.compiler)
+    console.log(`request verifySourcecode ==\n`, {
+      address: params.address,
+      compiler: params.compiler,
+      codeFormat: params.codeFormat,
+    })
     if(!params.codeFormat) {
       params.codeFormat = CONST.CONTRACT_CODE_FORMAT_INFO.SOLIDITY_SINGLE_FILE.code
     }

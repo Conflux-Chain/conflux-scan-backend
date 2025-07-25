@@ -377,6 +377,7 @@ export const jsonrpc_verifyContract = jsonrpc.method_('verifyContract',
   buildFlow((app) => parameter({
     address: { path: '0', type: app.type.address, required: true },
     name: { path: '0', type: type.string },
+    codeFormat: { path: '0', type: type.string },
     sourceCode: { path: '0', type: type.string },
     compiler: { path: '0', type: type.string },
     optimizeRuns: { path: '0', type: type.unsigned },

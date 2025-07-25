@@ -30,6 +30,7 @@ import {ethers} from "ethers";
 import {saveAbiInfo} from "../model/ContractInfo";
 import {sleep} from "./tool/ProcessTool";
 
+const path = require('path');
 const superagent = require('superagent');
 const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
@@ -282,17 +283,18 @@ export class ContractQuery {
         if(language === 'vyper') {
             compilerVersion = convertVyperVersion(compilerVersion, this.VYPER_VERSIONS)
             fullyQualifiedName = contractLabel
+            console.log(`debug vyper compilerSettings.optimize`, JSON.stringify(compilerSettings))
         }
 
         return {
             address: format.address(address, StatApp.networkId),
+            language,
             sourceCode,
             name: fullyQualifiedName,
             abi: abi,
             version: compilerVersion,
             evmVersion: compilerSettings?.evmVersion,
-            optimize: compilerSettings?.optimize,
-            optimization: compilerSettings?.optimizer?.enabled,
+            optimization: language === 'vyper' ? 'N/A' : compilerSettings?.optimizer?.enabled,
             runs: compilerSettings?.optimizer?.runs,
             license: CONST.CONTRACT_LICENSE[licenseType || 1].code,
             constructorArgs: '',
@@ -316,13 +318,18 @@ export class ContractQuery {
     private async getVerifyByDB(contractAddress, withDetail = false) {
         let attributes: any = [['base32', 'address']]
         if(withDetail) {
-            attributes = [['base32', 'address'], 'sourceCode', 'name', 'abi', 'version', 'evmVersion',
+            attributes = [['base32', 'address'], ['compiler', 'language'], 'sourceCode', 'name', 'abi', 'version', 'evmVersion',
                 ['optimizeFlag','optimization'], ['optimizeRuns','runs'], 'license', 'constructorArgs']
         }
         return ContractVerify.findOne({
             attributes,
             where: {base32: format.address(contractAddress, StatApp.networkId), verifyResult: true},
             raw: true
+        }).then((verify: any) => {
+            if(verify?.language?.substring(0, 8) === 'solidity') {
+                verify.language = 'solidity'
+            }
+            return verify
         })
     }
 
@@ -625,8 +632,8 @@ export class ContractQuery {
             libraryName7, libraryAddress7, libraryName8, libraryAddress8, libraryName9, libraryAddress9,
             libraryName10, libraryAddress10
         } = verifyInput
-        checkPresent({contractAddress, sourceCode, compilerVersion},
-            ['contractAddress', 'sourceCode', 'compilerVersion'])
+        checkPresent({contractAddress, sourceCode, compilerVersion, fullQualifiedName},
+            ['contractAddress', 'sourceCode', 'compilerVersion', 'fullQualifiedName'])
 
         checkCodeFormat(codeFormat)
         let jsonInput, contractPath, contractName, contractLabel
@@ -640,7 +647,6 @@ export class ContractQuery {
             const optimize = checkSolcOptimization(optimizationUsed, runs)
             optimizationUsed = optimize.optimizationUsed
             runs = optimize.runs
-            checkFullQualifiedName(fullQualifiedName)
             const fqn = splitFullyQualifiedName(fullQualifiedName)
             contractPath = fqn.contractPath
             contractName = fqn.contractName
@@ -652,9 +658,15 @@ export class ContractQuery {
                 optimizationUsed = jsonInput.settings.optimize
             }
             optimizationUsed = checkVyperOptimization(optimizationUsed)
-            contractPath = '.'
-            contractName = ''
-            contractLabel = fullQualifiedName || 'Vyper_contract'
+            const fqn = splitFullyQualifiedName(fullQualifiedName)
+            if(codeFormat === CONST.CONTRACT_CODE_FORMAT_INFO.VYPER_SINGLE_FILE.code) {
+                contractPath = "."
+                contractName = ""
+            } else{
+                contractPath = fqn.contractPath
+                contractName = path.parse(fqn.contractPath).name
+            }
+            contractLabel = fqn.contractName || 'Vyper_contract'
         }
         const librariesInfo = {
             library1: {name: libraryName1, address: libraryAddress1},
@@ -691,8 +703,6 @@ export class ContractQuery {
             }
         }
         if(codeFormat === CONST.CONTRACT_CODE_FORMAT_INFO.VYPER_SINGLE_FILE.code) {
-            contractPath = '.'
-            contractName = ''
             jsonInput = {
                 language: "Vyper",
                 sources: {
