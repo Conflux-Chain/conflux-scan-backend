@@ -309,9 +309,6 @@ paths:
           application/x-www-form-urlencoded:
             schema:
               $ref: '#/components/schemas/VerifySourcecode'
-#          application/json:
-#            schema:
-#              $ref: '#/components/schemas/VerifySourcecode'
       responses:
         200:
           description: ''
@@ -2492,43 +2489,52 @@ components:
         contractaddress:
           type: string
           required: true
-          description: "Contract Address starts with 0x... "
+          description: "the address your contract is deployed at"
         sourceCode:
           type: string
           required: true
-          description: "Contract Source Code (Flattened if necessary)"
+          description: "contract source code"
         codeformat:
           type: string
-          required: false
-          description: "only support 'solidity-single-file' format"
-          default: 'solidity-single-file'
+          required: true
+          description: "solidity single file, use solidity-single-file
+                        \nsolidity JSON file ( recommended ), use solidity-standard-json-input
+                        \nvyper JSON file, use vyper-json"
         contractname:
           type: string
           required: true
-          description: "contract name"
+          description: "the name of your contract, such as
+                        \ncontracts/Verified.sol:Verified"
         compilerversion:
           type: string
           required: true
-          description: "compiler version"
+          description: "compiler version used
+                        \nfor solc compiler, such as v0.8.24+commit.e11b9ed9
+                        \nfor vyper compiler, such as vyper:0.4.0"
         optimizationUsed:
           type: string
           required: true
-          description: "0 = No Optimization, 1 = Optimization used (applicable when codeformat=solidity-single-file)"
+          description: "for solc compiler, 0 = No Optimization, 1 = Optimization used 
+                        \nfor vyper compiler, can be one of gas, codesize, none, 0 = No Optimization, 1 = Optimization 
+                        \n(the last two are for backwards compatibility)
+                        \n(applicable when codeformat is solidity-single-file or vyper-single-file)"
           default: 0
         runs:
           type: number
           required: true
-          description: "set to 200 as default unless otherwise  (applicable when codeformat=solidity-single-file) "
+          description: "set to 200 as default unless otherwise  
+                        \n(applicable when codeformat is solidity-single-file) "
           default: 200
         constructorArguements:
           type: string
           required: false
-          description: "if applicable"
+          description: "optional, include if your contract uses constructor arguments"
           default: ''
         evmversion:
           type: string
           required: false
-          description: "leave blank for compiler default, homestead, tangerineWhistle, spuriousDragon, byzantium, constantinople, petersburg, istanbul (applicable when codeformat=solidity-single-file)"
+          description: "leave blank for compiler default, 
+                        \n(applicable when codeformat is solidity-single-file or vyper-single-file)"
           default: ''
         licenseType:
           type: string
