@@ -1,7 +1,7 @@
 import {ScanApp, ScanCtx} from "./index";
 import {VerificationJob, VerifyInput} from "../../stat/service/ContractQuery";
 import {sleep} from "../../stat/service/tool/ProcessTool";
-import {StatApp} from "../../stat/StatApp";
+import {fmtAddr, StatApp} from "../../stat/StatApp";
 import {CONST} from "../../stat/service/common/constant";
 
 const lodash = require('lodash');
@@ -30,17 +30,21 @@ export class ContractService {
     account.sponsor = this.convertZeroAddressToNullStr(sponsor);
 
     let verify: any = {exactMatch: false}
-    if (verified) {
-      verify = lodash.defaults(verified, {exactMatch: true})
-    }
-
     let proxy = {};
     let beacon = {};
     let implementation = {};
-    if (verify.exactMatch) {
+    if (verified) {
+      verify = lodash.defaults(verified, {exactMatch: true})
       proxy = lodash.pick(verified, ['proxy', 'proxyPattern']);
       beacon = {address: verified.beacon, verify: { exactMatch: verified.beaconVerified }};
       implementation = { address: verified.implementation, verify: { exactMatch: verified.implementationVerified } };
+    } else {
+      const resolved = await this.resolveEIP1167(address)
+      if (resolved) {
+        verify = lodash.defaults(resolved.verified, {exactMatch: true})
+        proxy = resolved.proxy
+        implementation = resolved.implementation
+      }
     }
 
     const collateralForStorageInfo = await service.accountQuery.getCollateralForStorageInfo(address);
@@ -156,6 +160,34 @@ export class ContractService {
     return {
       address: params.address,
       errors: ['Pending in queue, please check contract detail page later!']
+    }
+  }
+
+  async resolveEIP1167(address) {
+    const {
+      app: {cfx, service}
+    } = this
+
+    const code = await cfx.getCode(address)
+    if (!CONST.REGEX_EIP1167_BYTECODE.test(code)) {
+      return null
+    }
+
+    const impl = `0x${code.substr(22, 40)}`
+    const verified = await service.contractQuery.queryVerify(impl, true)
+    if (!verified) {
+      return null
+    }
+
+    return {
+      proxy: {proxy: 1, proxyPattern: "Minimal Proxy Contract"},
+      implementation: {
+        address: fmtAddr(impl, StatApp.networkId),
+        verify: {
+          exactMatch: true
+        }
+      },
+      verified,
     }
   }
 }
