@@ -2661,9 +2661,9 @@ components:
         compilerversion:
           type: string
           required: true
-          description: "solidity single file, use solidity-single-file
-                        \nsolidity JSON file ( recommended ), use solidity-standard-json-input
-                        \nvyper JSON file, use vyper-json"
+          description: "compiler version used
+                        \nfor solc compiler, such as v0.8.24+commit.e11b9ed9
+                        \nfor vyper compiler, such as vyper:0.4.0"
         optimizationUsed:
           type: string
           required: true
