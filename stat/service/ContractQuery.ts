@@ -96,10 +96,10 @@ export class ContractQuery {
 
     public async queryVerify(address, withDetail = false) {
         address = format.hexAddress(address)
-        const cache = withDetail ? this.CACHE_VERIFY_DETAIL.get(address) : this.CACHE_VERIFY_ADDRESS.get(address)
+        /*const cache = withDetail ? this.CACHE_VERIFY_DETAIL.get(address) : this.CACHE_VERIFY_ADDRESS.get(address)
         if(cache) {
             return withDetail ? cache : {address: format.address(address, StatApp.networkId)}
-        }
+        }*/
 
         // verified info
         let verified: any
@@ -118,7 +118,7 @@ export class ContractQuery {
             return verified
         }
         if(!withDetail) {
-            this.CACHE_VERIFY_ADDRESS.set(address, true, this.cacheTtl)
+            /*this.CACHE_VERIFY_ADDRESS.set(address, true, this.cacheTtl)*/
             return verified
         }
 
@@ -145,9 +145,12 @@ export class ContractQuery {
             verifiedInfo = verifiedInfo || (await this.getVerifyByDB(address))
             verified.implementationVerified = !!verifiedInfo
         }
-        if(verified?.libraries && verified?.libraries?.length > 2){
+        if(verified?.libraries){
             const libs = [];
-            lodash.forIn(JSON.parse(verified.libraries), (lib, libKey) =>{
+            if(typeof verified.libraries === 'string') {
+                verified.libraries = JSON.parse(verified.libraries)
+            }
+            lodash.forIn(verified.libraries, (lib, libKey) =>{
                 if(typeof lib === 'object'){
                     Object.keys(lib).forEach(libName => {
                         libs.push({
@@ -171,8 +174,7 @@ export class ContractQuery {
             verified.libraries = {};
         }
 
-        this.saveABI(address, abi).then()
-        this.CACHE_VERIFY_DETAIL.set(address, verified, this.cacheTtl)
+        /*this.CACHE_VERIFY_DETAIL.set(address, verified, this.cacheTtl)*/
 
         return verified;
     }
@@ -244,8 +246,12 @@ export class ContractQuery {
 
     private async getVerifyBySourcify(contractAddress, withDetail = false) {
         const hex = ethers.utils.getAddress(format.hexAddress(contractAddress))
-        const fields = withDetail ? '?fields=stdJsonInput,compilation,abi' : ''
+        const cache = withDetail ? this.CACHE_VERIFY_DETAIL.get(hex) : this.CACHE_VERIFY_ADDRESS.get(hex)
+        if(cache) {
+            return withDetail ? cache : {address: format.address(hex, StatApp.networkId)}
+        }
 
+        const fields = withDetail ? '?fields=stdJsonInput,compilation,abi' : ''
         const resp = await this._getJsonRequest({
                 url: `${this.app.config.contractVerificationUrl}/contract/${StatApp.networkId}/${hex}${fields}`
             })
@@ -259,6 +265,7 @@ export class ContractQuery {
         }
 
         if(!withDetail) {
+            this.CACHE_VERIFY_ADDRESS.set(hex, true, this.cacheTtl)
             return {address: format.address(address, StatApp.networkId)}
         }
 
@@ -286,7 +293,7 @@ export class ContractQuery {
             console.log(`debug vyper compilerSettings.optimize`, JSON.stringify(compilerSettings))
         }
 
-        return {
+        const verified = {
             address: format.address(address, StatApp.networkId),
             language,
             sourceCode,
@@ -296,9 +303,13 @@ export class ContractQuery {
             evmVersion: compilerSettings?.evmVersion,
             optimization: language === 'vyper' ? 'N/A' : compilerSettings?.optimizer?.enabled,
             runs: compilerSettings?.optimizer?.runs,
+            libraries: compilerSettings?.libraries,
             license: CONST.CONTRACT_LICENSE[licenseType || 1].code,
             constructorArgs: '',
         }
+        this.saveABI(address, abi).then()
+        this.CACHE_VERIFY_DETAIL.set(hex, verified, this.cacheTtl)
+        return verified
     }
 
     private async listVerifyBySourcify(contractAddresses) {
@@ -319,7 +330,7 @@ export class ContractQuery {
         let attributes: any = [['base32', 'address']]
         if(withDetail) {
             attributes = [['base32', 'address'], ['compiler', 'language'], 'sourceCode', 'name', 'abi', 'version', 'evmVersion',
-                ['optimizeFlag','optimization'], ['optimizeRuns','runs'], 'license', 'constructorArgs']
+                ['optimizeFlag','optimization'], ['optimizeRuns','runs'], 'libraries', 'license', 'constructorArgs']
         }
         return ContractVerify.findOne({
             attributes,
