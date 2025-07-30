@@ -135,6 +135,8 @@ export function addSwagger(app: Koa, prefix, swaggerYaml, tld) {
     app.use(
         koaSwagger({
             routePrefix: `${prefix}/doc`,
+            specPrefix: `${prefix}/spec`,
+            exposeSpec: true,
             oauthOptions: {},
             swaggerOptions: {
                 title: 'open-api-doc',
