@@ -766,10 +766,18 @@ export class ContractQuery {
                 licenseType: input.licenseType,
                 contractLabel: input.contractLabel,
             },
-        });
-       return {
-           verificationId: result.data.verificationId
-       }
+        })
+
+        if(!result) {
+            return {
+                customCode: 'malformed_verification_response',
+                message: 'Business is busy, please try again later'
+            }
+        }
+
+        return {
+            verificationId: result.data.verificationId
+        }
     }
 
     private async saveABI(
@@ -835,7 +843,7 @@ export class ContractQuery {
             };
         } catch (error) {
             const err = new Error(error.message || 'HTTP request failed');
-            err['code'] = error.status || 'HTTP_ERROR';
+            err['code'] = error.status;
             err['stack'] = error.stack;
             if(err['code'] === 404 || err['code'] === undefined) {
                 return null

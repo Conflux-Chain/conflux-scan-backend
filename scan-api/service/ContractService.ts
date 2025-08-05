@@ -135,6 +135,12 @@ export class ContractService {
 
     console.log(`input.codeFormat`, input.codeFormat)
     const submit: any = await service.contractQuery.verify(input)
+    if(submit.message) {
+      return {
+        address: params.address,
+        errors: [submit.message]
+      }
+    }
 
     for (let i = 0; i < 10; i++) {
       const job: VerificationJob = await service.contractQuery.checkVerification(submit.verificationId)

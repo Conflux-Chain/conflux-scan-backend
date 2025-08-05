@@ -240,9 +240,9 @@ export async function verifySourcecode(ctx) {
 
     setBody(
         ctx,
-        submit.error ? submit.error : submit.verificationId,
-        submit.error ? 1 : 0,
-        submit.error ? 'NOTOK' : 'OK'
+        submit.message ? submit.message : submit.verificationId,
+        submit.message ? 1 : 0,
+        submit.message ? 'NOTOK' : 'OK'
     );
 }
 
