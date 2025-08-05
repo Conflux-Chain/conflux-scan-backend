@@ -23,9 +23,9 @@ import {
     checkEVMVersion,
     checkLicense,
     decodeBase64Type250,
-    splitFullyQualifiedName, checkSolcOptimization, checkVyperOptimization, convertVyperVersion, checkFullQualifiedName
+    splitFullyQualifiedName, checkSolcOptimization, checkVyperOptimization, convertVyperVersion
 } from "./common/utils";
-import {ContractVerify} from "../model/ContractVerify";
+import {VerifiedContracts} from "../model/VerifiedContracts";
 import {ethers} from "ethers";
 import {saveAbiInfo} from "../model/ContractInfo";
 import {sleep} from "./tool/ProcessTool";
@@ -96,10 +96,6 @@ export class ContractQuery {
 
     public async queryVerify(address, withDetail = false) {
         address = format.hexAddress(address)
-        /*const cache = withDetail ? this.CACHE_VERIFY_DETAIL.get(address) : this.CACHE_VERIFY_ADDRESS.get(address)
-        if(cache) {
-            return withDetail ? cache : {address: format.address(address, StatApp.networkId)}
-        }*/
 
         // verified info
         let verified: any
@@ -112,13 +108,11 @@ export class ContractQuery {
             verified = this.getInternalVerification(verified)
         } else{
             verified = await this.getVerifyBySourcify(address, withDetail)
-            verified = verified || (await this.getVerifyByDB(address, withDetail))
         }
         if(!verified) {
             return verified
         }
         if(!withDetail) {
-            /*this.CACHE_VERIFY_ADDRESS.set(address, true, this.cacheTtl)*/
             return verified
         }
 
@@ -137,12 +131,10 @@ export class ContractQuery {
         // extra info
         if(verified?.beacon){
             let verifiedInfo: any = await this.getVerifyBySourcify(verified.beacon)
-            verifiedInfo = verifiedInfo || (await this.getVerifyByDB(address))
             verified.beaconVerified = !!verifiedInfo
         }
         if(verified?.implementation){
             let verifiedInfo: any = await this.getVerifyBySourcify(verified.implementation)
-            verifiedInfo = verifiedInfo || (await this.getVerifyByDB(address))
             verified.implementationVerified = !!verifiedInfo
         }
         if(verified?.libraries){
@@ -173,8 +165,6 @@ export class ContractQuery {
         } else{
             verified.libraries = {};
         }
-
-        /*this.CACHE_VERIFY_DETAIL.set(address, verified, this.cacheTtl)*/
 
         return verified;
     }
@@ -246,9 +236,19 @@ export class ContractQuery {
 
     private async getVerifyBySourcify(contractAddress, withDetail = false) {
         const hex = ethers.utils.getAddress(format.hexAddress(contractAddress))
-        const cache = withDetail ? this.CACHE_VERIFY_DETAIL.get(hex) : this.CACHE_VERIFY_ADDRESS.get(hex)
+
+        let cache = withDetail ? this.CACHE_VERIFY_DETAIL.get(hex) : this.CACHE_VERIFY_ADDRESS.get(hex)
         if(cache) {
             return withDetail ? cache : {address: format.address(hex, StatApp.networkId)}
+        }
+
+        cache = await this.getVerifyByDB(contractAddress, withDetail)
+        if(cache) {
+            if(withDetail)
+                this.CACHE_VERIFY_DETAIL.set(hex, cache, this.cacheTtl)
+            else
+                this.CACHE_VERIFY_ADDRESS.set(hex, true, this.cacheTtl)
+            return cache
         }
 
         const fields = withDetail ? '?fields=stdJsonInput,compilation,abi' : ''
@@ -307,8 +307,14 @@ export class ContractQuery {
             license: CONST.CONTRACT_LICENSE[licenseType || 1].code,
             constructorArgs: '',
         }
-        this.saveABI(address, abi).then()
+
+        VerifiedContracts.create({
+            ...verified,
+            libraries: JSON.stringify(verified.libraries)
+        }).then()
         this.CACHE_VERIFY_DETAIL.set(hex, verified, this.cacheTtl)
+
+        this.saveABI(address, abi).then()
         return verified
     }
 
@@ -327,14 +333,14 @@ export class ContractQuery {
     }
 
     private async getVerifyByDB(contractAddress, withDetail = false) {
-        let attributes: any = [['base32', 'address']]
+        let attributes: any = ['address']
         if(withDetail) {
-            attributes = [['base32', 'address'], ['compiler', 'language'], 'sourceCode', 'name', 'abi', 'version', 'evmVersion',
-                ['optimizeFlag','optimization'], ['optimizeRuns','runs'], 'libraries', 'license', 'constructorArgs']
+            attributes = ['address', 'language', 'sourceCode', 'name', 'abi', 'version', 'evmVersion',
+                'optimization', 'runs', 'libraries', 'license', 'constructorArgs']
         }
-        return ContractVerify.findOne({
+        return VerifiedContracts.findOne({
             attributes,
-            where: {base32: format.address(contractAddress, StatApp.networkId), verifyResult: true},
+            where: {address: format.address(contractAddress, StatApp.networkId)},
             raw: true
         }).then((verify: any) => {
             if(verify?.language?.substring(0, 8) === 'solidity') {
@@ -346,13 +352,12 @@ export class ContractQuery {
 
     private async listVerifyByDB(contractAddresses) {
         contractAddresses = contractAddresses.map(a => format.address(a, StatApp.networkId))
-        return ContractVerify.findAll({
+        return VerifiedContracts.findAll({
             attributes: [
-                ['base32', 'address'],
+                'address',
             ],
             where: {
-                verifyResult: true,
-                base32: {[Op.in]: contractAddresses},
+                address: {[Op.in]: contractAddresses},
             },
             order: [['id', 'DESC']],
             raw: true,

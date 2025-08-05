@@ -6,7 +6,7 @@ import {initCfxSdk} from "../common/utils";
 import {CONST} from "../common/constant";
 import {ContractQuery, VerificationJob, VerifyInput} from "../ContractQuery";
 import {IS_EVM2, KV} from "../../model/KV";
-import {ContractVerify} from "../../model/ContractVerify";
+import {VerifiedContracts} from "../../model/VerifiedContracts";
 import {format} from "js-conflux-sdk";
 import {ethers} from "ethers";
 import {Contract} from "../../model/Contract";
@@ -106,11 +106,10 @@ async function verifyBySourcify() {
     let lastID = lastContractId
     const verifyErrContractInfoFile = `${path.dirname(__filename)}/verif.err`
     while(true) {
-        const list = await ContractVerify.findAll({
-            attributes: ['id','base32', 'name', 'version'],
+        const list = await VerifiedContracts.findAll({
+            attributes: ['id','address', 'name', 'version'],
             where: {
                 id: {[Op.gt]: lastID},
-                verifyResult: true,
                 [Op.or]: [
                     {proxyPattern: null},
                     {proxyPattern: {[Op.ne]: 'Minimal Proxy Contract'}},
@@ -128,20 +127,20 @@ async function verifyBySourcify() {
         }
 
         for (let i = 0; i < size; i++) {
-            const c = await ContractVerify.findOne({
+            const c = await VerifiedContracts.findOne({
                 where: {
                     id: list[i].id
                 }
             })
 
             const input: VerifyInput = {
-                contractAddress: ethers.utils.getAddress(format.hexAddress(c.base32)),
+                contractAddress: ethers.utils.getAddress(format.hexAddress(c.address)),
                 sourceCode: c.sourceCode,
-                codeFormat: c.compiler,
+                codeFormat: c.language,
                 fullQualifiedName: c.name,
                 compilerVersion: c.version,
-                optimizationUsed: c.optimizeFlag ? 1 : 0,
-                runs: c.optimizeFlag ? c.optimizeRuns : 200,
+                optimizationUsed: c.optimization ? 1 : 0,
+                runs: c.optimization ? c.runs : 200,
                 constructorArguments: c.constructorArgs,
                 evmVersion: c.evmVersion,
                 licenseType: 3,
@@ -156,7 +155,7 @@ async function verifyBySourcify() {
                     })
                 }catch (e) {
                     console.log('build libs error', {
-                        base32: c.base32,
+                        base32: c.address,
                         libraries: c.libraries,
                         address: input.contractAddress,
                         errors: e.message
@@ -190,9 +189,9 @@ async function verifyBySourcify() {
                         break
                     }
                     // write contract info to file
-                    fs.writeFileSync(verifyErrContractInfoFile, `${c.base32}, ${format.hexAddress(c.base32)}, ${c.id}`)
+                    fs.writeFileSync(verifyErrContractInfoFile, `${c.address}, ${format.hexAddress(c.address)}, ${c.id}`)
                     console.log('verify error written to file', {
-                        base32: c.base32,
+                        base32: c.address,
                         address: input.contractAddress,
                         errors: [e?.message ? `${e.customCode}:${e.message}` : `${e.customCode}`]
                     })
@@ -204,8 +203,8 @@ async function verifyBySourcify() {
             }
             console.log('verified ==\n', {
                 id: c.id,
-                base32: c.base32,
-                hex: format.hexAddress(c.base32),
+                base32: c.address,
+                hex: format.hexAddress(c.address),
                 name: c.name,
                 alreadyVerified,
                 notDeployed,
