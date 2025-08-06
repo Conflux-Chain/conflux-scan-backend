@@ -3,21 +3,15 @@ import {fixIconUrl} from "./OpenAccountService";
 import {StatApp} from "../../stat/StatApp";
 import {format} from "js-conflux-sdk";
 import {
-    checkEVMVersion,
-    checkLibrary,
     checkPresent,
     mustBeAddressArrayParamIfPresent,
     mustBeAddressParamIfPresent
 } from "../../stat/service/common/utils";
 import {setBody} from "../router/middleware";
-import {CONST} from "../../stat/service/common/constant"
 import {toBase32} from "../../stat/service/tool/AddressTool";
 import {FullTransaction} from "../../stat/model/FullBlock";
 import {QueryTypes} from "sequelize";
-import {ContractVerify} from "../../stat/model/ContractVerify";
-import {CompilationTarget, VerificationJob, VerifyFromJsonInput, VerifyInput} from "../../stat/service/ContractQuery";
-import {SolidityJsonInput, VyperJsonInput} from "@ethereum-sourcify/compilers-types";
-import {Libraries, SoliditySettings, Sources} from "@ethereum-sourcify/compilers-types/build/main/SolidityTypes";
+import {VerificationJob, VerifyInput} from "../../stat/service/ContractQuery";
 
 const lodash = require('lodash');
 const util = require('util');
@@ -240,9 +234,9 @@ export async function verifySourcecode(ctx) {
 
     setBody(
         ctx,
-        submit.error ? submit.error : submit.verificationId,
-        submit.error ? 1 : 0,
-        submit.error ? 'NOTOK' : 'OK'
+        submit.message ? submit.message : submit.verificationId,
+        submit.message ? 1 : 0,
+        submit.message ? 'NOTOK' : 'OK'
     );
 }
 

@@ -18,7 +18,6 @@ import {QueryTypes} from "sequelize";
 import {paginateCore} from "../../stat/router/ParamChecker";
 import {formatAddr} from "../common/RestTool";
 import {decodeTxData} from "../../stat/service/tool/TxTool";
-import {ContractVerify} from "../../stat/model/ContractVerify";
 
 const lodash = require('lodash');
 const LRU = require('lru-cache');
