@@ -56,7 +56,24 @@ export class StatDailyContractAnalysis extends TimerStat{
             ]
         )
 
-        const contractArray = await TraceCreateContract.findAll({attributes: ['to', 'blockTime'], raw: true}) || [];
+        let activeContract:TraceCreateContract[] = null;
+        if (NoCoreSpace) {
+            activeContract = []
+            for (const map of [txMap, cfxTransferMap, erc20TransferMap, erc721TransferMap, erc1155TransferMap]) {
+                const keys = Object.keys(map);
+                for (let i = 0; i < keys.length; i++){
+                    const key = keys[i];
+                    const contract = await TraceCreateContract.findOne({
+                        where: {to: key},
+                        attributes: ['to', 'blockTime'], raw: true
+                    })
+                    activeContract.push(contract)
+                }
+            }
+            console.log(`activeContract:${activeContract.length}`);
+        }
+
+        const contractArray = activeContract || await TraceCreateContract.findAll({attributes: ['to', 'blockTime'], raw: true}) || [];
         if (!NoCoreSpace) {
             await this.addInternalContract(contractArray);
         }
