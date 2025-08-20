@@ -260,7 +260,7 @@ export class ContractQuery {
         }
 
         const {address, match, abi, compilation, stdJsonInput, licenseType, contractLabel} = resp.data
-        if(match !== 'match') {
+        if (!match) {
             return null
         }
 
