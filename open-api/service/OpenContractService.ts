@@ -91,7 +91,7 @@ export async function getABI(ctx) {
 
     const contract = await getApiService().contractQuery.queryVerify(address, true)
     if(!contract){
-        setBody(ctx, undefined, 1, `contract ${address} not verified` );
+        setBody(ctx, `Contract source code not verified`, 1, 'NOTOK' );
         return;
     }
 
