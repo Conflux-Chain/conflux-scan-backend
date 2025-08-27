@@ -563,10 +563,10 @@ export class FullBlockService {
                     txInfo.method = txInfo.data.substr(0, 10)
                     txInfo.gasLimit = txInfo.gas // 20231215 cal gasUsedPerSecond
                     txInfo.gasPrice = txInfo.receipt?.effectiveGasPrice || txInfo.gasPrice
-                    const gasCharged = NoCoreSpace ? Number(txInfo.receipt?.gasUsed || 0)
-                        : Math.max(Number(txInfo.receipt?.gasUsed || 0), (Number(txInfo.gas) * 3) / 4)
-                    txInfo.gas = StatApp.isEVM ? Number(txInfo.gasPrice) * gasCharged
-                        : (txInfo.receipt?.gasFee || Number(txInfo.gasPrice) * gasCharged) // save gasFee.
+                    const receiptGasUsed = Number(txInfo.receipt?.gasUsed || 0);
+                    const gasCharged = NoCoreSpace ? receiptGasUsed
+                        : Math.max(receiptGasUsed, Math.ceil((Number(txInfo.gas) * 3) / 4))
+                    txInfo.gas = (txInfo.receipt?.gasFee || Number(txInfo.gasPrice) * gasCharged) // save gasFee.
                     executedTxArr.push(txInfo)
                     //speed up query transaction of one address
                     txInfo.addressId = txInfo.fromId

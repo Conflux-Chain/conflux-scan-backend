@@ -88,8 +88,9 @@ export class TransactionService {
 
     // using actualGasCost as gasFee when NotEnoughCash error occurs
     // e.g. "txExecErrorMsg": "NotEnoughCash { required: 10000000000000000000, got: 0, actual_gas_cost: 0, max_storage_limit_cost: 0 }"
-    let gasCharged = NoCoreSpace ? Number(receipt?.gasUsed || 0)
-        : Math.max(Number(receipt?.gasUsed || 0), Math.ceil((Number(transaction.gas) * 3) / 4))
+    const receiptGasUsed = Number(receipt?.gasUsed || 0);
+    let gasCharged = NoCoreSpace ? receiptGasUsed
+        : Math.max(receiptGasUsed, Math.ceil((Number(transaction.gas) * 3) / 4))
     let gasFee = receipt?.gasFee || Number(gasPrice) * gasCharged
     const actualGasCost = extractActualGasCost(receipt?.txExecErrorMsg)
     if(lodash.isNumber(actualGasCost)) {
