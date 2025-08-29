@@ -86,7 +86,8 @@ function transformError(ctx, e, msg = '', detail = '') {
   let isNumber = typeof(e.code) === 'number';
   const code = isNumber ? e.code : UnhandledErrorCode;
   if (code === UnhandledErrorCode) {
-    safeAddErrorLog('v1', `json-rpc-500-${e?.message}`, e).then()
+    e["url"] = ctx.originalUrl;
+    safeAddErrorLog('v1', `json-rpc-500-${e.message}`, e).then()
   }
   ctx.body = { code: code, message: (e.name)+': '+msg + ' ' + detail + (isNumber ? '' : e.code || '') };
   ctx.status = 600;

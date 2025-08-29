@@ -59,6 +59,7 @@ router.use(async (ctx, next) => {
     // see common/error.js
     ctx.status = e.status || 500;
     if (ctx.status === 500) {
+      e["url"] = ctx.originalUrl;
       safeAddErrorLog('v1', `v1-500-${e.message}`, e).then();
     }
     ctx.body = StatApp.isEVM ? { status: `${e.code}`, message: e.message, result: e.partialData } :
