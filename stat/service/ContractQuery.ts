@@ -851,7 +851,7 @@ export class ContractQuery {
             err['code'] = error.status;
             err['stack'] = error.stack;
             if(err['code'] === 404 || err['code'] === undefined) {
-                console.log(`failed to fetch from ${url}`);
+                console.log(`failed to fetch from ${url} : ${error}`);
                 return null
             }
             throw err;
