@@ -197,7 +197,7 @@ async function decodeMethod(toAddr, data) {
     }
 
     let result = decodeTxData(contract['abi'], data);
-    if(!(!result['error'] && !result['decodedData'] && contract.proxy)) {
+    if(!contract.proxy) {
         return result;
     }
 
