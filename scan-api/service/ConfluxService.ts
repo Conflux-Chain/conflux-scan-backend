@@ -2,6 +2,7 @@ import {ScanApp, ScanCtx} from "./index";
 import {fmtAddr, StatApp} from "../../stat/StatApp";
 import {safeAddErrorLog} from "../../stat/monitor/ErrorMonitor";
 import {format} from "js-conflux-sdk";
+import {CONST} from "../../stat/service/common/constant";
 
 const {noVerboseAddr} = require("../../stat/service/common/utils")
 const {patchPocketAddress} = require("../../stat/model/HexMap")
@@ -28,9 +29,6 @@ export class ConfluxService {
       [Infinity, 5 * 1000],
     ],
   ) {
-    const {
-      app: { CONST },
-    } = this;
     if (!epochNumber) {
       return defaultTTL;
     }
@@ -44,10 +42,6 @@ export class ConfluxService {
   }
 
   async _calculateIsSave(epochNumber) {
-    const {
-      app: { CONST },
-    } = this;
-
     // FIXME: in javascript, `Boolean(null < 10) === true` !!!
     return Number.isInteger(epochNumber) && epochNumber < await this.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_CONFIRMED);
   }
@@ -110,19 +104,6 @@ export class ConfluxService {
     return name !== undefined && symbol !== undefined;
   }
 
-  /*
-
-  async getTokenAccountCount(address, epochNumber) {
-    const {
-      app: { ttlMap, tokenTool },
-    } = this;
-
-    return ttlMap.cache(`ConfluxService.getTokenAccountCount(${address},${epochNumber})`,
-      () => tokenTool.getTokenAccountCount(address, epochNumber),
-      { ttl: 10 * 1000 },
-    );
-  }*/
-
   async getBalances(account, contracts, utilContract) {
     const {
       app: { ttlMap, tokenTool },
@@ -133,17 +114,6 @@ export class ConfluxService {
       { ttl: 10 * 1000 },
     );
   }
-
-  /*async getTokenBalance(address, epochNumber) {
-    const {
-      app: { ttlMap, tokenTool },
-    } = this;
-
-    return ttlMap.cache(`ConfluxService.getTokenBalance(${address},${epochNumber})`,
-      () => tokenTool.getTokenBalance(address, epochNumber),
-      { ttl: 10 * 1000 },
-    );
-  }*/
 
   // -------------------------------- epochNumber -----------------------------
   async getEpochNumber(epochLabel) {
@@ -164,8 +134,6 @@ export class ConfluxService {
 
     return ttlMap.cache(`ConfluxService.get-Epoch-By-EpochNumber(${epochNumber})`,
       () => tokenTool.getEpochByEpochNumber(epochNumber),
-      //   { isSave: this._calculateIsSave(epochNumber) },
-      // ),
       { ttl: this._calculateTTL(epochNumber) },
     );
   }
@@ -177,8 +145,6 @@ export class ConfluxService {
 
     return ttlMap.cache(`ConfluxService.getBlocksByEpochNumber(${epochNumber})`,
       () => cfx.getBlocksByEpochNumber(epochNumber),
-      //   { isSave: this._calculateIsSave(epochNumber) },
-      // ),
       { ttl: this._calculateTTL(epochNumber) },
     );
   }
@@ -192,8 +158,6 @@ export class ConfluxService {
     try {
       result = ttlMap.cache(`ConfluxService.getBlockRewardInfo(${epochNumber})`,
         () => cfx.getBlockRewardInfo(epochNumber),
-        //   { isSave: this._calculateIsSave(epochNumber) },
-        // ),
         { ttl: this._calculateTTL(epochNumber) },
       );
     } catch (err) {
@@ -206,7 +170,7 @@ export class ConfluxService {
   // ---------------------------------- block ---------------------------------
   async getBlockByEpochNumber(epochNumber, detail) {
     const {
-      app: { CONST, cfx, ttlMap },
+      app: { cfx, ttlMap },
     } = this as ScanCtx;
 
     return ttlMap.cache(`ConfluxService.getBlockByEpochNumber(${epochNumber},${detail})`,
@@ -247,7 +211,7 @@ export class ConfluxService {
 
   async getBlockByHash(blockHash:string, detail=false) {
     const {
-      app: { CONST, cfx, ttlMap },
+      app: { cfx, ttlMap },
     } = this as ScanCtx;
 
     return ttlMap.cache(`ConfluxService.getBlockByHash(${blockHash},${detail})`,
@@ -275,8 +239,6 @@ export class ConfluxService {
         }
         return block;
       },
-      //   { isSave: (block) => this._calculateIsSave(lodash.get(block, 'epochNumber')) },
-      // ),
       { ttl: (block) => this._calculateTTL(lodash.get(block, 'epochNumber')) },
     );
   }
@@ -311,7 +273,7 @@ export class ConfluxService {
   // ------------------------------- transaction ------------------------------
   async getTransactionByHash(transactionHash) {
     const {
-      app: { CONST, cfx, ttlMap },
+      app: { cfx, ttlMap },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getTransactionByHash(${transactionHash})`,
@@ -330,23 +292,12 @@ export class ConfluxService {
         }
         return transaction;
       },
-      //   { isSave: (transaction) => this._calculateIsSave(lodash.get(transaction, 'epochNumber')) },
-      // ),
       { ttl: (transaction) => this._calculateTTL(lodash.get(transaction, 'epochNumber')) },
     );
   }
 
   getGenesisContract(txHash) {
-    const {
-      app: { CONST },
-    } = this;
-
-    const txHashes = CONST.GENESIS_TX_TO_CONTRACT[StatApp.networkId]
-    if(!txHashes) {
-      return null
-    }
-
-    const contract = txHashes[txHash]
+    const contract = CONST.GENESIS_TX_CONTRACT_MAP[txHash]
     if(!contract) {
       return null
     }
@@ -356,18 +307,16 @@ export class ConfluxService {
 
   async getTransactionReceipt(transactionHash) {
     const {
-      app: { CONST, cfx, ttlMap },
+      app: { cfx, ttlMap },
     } = this;
 
     return ttlMap.cache(`ConfluxService.getTransactionReceipt(${transactionHash})`,
       async () => {
-        if (CONST.GENESIS_TX_TO_CONTRACT[StatApp.networkId] && (transactionHash in CONST.GENESIS_TX_TO_CONTRACT[StatApp.networkId])) {
+        if(Object.keys(CONST.GENESIS_TX_CONTRACT_MAP).includes(transactionHash)){
           return { gasUsed: 0, gasFee: 0, txExecErrorMsg: null };
         }
         return cfx.getTransactionReceipt(transactionHash);
       },
-      //   { isSave: (receipt) => this._calculateIsSave(lodash.get(receipt, 'epochNumber')) },
-      // ),
       { ttl: (receipt) => this._calculateTTL(lodash.get(receipt, 'epochNumber')) },
     );
   }
@@ -441,10 +390,6 @@ export class ConfluxService {
 
   // FIXME: not a good idea
   async getTransactionERCXXXTransferArray(transactionHash) {
-    const {
-      app: { CONST },
-    } = this;
-
     const listERC20 = await this.getTransactionERC20TransferArray(transactionHash);
     listERC20.forEach((transfer) => {
       transfer.transferType = CONST.TRANSFER_TYPE.ERC20;
@@ -505,8 +450,6 @@ export class ConfluxService {
           });
         return array;
       },
-      //   { isSave: (array) => this._calculateIsSave(lodash.get(array, [0, 'epochNumber'])) },
-      // ),
       { ttl: (array) => this._calculateTTL(lodash.get(array, [0, 'epochNumber'])) },
     );
   }
@@ -528,10 +471,6 @@ export class ConfluxService {
   }
 
   async getTransactionCFXTransferArray(transactionHash, zeroValue = false) {
-    const {
-      app: { CONST },
-    } = this;
-
     const traceArray = await this.getTransactionTraceArray(transactionHash);
 
     const array = [];

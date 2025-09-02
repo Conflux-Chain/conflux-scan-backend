@@ -17,7 +17,7 @@ export class RecaptchaService {
   // }
   async verify(token) {
     const {
-      app: { config,  },
+      app: {config}
     } = this;
 
     console.log('RecaptchaService.verify', `report request, token:${token}`);

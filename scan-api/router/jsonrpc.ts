@@ -1,6 +1,6 @@
 import {ScanCtx} from "../service/index";
 import {
-    CONTRACT_ANNOUNCEMENT,
+    CONTRACT_ANNOUNCEMENT, EVM_RPC_URL,
     KEY_CONFURA_URL,
     KEY_CORE_API_URL,
     KEY_CORE_OPEN_API_URL,
@@ -10,12 +10,12 @@ import {fmtAddr} from "../../stat/StatApp";
 import {ApiApp} from "../app";
 import {NoCoreSpace} from "../../stat/config/StatConfig";
 import {Errors} from "../../stat/service/common/LogicError";
+import {CONST} from "../../stat/service/common/constant";
 
 const lodash = require('lodash');
 const Big = require('big.js');
 const BigFixed = require('bigfixed');
 const type = require('../../common/type');
-const CONST = require('../../common/const');
 const parameter = require('../../common/parameter');
 const cacheFlow = require('../../common/middleware/cacheFlow');
 const listLimitBy = require('../../common/middleware/listLimitBy');
@@ -24,10 +24,8 @@ const arrayToCSVFlow = require('../../common/middleware/arrayToCSVFlow');
 const concurrenceControl = require('../../common/middleware/concurrenceControl');
 const buildFlow = require('../../common/middleware/buildFlow');
 const serializeByIP = require('../../common/middleware/serializeByIP');
-const { CONST: CONST_TS }  = require('../../stat/service/common/constant');
 const { KV, KEY_EVM_VERSIONS } = require('../../stat/model/KV');
 const {StatApp} = require("../../stat/StatApp");
-const {sleepMs} = require("limit-map");
 const {JsonRPCFlow} = require("../../koaflow/lib/flow/JsonRPCFlow");
 export const jsonrpc = new JsonRPCFlow();
 
@@ -161,7 +159,7 @@ export const jsonrpc_frontend = jsonrpc.method_('frontend',
       if (refHost?.includes('.org/') || refHost?.endsWith('.org') ) {
         from = '.net'; to = '.org';
       }
-      for (const kv of [KEY_OPEN_API_URL, KEY_CORE_OPEN_API_URL, KEY_CONFURA_URL, KEY_CORE_API_URL]) {
+      for (const kv of [KEY_OPEN_API_URL, KEY_CORE_OPEN_API_URL, KEY_CONFURA_URL, KEY_CORE_API_URL, EVM_RPC_URL]) {
           // use local config prior to shared DB config.
           frontedConfig[kv] = config[kv] ?? await KV.getString(kv);
           if (refHost && frontedConfig[kv]) {
@@ -314,7 +312,6 @@ export const jsonrpc_queryContract = jsonrpc.method_('queryContract',
     address: { path: '0', type: app.type.address, required: true },
     fields: { path: '0', type: type([type.string]).$parse(type.arr), default: [] },
     detail: { path: '0', type: type.bool, default: false },
-    // TODO: maxEpochNumber, announcer, announceAddress
   })),
 
   cacheFlow(5 * 1000),
@@ -325,7 +322,7 @@ export const jsonrpc_queryContract = jsonrpc.method_('queryContract',
       app: { service },
     } = this as ScanCtx;
 
-    const result = await service.contract.queryPlus({ address, fields });
+    const result = await service.contract.query({ address, fields });
     if (lodash.includes(fields, 'token')) {
       result.token = await service.token.queryPlus({ address });
     }
@@ -350,14 +347,24 @@ export const jsonrpc_queryContract = jsonrpc.method_('queryContract',
 export const jsonrpc_listCompilers = jsonrpc.method_('listCompilers',
   cacheFlow(60 * 1000),
   async function () {
-    const {app: { syncSDK },} = this as ScanCtx;
+      const {
+          app: { service },
+      } = this as ScanCtx
 
-    const versionOriginArray = await syncSDK.listVersion();
-    return lodash.mapValues(versionOriginArray, (version) => {
-      const versionPartial = version.substr(8);
-      return versionPartial.substr(0, versionPartial.length - 3);
-    });
+      return await service.contractQuery.listSolcVersions()
   },
+);
+
+export const jsonrpc_listVyperCompilers = jsonrpc.method_('listVyperCompilers',
+    cacheFlow(60 * 1000),
+    async function () {
+        const {
+            app: { service },
+        } = this as ScanCtx
+
+        const versions = await service.contractQuery.listVyperVersions()
+        return lodash.mapValues(versions, v => v.desc)
+    },
 );
 
 export async function listEVMVersion() {
@@ -370,6 +377,7 @@ export const jsonrpc_verifyContract = jsonrpc.method_('verifyContract',
   buildFlow((app) => parameter({
     address: { path: '0', type: app.type.address, required: true },
     name: { path: '0', type: type.string },
+    codeFormat: { path: '0', type: type.string },
     sourceCode: { path: '0', type: type.string },
     compiler: { path: '0', type: type.string },
     optimizeRuns: { path: '0', type: type.unsigned },
@@ -404,7 +412,7 @@ export const jsonrpc_verifyContract = jsonrpc.method_('verifyContract',
       app: { service },
     } = this as ScanCtx;
 
-    return service.contract.verify(options);
+    return service.contract.verifySourcecode(options)
   },
 
   buildFlow((app) => type({
@@ -416,19 +424,8 @@ export const jsonrpc_countAndListContract = jsonrpc.method_('countAndListContrac
   serializeByIP(),
   buildFlow((app) => parameter({
     addressArray: { path: '0', type: type([app.type.address]).$parse(type.arr), 'length<=100': (a) => a.length <= 100 },
-    minTimestamp: { path: '0', type: type.uint },
-    maxTimestamp: { path: '0', type: type.uint },
-    minEpochNumber: { path: '0', type: type.uint },
-    maxEpochNumber: { path: '0', type: type.uint },
-    limit: { path: '0', type: type.uint, default: 10, '<=100': (v) => v <= 100 },
-    skip: { path: '0', type: type.uint },
-    reverse: { path: '0', type: type.bool },
-    fields: { path: '0', type: type([type.string]).$parse(type.arr), default: [] },
-    detail: { path: '0', type: type.bool, default: false },
-    // TODO: announcer, announceAddress
   })),
 
-  listLimitBy(['from', 'minTimestamp', 'maxTimestamp', 'minEpochNumber', 'maxEpochNumber']),
   cacheFlow(5 * 1000),
   concurrenceControl(500),
   durationAlarmFlow(5 * 1000, { method: 'countAndListContract' }),
@@ -437,39 +434,14 @@ export const jsonrpc_countAndListContract = jsonrpc.method_('countAndListContrac
       app: { service },
     } = this as ScanCtx;
 
-    const result = await service.contract.countAndList(options);
-    return { ...result, listLimit };
+    const list = await service.contract.listByAddresses(options as any);
+    return { total: list?.length || 0, list, listLimit };
   },
 
   buildFlow((app) => type({
     list: [{
       address: app.type.simpleAddress,
-    }],
-  })),
-);
-
-export const jsonrpc_listContractVerified = jsonrpc.method_('listContractVerified',
-  serializeByIP(),
-  buildFlow((app) => parameter({
-    addressArray: { path: '0', type: type([app.type.address]).$parse(type.arr), 'length<=100': (a) => a.length <= 100 },
-    reverse: { path: '0', type: type.bool },
-    limit: { path: '0', type: type.uint, default: 10, '<=100': (v) => v <= 200 },
-    skip: { path: '0', type: type.uint, default: 0 },
-  })),
-
-  cacheFlow(5 * 1000),
-  concurrenceControl(500),
-  durationAlarmFlow(5 * 1000, { method: 'listContractVerified' }),
-  async function (options) {
-    const {
-      app: { service },
-    } = this as ScanCtx;
-    return service.contract.listVerify(options);
-  },
-
-  buildFlow((app) => type({
-    list: [{
-      address: app.type.simpleAddress,
+      admin: app.type.simpleAddress,
     }],
   })),
 );
@@ -488,7 +460,6 @@ export const jsonrpc_countAndListToken = jsonrpc.method_('countAndListToken',
     reverse: { path: '0', type: type.bool },
     fields: { path: '0', type: type([type.string]).$parse(type.arr), default: [] },
     detail: { path: '0', type: type.bool },
-    // TODO: maxEpochNumber, announcer, announceAddress
   })),
 
   cacheFlow(5 * 1000),

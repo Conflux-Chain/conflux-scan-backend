@@ -91,7 +91,6 @@ export interface StatConfig{
     isEvm: boolean,
     scanJsonRpcUrl: string
     database: Database;
-    syncEpochNumber: number,
     serverTag: string,
     watchCfxBalance: boolean,
     recaptchaUrl:string,
@@ -112,11 +111,7 @@ export interface StatConfig{
 
     databaseRW: DatabaseRW,
     jsonRpc: JSONRpcOption,
-    asyncVerifySourcecode: boolean,
-    asyncVerifySourcecodeDelay: number,
     metricsEnv: string,
-
-    syncAcrossRegionHost: string,
 
     ensEnable: boolean,
     ens: string,
@@ -136,6 +131,8 @@ export interface StatConfig{
     wrappedUSDT: string,
 
     enableProfile: boolean,
+
+    contractVerificationUrl: string,
 }
 
 export var FirstBlockNo = 0

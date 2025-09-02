@@ -3,6 +3,7 @@ import {getAddrId, Hex40Map} from "./HexMap";
 import {FullTransaction} from "./FullBlock";
 import {getCfxSdk} from "../service/common/utils";
 import {detectAccountType} from "../service/eip/eip7702";
+import {ethers} from "ethers";
 
 export interface IAuthBlockStub {
 	id?: number;
@@ -63,7 +64,7 @@ export async function getDelegatedAddrAtTx(eoa: string, blockNumber:number, txHa
 	if (!txBean) {
 		return null;
 	}
-	return AuthAction.findOne({
+	const bean = await AuthAction.findOne({
 		where: {
 			author: eoa,
 			blockNumber: {[Op.lte]: blockNumber},
@@ -72,6 +73,10 @@ export async function getDelegatedAddrAtTx(eoa: string, blockNumber:number, txHa
 		}, raw: true,
 		order: [['blockNumber', 'desc'], ['transactionPosition', 'desc'], ['authIndex', 'desc']],
 	});
+	if (bean?.address) {
+		bean.address = ethers.utils.getAddress(bean.address);
+	}
+	return bean;
 }
 
 export async function getAuthActionInTx(txHash: string) {
@@ -88,7 +93,11 @@ export async function getAuthActionInTx(txHash: string) {
 	const list = await AuthAction.findAll({
 		where: {blockNumber: receipt.epochNumber, transactionPosition: txBean.txPosition},
 		order: [['authIndex', 'asc']],
+		raw: true,
 	})
+	list.forEach((row) => {
+		row['address'] =  ethers.utils.getAddress(row['address']);
+	});
 	return {list};
 }
 
@@ -105,9 +114,11 @@ export async function listAuthAction({author, skip = 0, limit = 10}) {
 	})
 	arr.forEach((row) => {
 		row['createdAt'] = row['txTime'];
+		row['txSender'] =  ethers.utils.getAddress(row['txSender']);
+		row['address'] =  ethers.utils.getAddress(row['address']);
 	});
 	const count = await AuthAction.count({where: {author}});
-	return {total: count, list: arr};
+	return {total: count, list: arr, listLimit: 1000};
 }
 
 export class AuthAction extends Model<IAuthAction> implements IAuthAction {

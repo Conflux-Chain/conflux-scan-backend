@@ -30,7 +30,7 @@ import {
 } from "../model/FullBlock";
 import {DailyContractCreate, DailyContractRegister, DailyContractStat} from "../model/DailyContractStat";
 import {createFullMinerBlockTable} from "../model/FullMinerBlock";
-import {ContractVerify, ProxyVerify} from "../model/ContractVerify";
+import {ProxyVerify} from "../model/Contract";
 import {TokenSecurityAudit} from "../model/TokenSecurityAudit";
 import {StatApp} from "../StatApp";
 import {Lock} from "../model/Lock";
@@ -79,6 +79,8 @@ import {UniqueAddressDaily, UniqueAddressHourly} from "../model/UniqueAddr";
 import {ResultCache} from "../model/ResultCache";
 import {TxReceiverDaily, TxReceiverHourly, TxSenderDaily, TxSenderHourly} from "../PeriodTxnSummary";
 import {AuthAction, AuthBlockStub} from "../model/EIP7702model";
+import {ContractImpl} from "../model/ContractImpl";
+import {VerifiedContracts} from "../model/VerifiedContracts";
 
 let conf
 export function createDB(config) {
@@ -171,6 +173,7 @@ export async function initPartialModel(sequelize) {
     TaskEvent3525.register((sequelize))
     Erc20Transfer.register(sequelize)
     Erc721Transfer.register(sequelize)
+    ContractImpl.register(sequelize );
     // Erc777Transfer.register(sequelize)
     Erc1155Transfer.register(sequelize)
     Erc1155Data.register(sequelize)
@@ -193,7 +196,7 @@ export async function initPartialModel(sequelize) {
     TokenQuoteTrack.register(sequelize);
     KV.register(sequelize);
     Epoch.register(sequelize);
-    ContractVerify.register(sequelize);
+    VerifiedContracts.register(sequelize);
     ProxyVerify.register(sequelize);
     DailyBlockDataStat.register(sequelize);
     CfxBalance.register(sequelize);

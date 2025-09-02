@@ -79,8 +79,8 @@ export class Token extends Model<IToken> implements IToken{
             // basic info
             hex40id: {type: DataTypes.BIGINT, allowNull: false, unique: true},
             base32: {type: DataTypes.CHAR(64), allowNull: false, unique: true},
-            name: {type: DataTypes.CHAR(64), allowNull: true},
-            symbol: {type: DataTypes.CHAR(64), allowNull: true },
+            name: {type: DataTypes.CHAR(1024), allowNull: true},
+            symbol: {type: DataTypes.CHAR(1024), allowNull: true },
             decimals: {type: DataTypes.BIGINT, allowNull: true, },
             granularity: {type: DataTypes.BIGINT, allowNull: true, },
             totalSupply: {type: DataTypes.STRING({length: 78}), allowNull: true, },

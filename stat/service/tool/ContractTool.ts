@@ -1,24 +1,21 @@
-import {address, format} from "js-conflux-sdk";
 import {Hex40Map, makeId} from "../../model/HexMap";
-import {Contract} from "../../model/Contract";
 import {init as initialize} from "./FixDailyTokenStat";
-import {ContractVerify} from "../../model/ContractVerify";
 import {StatApp} from "../../StatApp";
 import {StatConfig} from "../../config/StatConfig";
 import {initCfxSdk} from "../common/utils";
-import {ContractQuery} from "../ContractQuery";
+import {CONST} from "../common/constant";
+import {ContractQuery, VerificationJob, VerifyInput} from "../ContractQuery";
 import {IS_EVM2, KV} from "../../model/KV";
-import {FullTransaction} from "../../model/FullBlock";
+import {VerifiedContracts} from "../../model/VerifiedContracts";
+import {format} from "js-conflux-sdk";
+import {ethers} from "ethers";
+import {Contract} from "../../model/Contract";
+import {sleep} from "./ProcessTool";
+import {Op} from "sequelize";
+import {execSync} from "child_process";
 
 const fs = require('fs');
-const AdminControl = require("../abi/AdminControl");
-const SponsorWhitelistControl = require("../abi/SponsorWhitelistControl");
-const Staking = require("../abi/Staking");
-const ConfluxContext = require("../abi/ConfluxContext");
-const PoSRegister = require("../abi/PoSRegister");
-const CrossSpaceCall = require("../abi/CrossSpaceCall");
-const ParamsControl = require("../abi/ParamsControl");
-const Create2Factory = require("../abi/Create2Factory");
+const path = require('path');
 
 /**
  * arguments
@@ -26,15 +23,9 @@ const Create2Factory = require("../abi/Create2Factory");
 const args = process.argv.slice(2)
 StatApp.networkId = Number(args[0])
 const type = Number(args[1])
-let contractAddress
+let lastContractId = 0
 if(type === 2) {
-    contractAddress = args[2]
-}
-let apiURL
-let pathToRequestJson
-if(type === 3) {
-    apiURL = args[2]
-    pathToRequestJson = args[3]
+    lastContractId = Number(args[2])
 }
 
 /**
@@ -44,16 +35,13 @@ run().then();
 async function run() {
     await init();
     if(type === 1){
-        await registerContracts()
+        await initContracts()
     }
     if(type === 2){
-        await implementation(contractAddress)
+        await verifyBySourcify()
     }
     if(type === 3){
-        await sendVerifyRequest(apiURL, pathToRequestJson)
-    }
-    if(type === 4){
-        await insertGenesisContractTrace()
+        await fetchCompilers()
     }
     await close();
 }
@@ -63,7 +51,7 @@ async function init() {
     const config: StatConfig = await initialize()
 
     cfx = await initCfxSdk(config.conflux);
-    contractQuery = new ContractQuery({cfx});
+    contractQuery = new ContractQuery({cfx, config});
 
     StatApp.isEVM = await KV.getSwitch(IS_EVM2);
 }
@@ -72,172 +60,190 @@ async function close(){
 }
 
 /**
- * internal
+ * init internal / genesis contracts
  */
-const internalContractArray = [
-    {
-        address: '0x0888000000000000000000000000000000000000',
-        name: 'AdminControl',
-        website: 'https://doc.confluxnetwork.org/docs/core/core-space-basics/internal-contracts',
-        abi: JSON.stringify(AdminControl.abi),
-    },
-    {
-        address: '0x0888000000000000000000000000000000000001',
-        name: 'SponsorWhitelistControl',
-        website: 'https://doc.confluxnetwork.org/docs/core/core-space-basics/internal-contracts',
-        abi: JSON.stringify(SponsorWhitelistControl.abi),
-    },
-    {
-        address: '0x0888000000000000000000000000000000000002',
-        name: 'Staking',
-        website: 'https://doc.confluxnetwork.org/docs/core/core-space-basics/internal-contracts',
-        abi: JSON.stringify(Staking.abi),
-    },
-    // https://github.com/Conflux-Chain/CIPs/blob/master/CIPs/cip-64.md
-    {
-        address: '0x0888000000000000000000000000000000000004',
-        name: 'ConfluxContext',
-        website: 'https://doc.confluxnetwork.org/docs/core/core-space-basics/internal-contracts',
-        abi: JSON.stringify(ConfluxContext.abi),
-    },
-    // // https://github.com/Conflux-Chain/CIPs/blob/master/CIPs/cip-71.md
-    // // Parameters: BLOCK_NUMBER_CIP71A, BLOCK_NUMBER_CIP71B.
-    // // a. Enable the new internal contracts and disable the anti-reentrancy for contracts allowing reentrancy. Should be activated when block_numer >= BLOCK_NUMBER_CIP71A.
-    // // b. Fix incorrect behaviour in the current implementation of anti-reentrancy, when block_number >= BLOCK_NUMBER_CIP71B.
-    // {
-    //     address: '0x0888000000000000000000000000000000000004',
-    //     name: 'ReentrancyConfig',
-    //     website: 'https://developer.conflux-chain.org/docs/conflux-rust/internal_contract/internal_contract',
-    //     abi: JSON.stringify(ReentrancyConfig.abi),
-    // },
-    {
-        address: '0x0888000000000000000000000000000000000005',
-        name: 'PoSRegister',
-        website: 'https://doc.confluxnetwork.org/docs/core/core-space-basics/internal-contracts',
-        abi: JSON.stringify(PoSRegister.abi),
-    },
-    {
-        address: '0x0888000000000000000000000000000000000006',
-        name: 'CrossSpaceCall',
-        website: 'https://doc.confluxnetwork.org/docs/core/core-space-basics/internal-contracts',
-        abi: JSON.stringify(CrossSpaceCall.abi),
-    },
-    {
-        address: '0x0888000000000000000000000000000000000007',
-        name: 'ParamsControl',
-        website: 'https://doc.confluxnetwork.org/docs/core/core-space-basics/internal-contracts',
-        abi: JSON.stringify(ParamsControl.abi),
-    },
-    {
-        address: '0x8A3A92281Df6497105513B18543fd3B60c778E40',
-        name: 'Create2Factory',
-        website: 'https://github.com/Conflux-Chain/CIPs/blob/master/CIPs/cip-31.md',
-        abi: JSON.stringify(Create2Factory.abi),
-    },
-];
-async function registerContracts() {
-    for (const contract of internalContractArray) {
-        if(contract.name === 'ConfluxContext'){
-            await registerContract(contract);
+async function initContracts() {
+    let contracts: any[]
+
+    if(!StatApp.isEVM) {
+        const INTERNAL = Object.keys(CONST.INTERNAL_NAME_CONTRACT_MAP)
+            .map(n => ({...CONST.INTERNAL_NAME_CONTRACT_MAP[n], name: n})).filter((item: any) => item.space === 'core')
+        const GENESIS = Object.keys(CONST.GENESIS_ADDR_CONTRACT_MAP)
+            .map(a => ({...CONST.GENESIS_ADDR_CONTRACT_MAP[a], address: a}))
+        contracts = [...INTERNAL, ...GENESIS]
+    } else{
+        contracts = Object.keys(CONST.INTERNAL_NAME_CONTRACT_MAP)
+            .map(n => ({...CONST.INTERNAL_NAME_CONTRACT_MAP[n], name: n})).filter((item: any) => item.space === 'evm')
+    }
+
+    for (const c of contracts) {
+        const base32 = format.address(c.address, StatApp.networkId)
+        const hex40id = (await makeId(c.address)).id
+        const contract = {
+            epoch: 0,
+            base32,
+            hex40id
+        } as Contract
+
+        c.name && (contract.name = c.name)
+        let sourceCode
+        if(c.address.startsWith('0x08') || c.address.startsWith('0x1820')) {
+            sourceCode = fs.readFileSync(`../../../contracts/${c.name}.sol`)
+            sourceCode = sourceCode.toString().trim()
+        }
+        sourceCode && (contract.sourceCode = sourceCode)
+        c.abi && (contract.abi = c.abi)
+        c.website && (contract.website = c.website)
+
+        await Contract.upsert(contract)
+    }
+}
+
+/**
+ * migrate verify info
+ */
+async function verifyBySourcify() {
+    let lastID = lastContractId
+    const verifyErrContractInfoFile = `${path.dirname(__filename)}/verif.err`
+    while(true) {
+        const list = await VerifiedContracts.findAll({
+            attributes: ['id','address', 'name', 'version'],
+            where: {
+                id: {[Op.gt]: lastID},
+                [Op.or]: [
+                    {proxyPattern: null},
+                    {proxyPattern: {[Op.ne]: 'Minimal Proxy Contract'}},
+                ]
+            },
+            offset: 0,
+            limit: 1000,
+            order: [['id', 'ASC']],
+            logging: sql => console.log(sql)
+        })
+
+        const size = list?.length
+        if(!size) {
+            return
+        }
+
+        for (let i = 0; i < size; i++) {
+            const c = await VerifiedContracts.findOne({
+                where: {
+                    id: list[i].id
+                }
+            })
+
+            const input: VerifyInput = {
+                contractAddress: ethers.utils.getAddress(format.hexAddress(c.address)),
+                sourceCode: c.sourceCode,
+                codeFormat: c.language,
+                fullQualifiedName: c.name,
+                compilerVersion: c.version,
+                optimizationUsed: c.optimization ? 1 : 0,
+                runs: c.optimization ? c.runs : 200,
+                constructorArguments: c.constructorArgs,
+                evmVersion: c.evmVersion,
+                licenseType: 3,
+            }
+            if(input.codeFormat === 'solidity-single-file' && c.libraries != '{}') {
+                let index = 1
+                const libObj = JSON.parse(c.libraries)
+                try{
+                    Object.keys(libObj).forEach(key => {
+                        input[`libraryName${index}`] = key
+                        input[`libraryAddress${index++}`] = ethers.utils.getAddress(format.hexAddress(libObj[key]))
+                    })
+                }catch (e) {
+                    console.log('build libs error', {
+                        base32: c.address,
+                        libraries: c.libraries,
+                        address: input.contractAddress,
+                        errors: e.message
+                    })
+                    return
+                }
+            }
+            const  {verificationId} = await contractQuery.verify(input)
+
+            let alreadyVerified
+            let notDeployed
+            let errOccurs
+            while(true){
+                const job: VerificationJob = await contractQuery.checkVerification(verificationId)
+                // not completed
+                if(!job.isJobCompleted) {
+                    await sleep(5000)
+                    continue
+                }
+                // verify err
+                if(job?.error) {
+                    const e = job.error
+                    // do not process
+                    if(e?.customCode === 'already_verified') {
+                        alreadyVerified = true
+                        break
+                    }
+                    // do not process
+                    if(e?.customCode === 'contract_not_deployed') {
+                        notDeployed = true
+                        break
+                    }
+                    // write contract info to file
+                    fs.writeFileSync(verifyErrContractInfoFile, `${c.address}, ${format.hexAddress(c.address)}, ${c.id}`)
+                    console.log('verify error written to file', {
+                        base32: c.address,
+                        address: input.contractAddress,
+                        errors: [e?.message ? `${e.customCode}:${e.message}` : `${e.customCode}`]
+                    })
+                    errOccurs = true
+                    break
+                }
+                // complete verification
+                break
+            }
+            console.log('verified ==\n', {
+                id: c.id,
+                base32: c.address,
+                hex: format.hexAddress(c.address),
+                name: c.name,
+                alreadyVerified,
+                notDeployed,
+                errOccurs
+            })
+
+            lastID = c.id
+            await sleep(1000)
         }
     }
 }
-async function registerContract(contract) {
-    const hex40id =  (await makeId(contract.address)).id;
-    const base32 = format.address(contract.address, StatApp.networkId);
-    const newContract = {
-        epoch: 0,
-        hex40id,
-        base32,
-        name: contract.name,
-        website: contract.website,
-        abi: contract.abi,
-    };
 
-    const [, r1] = await Contract.upsert(newContract);
-    console.log(`newContract ---1--- r1 ${r1}, ${JSON.stringify(newContract)}`)
+const GIT_PATH_COMPILER = 'https://github.com/vyperlang/vyper/releases/download'
+async function fetchCompilers() {
+    const versions = await contractQuery.listVyperVersions()
 
-    const sourceCode = await fs.readFileSync(`../../../contracts/${contract.name}.sol`);
-    const newContractVerify = {
-        name: contract.name,
-        base32,
-        compiler: 'solidity',
-        version: 'v0.8.0+commit.c7dfd78e',
-        sourceCode: sourceCode.toString().trim(),
-        abi: contract.abi,
-        verifyResult: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-    };
-    const [, r2] = await ContractVerify.upsert(newContractVerify);
-    console.log(`newContractVerify ---2--- r1 ${r2},  ${JSON.stringify(newContractVerify)}`)
+    const commands = Object.keys(versions)
+        .map(ver => `proxychains4 curl -O -L "${GIT_PATH_COMPILER}/v${ver}/vyper.${ver}+commit.${versions[ver].commit}.linux"`)
+    console.log(`Cmd to exec: ${commands.length}`);
+
+    const { suc, fai } = executeCommands(commands);
+    console.log('\nExec Summary:\n', {suc, fai})
 }
 
-/**
- * implementation
- */
-async function implementation(address) {
-    const impl = await contractQuery.queryImplementation(address)
-    console.log(`address ${address} impl ${JSON.stringify(impl)}`);
-}
+function executeCommands(commands) {
+    let suc = 0;
+    let fai = 0;
 
-/**
- * verify
- */
-async function sendVerifyRequest(apiURL, pathToRequestJson) {
-    const request = require(pathToRequestJson);
-    console.log(`pathToRequestJson ${pathToRequestJson}`)
-    console.log(`request ${JSON.stringify(request)}`)
-    return verify(apiURL, request)
-}
+    commands.forEach((cmd, index) => {
+        console.log(`Executing command ${index + 1}/${commands.length}: ${cmd}`);
+        try {
+            execSync(cmd, { stdio: 'inherit' });
+            console.log(`Command ${index + 1} succeeded`);
+            suc++;
+        } catch (error) {
+            console.error(`Command ${index + 1} failed: ${error.message}`);
+            fai++;
+        }
+    });
 
-const superagent = require('superagent');
-require('superagent-proxy')(superagent);
-
-async function verify(apiURL, request) {
-    return superagent
-        .post(apiURL)
-        //.proxy("http://127.0.0.1:7890")
-        .set('Content-Type','application/x-www-form-urlencoded')
-        .send(request)
-        .timeout(600 * 1000).then(
-            response => {
-                if(response.status === 200) {
-                    console.log(`responseText  ${response.text}`)
-                } else{
-                    console.log(`response.status ${typeof response.status}`)
-                }
-            }
-        )
-}
-
-
-import {TraceCreateContract} from "../../model/TraceCreateContract"
-const CONST = require('../../../common/const')
-async function insertGenesisContractTrace() {
-    const txHashes = CONST.GENESIS_TX_TO_CONTRACT[StatApp.networkId]
-    if(!txHashes) {
-        return
-    }
-
-    const traceCreateArray = []
-    const fromId = (await makeId('0x1949000000000000000000000000000000001001')).id;
-    for (const [hash, contract] of Object.entries(txHashes)) {
-        const toId = (await makeId(contract as string)).id;
-        const {codeHash} = await cfx.getAccount(contract)
-        const traceCreate = {
-            txHash: hash.substr(2),
-            from : fromId,
-            to : toId,
-            epochNumber: 0,
-            txHashId: 0,
-            traceIndex: 0,
-            value : 0,
-            outcome: 'success',
-            blockTime: 0,
-            codeHash : codeHash.substr(2),
-        } as TraceCreateContract
-        traceCreateArray.push(traceCreate)
-    }
-    await TraceCreateContract.bulkCreate(traceCreateArray)
+    return { suc, fai };
 }

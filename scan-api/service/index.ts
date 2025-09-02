@@ -75,16 +75,15 @@ export interface ScanServices {
   crc20Transfer: Crc20TransferQuery;
   crc721Transfer: Crc721TransferQuery;
   crc3525Transfer: Crc3525TransferQuery;
-  /*    crc777Transfer: Crc777TransferQuery;*/
   crc1155Transfer: Crc1155TransferQuery;
   traceCreate: BlockTraceCreateQuery;
-  contractRdb: ContractQuery;
+  contractQuery: ContractQuery;
   tokenRdb: TokenQuery;
   tokenQuery: TokenQuery;
+  tokenTool?: TokenTool;
   ensCheckerQuery: ENSCheckerQuery;
   accountQuery: AccountQuery;
   censor: CensorService;
-  contractQuery?: ContractQuery;
 }
 
 export function serviceLoader(app) {
@@ -110,10 +109,9 @@ export function serviceLoader(app) {
     crc20Transfer: new Crc20TransferQuery(app),
     crc721Transfer: new Crc721TransferQuery(app),
     crc3525Transfer: new Crc3525TransferQuery(app),
-/*    crc777Transfer: new Crc777TransferQuery(app),*/
     crc1155Transfer: new Crc1155TransferQuery(app),
     traceCreate: new BlockTraceCreateQuery(app),
-    contractRdb: new ContractQuery(app),
+    contractQuery: new ContractQuery(app),
     tokenRdb: new TokenQuery(app),
     ensCheckerQuery: new ENSCheckerQuery(app),
     accountQuery: new AccountQuery(app),

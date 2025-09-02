@@ -1,7 +1,7 @@
 import {ScanApp} from "./index";
 import {PrivateKeyAccount} from "js-conflux-sdk";
+import {CONST} from "../../stat/service/common/constant";
 
-const { format } = require('js-conflux-sdk');
 const { KV, CONTRACT_ANNOUNCEMENT } = require('../../stat/model/KV');
 
 export class AnnounceService {
@@ -66,7 +66,7 @@ export class AnnounceService {
 
   _splitAnnounceArray(array) {
     const {
-      app: { error, CONST },
+      app: { error },
     } = this;
 
     array = array.filter((each) => each.value !== undefined);

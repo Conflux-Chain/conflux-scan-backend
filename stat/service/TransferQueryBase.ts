@@ -5,14 +5,13 @@ import {hex40IdMap, idHex40Map, Hex40Map} from "../model/HexMap";
 import {FailedTx, FullTransaction} from "../model/FullBlock";
 import {PruneInfo} from "../model/PruneInfo";
 import {CONST} from "./common/constant"
-import {fillMethodInfo} from "../model/ContractInfo";
-import {Errors} from "./common/LogicError";
 import {TransferCount} from "../model/TransferCount";
 import {fmtAddr} from "../StatApp";
 import {closestEpochByTimeStamp, ClosestType} from "../model/Epoch";
 import {Token} from "../model/Token";
 import {detectFishingAddress} from "./tool/phishingAddress";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
+import {fillMethodInfo} from "./contract/contractTool";
 const lodash = require('lodash');
 
 export abstract class TransferQueryBase {

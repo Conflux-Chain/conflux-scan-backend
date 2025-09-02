@@ -8,7 +8,6 @@ import {CONST} from "./common/constant"
 import {Errors} from "./common/LogicError";
 import {FullTransaction} from "../model/FullBlock";
 import {PruneType} from "../model/PruneInfo";
-/*const CONST = require('./common/constant');*/
 
 export class CfxTransferQuery extends TransferQueryBase{
     constructor(app: any) {

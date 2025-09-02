@@ -43,7 +43,9 @@ import {paginateCore, paginateCoreStat} from "./ParamChecker";
 import * as bodyParser from "koa-bodyparser";
 import {NoCoreSpace} from "../config/StatConfig";
 import {AbiInfo, parseAbiStr, saveAbiInfo} from "../model/ContractInfo";
-import {getAuthActionInTx, listAuthAction} from "../model/EIP7702model";
+import {AuthAction, getAuthActionInTx, listAuthAction} from "../model/EIP7702model";
+import {getAccountQuery} from "../service/AccountQuery";
+import { CONST } from "../service/common/constant";
 
 const e2k = require('express-to-koa');
 const swStats = require('swagger-stats');
@@ -150,11 +152,8 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
 
     router.get('/contract/by-address', async (ctx)=>{
         mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address');
-        // mustBeEnumParamIfPresent(ctx.request.query, 'fields', ['abi', 'sourceCode']);
-
-        const {fields, address} = ctx.request.query;
-        const result = await statApp.contractQuery.query({address,fields});
-
+        const {address} = ctx.request.query;
+        const result = await statApp.contractQuery.query(address)
         ctx.body = result || {};
     })
     router.get('/contract/check-abi', async (ctx)=>{
@@ -206,33 +205,40 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = {name, registered: total} || {};
     })
 
-    /*router.get('/contract/sync', async (ctx)=>{
-        const {id} = ctx.request.query
-        ctx.body = await statApp.contractQuery.sync({id})
-    })*/
-
-    /*router.get('/verify/sync', async (ctx)=>{
-        const {id} = ctx.request.query
-        ctx.body = await statApp.contractQuery.syncVerify({id})
-    })*/
-
     router.get('/list-auth-action', async (ctx)=>{
         let {author, skip, limit} = ctx.request.query;
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'author');
+        if (author == 'dev') {
+            const latestOne = await AuthAction.findOne({
+                order: [['id', 'desc']], raw: true,
+            })
+            author = latestOne?.author || CONST.ZERO_ADDRESS;
+        } else {
+            mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'author');
+        }
         if (!author) {
             throw new Errors.ParameterError(`param <author> is invalid`);
         }
         mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
         skip = parseInt(skip || '0');
         limit = parseInt(limit || '10');
-        ctx.body = await listAuthAction({author, skip, limit});
+        if (skip > 1000) {
+            throw new Errors.ParameterError(`param <skip> is invalid: exceeds 1000`);
+        }
+        if (limit > 100) {
+            throw new Errors.ParameterError(`param <limit> is invalid: exceeds 100`);
+        }
+        const result = await listAuthAction({author, skip, limit});
+        await getAccountQuery().patchAddressInfo(result.list, 'txSender', 'address');
+        ctx.body = result;
     });
     router.get('/list-auth-action-in-tx', async (ctx)=>{
         let {txHash} = ctx.request.query;
         if (txHash?.length != 66) {
             throw new Errors.ParameterError(`param <txHash> is invalid`);
         }
-        ctx.body = await getAuthActionInTx(txHash);
+        const result = await getAuthActionInTx(txHash);
+        await getAccountQuery().patchAddressInfo(result.list, '', 'address');
+        ctx.body = result;
     });
 
     router.get('/tokens/list', async (ctx)=>{

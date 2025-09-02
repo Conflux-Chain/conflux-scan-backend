@@ -13,7 +13,6 @@ import {
     TxPage
 } from "../model/FullBlock";
 import {FullMinerBlock} from "../model/FullMinerBlock";
-import {fillMethodInfo} from "../model/ContractInfo";
 import {Hex40Map, idHex40Map} from "../model/HexMap";
 import {KEY_FULL_BLOCK_COUNT, KEY_FULL_TX_COUNT, KV} from "../model/KV";
 import {PruneInfo, PruneType} from "../model/PruneInfo";
@@ -28,6 +27,7 @@ import {init} from "./tool/FixDailyTokenStat";
 import {detectFishingAddress} from "./tool/phishingAddress";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import {JsonRpcProvider} from "@ethersproject/providers/src.ts/json-rpc-provider";
+import {fillMethodInfo} from "./contract/contractTool";
 
 const limitMap = require('limit-map');
 

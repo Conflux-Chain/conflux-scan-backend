@@ -3,6 +3,7 @@ import {StatApp} from "../../stat/StatApp";
 import {NoCoreSpace} from "../../stat/config/StatConfig";
 import {getDelegatedAddrAtTx} from "../../stat/model/EIP7702model";
 import {format} from "js-conflux-sdk";
+import {CONST} from "../../stat/service/common/constant";
 
 const lodash = require('lodash');
 const limitMap = require('limit-map');
@@ -33,7 +34,7 @@ export class TransactionService {
 
   async query({ hash, fields, aggregate } = {} as any) {
     const {
-      app: { CONST, service },
+      app: { service },
     } = this as ScanCtx;
 
     if (!hash) {
@@ -54,7 +55,10 @@ export class TransactionService {
     let receipt = await service.conflux.getTransactionReceipt(hash).catch(() => undefined) || {};
     if (StatApp.isEVM && receipt.epochNumber && transaction.to) {
       const toHex = format.hexAddress(transaction.to)
-      transaction['effectiveAuth'] = await getDelegatedAddrAtTx(toHex, receipt.epochNumber, hash).catch(e=>{
+      transaction['effectiveAuth'] = await getDelegatedAddrAtTx(toHex, receipt.epochNumber, hash)
+      .then(res=>{
+        return res ? service.accountQuery.patchAddressInfo([res], '', 'address').then(()=>res) : null;
+      }).catch(e=>{
         transaction['effectiveAuthError'] = e;
         return null;
       });
@@ -84,10 +88,10 @@ export class TransactionService {
 
     // using actualGasCost as gasFee when NotEnoughCash error occurs
     // e.g. "txExecErrorMsg": "NotEnoughCash { required: 10000000000000000000, got: 0, actual_gas_cost: 0, max_storage_limit_cost: 0 }"
-    let gasCharged = NoCoreSpace ? Number(receipt?.gasUsed || 0)
-        : Math.max(Number(receipt?.gasUsed || 0), (Number(transaction.gas) * 3) / 4)
-    let gasFee = StatApp.isEVM ? Number(gasPrice) * gasCharged
-        : (receipt?.gasFee || Number(gasPrice) * gasCharged)
+    const receiptGasUsed = Number(receipt?.gasUsed || 0);
+    let gasCharged = NoCoreSpace ? receiptGasUsed
+        : Math.max(receiptGasUsed, Math.ceil((Number(transaction.gas) * 3) / 4))
+    let gasFee = receipt?.gasFee || Number(gasPrice) * gasCharged
     const actualGasCost = extractActualGasCost(receipt?.txExecErrorMsg)
     if(lodash.isNumber(actualGasCost)) {
       gasFee = BigFixed(actualGasCost)
@@ -124,7 +128,7 @@ export class TransactionService {
 
   async countAndList({ fields, ...options } = {} as any) {
     const {
-      app: { service, tool,  },
+      app: { service, tool },
     } = this;
 
     let result;

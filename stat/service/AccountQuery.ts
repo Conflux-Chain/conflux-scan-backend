@@ -4,7 +4,7 @@ import {StatApp} from "../StatApp";
 import {Contract} from "../model/Contract";
 import {TraceCreateContract} from "../model/TraceCreateContract";
 import {
-    POCKET_ADDRESS_MAP, ESpaceHex40Map, Hex40Map, getAddrId
+    POCKET_ADDRESS_MAP, ESpaceHex40Map, Hex40Map, getAddrId, makeIdV
 } from "../model/HexMap";
 import {AddressCfxTransfer} from "../model/CfxTransfer";
 import {AddressErc20Transfer} from "../model/Erc20Transfer";
@@ -17,9 +17,15 @@ import {KEY_CAUTION_LABELS, KV} from "../model/KV";
 import {NAME_TAG_SPLIT} from "./EpochSync";
 import {ethers} from "ethers";
 import {ScanCtx} from "../../scan-api/service/index";
+import {AuthAction} from "../model/EIP7702model";
 
 const lodash = require('lodash');
 const BigFixed = require('bigfixed');
+
+let _accountQuery: AccountQuery = null;
+export function getAccountQuery() {
+    return _accountQuery;
+}
 
 export class AccountQuery {
     public app: any;
@@ -30,6 +36,7 @@ export class AccountQuery {
 
     constructor(app: any) {
         this.app = app;
+        _accountQuery = this;
     }
 
     public async listPatchInfo(addrArray, options : {
@@ -100,12 +107,12 @@ export class AccountQuery {
 
         // query contract and token
         const tokenService = tokenQuery || service.tokenQuery || service.tokenRdb;
-        const contractService = contractQuery || service.contractQuery || service.contractRdb;
+        const contractService = contractQuery || service.contractQuery;
         const [contractArray, verifiedArray, tokenArray] = await Promise.all([
-            contractService.list({ addressArray })
-                .then(response => response.list.map(contract => ({ address: contract.address, name: contract.name }))),
-            contractService.listVerify({ addressArray })
-                .then(response => response.list.map(verified => verified.address)),
+            contractService.list(addressArray)
+                .then(list => list.map(contract => ({ address: contract.address, name: contract.name }))),
+            contractService.listVerify(addressArray)
+                .then(list => list.map(verified => verified.address)),
             tokenService.list({addressArray})
                 .then(response => response.list),
         ]);
@@ -232,15 +239,23 @@ export class AccountQuery {
     }
 
     public async getBasicInfo(addr) {
-        const addrId = await getAddrId(addr);
+        const addrId = await getAddrId(addr, 0);
+        const has7702 = AuthAction.findOne({
+            where: {author: format.hexAddress(addr)},
+            raw: true, attributes: ['id'],
+        }).then(v=>v ? 1 : 0);
         if(!addrId) {
-           return {
+            if (await has7702) {
+                await makeIdV(addr)
+            }
+            return {
                 cfxTransferTab: 0,
                 erc20TransferTab: 0,
                 erc721TransferTab: 0,
                 erc1155TransferTab: 0,
                 nftAssetTab: 0,
                 minedBlockTab: 0,
+                authorizationsTab: await has7702,
             };
         }
 
@@ -252,11 +267,18 @@ export class AccountQuery {
             nftAssetTab: {model: NftMint, addressIdFieldName: 'toId'},
             nftAssetTab2: {model: Erc1155Data, addressIdFieldName: 'addressId'},
             minedBlockTab: {model: FullMinerBlock, addressIdFieldName: 'minerId'},
+            authorizationsTab: {model: AuthAction, addressIdFieldName: 'author'},
         } as any;
 
         await Promise.all(Object.keys(tabMap).map((tabType)=>{
             const {model, addressIdFieldName} = tabMap[tabType];
-            return model.findOne({where: {[addressIdFieldName]: addrId}}).then(record=>{
+            if (addressIdFieldName == 'author') {
+                return has7702.then(v => tabMap[tabType] = v);
+            }
+            return model.findOne({
+                where: {[addressIdFieldName]: addrId},
+                raw: true, attributes: [addressIdFieldName],
+            }).then(record=>{
                 tabMap[tabType] = record ? 1 : 0;
             });
         }))
@@ -311,4 +333,26 @@ export class AccountQuery {
             }
         };
     }
+
+    public async patchAddressInfo(list: any[], fromKey: string, toKey: string) {
+        let addressArray = [];
+        list.forEach((tx) => {
+            tx[fromKey] && addressArray.push(tx[fromKey].toString());
+            tx[toKey] && (addressArray.push(tx[toKey].toString()));
+        });
+        const accountQuery = this;
+        const accountBasic = await accountQuery.listPatchInfo(addressArray);
+        list.forEach((tx) => {
+            tx.fromENSInfo = accountBasic.map[tx[fromKey]]?.ens;
+            tx.fromNameTagInfo = accountBasic.map[tx[fromKey]]?.nameTag;
+            const info = accountBasic.map[tx[toKey]];
+            if (info) {
+                tx.toContractInfo = info.contract;
+                tx.toTokenInfo = info.token;
+                tx.toENSInfo = info.ens;
+                tx.toNameTagInfo = info.nameTag;
+            }
+        });
+    }
+
 }
