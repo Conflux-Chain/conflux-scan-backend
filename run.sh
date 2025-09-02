@@ -94,6 +94,7 @@ OPEN_PORT=9527
 #CORE_DB=core
 # un-comment if it's a independent evm chain(not a conflux e-space)
 #_NO_CORE_SPACE=true
+#traceNotAvailable=true
 	""" > ./scan.env
 	echo "We have created a config file, scan.env."
 	echo "Edit it and run this script again"
@@ -320,6 +321,9 @@ else
 	if [ "" != "$_NO_CORE_SPACE" ]; then
 		_NO_CORE_SPACE="noCoreSpace: $_NO_CORE_SPACE,"
 	fi
+	if [ "" != "$traceNotAvailable" ]; then
+  		traceNotAvailable="traceNotAvailable: $traceNotAvailable,"
+  	fi
 	if [ "" != "$CORE_RPC" ]; then
 		CORE_RPC="conflux2: '$CORE_RPC',"
 	fi
@@ -335,7 +339,7 @@ export default {
     cfxTransferRpc: { url: '$_RPC',keepAlive: true,},
     blockSyncRpc: { url: '$_RPC',keepAlive: true,},
     preload: 4,
-    $_IS_EVM $_NO_CORE_SPACE $CORE_RPC
+    $_IS_EVM $_NO_CORE_SPACE $traceNotAvailable $CORE_RPC
     influxDB: {disable: true},
     database: { USE_MYSQL: true, syncSchema: true, },
   databaseRW: {

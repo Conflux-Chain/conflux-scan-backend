@@ -18,7 +18,7 @@ import {NAME_TAG_SPLIT} from "./EpochSync";
 import {Errors} from "./common/LogicError";
 import {NameTag} from "../model/NameTag";
 import {ScanCtx} from "../../scan-api/service/index";
-import {NoCoreSpace} from "../config/StatConfig";
+import {ConfigInstance, NoCoreSpace} from "../config/StatConfig";
 
 const lodash = require('lodash');
 const REGEX_URL = /^(https?:\/\/(([a-zA-Z0-9]+-?)+[a-zA-Z0-9]+\.)+[a-zA-Z]+)(:\d+)?(\/.*)?(\?.*)?(#.*)?$/;
@@ -102,7 +102,7 @@ export class TokenQuery {
             }
         } else if (addressArray?.length) {// NO-OP
         } else {
-            if (NoCoreSpace) {
+            if (ConfigInstance.onlyStatActiveContract) {
                 options.where.transfer = {[Op.gt]: 10};
             }
             if (orderBy) {
