@@ -196,8 +196,8 @@ async function decodeMethod(toAddr, data) {
         return  { error: `Contract (${formatAddr(toAddr)}) not verified` };
     }
 
-    let result = decodeTxData(contract['abi'], data);
-    if(!contract.proxy) {
+    const result = decodeTxData(contract['abi'], data);
+    if(!contract.proxy || result?.decodedData) { // Not proxy / Decoded proxy
         return result;
     }
 
