@@ -107,6 +107,7 @@ export interface StatConfig{
 
     syncTokenSecurityAudit: boolean,
     noTopToken: boolean,
+    onlyStatActiveContract: boolean,
     blacklist: boolean,
 
     databaseRW: DatabaseRW,

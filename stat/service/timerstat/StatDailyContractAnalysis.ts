@@ -10,7 +10,7 @@ import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {makeId} from "../../model/HexMap";
 import {CONST} from "../common/constant"
 import {IntervalType, TimerStat} from "./TimerStat";
-import {NoCoreSpace} from "../../config/StatConfig";
+import {ConfigInstance, NoCoreSpace} from "../../config/StatConfig";
 
 export class StatDailyContractAnalysis extends TimerStat{
 
@@ -57,7 +57,7 @@ export class StatDailyContractAnalysis extends TimerStat{
         )
 
         let activeContract:TraceCreateContract[] = null;
-        if (NoCoreSpace) {
+        if (ConfigInstance.onlyStatActiveContract) {
             activeContract = []
             for (const map of [txMap, cfxTransferMap, erc20TransferMap, erc721TransferMap, erc1155TransferMap]) {
                 const keys = Object.keys(map);
