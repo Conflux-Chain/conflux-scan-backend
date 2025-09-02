@@ -1,8 +1,14 @@
 // @ts-ignore
 import {format} from "js-conflux-sdk";
-import {DailyContractCreate, DailyContractRegister, DailyContractStat} from "../model/DailyContractStat";
+import {
+    DailyContractCreate,
+    DailyContractRegister,
+    DailyContractStat,
+    IDailyContractStat
+} from "../model/DailyContractStat";
 import {Hex40Map} from "../model/HexMap";
 import {Op} from "sequelize";
+import {ConfigInstance} from "../config/StatConfig";
 
 export class DailyContractStatQuery {
 
@@ -63,8 +69,41 @@ export class DailyContractStatQuery {
 
         const page = await DailyContractStat.findAndCountAll({
             attributes: ['statTime', 'tx', 'cfxTransfer', 'tokenTransfer'],
-            where: {hex40id}, offset: skip, limit, order:[["statTime", "DESC"]]
+            where: {hex40id}, offset: skip, limit, order:[["statTime", "DESC"]],
+            raw: true,
         })
-        return { total: page?.count || 0, list: page?.rows };;
+        if (ConfigInstance.onlyStatActiveContract) {
+            page.rows = fillAbsentDay(page.rows, limit);
+        }
+        return { total: page.count || 0, list: page.rows };
     }
+}
+
+function fillAbsentDay(list: IDailyContractStat[], limit: number) {
+    if (!list.length) {
+        return list;
+    }
+    // it's desc order by statTime
+    const ascArr = []
+    let latest = list[0];
+    let today = new Date();
+    today.setDate(today.getDate() - 2);
+    while (latest.statTime < today) {
+        let newDay = new Date(latest.statTime);
+        newDay.setDate(newDay.getDate() + 1);
+        latest = {
+            statTime: newDay, tx: 0, cfxTransfer: 0, tokenTransfer: 0,
+            hex40id: 0,
+        }
+        latest['absent'] = true;
+        ascArr.push(latest);
+    }
+
+    if (!ascArr.length) {
+        return list;
+    }
+
+    const all = ascArr.reverse();
+    all.push(...list);
+    return all.slice(0, limit);
 }
