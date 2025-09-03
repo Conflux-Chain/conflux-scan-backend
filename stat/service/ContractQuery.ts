@@ -705,7 +705,7 @@ export class ContractQuery {
                 language: "Solidity",
                 sources: {
                     [contractPath]: {
-                        content: sourceCode,
+                        content: this._rmRedundantLicense(sourceCode),
                     },
                 },
                 settings: {
@@ -794,14 +794,15 @@ export class ContractQuery {
         for (let attempts = 0; attempts < retries; attempts++) {
             if(!abi) {
                 const verified = await this.getVerifyBySourcify(address, true).catch()
-                abi = verified?.abi
-            }
-            if(abi) {
+                if(verified?.abi) {
+                    return
+                }
+            } else {
                 const hexId = await getAddrId(address)
                 saveAbiInfo(abi, hexId).catch(e => {
                     console.log(`saveAbiInfo ${address}`, e)
                 })
-                break
+                return
             }
             await sleep(interval)
             interval *= 2
@@ -887,6 +888,16 @@ export class ContractQuery {
             }
             throw err;
         }
+    }
+
+    _rmRedundantLicense(sourceCode) {
+        if (!sourceCode) {
+            return sourceCode;
+        }
+        let result = sourceCode.replace('SPDX-License-Identifier', '__license__');
+        result = result.replace(/SPDX-License-Identifier/gi, 'SLI');
+        result = result.replace('__license__', 'SPDX-License-Identifier');
+        return result;
     }
 }
 

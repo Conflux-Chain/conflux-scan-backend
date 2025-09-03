@@ -34,7 +34,7 @@ export class VerifiedContracts extends Model<IVerifiedContracts> implements IVer
     static register(seq: Sequelize) {
         VerifiedContracts.init({
             id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
-            address: {type: DataTypes.CHAR(64), allowNull: false},
+            address: {type: DataTypes.CHAR(64), allowNull: false, unique: true},
             name: {type: DataTypes.CHAR(255), allowNull: false},
             language: {type: DataTypes.CHAR(255), allowNull: true},
             version: {type: DataTypes.CHAR(255), allowNull: true},
