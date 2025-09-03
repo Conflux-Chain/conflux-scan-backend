@@ -793,15 +793,16 @@ export class ContractQuery {
     ) {
         for (let attempts = 0; attempts < retries; attempts++) {
             if(!abi) {
-                await this.getVerifyBySourcify(address, true).catch()
-                return
-            }
-            if(abi) {
+                const verified = await this.getVerifyBySourcify(address, true).catch()
+                if(verified?.abi) {
+                    return
+                }
+            } else {
                 const hexId = await getAddrId(address)
                 saveAbiInfo(abi, hexId).catch(e => {
                     console.log(`saveAbiInfo ${address}`, e)
                 })
-                break
+                return
             }
             await sleep(interval)
             interval *= 2
