@@ -793,8 +793,8 @@ export class ContractQuery {
     ) {
         for (let attempts = 0; attempts < retries; attempts++) {
             if(!abi) {
-                const verified = await this.getVerifyBySourcify(address, true).catch()
-                abi = verified?.abi
+                await this.getVerifyBySourcify(address, true).catch()
+                return
             }
             if(abi) {
                 const hexId = await getAddrId(address)
