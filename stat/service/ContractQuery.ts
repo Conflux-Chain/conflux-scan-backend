@@ -705,7 +705,7 @@ export class ContractQuery {
                 language: "Solidity",
                 sources: {
                     [contractPath]: {
-                        content: sourceCode,
+                        content: this._rmRedundantLicense(sourceCode),
                     },
                 },
                 settings: {
@@ -887,6 +887,16 @@ export class ContractQuery {
             }
             throw err;
         }
+    }
+
+    _rmRedundantLicense(sourceCode) {
+        if (!sourceCode) {
+            return sourceCode;
+        }
+        let result = sourceCode.replace('SPDX-License-Identifier', '__license__');
+        result = result.replace(/SPDX-License-Identifier/gi, 'SLI');
+        result = result.replace('__license__', 'SPDX-License-Identifier');
+        return result;
     }
 }
 
