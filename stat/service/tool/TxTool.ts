@@ -38,7 +38,7 @@ async function main() {
 }
 
 export function decodeTxData(abiString:string, data:string){
-    let method;
+    let abi;
     let decodedData;
 
     try{
@@ -46,7 +46,7 @@ export function decodeTxData(abiString:string, data:string){
         const iFace = new ethers.utils.Interface(abiArray)
         const fn = iFace.getFunction(data.substr(0, 10))
         if (fn) {
-            method = fn.name
+            abi = fn.format('json')
             decodedData = iFace.decodeFunctionData(fn, data)
         }
     } catch (e){
@@ -54,5 +54,5 @@ export function decodeTxData(abiString:string, data:string){
         return { error: `Abi decode error ${e.message}` };
     }
 
-    return {method, decodedData}
+    return {abi, decodedData}
 }
