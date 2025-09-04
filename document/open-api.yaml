@@ -2520,8 +2520,8 @@ components:
             hash:
               description: 'Transaction hash.'
               type: string
-            method:
-              description: "Contract method name."
+            abi:
+              description: "Method ABI."
               type: string
             decodedData:
               description: "Decoded data of the transaction."
@@ -2545,8 +2545,8 @@ components:
             input:
               description: 'Input data of the transaction.'
               type: string
-            method:
-              description: "Contract method name."
+            abi:
+              description: "Method ABI."
               type: string
             decodedData:
               description: "Decoded data of the transaction."
