@@ -851,7 +851,8 @@ export class ContractQuery {
             const err = new Error(error.message || 'HTTP request failed');
             err['code'] = error.status;
             err['stack'] = error.stack;
-            if(err['code'] === 404 || err['code'] === undefined) {
+            err['location'] = __filename;
+            if(err['code'] === 404 || err['code'] === 502 || err['code'] === undefined) {
                 console.log(`failed to fetch from ${url} : ${error}`);
                 return null
             }
@@ -883,7 +884,9 @@ export class ContractQuery {
             const err = new Error(error.message || 'HTTP request failed');
             err['code'] = error.status;
             err['stack'] = error.stack;
-            if(err['code'] === 404 || err['code'] === undefined) {
+            err['location'] = __filename;
+            if(err['code'] === 404 || err['code'] === 502 || err['code'] === undefined) {
+                console.log(`failed to get from ${url} : ${error}`);
                 return null
             }
             throw err;
