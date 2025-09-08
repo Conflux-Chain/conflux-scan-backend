@@ -100,7 +100,7 @@ export class ContractService {
   async verifySourcecode(params) {
     const {
       app: {service}
-    } = this;
+    } = this as ScanCtx;
 
     console.log(`request verifySourcecode ==\n`, {
       address: params.address,
