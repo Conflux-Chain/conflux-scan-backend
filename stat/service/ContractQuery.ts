@@ -199,10 +199,10 @@ export class ContractQuery {
             if(cache.length === contractAddresses.length) {
                 contracts = cache
             } else{
-                const results = await this.listVerifyBySourcify(contractAddresses)
+                const results = await this.listVerifyByDB(contractAddresses)
                 contracts = results.map((r: any) => format.hexAddress(r.address))
                 if(results?.length < contractAddresses.length) {
-                    const results: any[] = await this.listVerifyByDB(contractAddresses.filter(c => !contracts.includes(c)))
+                    const results: any[] = await this.listVerifyBySourcify(contractAddresses.filter(c => !contracts.includes(c)))
                     const founded = results.map(r => format.hexAddress(r.address))
                     contracts = [...contracts, ...founded]
                 }
@@ -848,15 +848,7 @@ export class ContractQuery {
                 headers: response.headers
             };
         } catch (error) {
-            const err = new Error(error.message || 'HTTP request failed');
-            err['code'] = error.status;
-            err['stack'] = error.stack;
-            err['location'] = __filename;
-            if(err['code'] === 404 || err['code'] === 502 || err['code'] === undefined) {
-                console.log(`failed to fetch from ${url} : ${error}`);
-                return null
-            }
-            throw err;
+            this._handleHttpError(url, error)
         }
     }
 
@@ -881,16 +873,27 @@ export class ContractQuery {
                 headers: response.headers
             };
         } catch (error) {
-            const err = new Error(error.message || 'HTTP request failed');
-            err['code'] = error.status;
-            err['stack'] = error.stack;
-            err['location'] = __filename;
-            if(err['code'] === 404 || err['code'] === 502 || err['code'] === undefined) {
-                console.log(`failed to get from ${url} : ${error}`);
-                return null
-            }
-            throw err;
+            this._handleHttpError(url, error)
         }
+    }
+
+    _handleHttpError(url, error) {
+        const err = new Error(error.message || 'HTTP request failed')
+        err['code'] = error.status
+        err['stack'] = error.stack
+        err['location'] = __filename
+
+        if (err['code'] === 404) {
+            return null
+        }
+
+        if (err['code'] === 502 ||
+            err['code'] === undefined) {
+            console.log(`Business is busy, url ${url}`)
+            return null
+        }
+
+        throw err
     }
 
     _rmRedundantLicense(sourceCode) {
