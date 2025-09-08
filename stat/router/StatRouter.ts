@@ -1053,6 +1053,7 @@ export function register(app:Koa, statApp: StatApp) {
                 e = new Errors.BizError(e.message);
             }
             if (e.status === undefined || e.status === null) {
+                e['url'] = ctx.originalUrl;
                 console.log(`url ${ctx.originalUrl} \nunknown error caught by router:`, e);
                 safeAddErrorLog('stat-router', `stat-500-${e.message}`, e).then()
                 e.status = 500;
