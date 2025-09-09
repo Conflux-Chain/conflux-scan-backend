@@ -38,9 +38,18 @@ async function main() {
 		ctx.testMode = true;
 	}
 
-	loadTxTask(epochMaxInclude, ctx.txMap, 100);
-	loadReceiptTask(ctx, cfx)
-	updateGas(ctx)
+	loadTxTask(epochMaxInclude, ctx.txMap, 100).catch(e=>{
+		console.log(`load tx task error: `, e);
+		process.exit(1);
+	});
+	loadReceiptTask(ctx, cfx).catch(e=>{
+		console.log(`load receipt task error: `, e);
+		process.exit(1);
+	})
+	updateGas(ctx).catch(e=>{
+		console.log(`update gas task error: `, e);
+		process.exit(1);
+	})
 
 	regExitHook()
 }
