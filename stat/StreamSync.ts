@@ -66,6 +66,7 @@ export async function updateTokenTransferCount(contractIds: IterableIterator<num
         if (force || preTransfer < 10_000) {
             // update immediately
             updateTransferCountReal(t).then()
+            await BalanceService.updateTokenHolder(t.hex40id);
         } else {
             waitUpdateTransferTokens.hex40ids.add(t.hex40id)
         }
