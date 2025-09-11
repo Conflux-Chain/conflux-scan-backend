@@ -109,6 +109,11 @@ export class Token extends Model<IToken> implements IToken{
             fetchBalance: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
         },{
             tableName: 'token',
+            indexes: [
+                {name: 'idx_transfer', fields: ['transfer']},
+                {name: 'idx_type', fields: ['type']},
+                {name: 'idx_holder', fields: ['holder']},
+            ],
             sequelize: seq,
             timestamps: true,
         })

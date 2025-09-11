@@ -289,7 +289,11 @@ export function createMySql(dbConf) {
 }
 
 async function migDB(seq: Sequelize) {
-
+    const qi = seq.getQueryInterface();
+    const t = Token.getTableName().toString();
+    await addIndexIfNotExistsMySQL(qi, t,'idx_transfer', {fields: ['transfer']});
+    await addIndexIfNotExistsMySQL(qi, t,'idx_type', {fields: ['type']});
+    await addIndexIfNotExistsMySQL(qi, t,'idx_holder', {fields: ['holder']});
 }
 
 async function dropEmptyTables() {

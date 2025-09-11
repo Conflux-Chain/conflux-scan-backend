@@ -4,7 +4,7 @@ import {Conflux, format} from "js-conflux-sdk";
 import {CfxWatcher} from "./BalanceWatcher";
 import {formatAddr} from "../../../open-api/common/RestTool";
 import {AddressErc20Transfer} from "../../model/Erc20Transfer";
-import {handleTokenTransferWithContract} from "../../StreamSync";
+import {handleTokenTransferWithContract, updateTokenTransferCount} from "../../StreamSync";
 import {BatchBalanceWatcher} from "./BatchBalanceWatcher";
 import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
 import {INftMint, NftMint} from "../../model/Token";
@@ -117,6 +117,7 @@ async function checkAccountBiz(reqAcc: ReqAccount) {
 	})
 	await handleTokenTransferWithContract(map, cfxWatcher.cfx);
 	await checkAccount721(reqAcc.hexId);
+	await updateTokenTransferCount(new Set([reqAcc.hexId]).keys());
 }
 async function checkAccount(reqAcc: ReqAccount) {
 	await checkAccountBiz(reqAcc);

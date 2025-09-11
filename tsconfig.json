@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "sourceMap": false,
     "module": "CommonJS",
     "incremental": true,
     "skipLibCheck": true,
