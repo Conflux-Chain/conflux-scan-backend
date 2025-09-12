@@ -111,7 +111,7 @@ export class AccountQuery {
         const [contractArray, verifiedArray, tokenArray] = await Promise.all([
             contractService.list(addressArray)
                 .then(list => list.map(contract => ({ address: contract.address, name: contract.name }))),
-            contractService.listVerify(addressArray)
+            contractService.listVerifyInBatch(addressArray)
                 .then(list => list.map(verified => verified.address)),
             tokenService.list({addressArray})
                 .then(response => response.list),

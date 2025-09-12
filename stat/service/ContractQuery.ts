@@ -213,6 +213,26 @@ export class ContractQuery {
         return [...internals, ...contracts].map(a => ({address: format.address(a, StatApp.networkId)}))
     }
 
+    public async listVerifyInBatch(addressArray, chunkSize = this.MAX_CONTRACTS) {
+        if(!addressArray){
+            return []
+        }
+        if (!lodash.isArray(addressArray)) {
+            addressArray = [addressArray]
+        }
+        if(addressArray?.length < this.MAX_CONTRACTS) {
+            return this.listVerify(addressArray)
+        }
+
+        const tasks = Array.from(
+            { length: Math.ceil(addressArray.length / chunkSize) },
+            (_, index) => addressArray.slice(index * chunkSize, (index + 1) * chunkSize)
+        ).map(addressArray => this.listVerify(addressArray))
+        const chunkedContracts = await Promise.all(tasks)
+
+        return chunkedContracts?.flat() || []
+    }
+
     private isInternalContract(address) {
         return lodash.includes(CONST.INTERNAL_CONTRACT_ALL, format.hexAddress(address))
     }
