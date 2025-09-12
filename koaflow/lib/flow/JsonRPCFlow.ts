@@ -101,6 +101,9 @@ export function patchFlowError(ctx) {
       transformError(ctx, new Errors.RpcBusyError(), ' ', code);
     } else if (message.startsWith('Invalid params: expected a numbers with less than largest epoch number')) {
       transformError(ctx, new Errors.RpcBizError(), ' ', message);
+    } else if (code === 'INVALID_ARGUMENT'
+        || (code === 5200 && message.includes("(Invalid input|args"))) {
+      transformError(ctx, new Errors.ParameterError(), ' ', message);
     } else {
       transformError(ctx, ctx.methodFlowError, message, '');
     }
