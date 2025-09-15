@@ -134,7 +134,7 @@ export class TokenQuery {
             rawList = page?.rows;
             count = page?.count;
         }
-        if (rawList.length > 100) {
+        if (rawList.length > 1000) {
             const msg = `token list with bad size ${rawList.length}`;
             console.log(msg);
             console.log(`addressArray`, addressArray, 'name', name, 'limit', limit)
@@ -145,7 +145,7 @@ export class TokenQuery {
         if (rawList) {
             registeredTokens = rawList.map(item => item.address);
             const contractSrv = contractQuery || service.contractQuery
-            const verifiedTokens = await contractSrv.listVerify(registeredTokens).then(arr => arr.map(t => t.address))
+            const verifiedTokens = await contractSrv.listVerifyInBatch(registeredTokens).then(arr => arr.map(t => t.address))
             rawList.forEach(row => {
                 row['transferType'] = lodash.toUpper(row['transferType']);
                 if (lodash.includes(fields, 'icon')) {
