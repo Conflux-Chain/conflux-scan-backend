@@ -24,6 +24,8 @@ import * as KoaRouter from "koa-router";
 import {getClientIP} from "../../stat/router/RateLimiter";
 import {safeAddErrorLog} from "../../stat/monitor/ErrorMonitor";
 import {getAccountQuery} from "../../stat/service/AccountQuery";
+import {fmtAddr} from "../../stat/StatApp";
+import {Errors} from "../../stat/service/common/LogicError";
 const {router_get, router_post} = require ("../../koaflow/src/koaHelper");
 const {OpenAPI} = require('../../koaflow/lib/OpenAPI');
 const error = require('../../common/error');
@@ -55,6 +57,9 @@ router.use(async (ctx, next) => {
   } catch (e) {
     if(e.code === undefined){
       e = new error.BizError(e.message);
+    } else if (e.code === 'INVALID_ARGUMENT'
+        || (e.code === 5200 && e.message?.includes("(Invalid input|args"))) {
+      e = new Errors.ParameterError(e.message || `${e}`);
     }
     // see common/error.js
     ctx.status = e.status || 500;
@@ -1303,12 +1308,10 @@ router_get(router,'/report/transaction',
 
   toArray, jsonrpc_exportTransaction,
   async function (options) {
-    const {
-      app: { type },
-    } = this;
     const {address, csvContent} = options;
     const date = moment(new Date()).format('YYYY.MM.DD')
-    const filename = `address-transactions-${StatApp.isEVM ? type.address(address) : address}-${date}.csv`;
+    const addrSegment = fmtAddr(address, StatApp.networkId) || 'all';
+    const filename = `address-transactions-${addrSegment}-${date}.csv`;
     this.set('Content-Disposition', `attachment; filename="${filename}"`);
     return Buffer.from(csvContent);
   },

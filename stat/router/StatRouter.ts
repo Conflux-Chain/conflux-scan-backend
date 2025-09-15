@@ -964,13 +964,14 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     });
 
     router.get('/transaction/pending', async function (ctx) {
-        if (statApp.config.pendingTxNotAvailable) {
+        const {accountAddress} = ctx.request.query
+        if (statApp.config.pendingTxNotAvailable || !accountAddress) {
             ctx.body = []
             return;
         }
+
         mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'accountAddress');
 
-        const {accountAddress} = ctx.request.query
         let result;
         if(StatApp.isEVM) {
             if (NoCoreSpace) {
@@ -1051,6 +1052,9 @@ export function register(app:Koa, statApp: StatApp) {
             if(e.code === undefined){
                 console.log(`url ${ctx.originalUrl} \nunhandled error caught by router:`, e);
                 e = new Errors.BizError(e.message);
+            } else if (e.code === 'INVALID_ARGUMENT'
+                || (e.code === 5200 && e.message?.includes("(Invalid input|args"))) {
+                e = new Errors.ParameterError(e.message || `${e}`);
             }
             if (e.status === undefined || e.status === null) {
                 e['url'] = ctx.originalUrl;
