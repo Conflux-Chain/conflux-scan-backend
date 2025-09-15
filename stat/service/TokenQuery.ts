@@ -125,6 +125,11 @@ export class TokenQuery {
         let count;
         if (addressArray?.length) {
             delete options.where['auditResult'];
+            if (ConfigInstance.onlyStatActiveContract) {
+                // when exporting TX of an account, we may encounter too many tokens(ZG testnet).
+                // restrict it in order to protect our system.
+                options.limit = Math.min(100, options.limit ?? 100);
+            }
             rawList = await Token.findAll(options);
             count = rawList?.length || 0;
         } else {
@@ -145,7 +150,7 @@ export class TokenQuery {
         if (rawList) {
             registeredTokens = rawList.map(item => item.address);
             const contractSrv = contractQuery || service.contractQuery
-            const verifiedTokens = await contractSrv.listVerify(registeredTokens).then(arr => arr.map(t => t.address))
+            const verifiedTokens = await contractSrv.listVerifyInBatch(registeredTokens).then(arr => arr.map(t => t.address))
             rawList.forEach(row => {
                 row['transferType'] = lodash.toUpper(row['transferType']);
                 if (lodash.includes(fields, 'icon')) {
