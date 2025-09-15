@@ -1310,7 +1310,7 @@ router_get(router,'/report/transaction',
   async function (options) {
     const {address, csvContent} = options;
     const date = moment(new Date()).format('YYYY.MM.DD')
-    const addrSegment = fmtAddr(address, StatApp.networkId);
+    const addrSegment = fmtAddr(address, StatApp.networkId) || 'all';
     const filename = `address-transactions-${addrSegment}-${date}.csv`;
     this.set('Content-Disposition', `attachment; filename="${filename}"`);
     return Buffer.from(csvContent);
