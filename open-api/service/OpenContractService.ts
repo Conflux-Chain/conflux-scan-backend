@@ -19,6 +19,7 @@ const NodeCache = require( "node-cache" );
 
 const MSG_IMPL_NO_MATCH = "A corresponding implementation contract was unfortunately not detected for the proxy address";
 const MSG_IMPL_MATCH = "The proxy's (%s) implementation contract is found at %s and is successfully updated";
+const DATA_NOT_VERIFIED = [{"SourceCode":"","ABI":"Contract source code not verified","ContractName":"","CompilerVersion":"","CompilerType":"","OptimizationUsed":"","Runs":"","ConstructorArguments":"","EVMVersion":"Default","Library":"","ContractFileName":"","LicenseType":"Unknown","Proxy":"0","Implementation":"","SwarmSource":"","SimilarMatch":""}]
 
 const addressInfoCache = new NodeCache()
 const addressInfoTTL = 60 * 10; //
@@ -105,7 +106,7 @@ export async function getSourceCode(ctx) {
 
     const contract = await getApiService().contractQuery.queryVerify(address, true)
     if(!contract){
-        setBody(ctx, undefined, 1, `contract ${address} not verified` );
+        setBody(ctx, DATA_NOT_VERIFIED, 0 );
         return;
     }
 

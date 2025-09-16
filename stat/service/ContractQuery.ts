@@ -39,6 +39,13 @@ const abi = require('./tool/abi');
 
 const NodeCache = require( "node-cache" );
 const DEFAULT_VERIFY_CACHE_TTL: number = 60 * 60 * 24 * 7 //7days
+const ZERO_LABS_PROXY_BEACON_MAP = {
+    "0xea224dbb52f57752044c0c86ad50930091f561b9":"0x0000000000000000000000000e9cc1be1060e3dd036f16977a186a8185acc513",
+    "0x712a30816a8756c8fdb78de63db55aa70d3cf3b4":"0x000000000000000000000000335ae8961fface946c25900aa689d793dc3ff1bf",
+    "0x81568b27b210538869f5659035ebf506d2fc3384":"0x000000000000000000000000335ae8961fface946c25900aa689d793dc3ff1bf",
+    "0x8ee1af5b2791c7fa6065a02e4b579a9cc78388fb":"0x000000000000000000000000335ae8961fface946c25900aa689d793dc3ff1bf",
+    "0xcb8fb96dd0f60085c9b0ef4ffaea219caffbf972":"0x000000000000000000000000335ae8961fface946c25900aa689d793dc3ff1bf"
+}
 let _instance: ContractQuery;
 
 export function getContractQuery() {
@@ -498,16 +505,17 @@ export class ContractQuery {
             implementation !== null && implementation !== CONST.ZERO_VALUE_IN_SLOT
         ))
 
-        const [beacon] = await Promise.all([
-            cfx.getStorageAt(base32, CONST.POSITION_BEACON_SLOT)
-        ])
+        let beacon = await cfx.getStorageAt(base32, CONST.POSITION_BEACON_SLOT)
+        if (!beacon || beacon === CONST.ZERO_VALUE_IN_SLOT) {
+            beacon = ZERO_LABS_PROXY_BEACON_MAP[format.hexAddress(base32)]
+        }
 
         let beaconHex40
         let implHex40
         if (implementation) {
             implHex40 = implementation.substr(26)
         }
-        if (beacon !== null && beacon !== CONST.ZERO_VALUE_IN_SLOT) {
+        if (beacon && beacon !== CONST.ZERO_VALUE_IN_SLOT) {
             beaconHex40 = `0x${beacon.substr(26)}`;
             const contract = cfx.Contract({abi});
             const impl = await contract.implementation()
