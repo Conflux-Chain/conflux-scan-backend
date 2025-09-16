@@ -107,7 +107,7 @@ async function sync(seq?: Sequelize) {
 
 async function main() {
 	const [,,cdm, arg1] = process.argv;
-	const url = "http://8.211.150.94/evm/rpc"
+	const url = ""
 	ctx.eth = await initEthSdk(arg1 || url);
 	// await getBlockWithdraws(eth, 1)
 	await sync()
