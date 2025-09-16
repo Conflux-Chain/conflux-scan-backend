@@ -7,7 +7,7 @@ import {Op} from "sequelize";
 import {sleep} from "../tool/ProcessTool";
 import {init} from "../tool/FixDailyTokenStat";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
-import {getAddrId, makeIdV} from "../../model/HexMap";
+import {getAddrId, makeId, makeIdV} from "../../model/HexMap";
 import {Errors} from "../common/LogicError";
 import {ethers} from "ethers";
 import {hexlify, RLP} from "ethers/lib/utils";
@@ -32,17 +32,17 @@ export async function detectAccountType(hex: string) : Promise<AccountType> {
 		throw new Error(`SDK not initialized`);
 	}
 	const addrId = await getAddrId(hex);
-	if (!addrId) {
+	if (addrId) {
+		const creation = await TraceCreateContract.findOne({
+			where: {to: addrId},
+		});
+		if (creation) {
+			result.isContract = true;
+			result.extraMessage = `creation exists`;
+			return result;
+		}
+	} else {
 		result.extraMessage = "No such address";
-		return result;
-	}
-	const creation = await TraceCreateContract.findOne({
-		where: {to: addrId},
-	});
-	if (creation) {
-		result.isContract = true;
-		result.extraMessage = `creation exists`;
-		return result;
 	}
 	// check code
 	let rpcError = false;
@@ -57,6 +57,11 @@ export async function detectAccountType(hex: string) : Promise<AccountType> {
 		result.extraMessage = `code is empty`;
 		return result;
 	}
+
+	if (!addrId) {
+		await makeId(hex, null, {dt: new Date()});
+	}
+
 	const prefix = "0xef0100";
 	if (codeOnChain.length === 48 && codeOnChain.startsWith(prefix)) {
 		result.delegatedTo = '0x' + codeOnChain.substr(prefix.length);
