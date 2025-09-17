@@ -86,7 +86,7 @@ const path = require('path');
 const cors = require('@koa/cors');
 
 async function root(ctx, tag, port: string | number) {
-    ctx.body = {code: 0, app:'Conflux Scan Open Api', message: `${tag} ${port}`}
+    ctx.body = {code: 0, app:'Scan Open Api', message: `${tag} ${port}`}
 }
 
 async function getTokenInfo(ctx) {
