@@ -26,10 +26,7 @@ const ctx = {
 async function getBlockWithdraws(p: JsonRpcProvider, blockNumber: number) {
 	// raw rpc
 	const rawBlock = await p.send('eth_getBlockByNumber', ['0x'+blockNumber.toString(16), false])
-	// console.log(`raw block is `, rawBlock['withdrawals'])
-	// console.log(`withdrawalsRoot`, rawBlock['withdrawalsRoot'])
 	if (!rawBlock) {
-		console.log(`getting block returns null at`, blockNumber);
 		return {message: `getting block returns null`};
 	}
 	const wd =  WithdrawalParser.parseWithdrawalsData(rawBlock)
@@ -85,6 +82,7 @@ async function sync(seq?: Sequelize) {
 		});
 		if (failed || !withdrawData) {
 			await sleep(5_000);
+			continue;
 		}
 		const newBean = {
 			blockNumber: withdrawData.blockNumber,
