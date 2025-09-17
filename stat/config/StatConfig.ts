@@ -168,10 +168,7 @@ export function loadConfig(specified:string = undefined): StatConfig {
         return conf;
     }
     conf.serverTag = `${conf.serverTag}@${os.hostname()}`
-    const {databaseRW:{replication:{write:{host: writeHost, username}, read:[{host:readHost}]}}} = conf
-    console.log(`database conf, host: write ${writeHost
-    } read ${readHost}, user ${username} DB ${conf.databaseRW.instanceName
-    }. web port [${conf.port}].`)
+    console.log(`/stat api port [${conf.port}].`)
     ConfigInstance = conf;
     return conf;
 }

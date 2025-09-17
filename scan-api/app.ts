@@ -140,7 +140,7 @@ export class ApiApp extends AppBase {
       saveApiLog(ctx, ms).catch()
     })
 
-    console.log(`================== scan api listen on port ${port || this.config.port} ==================`);
+    console.log(`================== /v1 api listen on port ${port || this.config.port} ==================`);
     return super.listen(port);
   }
 
