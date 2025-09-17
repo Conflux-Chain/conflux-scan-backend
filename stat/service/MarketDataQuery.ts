@@ -37,8 +37,9 @@ export class MarketDataQuery {
 
         let supplyInfo = await cfx.getSupplyInfo();
         supplyInfo = await patchSupplyInfo(supplyInfo, nullAddressBalance.valueOf());
-        const twoYearUnlockBalance = 0n;//await cfx.getBalance(CONST.TWO_YEAR_UNLOCK);
-        const fourYearUnlockBalance = 0n;//await cfx.getBalance(CONST.FOUR_YEAR_UNLOCK);
+        const sPos = supplyInfo["calculateEvmPosSupply"];
+        const twoYearUnlockBalance = sPos ? undefined : 0n;//await cfx.getBalance(CONST.TWO_YEAR_UNLOCK);
+        const fourYearUnlockBalance = sPos ? undefined : 0n;//await cfx.getBalance(CONST.FOUR_YEAR_UNLOCK);
 
         this.data = {...supplyInfo, nullAddressBalance, twoYearUnlockBalance, fourYearUnlockBalance};
     }

@@ -4,7 +4,7 @@ import {Epoch, VoteParams} from "../model/Epoch";
 import {PivotSwitch} from "../model/Block";
 import {MinerBlock} from "../model/MinerBlock";
 import {KV} from "../model/KV";
-import {Database} from "../config/StatConfig";
+import {Database, NoCoreSpace} from "../config/StatConfig";
 import {DailyTransaction} from "../model/DailyTransaction";
 import {DailyCfxHolder} from "../model/DailyCfxHolder";
 import {ContractDestroy, TraceCreateContract} from "../model/TraceCreateContract";
@@ -81,6 +81,7 @@ import {TxReceiverDaily, TxReceiverHourly, TxSenderDaily, TxSenderHourly} from "
 import {AuthAction, AuthBlockStub} from "../model/EIP7702model";
 import {ContractImpl} from "../model/ContractImpl";
 import {VerifiedContracts} from "../model/VerifiedContracts";
+import {initBlockWithdrawModel} from "../model/ZG";
 
 let conf
 export function createDB(config) {
@@ -263,9 +264,11 @@ export async function initModel(sequelize: Sequelize) {
     NftTransfer.register(sequelize)
     AddressNfts.register(sequelize)
     EpochAddressIds.register(sequelize)
-
+    if (NoCoreSpace) {
+        initBlockWithdrawModel(sequelize);
+    }
     /*await checkApiLogIpField()*/
-    console.log(`init models ok`)
+    console.log(`init models ok`);
     await dropEmptyTables();
     await migDB(sequelize);
 }

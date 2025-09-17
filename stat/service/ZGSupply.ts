@@ -126,10 +126,10 @@ export async function calculateEvmPosSupply(balanceOfZero: bigint): Promise<Supp
 		genesisSupply: ZGGenesisSupply,
 		// home dashboard service will do the algorithm : issued - balanceOfZero;
 		totalCirculating: issued, //circulating,
-		totalCollateral: 0n,
-		totalEspaceTokens: 0n,
+		totalCollateral: undefined,
+		totalEspaceTokens: undefined,
 		totalIssued: issued,
-		totalStaking: 0n,
+		totalStaking: undefined,
 		calculateEvmPosSupply: true,
 	};
 }
