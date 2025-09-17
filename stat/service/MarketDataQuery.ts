@@ -1,4 +1,8 @@
+import { Conflux } from "js-conflux-sdk";
 import {CONST} from "./common/constant"
+import {ConfigInstance} from "../config/StatConfig";
+import {SupplyInfo} from "js-conflux-sdk/dist/types/rpc/types/formatter";
+import {calculateEvmPosSupply} from "./ZGSupply";
 
 export class MarketDataQuery {
     protected app;
@@ -26,14 +30,25 @@ export class MarketDataQuery {
 
     protected async cache() {
         const {
-            app: {cfx},
+            app: {cfx: _cfx},
         } = this;
-
-        const supplyInfo = await cfx.getSupplyInfo();
+        const cfx = _cfx as Conflux;
         const nullAddressBalance = await cfx.getBalance(CONST.ZERO_ADDRESS);
-        const twoYearUnlockBalance = await cfx.getBalance(CONST.TWO_YEAR_UNLOCK);
-        const fourYearUnlockBalance = await cfx.getBalance(CONST.FOUR_YEAR_UNLOCK);
+
+        let supplyInfo = await cfx.getSupplyInfo();
+        supplyInfo = await patchSupplyInfo(supplyInfo, nullAddressBalance.valueOf());
+        const sPos = supplyInfo["calculateEvmPosSupply"];
+        const twoYearUnlockBalance = sPos ? undefined : 0n;//await cfx.getBalance(CONST.TWO_YEAR_UNLOCK);
+        const fourYearUnlockBalance = sPos ? undefined : 0n;//await cfx.getBalance(CONST.FOUR_YEAR_UNLOCK);
 
         this.data = {...supplyInfo, nullAddressBalance, twoYearUnlockBalance, fourYearUnlockBalance};
+    }
+}
+
+export async function patchSupplyInfo(supplyInfo: SupplyInfo, balanceOfZero: bigint): Promise<SupplyInfo&any> {
+    if (supplyInfo?.totalCirculating == 0n && ConfigInstance.noCoreSpace && ConfigInstance.isEvm) {
+        return calculateEvmPosSupply(balanceOfZero);
+    } else {
+        return supplyInfo;
     }
 }

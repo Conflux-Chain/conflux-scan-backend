@@ -5,7 +5,6 @@ import {
 	BlockWithdrawModel,
 	getLatestBlockWithdraw,
 	initBlockWithdrawModel,
-	initWithdrawalModel,
 	WithdrawalCreationAttributes,
 	WithdrawalParser,
 	WithdrawalUtils
@@ -15,6 +14,8 @@ import {KV} from "../model/KV";
 import {Sequelize} from "sequelize";
 import {regExitHook, sleep} from "./tool/ProcessTool";
 import {formatEther, parseEther} from "ethers/lib/utils";
+import {SupplyInfo} from "js-conflux-sdk/dist/types/rpc/types/formatter";
+import {NoCoreSpace} from "../config/StatConfig";
 
 const ctx = {
 	preEntry: null as BlockWithdrawCreationAttributes,
@@ -25,9 +26,9 @@ const ctx = {
 async function getBlockWithdraws(p: JsonRpcProvider, blockNumber: number) {
 	// raw rpc
 	const rawBlock = await p.send('eth_getBlockByNumber', ['0x'+blockNumber.toString(16), false])
-	// console.log(`raw block is `, rawBlock['withdrawals'])
-	// console.log(`withdrawalsRoot`, rawBlock['withdrawalsRoot'])
-
+	if (!rawBlock) {
+		return {message: `getting block returns null`};
+	}
 	const wd =  WithdrawalParser.parseWithdrawalsData(rawBlock)
 	// console.log(`withdrawals data`, wd)
 
@@ -79,8 +80,9 @@ async function sync(seq?: Sequelize) {
 			failed = true;
 			return {withdrawData: null}
 		});
-		if (failed) {
+		if (failed || !withdrawData) {
 			await sleep(5_000);
+			continue;
 		}
 		const newBean = {
 			blockNumber: withdrawData.blockNumber,
@@ -103,6 +105,31 @@ async function sync(seq?: Sequelize) {
 			console.log(`${new Date().toISOString()} reach block `, ctx.preEntry.blockNumber);
 		}
 	}
+}
+
+const ZGGenesisSupply = BigInt(parseEther(1e9.toString()));
+
+export async function calculateEvmPosSupply(balanceOfZero: bigint): Promise<SupplyInfo & any> {
+	// circulating supply = genesis supply + block withdraw - balance(0x0)
+	let blockWithdraw = BigInt(0);
+	if (NoCoreSpace && BlockWithdrawModel.sequelize) {
+		const bw = await getLatestBlockWithdraw();
+		blockWithdraw = BigInt(parseEther(bw?.cumulativeAmount || "0"));
+	}
+	const issued = ZGGenesisSupply + blockWithdraw;
+	// const circulating = issued - balanceOfZero;
+	// ret['sumBlockWithdraw'] = blockWithdraw;
+	return {
+		sumBlockWithdraw: blockWithdraw,
+		genesisSupply: ZGGenesisSupply,
+		// home dashboard service will do the algorithm : issued - balanceOfZero;
+		totalCirculating: issued, //circulating,
+		totalCollateral: undefined,
+		totalEspaceTokens: undefined,
+		totalIssued: issued,
+		totalStaking: undefined,
+		calculateEvmPosSupply: true,
+	};
 }
 
 async function main() {

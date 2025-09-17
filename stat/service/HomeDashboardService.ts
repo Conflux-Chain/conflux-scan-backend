@@ -5,6 +5,7 @@ import {AddressTransactionIndex, FullBlock} from "../model/FullBlock";
 import {CONST} from "./common/constant"
 import {PruneInfo, PruneType} from "../model/PruneInfo";
 import {ScanCtx} from "../../scan-api/service/index";
+import {patchSupplyInfo} from "./MarketDataQuery";
 
 const lodash = require('lodash');
 
@@ -59,10 +60,12 @@ export class HomeDashboardService{
         }
 
 
-        const supplyInfo = await cfx.getSupplyInfo();
+        let supplyInfo = await cfx.getSupplyInfo();
         const nullAddressBalance = await cfx.getBalance(CONST.ZERO_ADDRESS);
-        const twoYearUnlockBalance = await cfx.getBalance(CONST.TWO_YEAR_UNLOCK);
-        const fourYearUnlockBalance = await cfx.getBalance(CONST.FOUR_YEAR_UNLOCK);
+        supplyInfo = await patchSupplyInfo(supplyInfo, nullAddressBalance.valueOf());
+
+        const twoYearUnlockBalance = 0n;//await cfx.getBalance(CONST.TWO_YEAR_UNLOCK);
+        const fourYearUnlockBalance = 0n;//await cfx.getBalance(CONST.FOUR_YEAR_UNLOCK);
 
         supplyInfo.totalCirculating = `${BigInt(supplyInfo.totalCirculating) - BigInt(nullAddressBalance)}`;
 
