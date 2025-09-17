@@ -168,7 +168,7 @@ export function loadConfig(specified:string = undefined): StatConfig {
         return conf;
     }
     conf.serverTag = `${conf.serverTag}@${os.hostname()}`
-    console.log(`/stat api port [${conf.port}].`)
+    console.log(`------ /stat api port [${conf.port}]. --------`)
     ConfigInstance = conf;
     return conf;
 }
