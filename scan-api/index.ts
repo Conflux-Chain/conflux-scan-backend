@@ -23,7 +23,7 @@ setInterval(async ()=>{
     }
     await doHeartBeat(`${KEY_COMPILER}_${config.machine}`);
   } catch (e) {
-    console.log(`failed to call compiler rpc ${compilerRpc}`, e)
+    console.log(`failed to call compiler rpc ${compilerRpc}\n ${e.status} ${e.message}`);
   }
 }, 10_000)
 // report scan api heart beat
