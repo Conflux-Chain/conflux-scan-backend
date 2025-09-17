@@ -10,7 +10,7 @@ setInterval(async ()=>{
   // remove compiler service, this is a test url with bad address 0xAA
   const compilerRpc = `${config.contractVerificationUrl}/verify/1/0xAA`;
   try {
-    await superagent.get(compilerRpc).catch(e=>{
+    await superagent.post(compilerRpc).catch(e=>{
       // above url should return status 400 Bad request, since address 0xAA is invalid.
       // otherwise there may be some error.
       if (e.status !== 400) {
