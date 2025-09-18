@@ -20,7 +20,7 @@ import {NoCoreSpace} from "../config/StatConfig";
 const ctx = {
 	preEntry: null as BlockWithdrawCreationAttributes,
 	eth: undefined as JsonRpcProvider,
-	cumulative: 0,
+	cumulative: 0n,
 }
 
 async function getBlockWithdraws(p: JsonRpcProvider, blockNumber: number) {
@@ -56,6 +56,8 @@ async function setupPreBlock() {
 		}
 		// no record in DB,
 		console.log(`first block number is `, firstBlk.number);
+	} else {
+		ctx.cumulative = parseEther(ctx.preEntry.cumulativeAmount).toBigInt()
 	}
 }
 
@@ -90,7 +92,7 @@ async function sync(seq?: Sequelize) {
 			withdrawalsRoot: withdrawData.withdrawalsRoot,
 		} as BlockWithdrawCreationAttributes;
 		// we have decimal in DB
-		const drip = ctx.cumulative + withdrawData.totalAmount;
+		const drip = ctx.cumulative + BigInt(withdrawData.totalAmount);
 		newBean.cumulativeAmount = formatEther(drip);
 
 		await BlockWithdrawModel.create(newBean).then(()=>{
