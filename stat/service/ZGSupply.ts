@@ -122,7 +122,7 @@ export async function calculateEvmPosSupply(balanceOfZero: bigint): Promise<Supp
 	// const circulating = issued - balanceOfZero;
 	// ret['sumBlockWithdraw'] = blockWithdraw;
 	return {
-		sumBlockWithdraw: blockWithdraw,
+		sumBlockWithdrawal: blockWithdraw,
 		genesisSupply: ZGGenesisSupply,
 		// home dashboard service will do the algorithm : issued - balanceOfZero;
 		totalCirculating: issued, //circulating,
