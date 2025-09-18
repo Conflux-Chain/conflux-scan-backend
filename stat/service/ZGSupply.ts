@@ -114,7 +114,7 @@ export async function calculateEvmPosSupply(balanceOfZero: bigint): Promise<Supp
 	let blockWithdraw = BigInt(0);
 	if (NoCoreSpace && BlockWithdrawModel.sequelize) {
 		const bw = await getLatestBlockWithdraw();
-		blockWithdraw = BigInt(parseEther(bw?.cumulativeAmount || "0"));
+		blockWithdraw = BigInt(parseEther(bw?.cumulativeAmount || "0")) * BigInt(1e9);
 	}
 	const issued = ZGGenesisSupply + blockWithdraw;
 	// const circulating = issued - balanceOfZero;
