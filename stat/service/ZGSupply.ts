@@ -1,5 +1,5 @@
 import {JsonRpcProvider} from "@ethersproject/providers/src.ts/json-rpc-provider";
-import {initEthSdk} from "./common/utils";
+import {getCfxSdk, initEthSdk} from "./common/utils";
 import {
 	BlockWithdrawCreationAttributes,
 	BlockWithdrawModel,
@@ -16,11 +16,12 @@ import {regExitHook, sleep} from "./tool/ProcessTool";
 import {formatEther, parseEther} from "ethers/lib/utils";
 import {SupplyInfo} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {NoCoreSpace} from "../config/StatConfig";
+import {Conflux} from "js-conflux-sdk";
 
 const ctx = {
 	preEntry: null as BlockWithdrawCreationAttributes,
 	eth: undefined as JsonRpcProvider,
-	cumulative: 0,
+	cumulative: 0n,
 }
 
 async function getBlockWithdraws(p: JsonRpcProvider, blockNumber: number) {
@@ -56,6 +57,8 @@ async function setupPreBlock() {
 		}
 		// no record in DB,
 		console.log(`first block number is `, firstBlk.number);
+	} else {
+		ctx.cumulative = parseEther(ctx.preEntry.cumulativeAmount).toBigInt()
 	}
 }
 
@@ -90,7 +93,7 @@ async function sync(seq?: Sequelize) {
 			withdrawalsRoot: withdrawData.withdrawalsRoot,
 		} as BlockWithdrawCreationAttributes;
 		// we have decimal in DB
-		const drip = ctx.cumulative + withdrawData.totalAmount;
+		const drip = ctx.cumulative + BigInt(withdrawData.totalAmount);
 		newBean.cumulativeAmount = formatEther(drip);
 
 		await BlockWithdrawModel.create(newBean).then(()=>{
@@ -114,22 +117,46 @@ export async function calculateEvmPosSupply(balanceOfZero: bigint): Promise<Supp
 	let blockWithdraw = BigInt(0);
 	if (NoCoreSpace && BlockWithdrawModel.sequelize) {
 		const bw = await getLatestBlockWithdraw();
-		blockWithdraw = BigInt(parseEther(bw?.cumulativeAmount || "0"));
+		blockWithdraw = BigInt(parseEther(bw?.cumulativeAmount || "0")) * BigInt(1e9);
 	}
+	const sumContracts = await sumSpecialContractBalance(getCfxSdk()).catch(e=>{
+		console.log(`failed to sum contract balance:`, e);
+		return BigInt(0);
+	})
 	const issued = ZGGenesisSupply + blockWithdraw;
-	// const circulating = issued - balanceOfZero;
-	// ret['sumBlockWithdraw'] = blockWithdraw;
+	// home dashboard service will do the algorithm : N - balanceOfZero;
+	const remain = issued - sumContracts.valueOf();
 	return {
-		sumBlockWithdraw: blockWithdraw,
+		sumContracts,
+		sumBlockWithdrawal: blockWithdraw,
 		genesisSupply: ZGGenesisSupply,
-		// home dashboard service will do the algorithm : issued - balanceOfZero;
-		totalCirculating: issued, //circulating,
+		totalCirculating: remain,
 		totalCollateral: undefined,
 		totalEspaceTokens: undefined,
 		totalIssued: issued,
 		totalStaking: undefined,
 		calculateEvmPosSupply: true,
 	};
+}
+
+async function sumSpecialContractBalance(cfx:Conflux) {
+	if (!cfx) {
+		console.log(`cfx is not set`);
+		return 0n;
+	}
+	const arr = [
+		"0x739D87653757E834C8CD86407C1Bb2f86a787ecc",
+		"0xF5321C5B04f6b702EBD3B8E06BEedA2655a5B8bF",
+		"0xdd33275d285FD74A0F0Af369d9Ce335e3C5c5E1f",
+		"0x9181b0A31Db3ce580A7cd5A91E115c7a484f2Bc0",
+		"0xC16Bc66b220ad6155e43b7F847F6f77d29334717",
+		"0x7C46a60e7C98CD1E5cFD98600e867886B3a0226c",
+		"0x098DbaD8D4b8B7d8E665FB5f3433802693425419",
+		"0xA50d10E7F898F01c3a3742cBF69CDDcFaCFd4438",
+		"0xEF1605a64fDCcc84b36fb1c092B698DCF38fD502",
+	];
+	const bArr = await Promise.all(arr.map(addr=>cfx.getBalance(addr)));
+	return bArr.reduce((a, b)=>BigInt(a)+BigInt(b), BigInt(0));
 }
 
 async function main() {
