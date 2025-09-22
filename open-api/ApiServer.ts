@@ -209,7 +209,7 @@ export function initApiServer() {
         repeatHeartBeat(KEY_OPEN_API+apiServer.config.serverTag+port)
         scheduleSwaggerReporter(apiServer.config, port, 'OpenApi', 'open/swagger-stats').then();
         app.listen(port)
-        console.log(`api server listen at ${port}`)
+        console.log(`/open api server listen at ${port}`)
     })
 }
 
