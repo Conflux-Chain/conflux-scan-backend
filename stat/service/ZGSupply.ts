@@ -4,7 +4,7 @@ import {
 	BlockWithdrawCreationAttributes,
 	BlockWithdrawModel,
 	getLatestBlockWithdraw,
-	initBlockWithdrawModel,
+	initBlockWithdrawModel, sumEffectiveBalanceBigInt, ValidatorResponse,
 	WithdrawalCreationAttributes,
 	WithdrawalParser,
 	WithdrawalUtils
@@ -15,7 +15,7 @@ import {Sequelize} from "sequelize";
 import {regExitHook, sleep} from "./tool/ProcessTool";
 import {formatEther, parseEther} from "ethers/lib/utils";
 import {SupplyInfo} from "js-conflux-sdk/dist/types/rpc/types/formatter";
-import {NoCoreSpace} from "../config/StatConfig";
+import {ConfigInstance, NoCoreSpace} from "../config/StatConfig";
 import {Conflux} from "js-conflux-sdk";
 
 const ctx = {
@@ -123,7 +123,8 @@ export async function calculateEvmPosSupply(balanceOfZero: bigint): Promise<Supp
 		console.log(`failed to sum contract balance:`, e);
 		return BigInt(0);
 	})
-	const issued = ZGGenesisSupply + blockWithdraw;
+	const {balance: totalStakes, message: validatorMessage} = await sumValidatorBalance();
+	const issued = ZGGenesisSupply + blockWithdraw + totalStakes;
 	// home dashboard service will do the algorithm : N - balanceOfZero;
 	const remain = issued - sumContracts.valueOf();
 	return {
@@ -131,12 +132,35 @@ export async function calculateEvmPosSupply(balanceOfZero: bigint): Promise<Supp
 		sumBlockWithdrawal: blockWithdraw,
 		genesisSupply: ZGGenesisSupply,
 		totalCirculating: remain,
+		calculateEvmPosSupply: true,
+		totalIssued: issued,
+		totalStakes,
+		validatorMessage,
+		// do not care fields below
 		totalCollateral: undefined,
 		totalEspaceTokens: undefined,
-		totalIssued: issued,
 		totalStaking: undefined,
-		calculateEvmPosSupply: true,
 	};
+}
+
+async function sumValidatorBalance(rpc?: string) {
+	const ret = {balance: BigInt(0), message: ""};
+	const rpcUsed = rpc || ConfigInstance.validatorRpc || ''
+	if (!rpc) {
+		ret.message = "validator RPC is not set"
+		return ret;
+	}
+
+	const data =  await fetch(rpcUsed).then(res=>res.json()).catch(e=>{
+		console.log(`failed to fetch validator info:`, e)
+		ret.message = `failed to fetch validator info: ` + e.message;
+		return null as ValidatorResponse;
+	})
+	if (!data) {
+		return ret;
+	}
+
+	return {balance: sumEffectiveBalanceBigInt(data) * BigInt(1e9), message: undefined };
 }
 
 async function sumSpecialContractBalance(cfx:Conflux) {

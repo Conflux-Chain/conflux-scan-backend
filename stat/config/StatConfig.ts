@@ -96,6 +96,8 @@ export interface StatConfig{
     recaptchaUrl:string,
     recaptchaToken:string,
     reportUrl: string,
+    // evm pos validator information api
+    validatorRpc?: string,
 
     syncIPFSGateway: boolean,
     syncIPFSGatewayDelay: number,

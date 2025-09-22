@@ -316,3 +316,42 @@ export async function getLatestBlockWithdraw(): Promise<BlockWithdrawModel | nul
 		raw: true,
 	});
 }
+
+
+// validator RPC returns these data:
+export interface ValidatorResponse {
+	execution_optimistic: boolean;
+	finalized: boolean;
+	data: ValidatorData[];
+}
+
+export interface ValidatorData {
+	index: string;
+	balance: string;
+	symbiotic_balance: string | null;
+	status: string;
+	validator: Validator;
+}
+
+export interface Validator {
+	pubkey: string;
+	withdrawal_credentials: string;
+	effective_balance: string; // This is the field we need to sum
+	slashed: boolean;
+	activation_eligibility_epoch: string;
+	activation_epoch: string;
+	exit_epoch: string;
+	withdrawable_epoch: string;
+}
+
+// Sum effective balance as BigInt (recommended for large numbers)
+export function sumEffectiveBalanceBigInt(response: ValidatorResponse): bigint {
+	let total = 0n;
+
+	for (const data of response.data) {
+		const balance = BigInt(data.validator.effective_balance);
+		total += balance;
+	}
+
+	return total;
+}
