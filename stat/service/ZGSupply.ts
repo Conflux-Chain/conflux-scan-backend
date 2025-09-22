@@ -146,7 +146,7 @@ export async function calculateEvmPosSupply(balanceOfZero: bigint): Promise<Supp
 async function sumValidatorBalance(rpc?: string) {
 	const ret = {balance: BigInt(0), message: ""};
 	const rpcUsed = rpc || ConfigInstance.validatorRpc || ''
-	if (!rpc) {
+	if (!rpcUsed) {
 		ret.message = "validator RPC is not set"
 		return ret;
 	}
