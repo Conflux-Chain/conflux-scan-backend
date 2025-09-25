@@ -8,7 +8,7 @@ export class HeartBeatBean extends Model<IHeartBeatBean> implements IHeartBeatBe
     key: string; updatedAt: Date;
     static register(sequelize:Sequelize) {
         HeartBeatBean.init({
-            key: {type: DataTypes.CHAR(64), primaryKey: true},
+            key: {type: DataTypes.CHAR(128), primaryKey: true},
             updatedAt: {type: DataTypes.DATE},
         }, {
             sequelize,
