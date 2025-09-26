@@ -10,6 +10,8 @@ import {FullBlock, FullTransaction} from "../../model/FullBlock";
 import {init} from "../tool/FixDailyTokenStat";
 import {format} from "js-conflux-sdk";
 import {Token} from "../../model/Token";
+import {KV, TRACE_CONTRACT_TOKEN_ID} from "../../model/KV";
+import {MINUTE} from "../common/utils";
 
 let tokenContracts = {
 
@@ -22,30 +24,48 @@ export async function startMonitorContractCreated() {
 	} catch (e) {
 		console.log(`Failed to run MonitorContractCreated: `, e);
 	}
-	setInterval(check, 10_000);
+	setTimeout(startMonitorContractCreated, MINUTE);
 }
 /*
 select token.hex40id, token.base32, token.createdAt from token left join contract on token.hex40id=contract.hex40id
 where contract.id is null
  */
 async function checkToken() {
+	let goon = false;
+	do {
+		goon = await checkTokenRound();
+	} while (goon);
+}
+async function checkTokenRound() {
+	const maxTokenTableId = await Token.max('id').then(res=> res as number);
+	if (!maxTokenTableId) {
+		return false;
+	}
+	const preTokenId = await KV.getNumber(TRACE_CONTRACT_TOKEN_ID, 0);
+	if (maxTokenTableId <= preTokenId) {
+		return false;
+	}
+	const size = 10000;
+	const boundTo = Math.min(preTokenId + size, maxTokenTableId);
 	// token contract created by in-direct tx.
 	// fix them.
 	const sql = `
-	select token.name, token.hex40id, token.base32, token.createdAt from token left join contract on token.hex40id=contract.hex40id
-where contract.id is null
+	select token.id, token.name, token.hex40id, token.base32, token.createdAt from token left join contract on token.hex40id=contract.hex40id
+ where token.id > ${preTokenId} and token.id <= ${boundTo} and contract.id is null
 	`
 	const list:Token[] = await Token.sequelize.query(sql, {
 		type: QueryTypes.SELECT, raw: true
 	})
-	console.log(`token contract count ${list.length}`)
+	console.log(`token contract count ${list.length} , with token id > ${preTokenId} , <= ${boundTo}`);
 	const maxBlock = await FullBlock.findOne({order:[['epoch', 'desc']]});
 	if (maxBlock == null) {
 		console.log(`no block`)
-		return
+		return false;
 	}
+	let maxTokenId = list.length ? 0 : boundTo;
 	for (let i = 0; i < list.length; i++){
 		const token = list[i];
+		maxTokenId = Math.max(maxTokenId, token.id);
 		if (maxBlock.createdAt.getTime() < token["createdAt"].getTime()) {
 			console.log(` token is too fresh. ${token.name} ${format.hexAddress(token.base32)}`)
 			continue
@@ -58,22 +78,25 @@ where contract.id is null
 		tokenContracts[token.hex40id] = true
 		console.log(`${i} create mock contract for token ${token.name} ${format.hexAddress(token.base32)}`)
 	}
+	await KV.saveNumber(TRACE_CONTRACT_TOKEN_ID, maxTokenId.toString(), null);
+
+	return true;
 }
 async function check() {
 	let maxTrace = await TraceCreateContract.findOne({
-		order: [['id', 'desc']],
+		order: [['to', 'desc']],
 	})
-	let maxTraceId = maxTrace?.id ?? 0;
+	let maxTraceId = maxTrace?.to ?? 0;
 	let round = 0
 	do {
 		const c = await Contract.findOne({
-			where: {id: {[Op.gt]: maxTraceId}}, order: [['id', 'asc']], raw: true
+			where: {hex40id: {[Op.gt]: maxTraceId}}, order: [['hex40id', 'asc']], raw: true
 		})
 		if (c == null) {
-			console.log(`no contract with id > ${maxTraceId}`)
+			console.log(`no contract with hex40id > ${maxTraceId}`)
 			break
 		}
-		maxTraceId = c.id;
+		maxTraceId = c.hex40id;
 		if (c.epoch == null) {
 			// nameSymbolFailed records
 			continue;
