@@ -88,6 +88,7 @@ export class BlockService {
         gasUsed: refBlkDetail.gasUsed,
         prePivot
       }
+      break;
     }
     const {coreBlock, gasLimit} = await loadEvmBlockSpec(block.epochNumber, detailInfo["gasLimit"] ?? block.gasLimit);
     if (gasLimit) {
