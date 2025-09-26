@@ -22,7 +22,6 @@ import {
     checkLibrary,
     checkEVMVersion,
     checkLicense,
-    decodeBase64Type250,
     splitFullyQualifiedName, checkSolcOptimization, checkVyperOptimization, convertVyperVersion
 } from "./common/utils";
 import {VerifiedContracts} from "../model/VerifiedContracts";
@@ -252,12 +251,14 @@ export class ContractQuery {
     }){
         const hex = format.hexAddress(verified.address)
         return lodash.assign(verified, {
+            language: 'solidity',
             version: CONST.INTERNAL_ADDR_CONTRACT_MAP[hex].compilerVersion,
-            evmVersion: null,
+            evmVersion: 'Default',
             optimization: CONST.INTERNAL_ADDR_CONTRACT_MAP[hex].optimization,
             runs: CONST.INTERNAL_ADDR_CONTRACT_MAP[hex].runs,
+            libraries: '',
             license: 'MIT',
-            constructorArgs: null,
+            constructorArgs: '',
         })
     }
 
@@ -302,9 +303,15 @@ export class ContractQuery {
             compilerSettings,
             fullyQualifiedName,
         } = compilation
+        console.log('Succeed to get contract compilation info', JSON.stringify({
+            language,
+            compilerVersion,
+            compilerSettings,
+            fullyQualifiedName,
+        }))
 
         for (const [key, value] of Object.entries(stdJsonInput.sources)) {
-            stdJsonInput.sources[key].content = decodeBase64Type250((value as any).content)
+            stdJsonInput.sources[key].content = (value as any).content
         }
         let sourceCode
         if(fullyQualifiedName.startsWith(':')) {
@@ -314,21 +321,20 @@ export class ContractQuery {
             sourceCode = JSON.stringify(stdJsonInput)
         }
 
-        if(language === 'vyper') {
+        if(language === 'Vyper') {
             compilerVersion = convertVyperVersion(compilerVersion, this.VYPER_VERSIONS)
             fullyQualifiedName = contractLabel
-            console.log(`debug vyper compilerSettings.optimize`, JSON.stringify(compilerSettings))
         }
 
         const verified = {
             address: format.address(address, StatApp.networkId),
-            language,
             sourceCode,
             name: fullyQualifiedName,
-            abi: abi,
+            abi: JSON.stringify(abi),
+            language: language.toLowerCase(),
             version: compilerVersion,
-            evmVersion: compilerSettings?.evmVersion,
-            optimization: language === 'vyper' ? 'N/A' : compilerSettings?.optimizer?.enabled,
+            evmVersion: compilerSettings?.evmVersion ? compilerSettings.evmVersion : "Default",
+            optimization: language === 'Vyper' ? compilerSettings?.optimize : (compilerSettings?.optimizer?.enabled ? '1' : '0'),
             runs: compilerSettings?.optimizer?.runs,
             libraries: compilerSettings?.libraries,
             license: CONST.CONTRACT_LICENSE[licenseType || 1].code,
@@ -342,6 +348,7 @@ export class ContractQuery {
         this.CACHE_VERIFY_DETAIL.set(hex, verified, this.cacheTtl)
 
         this.saveABI(address, abi).then()
+
         return verified
     }
 

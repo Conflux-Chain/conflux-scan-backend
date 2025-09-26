@@ -122,15 +122,15 @@ export async function getSourceCode(ctx) {
 
     const contractItem = lodash.defaults({}, {
         SourceCode: sourceCode,
-        ABI: contract.abi,
         ContractName: contract.name,
+        ABI: contract.abi,
         CompilerVersion: contract.version,
-        OptimizationUsed: contract.optimization ? '1' : '0',
-        Runs: contract.runs ? `${contract.runs}` : contract.runs,
-        ConstructorArguments: contract.constructorArgs,
-        EVMVersion: contract.evmVersion ? contract.evmVersion : "Default",
+        EVMVersion: contract.evmVersion,
+        OptimizationUsed: contract.optimization,
+        Runs: contract?.runs?.toString(), // return string for openapi
         Library: "",
         LicenseType: contract.license,
+        ConstructorArguments: contract.constructorArgs,
         Proxy: contract.proxy ? '1' : '0',
         Implementation: impl,
         SwarmSource: "",

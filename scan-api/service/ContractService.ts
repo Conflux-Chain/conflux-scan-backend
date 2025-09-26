@@ -35,6 +35,7 @@ export class ContractService {
     let implementation = {};
     if (verified) {
       verify = lodash.defaults(verified, {exactMatch: true})
+      verify.optimization = parseInt(verify.optimization) // N/A|1|0|gas|codesize|none
       proxy = lodash.pick(verified, ['proxy', 'proxyPattern']);
       beacon = {address: verified.beacon, verify: { exactMatch: verified.beaconVerified }};
       implementation = { address: verified.implementation, verify: { exactMatch: verified.implementationVerified } };

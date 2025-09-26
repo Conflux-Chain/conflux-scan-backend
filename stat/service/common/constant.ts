@@ -19,7 +19,7 @@ const INTERNAL = [
     abi: JSON.stringify(AdminControl.abi),
     website: 'https://doc.confluxnetwork.org/docs/core/core-space-basics/internal-contracts',
     compilerVersion: 'v0.8.0+commit.c7dfd78e',
-    optimization: 0,
+    optimization: '0',
     runs: 200,
   },
   {
@@ -29,7 +29,7 @@ const INTERNAL = [
     abi: JSON.stringify(SponsorWhitelistControl.abi),
     website: 'https://doc.confluxnetwork.org/docs/core/core-space-basics/internal-contracts',
     compilerVersion: 'v0.8.0+commit.c7dfd78e',
-    optimization: 0,
+    optimization: '0',
     runs: 200,
   },
   {
@@ -39,7 +39,7 @@ const INTERNAL = [
     abi: JSON.stringify(Staking.abi),
     website: 'https://doc.confluxnetwork.org/docs/core/core-space-basics/internal-contracts',
     compilerVersion: 'v0.8.0+commit.c7dfd78e',
-    optimization: 0,
+    optimization: '0',
     runs: 200,
   },
   {
@@ -49,7 +49,7 @@ const INTERNAL = [
     abi: JSON.stringify(ConfluxContext.abi),
     website: 'https://doc.confluxnetwork.org/docs/core/core-space-basics/internal-contracts',
     compilerVersion: 'v0.8.0+commit.c7dfd78e',
-    optimization: 0,
+    optimization: '0',
     runs: 200,
   },
   {
@@ -59,7 +59,7 @@ const INTERNAL = [
     abi: JSON.stringify(PoSRegister.abi),
     website: 'https://doc.confluxnetwork.org/docs/core/core-space-basics/internal-contracts',
     compilerVersion: 'v0.8.0+commit.c7dfd78e',
-    optimization: 0,
+    optimization: '0',
     runs: 200,
   },
   {
@@ -69,7 +69,7 @@ const INTERNAL = [
     abi: JSON.stringify(CrossSpaceCall.abi),
     website: 'https://doc.confluxnetwork.org/docs/core/core-space-basics/internal-contracts',
     compilerVersion: 'v0.8.0+commit.c7dfd78e',
-    optimization: 0,
+    optimization: '0',
     runs: 200,
   },
   {
@@ -79,7 +79,7 @@ const INTERNAL = [
     abi: JSON.stringify(ParamsControl.abi),
     website: 'https://doc.confluxnetwork.org/docs/core/core-space-basics/internal-contracts',
     compilerVersion: 'v0.8.0+commit.c7dfd78e',
-    optimization: 0,
+    optimization: '0',
     runs: 200,
   },
   {
@@ -89,7 +89,7 @@ const INTERNAL = [
     abi: JSON.stringify(ERC1820Registry.abi),
     website: 'https://github.com/Conflux-Chain/CIPs/blob/master/CIPs/cip-1820.md',
     compilerVersion: 'v0.5.11+commit.c082d0b4',
-    optimization: 1,
+    optimization: '1',
     runs: 1000,
   }
 ]
