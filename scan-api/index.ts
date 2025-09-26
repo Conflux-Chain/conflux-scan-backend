@@ -4,7 +4,7 @@ const {ApiApp} = require('./app');
 const {repeatHeartBeat, KEY_SCAN_API, doHeartBeat, KEY_COMPILER, HeartBeatBean} = require("../stat/model/HeartBeat");
 
 // check compiler health
-function startCompilerChecker(config: any) {
+export function startCompilerChecker(config: any) {
   setInterval(async () => {
     // remove compiler service, this is a test url with bad address 0xAA
     const compilerRpc = `${config.contractVerificationUrl}/verify/1/0xAA`;
@@ -32,7 +32,6 @@ export function createScanApi() {
   const config = loadConfig(`${__dirname}/config`);
   // report scan api heart beat
   repeatHeartBeat(`${KEY_SCAN_API}_${config.machine}`);
-  startCompilerChecker(config);
   return new ApiApp(config);
 }
 

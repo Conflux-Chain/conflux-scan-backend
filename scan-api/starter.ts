@@ -3,7 +3,7 @@ import {KV} from "../stat/model/KV";
 import {scheduleSwaggerReporter} from "../stat/monitor/swaggerMetrics";
 import {ApiApp} from "./app";
 import {ConfigInstance} from "../stat/config/StatConfig";
-import {createScanApi} from "./index";
+import {createScanApi, startCompilerChecker} from "./index";
 
 export {} // placeholder
 
@@ -37,6 +37,7 @@ async function main() {
         = ConfigInstance.contractVerificationUrl || app.config.contractVerificationUrl;
 
     await scheduleSwaggerReporter(ConfigInstance, ConfigInstance.v1port);
+    startCompilerChecker(app.config);
 
     return app.start()
 }
