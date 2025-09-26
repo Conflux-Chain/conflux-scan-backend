@@ -68,13 +68,19 @@ export class BlockService {
     }
 
     let baseFeePerGasRef;
-    if(block.epochNumber > 0) {
+    while(block.epochNumber > 0) {
       const refEpoch = StatApp.isEVM ? block.epochNumber - (block.epochNumber % 5) : block.epochNumber
       const preEpoch = StatApp.isEVM ? refEpoch - 5 : refEpoch - 1
+      if (refEpoch < 0 || preEpoch < 0) {
+        break;
+      }
       const [refBlk, preBlk] = await Promise.all([
         StatApp.isEVM ? service.conflux.getBlockByEpochNumber(refEpoch, true) : block,
         service.conflux.getBlockByEpochNumber(preEpoch, false),
       ])
+      if (!refBlk || !preBlk) {
+        break;
+      }
       const refBlkDetail: any = StatApp.isEVM ? await this._getDetail(refBlk) : detailInfo
       const prePivot = lodash.pick(preBlk, ['height', 'baseFeePerGas'])
       baseFeePerGasRef = {
