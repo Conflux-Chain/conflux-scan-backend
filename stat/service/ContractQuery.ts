@@ -212,7 +212,7 @@ export class ContractQuery {
                     const founded = results.map(r => format.hexAddress(r.address))
                     contracts = [...contracts, ...founded]
                 }
-                contracts.forEach(a => this.CACHE_VERIFY_ADDRESS.set(a, true, this.cacheTtl))
+                contracts.forEach(a => this._addCache(this.CACHE_VERIFY_ADDRESS, a, true))
             }
         }
 
@@ -273,9 +273,9 @@ export class ContractQuery {
         cache = await this.getVerifyByDB(contractAddress, withDetail)
         if(cache) {
             if(withDetail)
-                this.CACHE_VERIFY_DETAIL.set(hex, cache, this.cacheTtl)
+                this._addCache(this.CACHE_VERIFY_DETAIL, hex, cache)
             else
-                this.CACHE_VERIFY_ADDRESS.set(hex, true, this.cacheTtl)
+                this._addCache(this.CACHE_VERIFY_ADDRESS, hex, true)
             return cache
         }
 
@@ -293,7 +293,7 @@ export class ContractQuery {
         }
 
         if(!withDetail) {
-            this.CACHE_VERIFY_ADDRESS.set(hex, true, this.cacheTtl)
+            this._addCache(this.CACHE_VERIFY_ADDRESS, hex, true)
             return {address: format.address(address, StatApp.networkId)}
         }
 
@@ -345,7 +345,7 @@ export class ContractQuery {
             ...verified,
             libraries: JSON.stringify(verified.libraries)
         }).then()
-        this.CACHE_VERIFY_DETAIL.set(hex, verified, this.cacheTtl)
+        this._addCache(this.CACHE_VERIFY_DETAIL, hex, verified)
 
         this.saveABI(address, abi).then()
 
@@ -676,12 +676,9 @@ export class ContractQuery {
 
     public async verify(verifyInput: VerifyInput) {
         let {
-            contractAddress, sourceCode, codeFormat, fullQualifiedName, compilerVersion, optimizationUsed, runs,
+            contractAddress, sourceCode, codeFormat, fullQualifiedName,
+            compilerVersion, optimizationUsed, runs,
             constructorArguments, evmVersion, licenseType,
-            libraryName1, libraryAddress1, libraryName2, libraryAddress2, libraryName3, libraryAddress3,
-            libraryName4, libraryAddress4, libraryName5, libraryAddress5, libraryName6, libraryAddress6,
-            libraryName7, libraryAddress7, libraryName8, libraryAddress8, libraryName9, libraryAddress9,
-            libraryName10, libraryAddress10
         } = verifyInput
         checkPresent({contractAddress, sourceCode, compilerVersion, fullQualifiedName},
             ['contractAddress', 'sourceCode', 'compilerVersion', 'fullQualifiedName'])
@@ -719,17 +716,12 @@ export class ContractQuery {
             }
             contractLabel = fqn.contractName || 'Vyper_contract'
         }
-        const librariesInfo = {
-            library1: {name: libraryName1, address: libraryAddress1},
-            library2: {name: libraryName2, address: libraryAddress2},
-            library3: {name: libraryName3, address: libraryAddress3},
-            library4: {name: libraryName4, address: libraryAddress4},
-            library5: {name: libraryName5, address: libraryAddress5},
-            library6: {name: libraryName6, address: libraryAddress6},
-            library7: {name: libraryName7, address: libraryAddress7},
-            library8: {name: libraryName8, address: libraryAddress8},
-            library9: {name: libraryName9, address: libraryAddress9},
-            library10: {name: libraryName10, address: libraryAddress10},
+        const librariesInfo: Record<string, {name: any; address: any;}> = {}
+        for(let i = 1; i <= 10; i++) {
+            librariesInfo[`library${i}`] = {
+                name: verifyInput[`libraryName${i}` as keyof typeof verifyInput],
+                address: verifyInput[`libraryAddress${i}` as keyof typeof verifyInput]
+            }
         }
         const libraries = checkLibrary(librariesInfo);
         evmVersion = await checkEVMVersion(evmVersion);
@@ -923,6 +915,7 @@ export class ContractQuery {
         }
 
         if (err['code'] === 502 ||
+            err['code'] === 503 ||
             err['code'] === undefined) {
             console.log(`Business is busy, url ${url}`)
             return null
@@ -939,6 +932,14 @@ export class ContractQuery {
         result = result.replace(/SPDX-License-Identifier/gi, 'SLI');
         result = result.replace('__license__', 'SPDX-License-Identifier');
         return result;
+    }
+
+    _addCache(cache, key, val) {
+        try {
+            cache.set(key, val, this.cacheTtl)
+        } catch (e){
+            //error: Cache max keys amount exceeded
+        }
     }
 }
 

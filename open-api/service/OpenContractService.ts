@@ -209,6 +209,16 @@ export async function getContractCreation(ctx) {
 
 export async function verifySourcecode(ctx) {
     const body = ctx.request.body;
+
+    const libraries = (params: any, count: number = 10) => {
+        const result: any = {};
+        for (let i = 1; i <= count; i++) {
+            result[`libraryName${i}`] = params[`libraryname${i}`];
+            result[`libraryAddress${i}`] = params[`libraryaddress${i}`];
+        }
+        return result;
+    }
+
     const input: VerifyInput = {
         contractAddress: body.contractaddress,
         sourceCode: body.sourceCode,
@@ -220,17 +230,9 @@ export async function verifySourcecode(ctx) {
         constructorArguments: body.constructorArguements,
         evmVersion: body.evmversion,
         licenseType: body.licenseType,
-        libraryName1: body.libraryname1, libraryAddress1: body.libraryaddress1,
-        libraryName2: body.libraryname2, libraryAddress2: body.libraryaddress2,
-        libraryName3: body.libraryname3, libraryAddress3: body.libraryaddress3,
-        libraryName4: body.libraryname4, libraryAddress4: body.libraryaddress4,
-        libraryName5: body.libraryname5, libraryAddress5: body.libraryaddress5,
-        libraryName6: body.libraryname6, libraryAddress6: body.libraryaddress6,
-        libraryName7: body.libraryname7, libraryAddress7: body.libraryaddress7,
-        libraryName8: body.libraryname8, libraryAddress8: body.libraryaddress8,
-        libraryName9: body.libraryname9, libraryAddress9: body.libraryaddress9,
-        libraryName10: body.libraryname10, libraryAddress10: body.libraryaddress10,
+        ...libraries(body),
     }
+
     const submit: any = await getApiService().contractQuery.verify(input)
 
     setBody(
