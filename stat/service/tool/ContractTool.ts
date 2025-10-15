@@ -23,9 +23,18 @@ const path = require('path');
 const args = process.argv.slice(2)
 StatApp.networkId = Number(args[0])
 const type = Number(args[1])
-let lastContractId = 0
-if(type === 2) {
-    lastContractId = Number(args[2])
+let lastId = -1
+let url
+if(type === 2 && args[2] !== undefined) {
+    lastId = Number(args[2])
+}
+if(type ===4) {
+    // evm space: https://evmapi.confluxscan.net/api?module=contract&action=getabi&
+    // core space: https://api.confluxscan.org/contract/getabi?
+    url = args[2]
+    if(args[3] !== undefined) {
+        lastId = Number(args[3])
+    }
 }
 
 /**
@@ -42,6 +51,9 @@ async function run() {
     }
     if(type === 3){
         await fetchCompilers()
+    }
+    if(type === 4){
+        await missingVerified()
     }
     await close();
 }
@@ -103,17 +115,12 @@ async function initContracts() {
  * migrate verify info
  */
 async function verifyBySourcify() {
-    let lastID = lastContractId
-    const verifyErrContractInfoFile = `${path.dirname(__filename)}/verif.err`
+    const error = `${path.dirname(__filename)}/verif.error`
     while(true) {
         const list = await VerifiedContracts.findAll({
             attributes: ['id','address', 'name', 'version'],
             where: {
-                id: {[Op.gt]: lastID},
-                [Op.or]: [
-                    {proxyPattern: null},
-                    {proxyPattern: {[Op.ne]: 'Minimal Proxy Contract'}},
-                ]
+                id: {[Op.gt]: lastId},
             },
             offset: 0,
             limit: 1000,
@@ -189,7 +196,7 @@ async function verifyBySourcify() {
                         break
                     }
                     // write contract info to file
-                    fs.writeFileSync(verifyErrContractInfoFile, `${c.address}, ${format.hexAddress(c.address)}, ${c.id}`)
+                    fs.appendFileSync(error, `${c.address}, ${format.hexAddress(c.address)}, ${c.id}`)
                     console.log('verify error written to file', {
                         base32: c.address,
                         address: input.contractAddress,
@@ -211,7 +218,7 @@ async function verifyBySourcify() {
                 errOccurs
             })
 
-            lastID = c.id
+            lastId = c.id
             await sleep(1000)
         }
     }
@@ -246,4 +253,55 @@ function executeCommands(commands) {
     });
 
     return { suc, fai };
+}
+
+async function missingVerified() {
+    const axios = require('axios');
+    const missing = `${path.dirname(__filename)}/verify.missing`
+
+    while(true) {
+        const list = await VerifiedContracts.findAll({
+            attributes: ['id','address', 'name'],
+            where: {id: {[Op.gt]: lastId},}, offset: 0, limit: 1000, order: [['id', 'ASC']],
+        })
+
+        const size = list?.length
+        if(!size) {
+            return
+        }
+
+        console.log(`start to process ${size} contracts ${list[0].id} ${list[size-1].id}...`)
+        for (let i = 0; i < size; i++) {
+            const {id, address, name} = list[i]
+
+            const contract = StatApp.isEVM ?
+                ethers.utils.getAddress(format.hexAddress(address)) : format.address(address, StatApp.networkId)
+            const apiUrl = `${url}address=${contract}`
+
+            let resp
+            do{
+                try{
+                    resp = await axios.get(apiUrl, {family: 4, headers: {'Accept': 'application/json'}})
+                }catch (e) {
+                    console.log(`http err ${apiUrl}`, e)
+                }
+                if(resp?.status === 200) {
+                    break
+                }
+                await sleep(1000)
+                console.log('retry...', {httpStatus: resp?.status, message: resp?.body?.message})
+            } while(true)
+
+            const {data: {status, code}} = resp
+            if(status === "0" || code === 1) {
+                fs.appendFileSync(missing, `${contract}, ${name}\n`)
+                console.log('missing verified', {contract, name, url: apiUrl})
+            }
+
+            lastId = id
+            if(i % 100 === 0) {
+                await sleep(3000)
+            }
+        }
+    }
 }

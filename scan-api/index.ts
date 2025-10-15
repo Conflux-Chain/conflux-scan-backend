@@ -5,25 +5,25 @@ const {repeatHeartBeat, KEY_SCAN_API, doHeartBeat, KEY_COMPILER, HeartBeatBean} 
 
 const config = loadConfig(`${__dirname}/config`);
 
-// check compiler health
+// check verification health
 setInterval(async ()=>{
-  // remove compiler service, this is a test url with bad address 0xAA
-  const compilerRpc = `${config.contractVerificationUrl}/verify/1/0xAA`;
+  const url = `${config.contractVerificationUrl}/health`;
   try {
-    await superagent.post(compilerRpc).catch(e=>{
-      // above url should return status 400 Bad request, since address 0xAA is invalid.
-      // otherwise there may be some error.
-      if (e.status !== 400) {
-        throw e;
-      }
-    })
+    await superagent.get(url)
+      .timeout({response: 3_000, deadline: 3_000})
+      .then( ack => {
+          if(ack?.text !== "Alive and kicking!") {
+            throw new Error("No response!")
+          }
+        }
+      )
     if (!HeartBeatBean.sequelize) {
       console.log(`${__filename} DB has not been initialized`)
       return
     }
     await doHeartBeat(`${KEY_COMPILER}_${config.machine}`);
   } catch (e) {
-    console.log(`failed to call compiler rpc ${compilerRpc}\n ${e.status} ${e.message}`);
+    console.log(`Failed to check verification health ${url}\n ${e.status} ${e.message}`);
   }
 }, 10_000)
 // report scan api heart beat

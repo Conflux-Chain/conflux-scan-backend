@@ -35,6 +35,7 @@ export class ContractService {
     let implementation = {};
     if (verified) {
       verify = lodash.defaults(verified, {exactMatch: true})
+      verify.optimization = parseInt(verify.optimization) // N/A|1|0|gas|codesize|none
       proxy = lodash.pick(verified, ['proxy', 'proxyPattern']);
       beacon = {address: verified.beacon, verify: { exactMatch: verified.beaconVerified }};
       implementation = { address: verified.implementation, verify: { exactMatch: verified.implementationVerified } };
@@ -107,9 +108,16 @@ export class ContractService {
       compiler: params.compiler,
       codeFormat: params.codeFormat,
     })
-    if(!params.codeFormat) {
-      params.codeFormat = CONST.CONTRACT_CODE_FORMAT_INFO.SOLIDITY_SINGLE_FILE.code
+
+    const libraries = (params: any, count: number = 10) => {
+      const result: any = {};
+      for (let i = 1; i <= count; i++) {
+        result[`libraryName${i}`] = params[`libraryName${i}`];
+        result[`libraryAddress${i}`] = params[`libraryAddress${i}`];
+      }
+      return result;
     }
+
     const input: VerifyInput = {
       contractAddress: params.address,
       sourceCode: params.sourceCode,
@@ -121,19 +129,9 @@ export class ContractService {
       constructorArguments: params.constructorArgs,
       evmVersion: params.evmVersion,
       licenseType: params.license,
-      libraryName1: params.libraryName1, libraryAddress1: params.libraryAddress1,
-      libraryName2: params.libraryName2, libraryAddress2: params.libraryAddress2,
-      libraryName3: params.libraryName3, libraryAddress3: params.libraryAddress3,
-      libraryName4: params.libraryName4, libraryAddress4: params.libraryAddress4,
-      libraryName5: params.libraryName5, libraryAddress5: params.libraryAddress5,
-      libraryName6: params.libraryName6, libraryAddress6: params.libraryAddress6,
-      libraryName7: params.libraryName7, libraryAddress7: params.libraryAddress7,
-      libraryName8: params.libraryName8, libraryAddress8: params.libraryAddress8,
-      libraryName9: params.libraryName9, libraryAddress9: params.libraryAddress9,
-      libraryName10: params.libraryName10, libraryAddress10: params.libraryAddress10,
+      ...libraries(params),
     }
 
-    console.log(`input.codeFormat`, input.codeFormat)
     const submit: any = await service.contractQuery.verify(input)
     if(submit.message) {
       return {

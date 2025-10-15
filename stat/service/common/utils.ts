@@ -726,14 +726,3 @@ export function extractActualGasCost(msg) {
 
     return parseInt(msg.substring(start, end))
 }
-
-export function decodeBase64Type250(encodedStr) {
-    if (!encodedStr.startsWith('base64:type250:')) {
-        throw new Error('Invalid encoded string format. Expected prefix: base64:type250:');
-    }
-
-    const base64Data = encodedStr.substring('base64:type250:'.length);
-    const cleanBase64 = base64Data.replace(/\\n/g, '\n');
-
-    return Buffer.from(cleanBase64, 'base64').toString('utf-8');
-}
