@@ -306,6 +306,8 @@ paths:
         - 'Accounts'
       parameters:
         - $ref: '#/components/parameters/account'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - $ref: '#/components/parameters/limitParamWithMax100'
         - $ref: '#/components/parameters/tokenTypeParam'
       responses:
         200:
@@ -3208,6 +3210,15 @@ components:
         type: integer
         maximum: 2000
         default: 10
+    limitParamWithMax100:
+      name: limit
+      in: query
+      description: "The number of records displayed on the page. Maximum 100."
+      required: false
+      schema:
+        type: integer
+        maximum: 100
+        default: 100
     contractParam:
       name: contract
       in: query

@@ -9,7 +9,7 @@ import {fmtAddr, StatApp} from "../StatApp";
 import {PruneType} from "../model/PruneInfo";
 const lodash = require('lodash');
 
-export class AddrTransferQuery extends TransferQueryBase{
+export class AccountTransferQuery extends TransferQueryBase{
     protected app;
     protected CODE_TYPE_MAP;
 

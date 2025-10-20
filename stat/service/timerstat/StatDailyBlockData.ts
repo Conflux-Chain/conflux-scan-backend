@@ -2,7 +2,7 @@ import {Op, QueryTypes} from 'sequelize'
 import {FullBlock, FullTransaction} from "../../model/FullBlock";
 import {DailyBlockDataStat} from "../../model/DailyBlockDataStat";
 import {fmtDtUTC} from "../../model/Utils";
-import {IntervalType, TimerStat} from "./TimerStat";
+import {StatType, TimerStat} from "./TimerStat";
 
 const BigFixed = require('bigfixed');
 const lodash = require('lodash');
@@ -11,7 +11,7 @@ export class StatDailyBlockData extends TimerStat{
 
     constructor(app: any) {
         super(app);
-        this.baseInterval = IntervalType.MIN;
+        this.baseInterval = StatType.MIN;
     }
 
     public bizAlias(): string {
@@ -38,26 +38,21 @@ export class StatDailyBlockData extends TimerStat{
 
     public async stat(rangeBegin: Date, rangeEnd: Date){
         const mStat = await this.statRaw(rangeBegin, rangeEnd);
-        const hStat = await this.statAnalysis(rangeEnd, IntervalType.MIN, IntervalType.HOUR, mStat);
-        const dStat = await this.statAnalysis(rangeEnd, IntervalType.MIN, IntervalType.DAY, mStat);
-        this.debug && console.log(`debug-5,mStat:${JSON.stringify(mStat)},hStat:${JSON.stringify(hStat)},dStat:${JSON.stringify(dStat)}`);
+        const hStat = await this.statAnalysis(rangeEnd, StatType.MIN, StatType.HOUR, mStat);
+        const dStat = await this.statAnalysis(rangeEnd, StatType.MIN, StatType.DAY, mStat);
 
         const statArray = [mStat, hStat, dStat];
         await DailyBlockDataStat.sequelize.transaction(async (dbTx) => {
             await DailyBlockDataStat.destroy({
                 where: {statType: hStat.statType, statTime: hStat.statTime}, transaction: dbTx,
-                /*logging: msg => console.log(`[${this.bizAlias()}]destroy ${msg}`),*/
             });
             await DailyBlockDataStat.destroy({
                 where: {statType: dStat.statType, statTime: dStat.statTime}, transaction: dbTx,
-                /*logging: msg => console.log(`[${this.bizAlias()}]destroy ${msg}`),*/
             });
             await DailyBlockDataStat.bulkCreate(statArray, {
                 transaction: dbTx,
-                /*logging: msg => console.log(`[${this.bizAlias()}]bulkCreate ${msg}`),*/
             });
         });
-        this.debug && console.log(`[${this.bizAlias()}]record:${JSON.stringify(statArray[0])}`);
     }
 
     // ------------------------------- biz -----------------------------------
@@ -68,12 +63,10 @@ export class StatDailyBlockData extends TimerStat{
                 WHERE createdAt >= ? and createdAt < ?`;
         const blockStat = await FullBlock.sequelize.query(blockSql, { type: QueryTypes.SELECT, raw: true,
             replacements: [fmtDtUTC(beginTime), fmtDtUTC(endTime)],
-            /*logging: msg => console.log(`[${this.bizAlias()}]full block query ${msg}`)*/
         });
         const txSql = `SELECT COUNT(*) AS txCount FROM full_tx WHERE createdAt >= ? and createdAt < ?`;
         const txStat = await FullTransaction.sequelize.query(txSql, { type: QueryTypes.SELECT, raw: true,
             replacements: [fmtDtUTC(beginTime), fmtDtUTC(endTime)],
-            /*logging: msg => console.log(`[${this.bizAlias()}]full tx query ${msg}`)*/
         });
 
         const statTime = beginTime;
@@ -93,8 +86,8 @@ export class StatDailyBlockData extends TimerStat{
         } as DailyBlockDataStat;
     }
 
-    private async statAnalysis(endTime: Date, srcStatType: IntervalType, destStatType: IntervalType,
-                                latestStat = undefined): Promise<DailyBlockDataStat> {
+    private async statAnalysis(endTime: Date, srcStatType: StatType, destStatType: StatType,
+                               latestStat = undefined): Promise<DailyBlockDataStat> {
         const beginTime = this.getRangeBegin(endTime, destStatType);
         const intervalSec = BigFixed((endTime.getTime() - beginTime.getTime())/1000);
 
@@ -102,7 +95,6 @@ export class StatDailyBlockData extends TimerStat{
                     WHERE statType = '${srcStatType}' and statTime >= ? and statTime < ?` ;
         const statList = await DailyBlockDataStat.sequelize.query(statSql, { type: QueryTypes.SELECT, raw: true,
             replacements: [fmtDtUTC(beginTime), fmtDtUTC(endTime)],
-            /*logging: msg => console.log(`[${this.bizAlias()}]stat list query ${msg}`)*/
         });
         if(latestStat) {
             statList.push(latestStat);

@@ -14,18 +14,14 @@ import {ContractQuery} from "../stat/service/ContractQuery";
 import {TokenQuery} from "../stat/service/TokenQuery";
 import {TokenTool} from "../stat/service/tool/TokenTool";
 import {CfxTransferQuery} from "../stat/service/CfxTransferQuery";
-import {DailyBlockDataStatQuery} from "../stat/service/DailyBlockDataStatQuery";
 import {MarketDataQuery} from "../stat/service/MarketDataQuery";
-import {DailyContractStatQuery} from "../stat/service/DailyContractStatQuery";
-import {CfxHolderQuery} from "../stat/service/CfxHolderQuery";
-import {DailyTxnQuery} from "../stat/service/DailyTxnQuery";
 import {RankService} from "../stat/service/RankService";
 import {NFTPreviewService} from "../stat/service/nftchecker/NFTPreviewService";
 import {NFTCheckerService} from "../stat/service/nftchecker/NFTCheckerService";
 import {IS_EVM2, KEY_FASTEST_IPFS_GATEWAY, KV} from "../stat/model/KV";
 import {Metrics} from "./common/Metrics";
 import {CONST} from "../stat/service/common/constant"
-import {AddrTransferQuery} from "../stat/service/AddrTransferQuery";
+import {AccountTransferQuery} from "../stat/service/AccountTransferQuery";
 import {getVipInfo, initWeb3payClient, initWeb3payVipClient} from "web3pay-sdk-js/lib/rpc";
 import {IPFSGatewaySync} from "../stat/service/IPFSGatewaySync";
 import {ENSCheckerQuery} from "../stat/service/ens/ENSCheckerQuery";
@@ -34,13 +30,14 @@ import {redirectLog} from "../stat/config/LoggerConfig";
 import {regExitHook} from "../stat/service/tool/ProcessTool";
 import {initRateLimiters} from "../stat/router/RateLimiter";
 import {checkTest} from "./test/TestCase";
-import {DailyStatQuery} from "../stat/service/DailyStatQuery";
+import {StatsQuery} from "../stat/service/StatsQuery";
 import {KEY_OPEN_API, repeatHeartBeat} from "../stat/model/HeartBeat";
 import {TxnQuery} from "../stat/service/TxnQuery";
 import {TxnSync} from "../stat/service/TxnSync";
 import {scheduleSwaggerReporter} from "../stat/monitor/swaggerMetrics";
-import {BlockTraceCreateQuery} from "../stat/service/BlockTraceCreateQuery";
+import {ContractTraceCreateQuery} from "../stat/service/ContractTraceCreateQuery";
 import {JsonRPCSDK} from "../common/JsonRPCSDK";
+import {BalanceService} from "../stat/service/watcher/BalanceService";
 
 const Koa = require('koa');
 const app = new Koa();
@@ -59,16 +56,12 @@ export class ApiService {
     crc721transferQuery: Crc721TransferQuery
     crc1155transferQuery: Crc1155TransferQuery
     crc3525transferQuery: Crc3525TransferQuery
-    addrTransferQuery: AddrTransferQuery
-    dailyBlockDataStatQuery: DailyBlockDataStatQuery
-    dailyStatQuery: DailyStatQuery
+    accountTransferQuery: AccountTransferQuery
+    statsQuery: StatsQuery
     rankService: RankService;
     tokenTool: TokenTool;
     tokenQuery: TokenQuery;
     marketDataQuery: MarketDataQuery;
-    contractStatQuery: DailyContractStatQuery;
-    cfxHolderQuery: CfxHolderQuery;
-    dailyTxnQuery: DailyTxnQuery;
     nftCheckerService: NFTCheckerService;
     nftPreviewService: NFTPreviewService;
     ensCheckerQuery: ENSCheckerQuery;
@@ -76,7 +69,8 @@ export class ApiService {
     ipfsGatewaySync: IPFSGatewaySync;
     txnQuery: TxnQuery;
     txnSync: TxnSync;
-    traceCreateQuery: BlockTraceCreateQuery;
+    traceCreateQuery: ContractTraceCreateQuery;
+    balanceService: BalanceService;
     cfx: Conflux;
     eth;
     jsonRpc;
@@ -124,14 +118,10 @@ export class ApiServer {
         apiService.crc721transferQuery = new Crc721TransferQuery(apiApp)
         apiService.crc1155transferQuery = new Crc1155TransferQuery(apiApp)
         apiService.crc3525transferQuery = new Crc3525TransferQuery(apiApp)
-        apiService.addrTransferQuery = new AddrTransferQuery(apiApp)
-        apiService.dailyBlockDataStatQuery = new DailyBlockDataStatQuery(apiApp)
-        apiService.dailyStatQuery = new DailyStatQuery(apiApp)
+        apiService.accountTransferQuery = new AccountTransferQuery(apiApp)
+        apiService.statsQuery = new StatsQuery(apiApp)
         apiService.rankService = new RankService(apiApp)
         apiService.marketDataQuery = new MarketDataQuery(apiApp);
-        apiService.contractStatQuery = new DailyContractStatQuery();
-        apiService.cfxHolderQuery = new CfxHolderQuery();
-        apiService.dailyTxnQuery = new DailyTxnQuery();
         apiService.nftCheckerService = new NFTCheckerService(apiApp);
         apiService.nftPreviewService = new NFTPreviewService(apiApp);
         apiService.ensCheckerQuery = new ENSCheckerQuery(apiApp);
@@ -146,7 +136,8 @@ export class ApiServer {
         apiService.ipfsGatewaySync = new IPFSGatewaySync();
         apiService.txnQuery = new TxnQuery()
         apiService.txnSync = new TxnSync({cfx: this.cfx, accountQuery})
-        apiService.traceCreateQuery = new BlockTraceCreateQuery({cfx: this.cfx});
+        apiService.traceCreateQuery = new ContractTraceCreateQuery({cfx: this.cfx});
+        apiService.balanceService = new BalanceService(this, StatApp.networkId)
         apiService.cfx = this.cfx;
         apiService.eth = this.eth;
         apiService.logger = logger;

@@ -106,7 +106,7 @@ export class AccountQuery {
         addressArray.forEach((address) => { map[address] = {contract: {address}, token: {address}}; });
 
         // query contract and token
-        const tokenService = tokenQuery || service.tokenQuery || service.tokenRdb;
+        const tokenService = tokenQuery || service.tokenQuery;
         const contractService = contractQuery || service.contractQuery;
         const [contractArray, verifiedArray, tokenArray] = await Promise.all([
             contractService.list(addressArray)

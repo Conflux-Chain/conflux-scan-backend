@@ -1,5 +1,5 @@
 import * as Router from "koa-router";
-import {format} from "js-conflux-sdk";
+import {Drip, format} from "js-conflux-sdk";
 import {getApiService} from "../ApiServer";
 import {StatApp} from "../../stat/StatApp";
 import {FailedTx, FullTransaction} from "../../stat/model/FullBlock";
@@ -35,7 +35,7 @@ import {
     queryTokenInfo
 } from "../service/OpenTokenService";
 import {
-    listNFTBalances,
+    listAccountNFTs,
     listNFTTokensPro,
     getNFTPreview,
     listNFTTokensByFts,
@@ -43,39 +43,44 @@ import {
 } from "../service/OpenNFTService";
 import {
     getSupplyStat,
-    listAccountActiveStat,
-    listAccountGrowthStat, listApproval,
-    listCfxHolderStat,
+    listAccountActiveStats,
+    listAccountGrowthStats, listApproval,
+    listCfxHolderStats,
     listCfxReceiverTopStat,
     listCfxSenderTopStat,
-    listCfxTransferStat, listCIP1559Stat,
-    listContractStat,
+    listCfxTransferStat, listCIP1559Stats,
+    listContractStats,
     listGasUsedTopStat,
     listMinerTopStat,
-    listMiningStat, listTokenHolderStat,
+    listCoreMiningStat, listTokenHolderStat,
     listTokenParticipantTopStat,
     listTokenReceiverTopStat,
     listTokenSenderTopStat,
     listTokenTransferStat,
     listTokenTransferTopStat, listTokenUniqueParticipantStat, listTokenUniqueReceiverStat, listTokenUniqueSenderStat,
-    listTpsStat,
+    listTpsStats,
     listTransactionReceiverTopStat, listTransactionSenderStat,
     listTransactionSenderTopStat,
-    listTransactionStat,
+    listCoreTransactionStat,
 } from "../service/OpenStatService";
 import {
+    calCount,
     checkPresent,
-    mustBeAddressParamIfPresent,
+    mustBeAddressParamIfPresent, mustBeDateParamIfPresent,
     mustBeEnumParamIfPresent,
     mustBeHex64ParamIfPresent,
     mustBeIntParamIfPresent,
+    INTERVAL_TYPE,
 } from "../../stat/service/common/utils";
-import {paginateEVM} from "../../stat/router/ParamChecker";
-import { CONST } from '../../stat/service/common/constant';
+import {LIMIT_MAX_STAT, paginateEVM} from "../../stat/router/ParamChecker";
+import {CONST} from '../../stat/service/common/constant';
 import {ethers} from "ethers";
-import {CIP1559StatType} from "../../stat/service/DailyBlockDataStatQuery";
+import {CIP1559StatType} from "../../stat/service/StatsQuery";
 import {registerDataApi} from "./ApiRouter";
 import {detectAccountType} from "../../stat/service/eip/eip7702";
+import {Errors} from "../../stat/service/common/LogicError";
+import {TokenQuery, TokenType} from "../../stat/service/TokenQuery";
+import {NFTType} from "../../stat/service/nftchecker/NFTCheckerService";
 
 const lodash = require('lodash');
 
@@ -112,6 +117,9 @@ async function gateway(ctx) {
                 case ACCOUNT.action.TOKEN_NFT_TX:
                     handler = listTransfer721;
                     break;
+                case ACCOUNT.action.TOKEN_1155_TX:
+                    handler = listTransfer1155;
+                    break;
                 case ACCOUNT.action.GET_MINED_BLOCKS:
                     handler = listBlock;
                     break;
@@ -123,6 +131,15 @@ async function gateway(ctx) {
                     break;
                 case ACCOUNT.action.TOKEN_BALANCE_HISTORY:
                     handler = getTokenBalanceHistory;
+                    break;
+                case ACCOUNT.action.ADDRESS_TOKEN_BALANCE:
+                    handler = listAddressTokenBalance;
+                    break;
+                case ACCOUNT.action.ADDRESS_TOKEN_NFT_BALANCE:
+                    handler = listAddressTokenNFTBalance;
+                    break;
+                case ACCOUNT.action.ADDRESS_TOKEN_NFT_INVENTORY:
+                    handler = listAddressTokenInventory;
                     break;
                 default:
                     return Promise.reject(`unknown action:${action} of module:${module}`);
@@ -179,7 +196,7 @@ async function gateway(ctx) {
         case LOGS.module:
             switch (action) {
                 case LOGS.action.GET_LOGS:
-                    handler = getLogs;
+                    handler = listLogs;
                     break;
                 default:
                     return Promise.reject(`unknown action:${action} of module:${module}`);
@@ -187,6 +204,15 @@ async function gateway(ctx) {
             break;
         case TOKEN.module:
             switch (action) {
+                case TOKEN.action.TOKEN_HOLDER_LIST:
+                    handler = listTokenHolders;
+                    break;
+                case TOKEN.action.TOKEN_HOLDER_COUNT:
+                    handler = getTokenHolderCount;
+                    break;
+                case TOKEN.action.TOP_HOLDERS:
+                    handler = listTokenTopHolders;
+                    break;
                 case TOKEN.action.TOKEN_INFO:
                     handler = getTokenInfo;
                     break;
@@ -196,11 +222,50 @@ async function gateway(ctx) {
             break;
         case STATS.module:
             switch (action) {
+                case STATS.action.CFX_SUPPLY:
+                    handler = getCfxSupply;
+                    break;
+                case STATS.action.CFX_PRICE:
+                    handler = getCfxPrice;
+                    break;
                 case STATS.action.TOKEN_SUPPLY:
                     handler = getTokenSupply;
                     break;
                 case STATS.action.TOKEN_SUPPLY_HISTORY:
                     handler = getTokenSupplyHistory;
+                    break;
+                case STATS.action.DAILY_BLOCK:
+                    handler = listDailyBlock;
+                    break;
+                case STATS.action.DAILY_TX:
+                    handler = listDailyTx;
+                    break;
+                case STATS.action.DAILY_TX_FEE:
+                    handler = listDailyTxnFee;
+                    break;
+                case STATS.action.DAILY_NEW_ADDRESS:
+                    handler = listDailyNewAddress;
+                    break;
+                case STATS.action.DAILY_AVG_HASHRATE:
+                    handler = listDailyAvgHashrate;
+                    break;
+                case STATS.action.DAILY_AVG_DIFFICULTY:
+                    handler = listDailyAvgDifficulty;
+                    break;
+                case STATS.action.DAILY_AVG_BLOCKTIME:
+                    handler = listDailyAvgBlockTime;
+                    break;
+                case STATS.action.DAILY_AVG_GASLIMIT:
+                    handler = listDailyAvgGasLimit;
+                    break;
+                case STATS.action.DAILY_TOTAL_GASUSED:
+                    handler = listDailyTotalGasUsed;
+                    break;
+                case STATS.action.DAILY_AVG_GASPRICE:
+                    handler = listDailyAvgGasPrice;
+                    break;
+                case STATS.action.DAILY_NETWORK_UTILIZATION:
+                    handler = listDailyNetworkUtilization;
                     break;
                 default:
                     return Promise.reject(`unknown action:${action} of module:${module}`);
@@ -325,48 +390,68 @@ async function listTransferCfx(ctx) {
 }
 
 async function listTransfer20(ctx) {
-    const {contractaddress, address, startblock, endblock, sort, page, offset} = parseListTransferParam(ctx);
-    if(contractaddress === undefined && address === undefined){
-        throw new Error(`The contractaddress and/or address parameters are required.`);
-    }
-
-    const skip = (page - 1) * offset;
-    const pagedTransfers = await getApiService().crc20transferQuery.listTransfer({ accountAddress: address,
-        address: contractaddress, minEpochNumber: startblock, maxEpochNumber: endblock, sort, skip, limit: offset});
-
-    const result = pagedTransfers?.list?.map(item => ({
-        blockNumber: `${item.epochNumber}`,
-        hash: item.transactionHash,
-        timestamp: `${item.timestamp}`,
-        from: checksum_hexAddress(item.from),
-        to: checksum_hexAddress(item.to),
-        value: item.value,
-        contractAddress: checksum_hexAddress(item.address),
-    })) || [];
-    await addTokenBasicInfo(result);
-    setBody(ctx, result)
+    return listAddressTransfer(
+        ctx,
+        getApiService().crc20transferQuery,
+        (item: any) => ({
+            blockNumber: `${item.epochNumber}`,
+            hash: item.transactionHash,
+            timestamp: `${item.timestamp}`,
+            from: checksum_hexAddress(item.from),
+            to: checksum_hexAddress(item.to),
+            contractAddress: checksum_hexAddress(item.address),
+            value: item.value,
+        }),
+    );
 }
 
 async function listTransfer721(ctx) {
+    return listAddressTransfer(
+        ctx,
+        getApiService().crc721transferQuery,
+        (item: any) => ({
+            blockNumber: `${item.epochNumber}`,
+            hash: item.transactionHash,
+            timestamp: `${item.timestamp}`,
+            from: checksum_hexAddress(item.from),
+            to: checksum_hexAddress(item.to),
+            contractAddress: checksum_hexAddress(item.address),
+            tokenID: `${item.tokenId}`,
+        }),
+    );
+}
+
+async function listTransfer1155(ctx) {
+    return listAddressTransfer(
+        ctx,
+        getApiService().crc1155transferQuery,
+        (item: any) => ({
+            blockNumber: `${item.epochNumber}`,
+            hash: item.transactionHash,
+            timestamp: `${item.timestamp}`,
+            from: checksum_hexAddress(item.from),
+            to: checksum_hexAddress(item.to),
+            contractAddress: checksum_hexAddress(item.address),
+            tokenID: `${item.tokenId}`,
+            tokenValue: item.value,
+        }),
+    );
+}
+
+async function listAddressTransfer(ctx, queryFunc, converterFunc) {
     const {contractaddress, address, startblock, endblock, sort, page, offset} = parseListTransferParam(ctx);
     if(contractaddress === undefined && address === undefined){
         throw new Error(`The contractaddress and/or address parameters are required.`);
     }
 
     const skip = (page - 1) * offset;
-    const pagedTransfers = await getApiService().crc721transferQuery.listTransfer({ accountAddress: address,
+    const pagedTransfers = await queryFunc.listTransfer({ accountAddress: address,
         address: contractaddress, minEpochNumber: startblock, maxEpochNumber: endblock, sort, skip, limit: offset});
 
-    const result = pagedTransfers?.list?.map(item => ({
-        blockNumber: `${item.epochNumber}`,
-        hash: item.transactionHash,
-        timestamp: `${item.timestamp}`,
-        from: checksum_hexAddress(item.from),
-        to: checksum_hexAddress(item.to),
-        tokenID: `${item.tokenId}`,
-        contractAddress: checksum_hexAddress(item.address),
-    })) || [];
+    let result = pagedTransfers?.list?.map(converterFunc) || [];
+
     await addTokenBasicInfo(result);
+
     setBody(ctx, result)
 }
 
@@ -480,7 +565,7 @@ async function getBlockNoByTime(ctx) {
     setBody(ctx, epochNumber)
 }
 
-async function getLogs(ctx) {
+async function listLogs(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address');
     mustBeHex64ParamIfPresent(ctx.request.query, 'topic0', 'topic1', 'topic2', 'topic3');
     let {
@@ -524,6 +609,91 @@ async function getLogs(ctx) {
     setBody(ctx, result)
 }
 
+/*
+https://evmapi-stage.confluxscan.net/api?module=tokens&action=tokenholderlist&contractaddress=0x94bd7a37d2ce24cc597e158facaa8d601083ffec
+*/
+async function listTokenHolders(ctx) {
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contractaddress');
+    mustBeIntParamIfPresent(ctx.request.query, 'page', 'offset');
+
+    const {contractaddress} = ctx.request.query;
+    checkPresent({contractaddress}, ['contractaddress']);
+    const {page, offset} = paginateEVM(ctx.request.query, {limit: 10});
+    const skip = (page - 1) * offset;
+
+    const token = await getApiService().tokenQuery.query({address: contractaddress})
+    if(!token || token.transferType !== CONST.TRANSFER_TYPE.ERC20) {
+        setBody(ctx, undefined, 1, `ERC20 token ${contractaddress} not found` )
+        return;
+    }
+
+    const data = await getApiService().balanceService.rankHolder(contractaddress, skip, offset)
+    if(!data?.list) {
+        setBody(ctx, [])
+        return
+    }
+
+    const list = (data.list as any[])?.map(tokenBalance =>
+        ({
+            TokenHolderAddress: tokenBalance.account.address,
+            TokenHolderQuantity: tokenBalance.balance,
+        })
+    )
+    setBody(ctx, list)
+}
+
+/*
+https://evmapi-stage.confluxscan.net/api?chainid=1&module=token&action=topholderlist&contractaddress=0xdAC17F958D2ee523a2206206994597C13D831ec7&offset=10&apikey=N93565EZUT1FY9Y5U46VG4M4CISWF6WSWM
+*/
+async function getTokenHolderCount(ctx) {
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contractaddress');
+
+    const {contractaddress} = ctx.request.query;
+    checkPresent({contractaddress}, ['contractaddress']);
+
+    const token = await getApiService().tokenQuery.query({address: contractaddress})
+    if(!token || token.transferType !== CONST.TRANSFER_TYPE.ERC20) {
+        setBody(ctx, undefined, 1, `ERC20 token ${contractaddress} not found` )
+        return;
+    }
+
+    setBody(ctx, token?.holderCount.toString() || 0)
+}
+
+const DEFAULT_TOP_HOLDERS = 100;
+const MAX_TOP_HOLDERS = 1000;
+async function listTokenTopHolders(ctx) {
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contractaddress');
+    mustBeIntParamIfPresent(ctx.request.query, 'offset');
+
+    const {contractaddress, offset} = ctx.request.query;
+    checkPresent({contractaddress}, ['contractaddress']);
+    const limit = offset || DEFAULT_TOP_HOLDERS;
+    if (limit > MAX_TOP_HOLDERS) {
+        throw new Errors.ParameterError(`Parameter offset exceeds ${MAX_TOP_HOLDERS}`);
+    }
+
+    const tokenInfo = await queryTokenInfo(contractaddress);
+    if(!tokenInfo){
+        setBody(ctx, undefined, 1, `token ${contractaddress} not found` );
+        return;
+    }
+
+    const data = await getApiService().balanceService.rankHolder(contractaddress, 0, limit)
+    if(!data?.list) {
+        setBody(ctx, [])
+        return
+    }
+
+    const list = (data.list as any[])?.map(tokenBalance =>
+        ({
+            TokenHolderAddress: tokenBalance.account.address,
+            TokenHolderQuantity: tokenBalance.balance,
+        })
+    )
+    setBody(ctx, list)
+}
+
 async function getTokenInfo(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contractaddress');
     const {contractaddress} = ctx.request.query;
@@ -537,6 +707,100 @@ async function getTokenInfo(ctx) {
 
     const result = [tokenInfo];
     setBody(ctx, result)
+}
+
+async function listAddressTokenBalance(ctx) {
+    return listAddressTokens(
+        ctx,
+        [CONST.TRANSFER_TYPE.ERC20 as TokenType],
+        (token: any) => ({
+            TokenAddress: token.contract,
+            TokenName: token.name,
+            TokenSymbol: token.symbol,
+            TokenQuantity: token.balance,
+            TokenDivisor: token.decimals?.toString(),
+            TokenPriceUSD: token.price,
+        }),
+    );
+}
+
+async function listAddressTokenNFTBalance(ctx) {
+    return listAddressTokens(
+        ctx,
+        [CONST.TRANSFER_TYPE.ERC721 as TokenType],
+        (token: any) => ({
+            TokenAddress: token.contract,
+            TokenName: token.name,
+            TokenSymbol: token.symbol,
+            TokenQuantity: token.balance,
+        }),
+    );
+}
+
+async function listAddressTokens(ctx, tokenTypes, converterFunc) {
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address');
+    mustBeIntParamIfPresent(ctx.request.query, 'page', 'offset');
+
+    const {address} = ctx.request.query;
+    const {page, offset} = paginateEVM(ctx.request.query);
+    const skip = (page - 1) * offset;
+
+    checkPresent({address}, ['address']);
+
+    const result = await TokenQuery.listByAccount({
+        owner: address,
+        skip,
+        limit: offset,
+        types: tokenTypes,
+    });
+
+    result.list = result.list.map(converterFunc);
+
+    result.list = result.list.map(token => lodash.pickBy(token, value => !lodash.isNil(value)));
+
+    setBody(ctx, result.list)
+}
+
+async function listAddressTokenInventory(ctx) {
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address', 'contractaddress');
+    mustBeIntParamIfPresent(ctx.request.query, 'page', 'offset');
+
+    const {address: owner, contractaddress: contract} = ctx.request.query;
+    const {page, offset} = paginateEVM(ctx.request.query);
+    const skip = (page - 1) * offset;
+
+    checkPresent({owner}, ['owner']);
+
+    if(contract) {
+        const typeInfo = await TokenQuery.detectTokenType({base32: contract})
+        if(typeInfo?.type !== CONST.TRANSFER_TYPE.ERC721) {
+            throw new Errors.ParameterError(`Contract ${contract} not ERC721 token`);
+        }
+    }
+
+    const result = await getApiService().nftCheckerService.listNftTokensForOpenApiPro({owner, contract, skip,
+        limit: offset, type: CONST.TRANSFER_TYPE.ERC721 as NFTType});
+
+    result.list = result.list.map((nft: any) => ({
+        TokenAddress: StatApp.isEVM ? format.hexAddress(nft.contract) : nft.contract,
+        TokenId: nft.tokenId,
+    }))
+
+    setBody(ctx, result.list)
+}
+
+async function getCfxSupply(ctx) {
+    const {totalEspaceTokens} = await getApiService().marketDataQuery.getMarketData();
+    setBody(ctx, totalEspaceTokens);
+}
+
+async function getCfxPrice(ctx) {
+    setBody(ctx, {
+        cfxbtc: `${TokenQuery.wrappedCFX.price / TokenQuery.wrappedBTC.price}`,
+        cfxbtc_timestamp: `${TokenQuery.wrappedBTC['updatedAt'].getTime() / 1000}`,
+        cfxusd: TokenQuery.wrappedCFX.price,
+        cfxusd_timestamp: `${TokenQuery.wrappedCFX['updatedAt'].getTime() / 1000}`,
+    });
 }
 
 async function getTokenSupply(ctx) {
@@ -561,6 +825,121 @@ async function getTokenSupplyHistory(ctx) {
     setBody(ctx, result)
 }
 
+async function listDailyBlock(ctx) {
+    return listEvmMiningStat(ctx, (item: any) => ({
+        blockCount: parseInt(item.blockCount),
+    }))
+}
+
+async function listDailyTx(ctx) {
+    return listEvmTransactionStat(ctx, (item: any) => ({
+        transactionCount: parseInt(item.txCount),
+    }));
+}
+
+async function listDailyTxnFee(ctx) {
+    return listEvmTransactionStat(ctx, (item: any) => ({
+        transactionFee_CFX: new Drip(item.gasFee).toCFX(),
+    }));
+}
+
+async function listDailyAvgHashrate(ctx) {
+    return listEvmMiningStat(ctx, (item: any) => ({
+        networkHashRate: item.hashRate,
+    }))
+}
+
+async function listDailyAvgDifficulty(ctx) {
+    return listEvmMiningStat(ctx, (item: any) => ({
+        networkDifficulty: item.difficulty,
+    }))
+}
+
+async function listDailyAvgBlockTime(ctx) {
+    return listEvmMiningStat(ctx, (item: any) => ({
+        blockTime_sec: item.blockTime,
+    }))
+}
+
+async function listDailyAvgGasLimit(ctx) {
+    return listEvmGasStat(ctx, (item: any) => ({
+        gasLimit: item.gasLimitAvg,
+    }))
+}
+
+async function listDailyTotalGasUsed(ctx) {
+    return listEvmGasStat(ctx, (item: any) => ({
+        gasUsed: item.gasUsedSum,
+    }))
+}
+
+async function listDailyAvgGasPrice(ctx) {
+    return listEvmGasStat(ctx, (item: any) => ({
+        maxGasPrice_Drip: item.gasPriceMax,
+        minGasPrice_Drip: item.gasPriceMin,
+        avgGasPrice_Drip: item.gasPriceAvg,
+    }))
+}
+
+async function listDailyNetworkUtilization(ctx) {
+    return listEvmGasStat(ctx, (item: any) => ({
+        networkUtilization: item.networkUtilization,
+    }))
+}
+
+async function listDailyNewAddress(ctx) {
+    return listEvmStat(ctx, (params) => {
+        return getApiService().statsQuery.listAccountGrowthStats(params);
+    }, {}, (item: any) => ({
+        newAddressCount: item.count,
+    }));
+}
+
+async function listEvmMiningStat(ctx, fieldMapper) {
+    return listEvmStat(ctx, (params) => {
+        return getApiService().statsQuery.listBlockDataStats(params);
+    }, {
+        attributeArray: ['statTime', 'blockTime', ['hashrate', 'hashRate'], 'difficulty', 'blockCount'],
+        intervalType: INTERVAL_TYPE.day,
+    }, fieldMapper);
+}
+
+async function listEvmTransactionStat(ctx, fieldMapper) {
+    return listEvmStat(ctx, (params) => {
+        return getApiService().statsQuery.listDailyTransactionStats(params);
+    }, {
+        attributes: [['statDay', 'statTime'], 'txCount', 'gasFee'],
+    }, fieldMapper);
+}
+
+async function listEvmGasStat(ctx, fieldMapper) {
+    return listEvmStat(ctx, (params) => {
+        return getApiService().statsQuery.listGasStats(params);
+    }, {}, fieldMapper);
+}
+
+async function listEvmStat(ctx, func, params, fieldMapper) {
+    const {minTimestamp, maxTimestamp, sort, recordCount} = parseStatParam(ctx)
+
+    const page = await func({
+        minTimestamp,
+        maxTimestamp,
+        skip: 0,
+        limit: recordCount,
+        sort,
+        ...params,
+    });
+    console.log(`listEvmStat ${JSON.stringify(page.list)}`)
+
+    const list = page.list.map((item: any) => ({
+        UTCDate: item.statTime.substr(0, 10),
+        unixTimeStamp: `${new Date(item.statTime).getTime() / 1000}`,
+        ...fieldMapper(item),
+    }));
+
+    setBody(ctx, list)
+}
+
 // -----------------------------------tool---------------------------------------
 function parseGatewayParam(ctx) {
     const requestData = Object.keys(ctx.request.query).length ? ctx.request.query : ctx.request.body;
@@ -580,14 +959,47 @@ function parseListTransferParam(ctx) {
     return {txhash, contractaddress, address, startblock, endblock, sort, page, offset};
 }
 
+function parseStatParam(ctx) {
+    mustBeDateParamIfPresent(ctx.request.query, 'startdate', 'enddate');
+    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['asc', 'desc']);
+
+    const {startdate, enddate, sort = 'desc'} = ctx.request.query;
+
+    checkPresent({startdate, enddate}, ['startdate', 'enddate']);
+
+    const minTimestamp = new Date(startdate).getTime() / 1000;
+    const maxTimestamp = new Date(enddate).getTime() / 1000;
+    if(maxTimestamp <= minTimestamp) {
+        throw new Errors.ParameterError('Invalid date parameter. Should enddate > startdate');
+    }
+
+    const recordCount = calCount({
+        minTimestampUTC: minTimestamp,
+        maxTimestampUTC: maxTimestamp,
+        intervalType: INTERVAL_TYPE.day,
+    });
+    if(recordCount > LIMIT_MAX_STAT) {
+        throw new Errors.ParameterError(`Invalid date parameter. Maximum ${LIMIT_MAX_STAT} records`);
+    }
+
+    return {startdate, enddate, sort, minTimestamp, maxTimestamp, recordCount};
+}
+
 async function addTokenBasicInfo(result) {
     const addressArray = result.map(item => item.contractAddress);
     const tokenArray = await getApiService().tokenQuery.list({addressArray}).then(response => response.list);
     const tokenMap = lodash.keyBy(tokenArray, item => checksum_hexAddress(item.address));
     result.forEach(item => {
-        item['tokenName'] = tokenMap[item.contractAddress]?.name;
-        item['tokenSymbol'] = tokenMap[item.contractAddress]?.symbol;
-        item['tokenDecimal'] = `${tokenMap[item.contractAddress]?.decimals || 0}`;
+        const {name, symbol, decimals, transferType} = tokenMap[item.contractAddress] || {} as any;
+        if(name) {
+            item['tokenName'] = name;
+        }
+        if(symbol) {
+            item['tokenSymbol'] = symbol;
+        }
+        if(transferType !== CONST.TRANSFER_TYPE.ERC1155) {
+            item['tokenDecimal'] = `${decimals || 0}`;
+        }
     });
 }
 
@@ -597,7 +1009,7 @@ export function registerRouter(router: Router) {
     router.post('/api', gateway)
 
     // nft assets
-    router.get('/nft/balances', listNFTBalances);
+    router.get('/nft/balances', listAccountNFTs);
     router.get('/nft/tokens', listNFTTokensPro);
     router.get('/nft/preview', getNFTPreview);
     router.get('/nft/fts', listNFTTokensByFts);
@@ -614,14 +1026,14 @@ export function registerRouter(router: Router) {
 
     // statistics
     router.get('/statistics/supply', getSupplyStat);
-    router.get('/statistics/mining', listMiningStat)
-    router.get('/statistics/tps', listTpsStat);
-    router.get('/statistics/contract', listContractStat);
-    router.get('/statistics/account/cfx/holder', listCfxHolderStat);
-    router.get('/statistics/account/growth', listAccountGrowthStat);
+    router.get('/statistics/mining', listCoreMiningStat)
+    router.get('/statistics/tps', listTpsStats);
+    router.get('/statistics/contract', listContractStats);
+    router.get('/statistics/account/cfx/holder', listCfxHolderStats);
+    router.get('/statistics/account/growth', listAccountGrowthStats);
     router.get('/statistics/account/active', listTransactionSenderStat);
-    router.get('/statistics/account/active/overall', listAccountActiveStat);
-    router.get('/statistics/transaction', listTransactionStat);
+    router.get('/statistics/account/active/overall', listAccountActiveStats);
+    router.get('/statistics/transaction', listCoreTransactionStat);
     router.get('/statistics/cfx/transfer', listCfxTransferStat);
     router.get('/statistics/token/transfer', listTokenTransferStat);
     router.get('/statistics/top/gas/used', listGasUsedTopStat);
@@ -638,10 +1050,10 @@ export function registerRouter(router: Router) {
     router.get('/statistics/token/unique/sender', listTokenUniqueSenderStat);
     router.get('/statistics/token/unique/receiver', listTokenUniqueReceiverStat);
     router.get('/statistics/token/unique/participant', listTokenUniqueParticipantStat);
-    router.get('/statistics/block/base-fee', listCIP1559Stat(CIP1559StatType.BASE_FEE));
-    router.get('/statistics/block/avg-priority-fee', listCIP1559Stat(CIP1559StatType.PRIORITY_FEE));
-    router.get('/statistics/block/gas-used', listCIP1559Stat(CIP1559StatType.GAS_USED));
-    router.get('/statistics/block/txs-by-type', listCIP1559Stat(CIP1559StatType.TXS_BY_TYPE));
+    router.get('/statistics/block/base-fee', listCIP1559Stats(CIP1559StatType.BASE_FEE));
+    router.get('/statistics/block/avg-priority-fee', listCIP1559Stats(CIP1559StatType.PRIORITY_FEE));
+    router.get('/statistics/block/gas-used', listCIP1559Stats(CIP1559StatType.GAS_USED));
+    router.get('/statistics/block/txs-by-type', listCIP1559Stats(CIP1559StatType.TXS_BY_TYPE));
 
     // account(deprecated)
     router.get('/account/transactions', listAccountTransaction)
