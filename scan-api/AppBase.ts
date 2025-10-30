@@ -26,7 +26,7 @@ export class AppBase extends Koa {
   constructor(config) {
     super();
     this.use(koaBodyParser({ enableTypes: ['json', 'form', 'text'] }));
-    this.config = type.config(config);
+    this.config = config;
   }
 
   async init() {

@@ -45,17 +45,4 @@ type.unzipBase64 = type.buffer
 
 type.toMD5 = type((v) => crypto.createHash('md5').update(v).digest('hex'));
 
-type.config = type({
-  port: type.uint.$default(process.env.PORT),
-  preload: type.uint.$default(0).$default(process.env.PRELOAD),
-  syncTransaction: type.uint.$default(0).$default(process.env.SYNC_TRANSACTION),
-  syncContract: type.uint.$default(0).$default(process.env.SYNC_CONTRACT),
-  syncEventLog: type.uint.$default(0).$default(process.env.SYNC_EVENT_LOG),
-  syncERC20: type.uint.$default(0).$default(process.env.SYNC_ERC20),
-  syncERC721: type.uint.$default(0).$default(process.env.SYNC_ERC721),
-  syncERC777: type.uint.$default(0).$default(process.env.SYNC_ERC777),
-  syncERC1155: type.uint.$default(0).$default(process.env.SYNC_ERC1155),
-  syncCFX: type.uint.$default(0).$default(process.env.SYNC_CFX),
-}, { strict: true });
-
 module.exports = type;

@@ -1,9 +1,9 @@
 import {init as initStatApp} from "../stat/Index";
 import {KV} from "../stat/model/KV";
-import {app} from "./index";
 import {scheduleSwaggerReporter} from "../stat/monitor/swaggerMetrics";
 import {ApiApp} from "./app";
 import {ConfigInstance} from "../stat/config/StatConfig";
+import {createScanApi, startCompilerChecker} from "./index";
 
 export {} // placeholder
 
@@ -21,8 +21,14 @@ async function main() {
     console.log(`--- start scan-api ---`)
     ApiApp.injectContext(KV.sequelize);
 
+    const app = createScanApi();
+
     shouldNotHaveDifferentConfig("v1port", ConfigInstance.v1port, app.config.port);
-    shouldNotHaveDifferentConfig("contractVerificationUrl", ConfigInstance.contractVerificationUrl, app.config.contractVerificationUrl);
+    shouldNotHaveDifferentConfig(
+        "contractVerificationUrl",
+        ConfigInstance.contractVerificationUrl,
+        app.config.contractVerificationUrl
+    );
 
     // uniform config
     ConfigInstance.v1port = app.config.port = ConfigInstance.v1port || app.config.port;
@@ -31,6 +37,7 @@ async function main() {
         = ConfigInstance.contractVerificationUrl || app.config.contractVerificationUrl;
 
     await scheduleSwaggerReporter(ConfigInstance, ConfigInstance.v1port);
+    startCompilerChecker(app.config);
 
     return app.start()
 }
