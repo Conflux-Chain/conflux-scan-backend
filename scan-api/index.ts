@@ -4,16 +4,17 @@ const {ApiApp} = require('./app');
 const {repeatHeartBeat, KEY_SCAN_API, doHeartBeat, KEY_COMPILER, HeartBeatBean} = require("../stat/model/HeartBeat");
 
 // check verification health
-export function startCompilerChecker(config: any) {setInterval(async ()=>{
+export function startCompilerChecker(config: any) {
+  setInterval(async () => {
     const url = `${config.contractVerificationUrl}/health`;
     try {
       await superagent.get(url)
       .timeout({response: 3_000, deadline: 3_000})
-        .then( ack => {
-          if(ack?.text !== "Alive and kicking!") {
-            throw new Error("No response!")
+      .then(ack => {
+            if (ack?.text !== "Alive and kicking!") {
+              throw new Error("No response!")
+            }
           }
-        }
       )
       if (!HeartBeatBean.sequelize) {
         console.log(`${__filename} DB has not been initialized`)
