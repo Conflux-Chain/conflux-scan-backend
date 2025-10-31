@@ -79,8 +79,8 @@ export class Token extends Model<IToken> implements IToken{
             // basic info
             hex40id: {type: DataTypes.BIGINT, allowNull: false, unique: true},
             base32: {type: DataTypes.CHAR(64), allowNull: false, unique: true},
-            name: {type: DataTypes.STRING(1024), allowNull: true},
-            symbol: {type: DataTypes.STRING(1024), allowNull: true },
+            name: {type: DataTypes.STRING(255), allowNull: true},
+            symbol: {type: DataTypes.STRING(255), allowNull: true },
             decimals: {type: DataTypes.BIGINT, allowNull: true, },
             granularity: {type: DataTypes.BIGINT, allowNull: true, },
             totalSupply: {type: DataTypes.STRING({length: 78}), allowNull: true, },
@@ -344,4 +344,11 @@ export class DailyToken extends Model<IDailyToken> implements IDailyToken {
         }
         return [0, d1, d2]
     }
+}
+
+export function checkTokenNameLength(token: IToken) {
+    if (token?.name?.length > 64) token.name = token.name.substr(0, 64)
+    if (token?.symbol?.length > 64) token.symbol = token.symbol.substr(0, 64)
+    if (token?.website?.length > 200) token.website = token.website.substr(0, 200)
+    if (token?.ipfsGateway?.length > 200) token.ipfsGateway = token.ipfsGateway.substr(0, 200)
 }
