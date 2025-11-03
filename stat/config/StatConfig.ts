@@ -77,6 +77,7 @@ export interface StatConfig{
     port: number;
     apiPort: number;
     v1port: number; // scan-api port, for path /v1
+    diffMonitorPort?:number;
     billingApp: string;
     conflux: ConfluxOption; // chain rpc node
     blockSyncRpc: ConfluxOption; // chain rpc node

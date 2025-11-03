@@ -362,6 +362,7 @@ export default {
 const frontend = require('./frontend');
 module.exports = {
 frontend,
+machine: 'scan-api-server',
 port: $V1_PORT,
 conflux: {
     url: '$_RPC',

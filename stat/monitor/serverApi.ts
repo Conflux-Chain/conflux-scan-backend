@@ -25,9 +25,12 @@ export async function listenPort(app: string) {
 		console.log(`Port not found, app [${app}]`);
 		return;
 	}
+	if (ConfigInstance.diffMonitorPort === -9000) {
+		return;
+	}
 	const isEVM = await KV.getSwitch(IS_EVM2);
 	if (isEVM) {
-		port += evmDiffPort;
+		port += ConfigInstance.diffMonitorPort ?? evmDiffPort;
 	}
 	const router = new Router({ prefix: `/${app}` });
 	regApi(router, app, isEVM);
