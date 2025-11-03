@@ -3,38 +3,43 @@ const {loadConfig} = require('../koaflow/lib/util/loadConfig');
 const {ApiApp} = require('./app');
 const {repeatHeartBeat, KEY_SCAN_API, doHeartBeat, KEY_COMPILER, HeartBeatBean} = require("../stat/model/HeartBeat");
 
-const config = loadConfig(`${__dirname}/config`);
-
 // check verification health
-setInterval(async ()=>{
-  const url = `${config.contractVerificationUrl}/health`;
-  try {
-    await superagent.get(url)
+export function startCompilerChecker(config: any) {
+  setInterval(async () => {
+    const url = `${config.contractVerificationUrl}/health`;
+    try {
+      await superagent.get(url)
       .timeout({response: 3_000, deadline: 3_000})
-      .then( ack => {
-          if(ack?.text !== "Alive and kicking!") {
-            throw new Error("No response!")
+      .then(ack => {
+            if (ack?.text !== "Alive and kicking!") {
+              throw new Error("No response!")
+            }
           }
-        }
       )
-    if (!HeartBeatBean.sequelize) {
-      console.log(`${__filename} DB has not been initialized`)
-      return
+      if (!HeartBeatBean.sequelize) {
+        console.log(`${__filename} DB has not been initialized`)
+        return
+      }
+      await doHeartBeat(`${KEY_COMPILER}_${config.machine}`);
+    } catch (e) {
+      console.log(`Failed to check verification health ${url}\n ${e.status} ${e.message}`);
     }
-    await doHeartBeat(`${KEY_COMPILER}_${config.machine}`);
-  } catch (e) {
-    console.log(`Failed to check verification health ${url}\n ${e.status} ${e.message}`);
-  }
-}, 10_000)
-// report scan api heart beat
-repeatHeartBeat(`${KEY_SCAN_API}_${config.machine}`)
+  }, 10_000)
+}
 
-export const app = new ApiApp(config);
+
+export function createScanApi() {
+  const config = loadConfig(`${__dirname}/config`);
+  // report scan api heart beat
+  repeatHeartBeat(`${KEY_SCAN_API}_${config.machine}`);
+  return new ApiApp(config);
+}
 
 
 // ----------------------------------------------------------------------------
-if (process.mainModule.filename === __filename) {
-  console.log(`....... start api app, port ${config.port} ..........`);
+if (require.main === module) {
+  let app = createScanApi();
+  console.log(`....... start api app, port ${app.config.port} ..........`);
   app.start().catch((err) => {
     console.log('error when running:', err);
   }).finally(() => app.close());
