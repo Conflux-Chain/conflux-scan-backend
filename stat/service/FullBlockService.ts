@@ -194,7 +194,7 @@ export class FullBlockService {
 
     public static async adjustFirstBlockTime() {
         const [b0, b1, b2] = await FullBlock.findAll({
-            order:[['epoch', 'asc']], limit: 2,
+            order:[['epoch', 'asc']], limit: 3,
         })
         if (!b0 || !b1 || !b2) {
             return;
@@ -204,6 +204,7 @@ export class FullBlockService {
             const b0t = new Date(b1.createdAt.getTime()
                 - (b2.createdAt.getTime() - b1.createdAt.getTime())
             );
+            //
             console.log(`fix block ${b0.epoch} time ${b0.createdAt.toLocaleString()} to ${b0t.toLocaleString()}`);
             await FullBlock.update({
                 createdAt: b0t,
