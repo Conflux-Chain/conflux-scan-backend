@@ -18,6 +18,7 @@ import {Errors} from "./common/LogicError";
 import { ethers } from "ethers";
 import {ResultCache, TopUniqueCache} from "../model/ResultCache";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
+import {getHomeDashboarData} from "./HomeDashboardService";
 
 export class RankService{
     private app: any;
@@ -145,8 +146,16 @@ export class RankService{
     async rankByCfx(order:string, limit, networkId) {
         const list = await this.rankCfxBalance(order, limit)
         const isEvm = await KV.getSwitch(IS_EVM2)
-        const totalCfx = isEvm ? (await this.app.cfx.getSupplyInfo().then(res=>Number(res.totalEspaceTokens/BigInt(1e18)))) :
-            networkId === 1029 ? 50_0000_0000 : 5000000000000000*2
+        let totalCfx: any;
+        if (isEvm) {
+            const data = getHomeDashboarData();
+            // @ts-ignore
+            const maybe = (data?.supplyInfo?.totalEspaceTokens || data?.supplyInfo?.totalCirculating);
+            totalCfx = maybe ?? BigInt(1e18);
+            totalCfx = totalCfx / BigInt(1e18);
+        } else {
+            totalCfx = networkId === 1029 ? 50_0000_0000 : 5000000000000000 * 2;
+        }
         list.forEach((b,idx)=>{
             b['rank'] = idx+1
             b['percent'] = b[order] / totalCfx * 100

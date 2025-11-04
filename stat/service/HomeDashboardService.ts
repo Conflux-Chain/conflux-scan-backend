@@ -9,6 +9,12 @@ import {patchSupplyInfo} from "./MarketDataQuery";
 
 const lodash = require('lodash');
 
+let _INST: HomeDashboardService = null;
+
+export function getHomeDashboarData() {
+    return _INST?.getData() || {};
+}
+
 export class HomeDashboardService{
     protected app;
     protected data = {
@@ -20,6 +26,7 @@ export class HomeDashboardService{
 
     constructor(app: any) {
         this.app = app;
+        _INST = this;
     }
 
     public getData(){
