@@ -152,7 +152,7 @@ export class RankService{
             // @ts-ignore
             const maybe = (data?.supplyInfo?.totalEspaceTokens || data?.supplyInfo?.totalCirculating);
             totalCfx = maybe ?? BigInt(1e18);
-            totalCfx = totalCfx / BigInt(1e18);
+            totalCfx = Number(totalCfx / BigInt(1e18));
         } else {
             totalCfx = networkId === 1029 ? 50_0000_0000 : 5000000000000000 * 2;
         }
