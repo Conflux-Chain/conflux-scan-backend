@@ -431,8 +431,12 @@ export async function addIndexIfNotExistsMySQL(
             console.log(`Index "${indexName}" already exists on table "${tableName}"`);
         }
     } catch (error) {
-        console.error(`Error checking/adding index "${indexName}" to table "${tableName}":`, error);
-        throw error;
+        if (error.parent?.code === 'ER_NO_SUCH_TABLE') {
+            console.log(`mig DB error: ${error.message}`);
+        } else {
+            console.error(`Error checking/adding index "${indexName}" to table "${tableName}":`, error);
+            throw error;
+        }
     }
 }
 /**

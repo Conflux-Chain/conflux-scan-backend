@@ -178,6 +178,7 @@ else
 fi
 
 which jq || sudo apt install jq
+which netstat || sudo apt install net-tools
 
 if [[ $_RPC == "" ]]; then
 	echo "must set the rpc url."
@@ -362,6 +363,7 @@ export default {
 const frontend = require('./frontend');
 module.exports = {
 frontend,
+machine: 'scan-api-server',
 port: $V1_PORT,
 conflux: {
     url: '$_RPC',
