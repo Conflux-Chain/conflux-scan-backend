@@ -178,6 +178,7 @@ else
 fi
 
 which jq || sudo apt install jq
+which netstat || sudo apt install net-tools
 
 if [[ $_RPC == "" ]]; then
 	echo "must set the rpc url."
