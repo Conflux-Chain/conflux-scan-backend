@@ -27,7 +27,7 @@ import {
     KV
 } from "../model/KV";
 import {PreloadMap} from "./SyncBase";
-import {batchFetchBlock, noVerboseAddr} from "./common/utils";
+import {batchFetchBlock, HOUR, noVerboseAddr} from "./common/utils";
 import {PowSidePosSync} from "./pos/PowSidePosSync";
 import {Contract} from "../model/Contract";
 import {sleep} from "./tool/ProcessTool";
@@ -108,6 +108,7 @@ export class FullBlockService {
         this.reporter.connect(SyncBlockSchema);
         await FullBlockService.checkBlockCountKV()
         await FullBlockService.checkTxCountKV()
+        await FullBlockService.adjustFirstBlockTime();
         await this.powSidePosSync.init()
         await this.updateEpochNumber();
         if (this.latestStateEpoch - maxEpoch > this.batchBlockTx.safeCatchupGap) {
@@ -188,6 +189,26 @@ export class FullBlockService {
                 console.log(`failed to update epoch number: ${e.message}`);
                 await sleep(1_000);
             }
+        }
+    }
+
+    public static async adjustFirstBlockTime() {
+        const [b0, b1, b2] = await FullBlock.findAll({
+            order:[['epoch', 'asc']], limit: 3,
+        })
+        if (!b0 || !b1 || !b2) {
+            return;
+        }
+        const gap = b1.createdAt.getTime() - b0.createdAt.getTime();
+        if (gap > HOUR) {
+            const b0t = new Date(b1.createdAt.getTime()
+                - (b2.createdAt.getTime() - b1.createdAt.getTime())
+            );
+            //
+            console.log(`fix block ${b0.epoch} time ${b0.createdAt.toLocaleString()} to ${b0t.toLocaleString()}`);
+            await FullBlock.update({
+                createdAt: b0t,
+            }, {where: {epoch: b0.epoch}, limit: 1});
         }
     }
 

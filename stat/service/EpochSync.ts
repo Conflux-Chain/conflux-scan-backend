@@ -9,7 +9,7 @@ import {
     makeIdV
 } from "../model/HexMap";
 import {Contract} from "../model/Contract";
-import {Token} from "../model/Token";
+import {checkTokenPropLength, Token} from "../model/Token";
 import {Op, QueryTypes, Transaction} from "sequelize";
 import {base64ToPNG, getImageDir, saveOssUrl, uploadOss} from "./tool/TokenTool";
 import {Erc20Transfer} from "../model/Erc20Transfer";
@@ -287,6 +287,8 @@ export class EpochSync extends SyncBase {
 
     async saveOnce(modelData, voteParamArray) {
         const epochArray = modelData.epochArray?.length ? modelData.epochArray : [modelData.epoch]
+        modelData.tokenArray?.forEach(checkTokenPropLength);
+        modelData.announcedTokenArray?.forEach(checkTokenPropLength);
         await Epoch.sequelize.transaction(async (dbTx) => {
             await Promise.all([
                 Epoch.bulkCreate(epochArray, {transaction: dbTx}),
@@ -613,8 +615,7 @@ export class EpochSync extends SyncBase {
             decimals: tokenInfo.decimals, granularity: tokenInfo.granularity, totalSupply,
             type: transferType
         });
-        if (token?.name?.length > 64) token.name = token.name.substr(0, 64)
-        if (token?.symbol?.length > 64) token.symbol = token.symbol.substr(0, 64)
+        checkTokenPropLength(token);
 
         const transferCount = (await EpochSync.countTransfer(hex40id, transferType)) || 1;
         const auditResult = (token?.name?.trim()?.length > 0) && (token?.symbol?.trim()?.length > 0);

@@ -101,7 +101,7 @@ export function serviceLoader(app) {
     transfer: new TransferService(app),
     recaptcha: new RecaptchaService(app),
     desensitizer: new Desensitizer(app),
-    homeDashboard: new HomeDashboardService(app),
+    homeDashboard: HomeDashboardService.getInstance(app),
     blockData: new DailyBlockDataStatQuery(app),
     epochRdb: new EpochQuery(app),
     fullBlock: new FullBlockQuery(app),
