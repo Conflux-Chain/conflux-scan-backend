@@ -148,15 +148,19 @@ export class RankService{
         const isEvm = await KV.getSwitch(IS_EVM2)
         let totalCfx: any;
         if (isEvm) {
-            const data = getHomeDashboarData();
-            // @ts-ignore
+            const data = getHomeDashboarData() as any;
             const maybe = (data?.supplyInfo?.totalEspaceTokens || data?.supplyInfo?.totalCirculating);
-            totalCfx = maybe ?? BigInt(1e18);
+            totalCfx = BigInt(maybe) ?? BigInt(1e18);
+            if (data?.supplyInfo?.calculateEvmPosSupply && data.supplyInfo.nullAddressBalance) {
+                // NG 0 addr holds more value, which was excluded from total.
+                totalCfx += data.supplyInfo.nullAddressBalance
+            }
             totalCfx = Number(totalCfx / BigInt(1e18));
         } else {
             totalCfx = networkId === 1029 ? 50_0000_0000 : 5000000000000000 * 2;
         }
         list.forEach((b,idx)=>{
+            b['totalNative'] = totalCfx;
             b['rank'] = idx+1
             b['percent'] = b[order] / totalCfx * 100
         })
