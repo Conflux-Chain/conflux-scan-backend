@@ -346,7 +346,7 @@ export class DailyToken extends Model<IDailyToken> implements IDailyToken {
     }
 }
 
-export function checkTokenNameLength(token: IToken) {
+export function checkTokenPropLength(token: IToken) {
     if (token?.name?.length > 64) token.name = token.name.substr(0, 64)
     if (token?.symbol?.length > 64) token.symbol = token.symbol.substr(0, 64)
     if (token?.website?.length > 200) token.website = token.website.substr(0, 200)

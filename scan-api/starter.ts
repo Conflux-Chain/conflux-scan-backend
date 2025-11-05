@@ -32,6 +32,7 @@ async function main() {
 
     // uniform config
     ConfigInstance.v1port = app.config.port = ConfigInstance.v1port || app.config.port;
+    app.config.machine = ConfigInstance.serverTag;
 
     ConfigInstance.contractVerificationUrl = app.config.contractVerificationUrl
         = ConfigInstance.contractVerificationUrl || app.config.contractVerificationUrl;
