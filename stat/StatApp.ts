@@ -120,7 +120,6 @@ export class StatApp{
         this.traceCreateQuery = new BlockTraceCreateQuery(this);
         this.siteVerify = new ReportService(this);
         this.ipfsGatewaySync = new IPFSGatewaySync();
-        this.homeDashboardService = new HomeDashboardService(this);
         this.contractQuery = new ContractQuery(this);
         this.contractStatQuery = new DailyContractStatQuery();
         this.blockDataStatQuery = new DailyBlockDataStatQuery(null);

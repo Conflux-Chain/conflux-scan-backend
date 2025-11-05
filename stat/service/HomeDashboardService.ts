@@ -24,9 +24,16 @@ export class HomeDashboardService{
         internalContractInfo: {},
     };
 
-    constructor(app: any) {
+    private constructor(app: any) {
         this.app = app;
         _INST = this;
+    }
+
+    public static getInstance(app: any): HomeDashboardService {
+        if (!_INST) {
+            new HomeDashboardService(app)
+        }
+        return _INST;
     }
 
     public getData(){
