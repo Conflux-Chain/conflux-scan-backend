@@ -59,19 +59,16 @@ export class AccountQuery {
         [ensResp, eSpaceResp, contractResp, nameTagResp].forEach(
             resp => {
                 if(!resp?.total) return;
-                Object.keys(resp.map).forEach(address => {
-                    const newObj = resp.map[address];
-                    let preObj = map[address] || {};
-                    if (StatApp.isEVM) {
-                        // translate each key and value.address
-                        address = ethers.utils.getAddress(format.hexAddress(address))
-                        Object.keys(newObj).forEach(p=>{
-                            if (newObj[p].address) {
-                                newObj[p].address = address
-                            }
-                        })
-                    }
-                    map[address] = lodash.defaults(preObj, newObj);
+                Object.keys(resp.map).forEach(addr => {
+                    const destAddr = StatApp.isEVM ? ethers.utils.getAddress(format.hexAddress(addr)) : addr;
+                    const preObj = map[destAddr] || {};
+                    const newObj = resp.map[addr];
+                    Object.keys(newObj).forEach(key=>{
+                        if (newObj[key].address) {
+                            newObj[key].address = destAddr;
+                        }
+                    })
+                    map[destAddr] = lodash.defaults(preObj, newObj);
                 });
             }
         )
