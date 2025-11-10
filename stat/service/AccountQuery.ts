@@ -29,9 +29,9 @@ export function getAccountQuery() {
 
 export class AccountQuery {
     public app: any;
-    protected CAUTION_FLUSH_INTERVAL = 180_000; // 3 min
-    protected cautionLoadTimestamp;
-    public cautionSet: Set<string> = new Set<string>();
+    protected CAUTION_LABEL_FLUSH_INTERVAL = 180_000; // 3 min
+    protected cautionLabelLoadTimestamp;
+    public cautionLabels: Set<string> = new Set<string>();
 
 
     constructor(app: any) {
@@ -185,10 +185,10 @@ export class AccountQuery {
         }
 
         // init caution labels
-        if(!this.cautionSet.size || (Date.now() - this.cautionLoadTimestamp >= this.CAUTION_FLUSH_INTERVAL)) {
+        if(!this.cautionLabels.size || (Date.now() - this.cautionLabelLoadTimestamp >= this.CAUTION_LABEL_FLUSH_INTERVAL)) {
             const cautionLabels = await KV.getString(KEY_CAUTION_LABELS, '');
-            cautionLabels.split(',').forEach(label => this.cautionSet.add(label));
-            this.cautionLoadTimestamp = Date.now();
+            cautionLabels.split(',').forEach(label => this.cautionLabels.add(label));
+            this.cautionLabelLoadTimestamp = Date.now();
         }
 
         // query name tag
@@ -204,7 +204,7 @@ export class AccountQuery {
             const nameTag = lodash.pick(item, ['nameTag', 'website', 'desc', 'labels']);
             if(nameTag?.labels) {
                 nameTag.labels = nameTag.labels.split(NAME_TAG_SPLIT);
-                const caution = nameTag.labels.find(label => this.cautionSet.has(label));
+                const caution = nameTag.labels.find(label => this.cautionLabels.has(label));
                 nameTag.labels = caution ? [caution] : nameTag.labels;
                 nameTag.caution = caution ? 1 : 0;
             }

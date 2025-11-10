@@ -19,6 +19,8 @@ export interface ITokenSecurityAudit{
     dexMoonSwap?: string
     // track audit
     trackCoinMarketCap?: string
+    // official mark
+    officialLabels?: string
 }
 
 export class TokenSecurityAudit extends Model<ITokenSecurityAudit> implements ITokenSecurityAudit{
@@ -40,6 +42,10 @@ export class TokenSecurityAudit extends Model<ITokenSecurityAudit> implements IT
     dexMoonSwap?: string
     // track audit
     trackCoinMarketCap?: string
+    // official mark
+    officialLabels?: string
+    // insert into config values('KEY_OFFICIAL_LABELS', 'Verified');
+    // alter table token_security_audit add column `officialLabels` char(255) DEFAULT NULL after `trackCoinMarketCap`;
 
     static register(seq:Sequelize) {
         TokenSecurityAudit.init({
@@ -61,6 +67,8 @@ export class TokenSecurityAudit extends Model<ITokenSecurityAudit> implements IT
             dexMoonSwap: {type: DataTypes.CHAR(255), allowNull: true, },
             // track audit
             trackCoinMarketCap: {type: DataTypes.CHAR(255), allowNull: true, },
+            // official labels
+            officialLabels: {type: DataTypes.CHAR(255), allowNull: true, },
         },{
             tableName: 'token_security_audit',
             sequelize: seq,
