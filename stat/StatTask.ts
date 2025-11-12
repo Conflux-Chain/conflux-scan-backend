@@ -120,10 +120,10 @@ async function main() {
     statDailyPowReward.schedule(1000 * 60 * 10).then();
     //
     if (config.syncTokenSecurityAudit) {
-        const tokenQuery = new TokenQuery({cfx, config})
-        const tokenAudit = new TokenSecurityAuditSync({tokenQuery})
-        await tokenAudit.schedule()
-        await tokenAudit.scheduleRecently()
+        const tokenQuery = new TokenQuery({cfx, config});
+        const tokenAudit = new TokenSecurityAuditSync({tokenQuery});
+        await tokenAudit.scheduleRecently();
+        await tokenAudit.scheduleOverall();
     }
     //
     if(!StatApp.isEVM) {

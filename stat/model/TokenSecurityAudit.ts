@@ -19,6 +19,8 @@ export interface ITokenSecurityAudit{
     dexMoonSwap?: string
     // track audit
     trackCoinMarketCap?: string
+    // official mark
+    officialLabels?: string
 }
 
 export class TokenSecurityAudit extends Model<ITokenSecurityAudit> implements ITokenSecurityAudit{
@@ -40,6 +42,8 @@ export class TokenSecurityAudit extends Model<ITokenSecurityAudit> implements IT
     dexMoonSwap?: string
     // track audit
     trackCoinMarketCap?: string
+    // official mark
+    officialLabels?: string
 
     static register(seq:Sequelize) {
         TokenSecurityAudit.init({
@@ -61,6 +65,8 @@ export class TokenSecurityAudit extends Model<ITokenSecurityAudit> implements IT
             dexMoonSwap: {type: DataTypes.CHAR(255), allowNull: true, },
             // track audit
             trackCoinMarketCap: {type: DataTypes.CHAR(255), allowNull: true, },
+            // official labels
+            officialLabels: {type: DataTypes.CHAR(255), allowNull: true, },
         },{
             tableName: 'token_security_audit',
             sequelize: seq,

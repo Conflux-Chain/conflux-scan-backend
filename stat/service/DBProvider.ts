@@ -297,6 +297,12 @@ async function migDB(seq: Sequelize) {
     await addIndexIfNotExistsMySQL(qi, t,'idx_transfer', {fields: ['transfer']});
     await addIndexIfNotExistsMySQL(qi, t,'idx_type', {fields: ['type']});
     await addIndexIfNotExistsMySQL(qi, t,'idx_holder', {fields: ['holder']});
+
+    const tokenSecurityAudit = TokenSecurityAudit.getTableName().toString();
+    await addColumnIfNotExistsV2(qi, tokenSecurityAudit, 'officialLabels', {
+        type: DataTypes.CHAR(255),
+        allowNull: true,
+    });
 }
 
 async function dropEmptyTables() {
