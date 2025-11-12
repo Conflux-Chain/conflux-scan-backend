@@ -44,8 +44,6 @@ export class TokenSecurityAudit extends Model<ITokenSecurityAudit> implements IT
     trackCoinMarketCap?: string
     // official mark
     officialLabels?: string
-    // insert into config values('KEY_OFFICIAL_LABELS', 'Verified');
-    // alter table token_security_audit add column `officialLabels` char(255) DEFAULT NULL after `trackCoinMarketCap`;
 
     static register(seq:Sequelize) {
         TokenSecurityAudit.init({
