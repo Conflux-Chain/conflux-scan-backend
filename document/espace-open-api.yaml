@@ -80,7 +80,7 @@ paths:
   '/api?module=account&action=balance':
     get:
       tags:
-        - 'Accounts'
+        - 'Accounts - Etherscan compatible'
       description: 'Get CFX Balance for a Single Address'
       parameters:
         - $ref: '#/components/parameters/addressMust'
@@ -95,7 +95,7 @@ paths:
   '/api?module=account&action=balancemulti':
     get:
       tags:
-        - 'Accounts'
+        - 'Accounts - Etherscan compatible'
       description: 'Get CFX Balance for Multiple Addresses in a Single Call'
       parameters:
         - $ref: '#/components/parameters/addressMust'
@@ -110,7 +110,7 @@ paths:
   '/api?module=account&action=txlist':
     get:
       tags:
-        - 'Accounts'
+        - 'Accounts - Etherscan compatible'
       description: "Get a list of 'Normal' Transactions By Address"
       parameters:
         - $ref: '#/components/parameters/addressMust'
@@ -129,7 +129,7 @@ paths:
   '/api?module=account&action=txlistinternal':
     get:
       tags:
-        - 'Accounts'
+        - 'Accounts - Etherscan compatible'
       description: "Get a list of 'Internal' Transactions.
                     \nUsage:
                     \n1> Get 'Internal' Transactions by Address.
@@ -180,7 +180,7 @@ paths:
   '/api?module=account&action=tokentx':
     get:
       tags:
-        - 'Accounts'
+        - 'Accounts - Etherscan compatible'
       description: "Get a list of 'ERC20 - Token Transfer Events' by Address
                     \nUsage:
                     \n1> ERC-20 transfers from an address, specify the address parameter
@@ -204,7 +204,7 @@ paths:
   '/api?module=account&action=tokennfttx':
     get:
       tags:
-        - 'Accounts'
+        - 'Accounts - Etherscan compatible'
       description: "Get a list of 'ERC721 - Token Transfer Events' by Address
                     \nUsage:
                     \n1> ERC-721 transfers from an address, specify the address parameter
@@ -225,10 +225,34 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Transfer721List'
+  '/api?module=account&action=token1155tx':
+    get:
+      tags:
+        - 'Accounts - Etherscan compatible'
+      description: "Get a list of 'ERC1155 - Token Transfer Events' by Address
+                    \nUsage:
+                    \n1> ERC-1155 transfers from an address, specify the address parameter
+                    \n2> ERC-1155 transfers from a contract address, specify the contract address parameter
+                    \n3> ERC-1155 transfers from an address filtered by a token contract, specify both address and contract address parameters."
+      parameters:
+        - $ref: '#/components/parameters/contractaddress'
+        - $ref: '#/components/parameters/address'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/startblock'
+        - $ref: '#/components/parameters/endblock'
+        - $ref: '#/components/parameters/sort'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transfer1155List'
   '/api?module=account&action=getminedblocks':
     get:
       tags:
-        - 'Accounts'
+        - 'Accounts - Etherscan compatible'
       description: 'Get list of Blocks Mined by Address'
       parameters:
         - $ref: '#/components/parameters/addressMust'
@@ -245,7 +269,7 @@ paths:
   '/api?module=account&action=balancehistory':
     get:
       tags:
-        - 'Accounts'
+        - 'Accounts - Etherscan compatible'
       description: 'Get Historical CFX Balance for a Single Address By BlockNo'
       parameters:
         - $ref: '#/components/parameters/addressMust'
@@ -257,10 +281,59 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BalanceHistory'
+  '/api?module=account&action=addresstokenbalance':
+    get:
+      tags:
+        - 'Accounts - Etherscan compatible'
+      description: 'Get Address ERC20 Token Holding'
+      parameters:
+        - $ref: '#/components/parameters/addressMust'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/offset'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressTokenList'
+  '/api?module=account&action=addresstokennftbalance':
+    get:
+      tags:
+        - 'Accounts - Etherscan compatible'
+      description: 'Get Address ERC721 Token Holding'
+      parameters:
+        - $ref: '#/components/parameters/addressMust'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/offset'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressNFTList'
+  '/api?module=account&action=addresstokennftinventory':
+    get:
+      tags:
+        - 'Accounts - Etherscan compatible'
+      description: 'Get Address ERC721 Token Inventory by Contract'
+      parameters:
+        - $ref: '#/components/parameters/addressMust'
+        - $ref: '#/components/parameters/contractaddress'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/offset'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressNFTInventory'
   '/api?module=contract&action=getabi':
     get:
       tags:
-        - 'Contracts'
+        - 'Contracts - Etherscan compatible'
       description: 'Get Contract ABI for Verified Contract Source Codes'
       parameters:
         - $ref: '#/components/parameters/addressMust'
@@ -274,7 +347,7 @@ paths:
   '/api?module=contract&action=getsourcecode':
     get:
       tags:
-        - 'Contracts'
+        - 'Contracts - Etherscan compatible'
       description: 'Get Contract Source Code for Verified Contract Source Codes'
       parameters:
         - $ref: '#/components/parameters/addressMust'
@@ -288,7 +361,7 @@ paths:
   '/api?module=contract&action=getcontractcreation':
     get:
       tags:
-        - 'Contracts'
+        - 'Contracts - Etherscan compatible'
       description: "Returns a contract's deployer address and transaction hash it was created, up to 5 at a time."
       parameters:
         - $ref: '#/components/parameters/contractAddressesParam'
@@ -302,7 +375,7 @@ paths:
   '/api':
     post:
       tags:
-        - 'Contracts'
+        - 'Contracts - Etherscan compatible'
       requestBody:
         description: 'Verify Source Code - Source Code Submission Gist'
         content:
@@ -319,7 +392,7 @@ paths:
   '/api?module=contract&action=checkverifystatus':
     get:
       tags:
-        - 'Contracts'
+        - 'Contracts - Etherscan compatible'
       description: 'Verify Source Code - Check Source Code Verification Submission Status'
       parameters:
         - $ref: '#/components/parameters/guidMust'
@@ -333,7 +406,7 @@ paths:
   '/api?module=contract&action=verifyproxycontract':
     get:
       tags:
-        - 'Contracts'
+        - 'Contracts - Etherscan compatible'
       description: 'Verifying Proxy Contract using cURL'
       parameters:
         - $ref: '#/components/parameters/addressMust'
@@ -348,7 +421,7 @@ paths:
   '/api?module=contract&action=checkproxyverification':
     get:
       tags:
-        - 'Contracts'
+        - 'Contracts - Etherscan compatible'
       description: 'Checking Proxy Contract Verification Submission Status using cURL'
       parameters:
         - $ref: '#/components/parameters/guidMust'
@@ -359,10 +432,124 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CommonResponse'
+  '/api?module=block&action=getblocknobytime':
+    get:
+      tags:
+        - 'Blocks - Etherscan compatible'
+      description: 'Get Block Number by Timestamp'
+      parameters:
+        - $ref: '#/components/parameters/timestampMust'
+        - $ref: '#/components/parameters/closest'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResponse'
+  '/api?module=stats&action=dailyavgblocktime':
+    get:
+      tags:
+        - 'Blocks - Etherscan compatible'
+      description: 'Get Daily Average Block Time'
+      parameters:
+        - $ref: '#/components/parameters/startdate'
+        - $ref: '#/components/parameters/enddate'
+        - $ref: '#/components/parameters/sort'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyBlockTime'
+  '/api?module=stats&action=dailyblkcount':
+    get:
+      tags:
+        - 'Blocks - Etherscan compatible'
+      description: 'Get Daily Block Count'
+      parameters:
+        - $ref: '#/components/parameters/startdate'
+        - $ref: '#/components/parameters/enddate'
+        - $ref: '#/components/parameters/sort'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyBlockCount'
+  '/api?module=stats&action=dailyavggaslimit':
+    get:
+      tags:
+        - 'Gas Tracker - Etherscan compatible'
+      description: 'Get Daily Average Gas Limit
+                    Retrieve historical daily average gas limit.'
+      parameters:
+        - $ref: '#/components/parameters/startdate'
+        - $ref: '#/components/parameters/enddate'
+        - $ref: '#/components/parameters/sort'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyAvgGasLimit'
+  '/api?module=stats&action=dailygasused':
+    get:
+      tags:
+        - 'Gas Tracker - Etherscan compatible'
+      description: 'Get Ethereum Daily Total Gas Used
+                    Retrieve the total gas used each day.'
+      parameters:
+        - $ref: '#/components/parameters/startdate'
+        - $ref: '#/components/parameters/enddate'
+        - $ref: '#/components/parameters/sort'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyGasUsed'
+  '/api?module=stats&action=dailyavggasprice':
+    get:
+      tags:
+        - 'Gas Tracker - Etherscan compatible'
+      description: 'Get Daily Average Gas Price
+                    Retrieve daily average gas price statistics.'
+      parameters:
+        - $ref: '#/components/parameters/startdate'
+        - $ref: '#/components/parameters/enddate'
+        - $ref: '#/components/parameters/sort'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyAvgGasPrice'
+  '/api?module=stats&action=dailynetutilization':
+    get:
+      tags:
+        - 'Stats - Etherscan compatible'
+      description: 'Get Daily Network Utilization'
+      parameters:
+        - $ref: '#/components/parameters/startdate'
+        - $ref: '#/components/parameters/enddate'
+        - $ref: '#/components/parameters/sort'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyNetworkUtilization'
   '/api?module=transaction&action=getstatus':
     get:
       tags:
-        - 'Transactions'
+        - 'Transactions - Etherscan compatible'
       description: 'Check Contract Execution Status'
       parameters:
         - $ref: '#/components/parameters/txhashMust'
@@ -376,7 +563,7 @@ paths:
   '/api?module=transaction&action=gettxreceiptstatus':
     get:
       tags:
-        - 'Transactions'
+        - 'Transactions - Etherscan compatible'
       description: 'Check Transaction Receipt Status'
       parameters:
         - $ref: '#/components/parameters/txhashMust'
@@ -387,25 +574,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TransactionReceiptStatus'
-  '/api?module=block&action=getblocknobytime':
-    get:
-      tags:
-        - 'Blocks'
-      description: 'Get Block Number by Timestamp'
-      parameters:
-        - $ref: '#/components/parameters/timestampMust'
-        - $ref: '#/components/parameters/closest'
-      responses:
-        200:
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CommonResponse'
   '/api?module=stats&action=tokensupply':
     get:
       tags:
-        - 'Tokens'
+        - 'Tokens - Etherscan compatible'
       description: 'Get ERC20-Token TotalSupply by ContractAddress'
       parameters:
         - $ref: '#/components/parameters/contractaddressMust'
@@ -419,7 +591,7 @@ paths:
   '/api?module=account&action=tokenbalance':
     get:
       tags:
-        - 'Tokens'
+        - 'Tokens - Etherscan compatible'
       description: 'Get ERC20-Token Account Balance for TokenContractAddress'
       parameters:
         - $ref: '#/components/parameters/contractaddressMust'
@@ -434,7 +606,7 @@ paths:
   '/api?module=stats&action=tokensupplyhistory':
     get:
       tags:
-        - 'Tokens'
+        - 'Tokens - Etherscan compatible'
       description: 'Get Historical ERC20-Token TotalSupply by ContractAddress & BlockNo'
       parameters:
         - $ref: '#/components/parameters/contractaddressMust'
@@ -449,7 +621,7 @@ paths:
   '/api?module=account&action=tokenbalancehistory':
     get:
       tags:
-        - 'Tokens'
+        - 'Tokens - Etherscan compatible'
       description: 'Get Historical ERC20-Token Account Balance for TokenContractAddress by BlockNo'
       parameters:
         - $ref: '#/components/parameters/contractaddressMust'
@@ -462,20 +634,394 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CommonResponse'
-#  '/api?module=token&action=tokeninfo':
-#    get:
-#      tags:
-#        - 'Tokens'
-#      description: 'Get Token Info by ContractAddress'
-#      parameters:
-#        - $ref: '#/components/parameters/contractaddressMust'
-#      responses:
-#        200:
-#          description: ''
-#          content:
-#            application/json:
-#              schema:
-#                $ref: '#/components/schemas/TokenInfo'
+  '/api?module=token&action=tokenholderlist':
+    get:
+      tags:
+        - 'Tokens - Etherscan compatible'
+      description: "Get Token Holder List by Contract Address.
+                   \nReturn the current ERC20 token holders and number of tokens held."
+      parameters:
+        - $ref: '#/components/parameters/contractaddressMust'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenHolderList'
+  '/api?module=token&action=tokenholdercount':
+    get:
+      tags:
+        - 'Tokens - Etherscan compatible'
+      description: "Get Token Holder Count by Contract Address .
+                   \nReturn a simple count of the number of ERC20 token holders."
+      parameters:
+        - $ref: '#/components/parameters/contractaddressMust'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenHolderCount'
+  '/api?module=token&action=topholders':
+    get:
+      tags:
+        - 'Tokens - Etherscan compatible'
+      description: "Get Top Token Holders.
+                   \nRetrieves the top token holders of a specified ERC20 token."
+      parameters:
+        - $ref: '#/components/parameters/contractaddressMust'
+        - $ref: '#/components/parameters/offsetWithMax1000'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenHolderList'
+  '/api?module=token&action=tokeninfo':
+    get:
+      tags:
+        - 'Tokens - Etherscan compatible'
+      description: 'Get Token Info by ContractAddress'
+      parameters:
+        - $ref: '#/components/parameters/contractaddressMust'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenInfo'
+  '/api?module=stats&action=cfxsupply':
+    get:
+      tags:
+        - 'Stats - Etherscan compatible'
+      description: 'Get Total Supply of CFX'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommonResponse'
+  '/api?module=stats&action=cfxprice':
+    get:
+      tags:
+        - 'Stats - Etherscan compatible'
+      description: 'Get CFX Last Price'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CFXPrice'
+  '/api?module=stats&action=dailyavghashrate':
+    get:
+      tags:
+        - 'Stats - Etherscan compatible'
+      description: 'Get Daily Average Network Hash Rate'
+      parameters:
+        - $ref: '#/components/parameters/startdate'
+        - $ref: '#/components/parameters/enddate'
+        - $ref: '#/components/parameters/sort'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyHashrate'
+  '/api?module=stats&action=dailyavgnetdifficulty':
+    get:
+      tags:
+        - 'Stats - Etherscan compatible'
+      description: 'Get Daily Average Network Difficulty'
+      parameters:
+        - $ref: '#/components/parameters/startdate'
+        - $ref: '#/components/parameters/enddate'
+        - $ref: '#/components/parameters/sort'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyDifficulty'
+  '/api?module=stats&action=dailytx':
+    get:
+      tags:
+        - 'Stats - Etherscan compatible'
+      description: 'Get Daily Transaction Count'
+      parameters:
+        - $ref: '#/components/parameters/startdate'
+        - $ref: '#/components/parameters/enddate'
+        - $ref: '#/components/parameters/sort'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyTx'
+  '/api?module=stats&action=dailytxnfee':
+    get:
+      tags:
+        - 'Stats - Etherscan compatible'
+      description: 'Get Daily Network Transaction Fee'
+      parameters:
+        - $ref: '#/components/parameters/startdate'
+        - $ref: '#/components/parameters/enddate'
+        - $ref: '#/components/parameters/sort'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyTxFee'
+  '/api?module=stats&action=dailynewaddress':
+    get:
+      tags:
+        - 'Stats - Etherscan compatible'
+      description: 'Get Daily New Address Count'
+      parameters:
+        - $ref: '#/components/parameters/startdate'
+        - $ref: '#/components/parameters/enddate'
+        - $ref: '#/components/parameters/sort'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyNewAddress'
+  '/account/transactions':
+    get:
+      tags:
+        - 'Accounts'
+      description: "Get transactions associated with an account. A transaction with 'from' or 'to' equals to specified account
+        is considered as 'associate'. Parameters 'from' and 'to' are [or] logic."
+      parameters:
+        - $ref: '#/components/parameters/accountParam'
+        - $ref: '#/components/parameters/skipParam'
+        - $ref: '#/components/parameters/limitParam'
+        - $ref: '#/components/parameters/fromParam'
+        - $ref: '#/components/parameters/toParam'
+        - $ref: '#/components/parameters/startBlockParam'
+        - $ref: '#/components/parameters/endBlockParam'
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/TransactionListResp"
+  '/account/cfx/transfers':
+    get:
+      description: 'Get cfx transfer records of an account.'
+      tags:
+        - 'Accounts'
+      parameters:
+        - $ref: '#/components/parameters/accountParam'
+        - $ref: '#/components/parameters/skipParam'
+        - $ref: '#/components/parameters/limitParam'
+        - $ref: '#/components/parameters/fromParam'
+        - $ref: '#/components/parameters/toParam'
+        - $ref: '#/components/parameters/startBlockParam'
+        - $ref: '#/components/parameters/endBlockParam'
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/TransferCfxListResp"
+  '/account/erc20/transfers':
+    get:
+      description: 'Get erc20 transfer records of an account.'
+      tags:
+        - 'Accounts'
+      parameters:
+        - $ref: '#/components/parameters/accountParam'
+        - $ref: '#/components/parameters/skipParam'
+        - $ref: '#/components/parameters/limitParam'
+        - $ref: '#/components/parameters/contractParam'
+        - $ref: '#/components/parameters/fromParam'
+        - $ref: '#/components/parameters/toParam'
+        - $ref: '#/components/parameters/startBlockParam'
+        - $ref: '#/components/parameters/endBlockParam'
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/Transfer20ListResp"
+  '/account/erc721/transfers':
+    description: 'Get erc721 transfer records of an account'
+    get:
+      tags:
+        - 'Accounts'
+      parameters:
+        - $ref: '#/components/parameters/accountParam'
+        - $ref: '#/components/parameters/skipParam'
+        - $ref: '#/components/parameters/limitParam'
+        - $ref: '#/components/parameters/contractParam'
+        - $ref: '#/components/parameters/fromParam'
+        - $ref: '#/components/parameters/toParam'
+        - $ref: '#/components/parameters/startBlockParam'
+        - $ref: '#/components/parameters/endBlockParam'
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/tokenIdParam'
+        - $ref: '#/components/parameters/sortParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/Transfer721ListResp"
+  '/account/erc1155/transfers':
+    description: 'Get erc1155 transfer records of an account'
+    get:
+      tags:
+        - 'Accounts'
+      parameters:
+        - $ref: '#/components/parameters/accountParam'
+        - $ref: '#/components/parameters/skipParam'
+        - $ref: '#/components/parameters/limitParam'
+        - $ref: '#/components/parameters/contractParam'
+        - $ref: '#/components/parameters/fromParam'
+        - $ref: '#/components/parameters/toParam'
+        - $ref: '#/components/parameters/startBlockParam'
+        - $ref: '#/components/parameters/endBlockParam'
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/tokenIdParam'
+        - $ref: '#/components/parameters/sortParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/Transfer1155ListResp"
+  '/account/erc3525/transfers':
+    description: 'Get erc1155 transfer records of an account'
+    get:
+      tags:
+        - 'Accounts'
+      parameters:
+        - $ref: '#/components/parameters/accountParam'
+        - $ref: '#/components/parameters/skipParam'
+        - $ref: '#/components/parameters/limitParam'
+        - $ref: '#/components/parameters/contractParam'
+        - $ref: '#/components/parameters/fromParam'
+        - $ref: '#/components/parameters/toParam'
+        - $ref: '#/components/parameters/startBlockParam'
+        - $ref: '#/components/parameters/endBlockParam'
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/tokenIdParam'
+        - $ref: '#/components/parameters/sortParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/Transfer3525ListResp"
+  '/account/transfers':
+    description: 'Get all transfer records (includes: cfx transfer, erc20/erc721/erc1155 transfer) of an account'
+    get:
+      tags:
+        - 'Accounts'
+      parameters:
+        - $ref: '#/components/parameters/accountParam'
+        - $ref: '#/components/parameters/cursorParamWithoutMaximum'
+        - $ref: '#/components/parameters/skipParam'
+        - $ref: '#/components/parameters/limitParam'
+        - $ref: '#/components/parameters/contractParam'
+        - $ref: '#/components/parameters/fromParam'
+        - $ref: '#/components/parameters/toParam'
+        - $ref: '#/components/parameters/startBlockParam'
+        - $ref: '#/components/parameters/endBlockParam'
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/tokenIdParam'
+        - $ref: '#/components/parameters/sortParam'
+        - $ref: '#/components/parameters/transferTypeParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/TransferListWithCursor"
+  '/account/approvals':
+    description: 'Get token approvals of an account'
+    get:
+      tags:
+        - 'Accounts'
+      parameters:
+        - $ref: '#/components/parameters/accountParam'
+        - name: tokenType
+          in: query
+          required: false
+          schema:
+            type: string
+            default: ''
+            enum:
+              - ERC20
+              - ERC721
+              - ERC1155
+        - name: byTokenId
+          in: query
+          description: Whether to query each NFT token id, only valid for ERC721.
+          required: false
+          schema:
+            type: string
+            default: false
+            enum:
+              - true
+              - false
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/Approvals"
+  '/account/tokens':
+    get:
+      description: 'Get assets held by an account. Some tokens may not show up for some reasons.'
+      tags:
+        - 'Accounts'
+      parameters:
+        - $ref: '#/components/parameters/accountParam'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - $ref: '#/components/parameters/limitParamWithMax100'
+        - $ref: '#/components/parameters/tokenTypeParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/AssetsOfAccountResp"
   '/nft/balances':
     get:
       tags:
@@ -588,6 +1134,20 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/TransferList"
+  '/token/tokeninfos':
+    get:
+      tags:
+        - 'Tokens'
+      description: 'Get Token Info by contract addresses. Supports up to 30 tokens at a time.'
+      parameters:
+        - $ref: '#/components/parameters/contractArrayParam'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenInfos'
   /util/detectAccountType:
     get:
       tags:
@@ -651,7 +1211,7 @@ paths:
   /statistics/supply:
     get:
       tags:
-        - 'Statistics'
+        - 'Stats'
       description: "Return supply info about CFX on Conflux Network.
                       \ntotalIssued: Total issued balance in Drip,
                       \ntotalCirculating: Total circulating balance in Drip,
@@ -670,7 +1230,7 @@ paths:
   /statistics/mining:
     get:
       tags:
-        - 'Statistics'
+        - 'Stats'
       description: "Get statistics of mining within ${limit} ${intervalType}."
       parameters:
         - description: "Indicator calculation period, should be one of min(minute), hour or day. Default is hour."
@@ -699,7 +1259,7 @@ paths:
   /statistics/tps:
     get:
       tags:
-        - 'Statistics'
+        - 'Stats'
       description: "Get statistics of tps within ${limit} ${intervalType}."
       parameters:
         - name: intervalType
@@ -728,7 +1288,7 @@ paths:
   /statistics/contract:
     get:
       tags:
-        - 'Statistics'
+        - 'Stats'
       description: "Get statistics of deployed contract."
       parameters:
         - $ref: '#/components/parameters/minTimestampParam'
@@ -746,7 +1306,7 @@ paths:
   /statistics/account/cfx/holder:
     get:
       tags:
-        - 'Statistics'
+        - 'Stats'
       description: "Get statistics of total cfx holder by daily."
       parameters:
         - $ref: '#/components/parameters/minTimestampParam'
@@ -764,7 +1324,7 @@ paths:
   /statistics/account/growth:
     get:
       tags:
-        - 'Statistics'
+        - 'Stats'
       description: "Get statistics of account growth by daily."
       parameters:
         - $ref: '#/components/parameters/minTimestampParam'
@@ -782,7 +1342,7 @@ paths:
   /statistics/account/active:
     get:
       tags:
-        - 'Statistics'
+        - 'Stats'
       description: "Get statistics of tx sender by daily."
       parameters:
         - $ref: '#/components/parameters/minTimestampParam'
@@ -800,7 +1360,7 @@ paths:
   /statistics/account/active/overall:
     get:
       tags:
-        - 'Statistics'
+        - 'Stats'
       description: "Get statistics of unique addresses that were active on the network as a sender or receiver of CFX or Token."
       parameters:
         - $ref: '#/components/parameters/minTimestampParam'
@@ -818,7 +1378,7 @@ paths:
   /statistics/transaction:
     get:
       tags:
-        - 'Statistics'
+        - 'Stats'
       description: "Get statistics of transaction account by daily."
       parameters:
         - $ref: '#/components/parameters/minTimestampParam'
@@ -836,7 +1396,7 @@ paths:
   /statistics/cfx/transfer:
     get:
       tags:
-        - 'Statistics'
+        - 'Stats'
       description: "Get statistics of cfx transfer by daily."
       parameters:
         - $ref: '#/components/parameters/minTimestampParam'
@@ -854,7 +1414,7 @@ paths:
   /statistics/token/transfer:
     get:
       tags:
-        - 'Statistics'
+        - 'Stats'
       description: "Get statistics of token transfer by daily."
       parameters:
         - $ref: '#/components/parameters/contractParam'
@@ -873,7 +1433,7 @@ paths:
   /statistics/top/gas/used:
     get:
       tags:
-        - 'Statistics'
+        - 'Stats'
       description: "Get statistics of gas used for top 10."
       parameters:
         - $ref: '#/components/parameters/spanParam'
@@ -887,7 +1447,7 @@ paths:
   /statistics/top/miner:
     get:
       tags:
-        - 'Statistics'
+        - 'Stats'
       description: "Get statistics of miner for top 10."
       parameters:
         - $ref: '#/components/parameters/spanParam'
@@ -901,7 +1461,7 @@ paths:
   /statistics/top/transaction/sender:
     get:
       tags:
-        - 'Statistics'
+        - 'Stats'
       description: "Get statistics of transaction sender for top 10."
       parameters:
         - $ref: '#/components/parameters/spanParam'
@@ -915,7 +1475,7 @@ paths:
   /statistics/top/transaction/receiver:
     get:
       tags:
-        - 'Statistics'
+        - 'Stats'
       description: "Get statistics of transaction receiver for top 10."
       parameters:
         - $ref: '#/components/parameters/spanParam'
@@ -929,7 +1489,7 @@ paths:
   /statistics/top/cfx/sender:
     get:
       tags:
-        - 'Statistics'
+        - 'Stats'
       description: "Get statistics of cfx sender for top 10."
       parameters:
         - $ref: '#/components/parameters/spanParam'
@@ -943,7 +1503,7 @@ paths:
   /statistics/top/cfx/receiver:
     get:
       tags:
-        - 'Statistics'
+        - 'Stats'
       description: "Get statistics of cfx receiver for top 10."
       parameters:
         - $ref: '#/components/parameters/spanParam'
@@ -957,7 +1517,7 @@ paths:
   /statistics/top/token/transfer:
     get:
       tags:
-        - 'Statistics'
+        - 'Stats'
       description: "Get statistics of token transfer for top 10."
       parameters:
         - $ref: '#/components/parameters/spanParam'
@@ -971,7 +1531,7 @@ paths:
   /statistics/top/token/sender:
     get:
       tags:
-        - 'Statistics'
+        - 'Stats'
       description: "Get statistics of token sender for top 10."
       parameters:
         - $ref: '#/components/parameters/spanParam'
@@ -985,7 +1545,7 @@ paths:
   /statistics/top/token/receiver:
     get:
       tags:
-        - 'Statistics'
+        - 'Stats'
       description: "Get statistics of token receiver for top 10."
       parameters:
         - $ref: '#/components/parameters/spanParam'
@@ -999,7 +1559,7 @@ paths:
   /statistics/top/token/participant:
     get:
       tags:
-        - 'Statistics'
+        - 'Stats'
       description: "Get statistics of token participant for top 10."
       parameters:
         - $ref: '#/components/parameters/spanParam'
@@ -1013,7 +1573,7 @@ paths:
   /statistics/token/holder:
     get:
       tags:
-        - 'Statistics'
+        - 'Stats'
       description: "Get statistics of holder count for token transfer by daily."
       parameters:
         - $ref: '#/components/parameters/contractParamMust'
@@ -1032,7 +1592,7 @@ paths:
   /statistics/token/unique/sender:
     get:
       tags:
-        - 'Statistics'
+        - 'Stats'
       description: "Get statistics of unique sender count for token transfer by daily."
       parameters:
         - $ref: '#/components/parameters/contractParamMust'
@@ -1051,7 +1611,7 @@ paths:
   /statistics/token/unique/receiver:
     get:
       tags:
-        - 'Statistics'
+        - 'Stats'
       description: "Get statistics of unique receiver count for token transfer by daily."
       parameters:
         - $ref: '#/components/parameters/contractParamMust'
@@ -1070,7 +1630,7 @@ paths:
   /statistics/token/unique/participant:
     get:
       tags:
-        - 'Statistics'
+        - 'Stats'
       description: "Get statistics of unique participant count for token transfer by daily."
       parameters:
         - $ref: '#/components/parameters/contractParamMust'
@@ -1089,7 +1649,7 @@ paths:
   /statistics/block/base-fee:
     get:
       tags:
-        - 'Statistics'
+        - 'Stats'
       description: "Get statistics of base fee within ${limit}."
       parameters:
         - $ref: '#/components/parameters/minTimestampParam'
@@ -1107,7 +1667,7 @@ paths:
   /statistics/block/avg-priority-fee:
     get:
       tags:
-        - 'Statistics'
+        - 'Stats'
       description: "Get statistics of base fee within ${limit}."
       parameters:
         - $ref: '#/components/parameters/minTimestampParam'
@@ -1125,7 +1685,7 @@ paths:
   /statistics/block/gas-used:
     get:
       tags:
-        - 'Statistics'
+        - 'Stats'
       description: "Get statistics of base fee within ${limit}."
       parameters:
         - $ref: '#/components/parameters/minTimestampParam'
@@ -1143,7 +1703,7 @@ paths:
   /statistics/block/txs-by-type:
     get:
       tags:
-        - 'Statistics'
+        - 'Stats'
       description: "Get statistics of base fee within ${limit}."
       parameters:
         - $ref: '#/components/parameters/minTimestampParam'
@@ -1174,242 +1734,6 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/StringArray"
-  '/account/transactions':
-    get:
-      tags:
-        - 'Accounts(Deprecated)'
-      description: "Get transactions associated with an account. A transaction with 'from' or 'to' equals to specified account
-        is considered as 'associate'. Parameters 'from' and 'to' are [or] logic."
-      parameters:
-        - $ref: '#/components/parameters/accountParam'
-        - $ref: '#/components/parameters/skipParam'
-        - $ref: '#/components/parameters/limitParam'
-        - $ref: '#/components/parameters/fromParam'
-        - $ref: '#/components/parameters/toParam'
-        - $ref: '#/components/parameters/startBlockParam'
-        - $ref: '#/components/parameters/endBlockParam'
-        - $ref: '#/components/parameters/minTimestampParam'
-        - $ref: '#/components/parameters/maxTimestampParam'
-        - $ref: '#/components/parameters/sortParam'
-      responses:
-        200:
-          description: ''
-          content:
-            "application/json":
-              schema:
-                $ref: "#/components/schemas/TransactionListResp"
-  '/account/cfx/transfers':
-    get:
-      description: 'Get cfx transfer records of an account.'
-      tags:
-        - 'Accounts(Deprecated)'
-      parameters:
-        - $ref: '#/components/parameters/accountParam'
-        - $ref: '#/components/parameters/skipParam'
-        - $ref: '#/components/parameters/limitParam'
-        - $ref: '#/components/parameters/fromParam'
-        - $ref: '#/components/parameters/toParam'
-        - $ref: '#/components/parameters/startBlockParam'
-        - $ref: '#/components/parameters/endBlockParam'
-        - $ref: '#/components/parameters/minTimestampParam'
-        - $ref: '#/components/parameters/maxTimestampParam'
-        - $ref: '#/components/parameters/sortParam'
-      responses:
-        200:
-          description: ''
-          content:
-            "application/json":
-              schema:
-                $ref: "#/components/schemas/TransferCfxListResp"
-  '/account/erc20/transfers':
-    get:
-      description: 'Get erc20 transfer records of an account.'
-      tags:
-        - 'Accounts(Deprecated)'
-      parameters:
-        - $ref: '#/components/parameters/accountParam'
-        - $ref: '#/components/parameters/skipParam'
-        - $ref: '#/components/parameters/limitParam'
-        - $ref: '#/components/parameters/contractParam'
-        - $ref: '#/components/parameters/fromParam'
-        - $ref: '#/components/parameters/toParam'
-        - $ref: '#/components/parameters/startBlockParam'
-        - $ref: '#/components/parameters/endBlockParam'
-        - $ref: '#/components/parameters/minTimestampParam'
-        - $ref: '#/components/parameters/maxTimestampParam'
-        - $ref: '#/components/parameters/sortParam'
-      responses:
-        200:
-          description: ''
-          content:
-            "application/json":
-              schema:
-                $ref: "#/components/schemas/Transfer20ListResp"
-  '/account/erc721/transfers':
-    description: 'Get erc721 transfer records of an account'
-    get:
-      tags:
-        - 'Accounts(Deprecated)'
-      parameters:
-        - $ref: '#/components/parameters/accountParam'
-        - $ref: '#/components/parameters/skipParam'
-        - $ref: '#/components/parameters/limitParam'
-        - $ref: '#/components/parameters/contractParam'
-        - $ref: '#/components/parameters/fromParam'
-        - $ref: '#/components/parameters/toParam'
-        - $ref: '#/components/parameters/startBlockParam'
-        - $ref: '#/components/parameters/endBlockParam'
-        - $ref: '#/components/parameters/minTimestampParam'
-        - $ref: '#/components/parameters/maxTimestampParam'
-        - $ref: '#/components/parameters/tokenIdParam'
-        - $ref: '#/components/parameters/sortParam'
-      responses:
-        200:
-          description: ''
-          content:
-            "application/json":
-              schema:
-                $ref: "#/components/schemas/Transfer721ListResp"
-  '/account/erc1155/transfers':
-    description: 'Get erc1155 transfer records of an account'
-    get:
-      tags:
-        - 'Accounts(Deprecated)'
-      parameters:
-        - $ref: '#/components/parameters/accountParam'
-        - $ref: '#/components/parameters/skipParam'
-        - $ref: '#/components/parameters/limitParam'
-        - $ref: '#/components/parameters/contractParam'
-        - $ref: '#/components/parameters/fromParam'
-        - $ref: '#/components/parameters/toParam'
-        - $ref: '#/components/parameters/startBlockParam'
-        - $ref: '#/components/parameters/endBlockParam'
-        - $ref: '#/components/parameters/minTimestampParam'
-        - $ref: '#/components/parameters/maxTimestampParam'
-        - $ref: '#/components/parameters/tokenIdParam'
-        - $ref: '#/components/parameters/sortParam'
-      responses:
-        200:
-          description: ''
-          content:
-            "application/json":
-              schema:
-                $ref: "#/components/schemas/Transfer1155ListResp"
-  '/account/erc3525/transfers':
-    description: 'Get erc1155 transfer records of an account'
-    get:
-      tags:
-        - 'Accounts(Deprecated)'
-      parameters:
-        - $ref: '#/components/parameters/accountParam'
-        - $ref: '#/components/parameters/skipParam'
-        - $ref: '#/components/parameters/limitParam'
-        - $ref: '#/components/parameters/contractParam'
-        - $ref: '#/components/parameters/fromParam'
-        - $ref: '#/components/parameters/toParam'
-        - $ref: '#/components/parameters/startBlockParam'
-        - $ref: '#/components/parameters/endBlockParam'
-        - $ref: '#/components/parameters/minTimestampParam'
-        - $ref: '#/components/parameters/maxTimestampParam'
-        - $ref: '#/components/parameters/tokenIdParam'
-        - $ref: '#/components/parameters/sortParam'
-      responses:
-        200:
-          description: ''
-          content:
-            "application/json":
-              schema:
-                $ref: "#/components/schemas/Transfer3525ListResp"
-  '/account/transfers':
-    description: 'Get all transfer records (includes: cfx transfer, erc20/erc721/erc1155 transfer) of an account'
-    get:
-      tags:
-        - 'Accounts(Deprecated)'
-      parameters:
-        - $ref: '#/components/parameters/accountParam'
-        - $ref: '#/components/parameters/cursorParamWithoutMaximum'
-        - $ref: '#/components/parameters/skipParam'
-        - $ref: '#/components/parameters/limitParam'
-        - $ref: '#/components/parameters/contractParam'
-        - $ref: '#/components/parameters/fromParam'
-        - $ref: '#/components/parameters/toParam'
-        - $ref: '#/components/parameters/startBlockParam'
-        - $ref: '#/components/parameters/endBlockParam'
-        - $ref: '#/components/parameters/minTimestampParam'
-        - $ref: '#/components/parameters/maxTimestampParam'
-        - $ref: '#/components/parameters/tokenIdParam'
-        - $ref: '#/components/parameters/sortParam'
-        - $ref: '#/components/parameters/transferTypeParam'
-      responses:
-        200:
-          description: ''
-          content:
-            "application/json":
-              schema:
-                $ref: "#/components/schemas/TransferListWithCursor"
-  '/account/approvals':
-    description: 'Get token approvals of an account'
-    get:
-      tags:
-        - 'Accounts(Deprecated)'
-      parameters:
-        - $ref: '#/components/parameters/accountParam'
-        - name: tokenType
-          in: query
-          required: false
-          schema:
-            type: string
-            default: ''
-            enum:
-              - ERC20
-              - ERC721
-              - ERC1155
-        - name: byTokenId
-          in: query
-          description: Whether to query each NFT token id, only valid for ERC721.
-          required: false
-          schema:
-            type: string
-            default: false
-            enum:
-              - true
-              - false
-      responses:
-        200:
-          description: ''
-          content:
-            "application/json":
-              schema:
-                $ref: "#/components/schemas/Approvals"
-  '/account/tokens':
-    get:
-      description: 'Get assets held by an account. Some tokens may not show up for some reasons.'
-      tags:
-        - 'Accounts(Deprecated)'
-      parameters:
-        - $ref: '#/components/parameters/accountParam'
-        - $ref: '#/components/parameters/tokenTypeParam'
-      responses:
-        200:
-          description: ''
-          content:
-            "application/json":
-              schema:
-                $ref: "#/components/schemas/AssetsOfAccountResp"
-  '/token/tokeninfos':
-    get:
-      tags:
-        - 'Tokens(Deprecated)'
-      description: 'Get Token Info by contract addresses. Supports up to 30 tokens at a time.'
-      parameters:
-        - $ref: '#/components/parameters/contractArrayParam'
-      responses:
-        200:
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TokenInfos'
 components:
   schemas:
     CommonResponse:
@@ -1620,6 +1944,60 @@ components:
                 description: "deprecated"
               confirmations:
                 type: string
+    Transfer1155List:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            properties:
+              blockNumber:
+                type: string
+              timeStamp:
+                type: string
+              hash:
+                type: string
+              nonce:
+                type: string
+              blockHash:
+                type: string
+              transactionIndex:
+                type: string
+              gas:
+                type: string
+              gasPrice:
+                type: string
+              gasUsed:
+                type: string
+              cumulativeGasUsed:
+                type: string
+              input:
+                type: string
+                description: "deprecated"
+              methodId:
+                type: string
+              functionName:
+                type: string
+              contractAddress:
+                type: string
+              from:
+                type: string
+              to:
+                type: string
+              tokenID:
+                type: string
+              tokenValue:
+                type: string
+              tokenName:
+                type: string
+              tokenSymbol:
+                type: string
+              confirmations:
+                type: string
     MinedBlockList:
       type: object
       properties:
@@ -1787,6 +2165,30 @@ components:
               error:
                 description: 'A string describing a particular reason that we were unable to get token info.'
                 type: 'string'
+    TokenHolderList:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            properties:
+              TokenHolderAddress:
+                type: string
+              TokenHolderQuantity:
+                type: string
+    TokenHolderCount:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: string
     TokenInfo:
       type: object
       properties:
@@ -1841,6 +2243,272 @@ components:
               discord:
                 type: string
               whitepaper:
+                type: string
+    CFXPrice:
+      type: object
+      properties:
+        status:
+          type: integer
+        message:
+          type: string
+        result:
+          type: object
+          properties:
+            cfxbtc:
+              type: string
+            cfxbtc_timestamp:
+              type: string
+            cfxusd:
+              type: string
+            cfxusd_timestamp:
+              type: string
+    DailyHashrate:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            properties:
+              UTCDate:
+                type: string
+              unixTimeStamp:
+                type: string
+              networkHashRate:
+                type: string
+    DailyDifficulty:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            properties:
+              UTCDate:
+                type: string
+              unixTimeStamp:
+                type: string
+              networkDifficulty:
+                type: string
+    DailyBlockTime:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            properties:
+              UTCDate:
+                type: string
+              unixTimeStamp:
+                type: string
+              blockTime_sec:
+                type: string
+    DailyBlockCount:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            properties:
+              UTCDate:
+                type: string
+              unixTimeStamp:
+                type: string
+              blockCount:
+                type: integer
+    DailyAvgGasLimit:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            properties:
+              UTCDate:
+                type: string
+              unixTimeStamp:
+                type: string
+              gasLimit:
+                type: string
+    DailyGasUsed:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            properties:
+              UTCDate:
+                type: string
+              unixTimeStamp:
+                type: string
+              gasUsed:
+                type: string
+    DailyAvgGasPrice:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            properties:
+              UTCDate:
+                type: string
+              unixTimeStamp:
+                type: string
+              maxGasPrice_Drip:
+                type: string
+              minGasPrice_Drip:
+                type: string
+              avgGasPrice_Drip:
+                type: string
+    DailyNetworkUtilization:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            properties:
+              UTCDate:
+                type: string
+              unixTimeStamp:
+                type: string
+              networkUtilization:
+                type: string
+    DailyTx:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            properties:
+              UTCDate:
+                type: string
+              unixTimeStamp:
+                type: string
+              transactionCount:
+                type: integer
+    DailyTxFee:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            properties:
+              UTCDate:
+                type: string
+              unixTimeStamp:
+                type: string
+              transactionFee_CFX:
+                type: string
+    DailyNewAddress:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            properties:
+              UTCDate:
+                type: string
+              unixTimeStamp:
+                type: string
+              newAddressCount:
+                type: integer
+    AddressTokenList:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            properties:
+              TokenAddress:
+                type: string
+              TokenName:
+                type: string
+              TokenSymbol:
+                type: string
+              TokenQuantity:
+                type: string
+              TokenDivisor:
+                type: string
+              TokenPriceUSD:
+                type: string
+    AddressNFTList:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            properties:
+              TokenAddress:
+                type: string
+              TokenName:
+                type: string
+              TokenSymbol:
+                type: string
+              TokenQuantity:
+                type: string
+    AddressNFTInventory:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            properties:
+              TokenAddress:
+                type: string
+              TokenId:
                 type: string
     NFTBalanceList:
       type: object
@@ -3422,6 +4090,15 @@ components:
         type: integer
         maximum: 100
         default: 100
+    offsetWithMax1000:
+      name: offset
+      in: query
+      description: "the number of items displayed per page"
+      required: false
+      schema:
+        type: integer
+        maximum: 1000
+        default: 100
     blocknoMust:
       name: blockno
       in: query
@@ -3507,6 +4184,22 @@ components:
       required: false
       schema:
         type: integer
+    startdate:
+      description: "Starting date in yyyy-MM-dd format."
+      name: startdate
+      in: query
+      required: true
+      schema:
+        type: string
+        default: '2025-02-01'
+    enddate:
+      description: "Ending date in yyyy-MM-dd format."
+      name: enddate
+      in: query
+      required: true
+      schema:
+        type: string
+        default: '2025-02-28'
     sort:
       description: "the sorting preference, use asc to sort by ascending and desc to sort by descending"
       name: sort
@@ -3565,6 +4258,15 @@ components:
         type: integer
         maximum: 2000
         default: 10
+    limitParamWithMax100:
+      name: limit
+      in: query
+      description: "The number of records displayed on the page. Maximum 100."
+      required: false
+      schema:
+        type: integer
+        maximum: 100
+        default: 100
     contractParam:
       name: contract
       in: query

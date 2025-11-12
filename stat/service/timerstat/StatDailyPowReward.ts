@@ -1,6 +1,6 @@
 import {Op, QueryTypes} from 'sequelize'
 import {fmtDtUTC} from "../../model/Utils";
-import {IntervalType, TimerStat} from "./TimerStat";
+import {StatType, TimerStat} from "./TimerStat";
 import {DailyPowRewardStat} from "../../model/DailyReward";
 import {Drip} from "js-conflux-sdk";
 import {FullBlock} from "../../model/FullBlock";
@@ -12,7 +12,7 @@ export class StatDailyPowReward extends TimerStat{
 
     constructor(app: any) {
         super(app);
-        this.baseInterval = IntervalType.HOUR;
+        this.baseInterval = StatType.HOUR;
     }
 
     public bizAlias(): string {
@@ -45,26 +45,21 @@ export class StatDailyPowReward extends TimerStat{
 
     public async stat(rangeBegin: Date, rangeEnd: Date){
         const hStat = await this.statRaw(rangeBegin, rangeEnd);
-        const dStat = await this.statAnalysis(rangeEnd, IntervalType.HOUR, IntervalType.DAY, hStat);
-        const mStat = await this.statAnalysis(rangeEnd, IntervalType.HOUR, IntervalType.MONTH, hStat);
-        this.debug && console.log(`debug-5,hStat:${JSON.stringify(hStat)},dStat:${JSON.stringify(dStat)}`);
+        const dStat = await this.statAnalysis(rangeEnd, StatType.HOUR, StatType.DAY, hStat);
+        const mStat = await this.statAnalysis(rangeEnd, StatType.HOUR, StatType.MONTH, hStat);
 
         const statArray = [hStat, dStat, mStat];
         await DailyPowRewardStat.sequelize.transaction(async (dbTx) => {
             await DailyPowRewardStat.destroy({
                 where: {statType: dStat.statType, statTime: dStat.statTime}, transaction: dbTx,
-                /*logging: msg => console.log(`[${this.bizAlias()}]destroy ${msg}`),*/
             });
             await DailyPowRewardStat.destroy({
                 where: {statType: mStat.statType, statTime: mStat.statTime}, transaction: dbTx,
-                /*logging: msg => console.log(`[${this.bizAlias()}]destroy ${msg}`),*/
             });
             await DailyPowRewardStat.bulkCreate(statArray, {
                 transaction: dbTx,
-                /*logging: msg => console.log(`[${this.bizAlias()}]bulkCreate ${msg}`),*/
             });
         });
-        console.log(`[${this.bizAlias()}]record:${JSON.stringify(statArray)}`);
     }
 
     // ------------------------------- biz -----------------------------------
@@ -93,8 +88,8 @@ export class StatDailyPowReward extends TimerStat{
         } as DailyPowRewardStat;
     }
 
-    private async statAnalysis(endTime: Date, srcStatType: IntervalType, destStatType: IntervalType,
-                                latestStat = undefined): Promise<DailyPowRewardStat> {
+    private async statAnalysis(endTime: Date, srcStatType: StatType, destStatType: StatType,
+                               latestStat = undefined): Promise<DailyPowRewardStat> {
         const beginTime = this.getRangeBegin(endTime, destStatType);
 
         const statSql = `select statTime,statType,powReward from ${DailyPowRewardStat.getTableName()}

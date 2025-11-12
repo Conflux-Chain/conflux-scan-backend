@@ -1,220 +1,123 @@
 import {ScanApp, ScanCtx} from "./index";
-import {BatchBalanceWatcher} from "../../stat/service/watcher/BatchBalanceWatcher";
 
 const lodash = require('lodash');
 const BigFixed = require("bigfixed");
-const { TokenQuery } = require('../../stat/service/TokenQuery');
-const { Token } = require('../../stat/model/Token');
+const {TokenQuery} = require('../../stat/service/TokenQuery');
+const {Token} = require('../../stat/model/Token');
 
 export class TokenService {
-  app: ScanApp & any;
-  private LIST_CACHE_KEY: string;
-  private zip: any;
-  private unzip: any;
+  app: ScanApp | any;
+
   constructor(app) {
     this.app = app;
-    this.LIST_CACHE_KEY = 'TokenService.token/list/address';
-
-    const {
-      app: { type },
-    } = this as ScanCtx;
-
-    this.zip = type({
-      icon: type.gzip,
-      marketCapId: (type.uint).$after(String),
-      quoteUrl: type.string,
-      moonDexSymbol: type.string,
-      binanceSymbol: type.string,
-      ipfsGateway: type.string,
-    }, { pick: true });
-
-    this.unzip = type({
-      icon: { key: type.base64ToString, value: type.unzipBase64 },
-      marketCapId: { key: type.base64ToString, value: type.base64ToString.$after(Number) },
-      quoteUrl: { key: type.base64ToString, value: type.base64ToString },
-      moonDexSymbol: { key: type.base64ToString, value: type.base64ToString },
-      binanceSymbol: { key: type.base64ToString, value: type.base64ToString },
-      ipfsGateway: { key: type.base64ToString, value: type.base64ToString },
-    });
-  }
-
-  async register({ address, ...rest }) {
-    const {
-      app: { error, dingTalk, ttlMap, service },
-    } = this as ScanCtx;
-
-    if (!await service.conflux.isToken(address)) {
-      throw new error.ParameterError(`address "${address}" is not token, register abort`);
-    }
-
-    const object = this.zip(rest);
-    const array = [{ key: `token/list/${address}`, value: address }];
-    lodash.forEach(object, (value, field) => {
-      array.push({ key: `token/${address}/${field}`, value });
-    });
-
-    const result = await service.announce.send(array);
-    ttlMap.delete(this.LIST_CACHE_KEY); // not strict drop list cache
-    dingTalk.sendObject('Token register', { address, ...lodash.mapValues(object, Boolean) });
-    return result;
-  }
-
-  async deregister({ address }) {
-    const {
-      app: { service, ttlMap, dingTalk, type },
-    } = this as ScanCtx;
-
-      const token = await service.tokenRdb.query({ address });
-      if (token && type.address(token.base32) !== address) {
-        return null;
-      }
-
-    const key = `token/list/${address}`;
-
-    const result = await service.announce.send([{ key, value: '' }]);
-    ttlMap.delete(this.LIST_CACHE_KEY); // not strict drop list cache
-    dingTalk.sendObject('Token deregister', { address });
-    return result;
   }
 
   // --------------------------------------------------------------------------
   async countAndList({
-    transferType,
-    name,
-    orderBy,
-    reverse,
-    skip = 0,
-    limit = Infinity,
-    ...options
+    accountAddress,
+    addressArray,
+    fields,
   } = {} as any) {
     const {
       app: { tool },
     } = this as ScanCtx;
 
     let list = [];
-    if (options.accountAddress !== undefined) {
-      tool.checkExist(options, { addressArray: false });
-      list = await this._listByAccountPlus(options);
-    } else if (options.addressArray !== undefined) {
-      list = await this._listByAddressArrayPlus(options);
+    if (accountAddress !== undefined) {
+      tool.checkExist({addressArray}, { addressArray: false });
+      list = await this.listByAccount(accountAddress);
+      list = this.sortCustomized(list);
+    } else if (addressArray !== undefined) {
+      list = await this.listByAddressArray(addressArray, fields);
     } else {
-      list = await this._listByRegisterPlus(options);
+      list = await this.listByRegister(fields);
     }
 
-    if (transferType !== undefined) {
-      list = list.filter((token) => token.transferType === transferType);
-    }
-    if (name !== undefined) {
-      const regex = new RegExp(name);
-      list = list.filter((token) => regex.test(token.name));
-    }
-
-    const total = list.length;
-    list =  this._sortCustomized(list);
-    if (options.addressArray === undefined) {
-      list = list.slice(skip, skip + limit);
-    }
-
-    return { total, list };
+    return { total: list.length, list };
   }
 
   // --------------------------------------------------------------------------
-  _sortCustomized(tokenArray) {
-    if(!tokenArray?.length) {
-      return tokenArray;
+  sortCustomized(tokens: any[]) {
+    let result = [];
+    if(!tokens?.length) {
+      return result;
     }
 
-    const tokens = [];
-    for (const token of tokenArray) {
-      if(!token.transferType) continue;
-      token.type = Number(token.transferType.substring(3));
+    tokens.forEach((token: any) => {
       token.amount = (token.balance && Number.isInteger(token.decimals))
           ? BigFixed(token.balance).div(BigFixed(10).pow(token.decimals)).toNumber()
           : 0;
       token.marketcapHeld = (token.price && token.balance && Number.isInteger(token.decimals))
           ? BigFixed(token.price).mul(token.balance).div(BigFixed(10).pow(token.decimals)).toNumber()
           : 0;
-      tokens.push(token);
+    });
+
+    const groupedTokens = lodash.groupBy(tokens, 'transferType');
+    for (const type of Object.keys(groupedTokens)) {
+      groupedTokens[type] = lodash.orderBy(groupedTokens[type],
+          ['marketcapHeld', 'amount', 'totalTransfer'],
+          ['desc', 'desc', 'desc']);
     }
 
-    const groupedTokenArray = lodash.groupBy(tokens, 'type');
-    for (const type of Object.keys(groupedTokenArray)) {
-      groupedTokenArray[type] = lodash.orderBy(groupedTokenArray[type], ['marketcapHeld', 'amount', 'transferCount'], ['desc', 'desc', 'desc']);
-    }
+    result = lodash.flatten(Object.values(groupedTokens));
+    result.forEach(token => {
+      delete token['marketcapHeld'];
+      delete token['amount'];
+      delete token['totalTransfer'];
+    });
 
-    return lodash.flatten(Object.values(groupedTokenArray));
+    return result;
   }
 
   // --------------------------------------------------------------------------
-  async queryPlus({ address }) {
+  async query({ address }) {
     const {
       app: { service },
     } = this as ScanCtx;
 
-    const token = await service.tokenRdb.query({ address });
-    return lodash.defaults({}, token);
+    return service.tokenQuery.query({ address });
   }
 
-  async _listByAddressArrayPlus({ addressArray, fields } = {} as any) {
+  async listByAddressArray(addressArray, fields) {
     const {
       app: { service },
     } = this as ScanCtx;
 
-    addressArray = [...addressArray];
-    const response = await service.tokenRdb.list({ addressArray, fields: lodash.intersection(fields, ['icon']) });
-    return response.list;
+    const resp = await service.tokenQuery.list({
+      addressArray: [...addressArray],
+      fields: lodash.intersection(fields, ['icon']),
+    });
+
+    return resp.list;
   }
 
-  async _listByRegisterPlus(options) {
-    const { app: {error}, } = this as ScanCtx;
-    options.orderBy = options.orderBy || 'transferCount'
-    const order = {'transferCount':'transfer', 'holderCount': 'holder', price:'price'}[options.orderBy];
-    if (!order) {
-      throw new error.ParameterError(`Invalid order by. Only supports one of ['transferCount', 'holderCount'], got [${options.orderBy}]`)
-    }
-    const tokenList = await Token.findAll({
+  async listByRegister(fields) {
+    const tokens = await Token.findAll({
       attributes: ['base32'],
       where: {auditResult: true, portalSupport: true},
-      order: [[order, options.reverse ? 'desc': 'asc']],
-      skip: options.skip, limit: options.limit,
     });
-    const addressArray = tokenList.map(t=>t.base32);
-    return this._listByAddressArrayPlus({ addressArray, ...options });
+
+    if(!tokens?.length) {
+      return [];
+    }
+
+    return this.listByAddressArray(tokens.map(t=>t.base32), fields);
   }
 
-  async _listByAccountPlus({ accountAddress, ...options }) {
-    const {
-      app: { service },
-    } = this as ScanCtx;
-
-    const { balanceMap: dbBalanceMap, tokenArray: tokens } = await TokenQuery.listAccountTokens({ accountAddress });
-    const addressArray = tokens.map((t) => t.base32);
-    // this config is from scan-api/config, not statConfig.
-    let utilContract = await BatchBalanceWatcher.getUtilContractAddr();
-    // fetch realtime balance, but, some nft may return 0.
-    let balanceArray: any;
-    if (!utilContract) {
-      balanceArray = await BatchBalanceWatcher.getBalances(accountAddress, addressArray);
-    } else {
-      balanceArray = await service.conflux.getBalances(accountAddress, addressArray, utilContract);
-    }
-    const balanceMap = {};
-    addressArray.forEach((address, index) => {
-      const balance = balanceArray[index] || (tokens[index].isNFT ? dbBalanceMap[tokens[index]?.hex40id]?.balance : 0);
-      if (balance) balanceMap[address] = balance;
+  async listByAccount(accountAddress) {
+    const resp = await TokenQuery.listByAccount({
+      owner: accountAddress,
+      withTotalInfo: true,
+      withRealtimeBalance: true
     });
 
-    const tokenAddressArray = Object.keys(balanceMap);
-    let result = [];
-    if (tokenAddressArray.length) {
-      // fill more token info
-      const tokenArray = await this._listByAddressArrayPlus({ addressArray: tokenAddressArray, ...options });
-      result = tokenArray.map((token) => {
-        return { ...token, accountAddress, balance: balanceMap[token.address] };
-      });
-    }
-
-    return result;
+    return resp.list.map((token: any) =>
+      lodash.assign({
+        address: token.contract,
+        transferType: token.type.replace('CRC', 'ERC'), // Keep private API backward compatible
+      },
+      lodash.pick(token, ['balance', 'name', 'symbol', 'iconUrl', 'decimals', 'price', 'totalTransfer']))
+    );
   }
 }
 

@@ -28,33 +28,33 @@ import {
 import {getTokenInfos, queryTokenInfo} from "../service/OpenTokenService";
 import {
     getNFTPreview,
-    listNFTBalances,
+    listAccountNFTs,
     listNFTOwners,
     listNFTTokensByFts,
     listNFTTokensPro,
 } from "../service/OpenNFTService";
 import {
     getSupplyStat,
-    listAccountActiveStat,
-    listAccountGrowthStat,
+    listAccountActiveStats,
+    listAccountGrowthStats,
     listApproval,
-    listBurntFeeStat,
-    listBurntRateStat,
-    listCfxHolderStat,
+    listBurntFeeStats,
+    listBurntRateStats,
+    listCfxHolderStats,
     listCfxReceiverTopStat,
     listCfxSenderTopStat,
     listCfxTransferStat,
-    listCIP1559Stat,
-    listContractStat,
+    listCIP1559Stats,
+    listContractStats,
     listGasUsedTopStat,
     listMinerTopStat,
-    listMiningStat,
-    listNFTAssetStat,
-    listNFTContractStat,
-    listNFTHolderStat,
-    listNFTTransferStat,
-    listPosRewardStat,
-    listPowRewardStat,
+    listCoreMiningStat,
+    listNFTAssetStats,
+    listNFTContractStats,
+    listNFTHolderStats,
+    listNFTTransferStats,
+    listPosRewardStats,
+    listPowRewardStats,
     listTokenHolderStat,
     listTokenParticipantTopStat,
     listTokenReceiverTopStat,
@@ -64,11 +64,11 @@ import {
     listTokenUniqueParticipantStat,
     listTokenUniqueReceiverStat,
     listTokenUniqueSenderStat,
-    listTpsStat,
+    listTpsStats,
     listTransactionReceiverTopStat,
     listTransactionSenderStat,
     listTransactionSenderTopStat,
-    listTransactionStat,
+    listCoreTransactionStat,
 } from "../service/OpenStatService";
 import {mustBeAddressParamIfPresent,} from "../../stat/service/common/utils";
 import {
@@ -78,7 +78,7 @@ import {
     loadRateConfig,
     loadRateKeyConfig
 } from "../../stat/router/RateLimiter";
-import {CIP1559StatType} from "../../stat/service/DailyBlockDataStatQuery";
+import {CIP1559StatType} from "../../stat/service/StatsQuery";
 import {NoCoreSpace} from "../../stat/config/StatConfig";
 import {listAccountsByCursor} from "../service/OpenDataService";
 
@@ -176,7 +176,7 @@ function registerRouter(router: Router) {
     router.get('/token/tokeninfos', getTokenInfos);
 
     // nft assets
-    router.get('/nft/balances', listNFTBalances);
+    router.get('/nft/balances', listAccountNFTs);
     router.get('/nft/tokens', checkRateByAddr, listNFTTokensPro);
     router.get('/nft/preview', getNFTPreview);
     router.get('/nft/fts', listNFTTokensByFts);
@@ -189,14 +189,14 @@ function registerRouter(router: Router) {
 
     // statistics
     router.get('/statistics/supply', getSupplyStat);
-    router.get('/statistics/mining', listMiningStat)
-    router.get('/statistics/tps', listTpsStat);
-    router.get('/statistics/contract', listContractStat);
-    router.get('/statistics/account/cfx/holder', listCfxHolderStat);
-    router.get('/statistics/account/growth', listAccountGrowthStat);
+    router.get('/statistics/mining', listCoreMiningStat)
+    router.get('/statistics/tps', listTpsStats);
+    router.get('/statistics/contract', listContractStats);
+    router.get('/statistics/account/cfx/holder', listCfxHolderStats);
+    router.get('/statistics/account/growth', listAccountGrowthStats);
     router.get('/statistics/account/active', listTransactionSenderStat);
-    router.get('/statistics/account/active/overall', listAccountActiveStat);
-    router.get('/statistics/transaction', listTransactionStat);
+    router.get('/statistics/account/active/overall', listAccountActiveStats);
+    router.get('/statistics/transaction', listCoreTransactionStat);
     router.get('/statistics/cfx/transfer', listCfxTransferStat);
     router.get('/statistics/token/transfer', listTokenTransferStat);
     router.get('/statistics/top/gas/used', listGasUsedTopStat);
@@ -213,19 +213,19 @@ function registerRouter(router: Router) {
     router.get('/statistics/token/unique/sender', listTokenUniqueSenderStat);
     router.get('/statistics/token/unique/receiver', listTokenUniqueReceiverStat);
     router.get('/statistics/token/unique/participant', listTokenUniqueParticipantStat);
-    router.get('/statistics/nft/asset', listNFTAssetStat);
-    router.get('/statistics/nft/contract', listNFTContractStat);
-    router.get('/statistics/nft/transfer', listNFTTransferStat);
-    router.get('/statistics/nft/holder', listNFTHolderStat);
-    router.get('/statistics/reward/pow', listPowRewardStat);
-    router.get('/statistics/reward/pos', listPosRewardStat);
+    router.get('/statistics/nft/asset', listNFTAssetStats);
+    router.get('/statistics/nft/contract', listNFTContractStats);
+    router.get('/statistics/nft/transfer', listNFTTransferStats);
+    router.get('/statistics/nft/holder', listNFTHolderStats);
+    router.get('/statistics/reward/pow', listPowRewardStats);
+    router.get('/statistics/reward/pos', listPosRewardStats);
 
-    router.get('/statistics/burnt/fee', listBurntFeeStat);
-    router.get('/statistics/burnt/rate', listBurntRateStat);
-    router.get('/statistics/block/base-fee', listCIP1559Stat(CIP1559StatType.BASE_FEE));
-    router.get('/statistics/block/avg-priority-fee', listCIP1559Stat(CIP1559StatType.PRIORITY_FEE));
-    router.get('/statistics/block/gas-used', listCIP1559Stat(CIP1559StatType.GAS_USED));
-    router.get('/statistics/block/txs-by-type', listCIP1559Stat(CIP1559StatType.TXS_BY_TYPE));
+    router.get('/statistics/burnt/fee', listBurntFeeStats);
+    router.get('/statistics/burnt/rate', listBurntRateStats);
+    router.get('/statistics/block/base-fee', listCIP1559Stats(CIP1559StatType.BASE_FEE));
+    router.get('/statistics/block/avg-priority-fee', listCIP1559Stats(CIP1559StatType.PRIORITY_FEE));
+    router.get('/statistics/block/gas-used', listCIP1559Stats(CIP1559StatType.GAS_USED));
+    router.get('/statistics/block/txs-by-type', listCIP1559Stats(CIP1559StatType.TXS_BY_TYPE));
 
     registerDataApi(router)
 }

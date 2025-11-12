@@ -1,7 +1,5 @@
 // @ts-ignore
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
-
-const superagent = require('superagent');
 import {format} from "js-conflux-sdk"
 import {fmtAddr, StatApp} from "../StatApp";
 import * as Koa from 'koa'
@@ -25,7 +23,7 @@ import {Epoch} from "../model/Epoch";
 import {registerPosRouter} from "./PosRouter";
 import {addConfluxConsortiumNFTRouter} from "./ConfluxConsortiumNFTRouter";
 import {listNftOfAccountByContract} from "../service/NftService";
-import {BalanceService, scientificToBigInt} from "../service/watcher/BalanceService";
+import {scientificToBigInt} from "../service/watcher/BalanceService";
 import {queryCrossSpaceStat} from "../service/CrossSpaceStat";
 import {
     formatBalance,
@@ -45,7 +43,9 @@ import {NoCoreSpace} from "../config/StatConfig";
 import {AbiInfo, parseAbiStr, saveAbiInfo} from "../model/ContractInfo";
 import {AuthAction, getAuthActionInTx, listAuthAction} from "../model/EIP7702model";
 import {getAccountQuery} from "../service/AccountQuery";
-import { CONST } from "../service/common/constant";
+import {CONST} from "../service/common/constant";
+
+const superagent = require('superagent');
 
 const e2k = require('express-to-koa');
 const swStats = require('swagger-stats');
@@ -62,15 +62,6 @@ export const ROUTER_PREFIX = '/stat'
 function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/server-info', async (ctx: Context) => {
         ctx.body = { serverInfo: `${statApp.config.serverTag} network id ${StatApp.networkId}` }
-    })
-
-    router.get('/account-token-balance', async(ctx) => {
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'base32');
-
-        const {base32} = ctx.request.query
-        const list = await BalanceService.listAccountBalance(base32)
-
-        ctx.body = {list}
     })
 
     router.get('/tokens/nft-token-id-count', async (ctx)=>{
@@ -109,7 +100,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const {address: base32} = ctx.request.query;
         ctx.body = {
             listLimit: 1000,
-            ...(await statApp.balanceService.rankHolder(base32, skip, limit))
+            ...(await statApp.balanceService.rankHolder(base32, skip, limit, true))
         }
     })
 
@@ -135,11 +126,6 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         }
         ctx.body = result || {};
     })
-
-    /*router.get('/token/sync', async (ctx)=>{
-        const {id} = ctx.request.query
-        ctx.body = await statApp.tokenQuery.sync({id})
-    })*/
 
     router.get('/tokens/detect', async (ctx)=>{
         mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address');
@@ -460,7 +446,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const key = `top-token-holder_${limit}_${token.symbol}_${token.hex40id}`;
         let list = dbCache.get(key);
         if (!list) {
-            const data = await statApp.balanceService.rankHolder(base32, 0, limit)
+            const data = await statApp.balanceService.rankHolder(base32, 0, limit, true)
             list = data.list;
             if (!list) {
                 ctx.body = data;
@@ -596,24 +582,6 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         };
     });
 
-    // daily address creation.
-    router.get('/daily-address-creation', async function (ctx) {
-        mustBeIntParamIfPresent(ctx.request.query, 'limit');
-        const {limit} = paginateCoreStat(ctx.request.query, {skipMax: undefined});
-
-        const list = await AddressStat.findAll({limit, order:[['day','DESC']]})
-        ctx.body = {list}
-    })
-
-    // daily active address.
-    router.get('/daily-active-address', async function (ctx) {
-        mustBeIntParamIfPresent(ctx.request.query, 'limit');
-        const {limit} = paginateCoreStat(ctx.request.query, {skipMax: undefined});
-
-        const list = await DailyActiveAddress.findAll({limit, order:[['day','DESC']]})
-        ctx.body = {list}
-    })
-
     // daily token stat
     router.get('/daily-token-stat', async function (ctx) {
         mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'base32', 'address');
@@ -634,60 +602,6 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = {list, token, base32, hex: format.hexAddress(base32), addressParam: addr}
     })
 
-    // daily cfx transfer count
-    router.get('/daily-cfx-txn', async function (ctx) {
-        mustBeIntParamIfPresent(ctx.request.query, 'limit');
-        const {limit} = paginateCoreStat(ctx.request.query, {skipMax: undefined});
-
-        const list = await DailyCfxTxn.findAll({limit, order:[['day','DESC']]})
-        ctx.body = {list}
-    })
-
-    // daily tx count
-    router.get('/txn/daily/list', async function (ctx) {
-        mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
-        const {skip, limit} = paginateCoreStat(ctx.request.query, {skipMax: undefined});
-
-        const page = await statApp.dailyTxnQuery.listTxnDaily(skip, limit);
-        ctx.body = page;
-    });
-
-    // daily cfx holder count
-    router.get('/cfx_holder/daily/list', async function (ctx) {
-        mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
-        const {skip, limit} = paginateCoreStat(ctx.request.query, {skipMax: undefined});
-
-        const page = await statApp.cfxHolderQuery.listCfxHolderDaily(skip, limit);
-        ctx.body = page;
-    });
-
-    // daily contract count
-    router.get('/contract/daily/list', async function (ctx) {
-        mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
-        const {skip, limit} = paginateCoreStat(ctx.request.query, {skipMax: undefined});
-
-        const page = await statApp.contractStatQuery.listContractCreateDaily(skip, limit);
-        ctx.body = page;
-    });
-
-    // daily total contract count
-    router.get('/contract/total/list', async function (ctx) {
-        mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
-        const {skip, limit} = paginateCoreStat(ctx.request.query, {skipMax: undefined});
-
-        const page = await statApp.contractStatQuery.listContractCreateDaily(skip, limit);
-        let yesterdayTotal = 0;
-        if(page?.rows){
-            const len = page.rows.length;
-            for(let i = len-1; i >= 0; i--){
-                page.rows[i].contractCount = page.rows[i].contractCount + yesterdayTotal;
-                yesterdayTotal = page.rows[i].contractCount;
-            }
-        }
-
-        ctx.body = page;
-    });
-
     router.get('/cross-space-cfx', async (ctx)=>{
         await queryCrossSpaceStat('DailyCfxToEVM', 'DailyCfxFromEVM',
             'DailyCfxCountToEVM', 'DailyCfxCountFromEVM',
@@ -695,40 +609,13 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         limitListOnBody(ctx)
     })
 
-    router.get('/contract/deploy/list', async function (ctx) {
-        mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
-        const {skip, limit} = paginateCoreStat(ctx.request.query, {skipMax: undefined});
-
-        const page = await statApp.contractStatQuery.listContractCreateDaily(skip, limit);
-
-        ctx.body = page;
-    });
-
-    router.get('/contract/register/list', async function (ctx) {
-        mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
-        const {skip, limit} = paginateCoreStat(ctx.request.query, {skipMax: undefined});
-
-        const page = await statApp.contractStatQuery.listContractRegisterDaily(skip, limit);
-
-        let totalContract = 0;
-        if(page?.rows){
-            const len = page.rows.length;
-            for(let i = len-1; i >= 0; i--){
-                totalContract = page.rows[i].contractCount + totalContract;
-                (page.rows[i])['contractTotalCount'] = totalContract;
-            }
-        }
-        ctx.body = page;
-    });
-
     router.get('/contract/stat/list', async (ctx)=>{
         mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address');
         mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
         const {skip, limit} = paginateCoreStat(ctx.request.query, {skipMax: undefined});
 
         const {address} = ctx.request.query
-        const page = await statApp.contractStatQuery.listStat(address, skip, limit);
-        ctx.body = page;
+        ctx.body = await statApp.statsQuery.listDailyContractTransferStat({address, skip, limit, sort: 'desc'});
     })
 
     router.get('/trace/create', async function (ctx) {
@@ -738,27 +625,6 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const createTrace = await statApp.traceCreateQuery.query(contract);
         ctx.body = createTrace;
     });
-
-    router.post('/recaptcha/siteverify', async function (ctx) {
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address');
-        // mustBeEnumParamIfPresent(ctx.request.query, 'type', ['Phish / Hack', 'Scam', 'Fishy', 'High Risk', 'Spam', 'Others']);
-        mustBeHex64ParamIfPresent(ctx.request.query, 'txn_hash');
-
-        //@ts-ignore
-        const {token, address, type, description, txn_hash} = ctx.request.body;
-        const verifyResult = await statApp.siteVerify.verify(token, address, type, description, txn_hash);
-        ctx.body = verifyResult;
-    });
-
-    router.get('/block/stat/list', async function (ctx) {
-        mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['min', 'hour', 'day']);
-        mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
-        const {skip, limit} = paginateCoreStat(ctx.request.query, {skipMax: undefined});
-
-        const {intervalType} = ctx.request.query
-        const page = await statApp.blockDataStatQuery.listStat(intervalType, skip, limit);
-        ctx.body = page;
-    })
 
     router.get('/nft/checker/preview', async function (ctx) {
         mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contractAddress');
@@ -798,26 +664,13 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = nftDetail;
     })
 
-    router.get('/nft/checker/balance', async function (ctx) {
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'ownerAddress');
-
-        const {ownerAddress} = ctx.request.query
-        const resp = await statApp.nftCheckerService.getNftBalancesForOpenApi({owner: ownerAddress, limit: 1000});
-        ctx.body = resp.list.map(item => ({
-            address: item.contract,
-            balance: item.balance,
-            name: {zh: item.name, en: item.name},
-            type: item.name,
-        }));
-    })
-
     async function list1155assets(ctx) {
         mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contractAddr', 'userAddr');
         mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit', 'tokenId');
         const {skip, limit} = paginateCore(ctx.request.query, {skipMax: undefined});
 
         const {contractAddr, userAddr, tokenId} = ctx.request.query;
-        const result = await statApp.nftCheckerService.getNftTokensForOpenApiPro({
+        const result = await statApp.nftCheckerService.listNftTokensForOpenApiPro({
             owner: userAddr, contract: contractAddr, tokenId: tokenId?.toString(), skip, limit});
 
         const addressArray = result.list.map(item => item.owner);

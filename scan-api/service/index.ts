@@ -13,15 +13,13 @@ import {TransferService} from "./TransferService";
 import {RecaptchaService} from "./RecaptchaService";
 import {Desensitizer} from "../../stat/service/Desensitizer";
 import {HomeDashboardService} from "../../stat/service/HomeDashboardService";
-import {DailyBlockDataStatQuery} from "../../stat/service/DailyBlockDataStatQuery";
-import {EpochQuery} from "../../stat/service/EpochQuery";
 import {FullBlockQuery} from "../../stat/service/FullBlockQuery";
 import {CfxTransferQuery} from "../../stat/service/CfxTransferQuery";
 import {Crc20TransferQuery} from "../../stat/service/Crc20TransferQuery";
 import {Crc721TransferQuery} from "../../stat/service/Crc721TransferQuery";
 import {Crc3525TransferQuery} from "../../stat/service/Crc3525TransferQuery";
 import {Crc1155TransferQuery} from "../../stat/service/Crc1155TransferQuery";
-import {BlockTraceCreateQuery} from "../../stat/service/BlockTraceCreateQuery";
+import {ContractTraceCreateQuery} from "../../stat/service/ContractTraceCreateQuery";
 import {ContractQuery} from "../../stat/service/ContractQuery";
 import {TokenQuery} from "../../stat/service/TokenQuery";
 import {ENSCheckerQuery} from "../../stat/service/ens/ENSCheckerQuery";
@@ -30,6 +28,7 @@ import {CensorService} from "../../stat/service/censor/CensorService";
 import {TokenTool} from "../../stat/service/tool/TokenTool";
 import {StatConfig} from "../../stat/config/StatConfig";
 import {JsonRPCSDK} from "../../common/JsonRPCSDK";
+import {StatsQuery} from "../../stat/service/StatsQuery";
 
 export interface ScanCtx {
   app: ScanApp
@@ -68,17 +67,15 @@ export interface ScanServices {
   recaptcha: RecaptchaService;
   desensitizer: Desensitizer;
   homeDashboard: HomeDashboardService;
-  blockData: DailyBlockDataStatQuery;
-  epochRdb: EpochQuery;
+  statsQuery: StatsQuery,
   fullBlock: FullBlockQuery;
   cfxTransfer: CfxTransferQuery;
   crc20Transfer: Crc20TransferQuery;
   crc721Transfer: Crc721TransferQuery;
   crc3525Transfer: Crc3525TransferQuery;
   crc1155Transfer: Crc1155TransferQuery;
-  traceCreate: BlockTraceCreateQuery;
+  traceCreate: ContractTraceCreateQuery;
   contractQuery: ContractQuery;
-  tokenRdb: TokenQuery;
   tokenQuery: TokenQuery;
   tokenTool?: TokenTool;
   ensCheckerQuery: ENSCheckerQuery;
@@ -102,17 +99,16 @@ export function serviceLoader(app) {
     recaptcha: new RecaptchaService(app),
     desensitizer: new Desensitizer(app),
     homeDashboard: HomeDashboardService.getInstance(app),
-    blockData: new DailyBlockDataStatQuery(app),
-    epochRdb: new EpochQuery(app),
+    statsQuery: new StatsQuery(app),
     fullBlock: new FullBlockQuery(app),
     cfxTransfer: new CfxTransferQuery(app),
     crc20Transfer: new Crc20TransferQuery(app),
     crc721Transfer: new Crc721TransferQuery(app),
     crc3525Transfer: new Crc3525TransferQuery(app),
     crc1155Transfer: new Crc1155TransferQuery(app),
-    traceCreate: new BlockTraceCreateQuery(app),
+    traceCreate: new ContractTraceCreateQuery(app),
     contractQuery: new ContractQuery(app),
-    tokenRdb: new TokenQuery(app),
+    tokenQuery: new TokenQuery(app),
     ensCheckerQuery: new ENSCheckerQuery(app),
     accountQuery: new AccountQuery(app),
     censor: new CensorService(app),

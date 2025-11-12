@@ -1,5 +1,5 @@
 import {Op} from 'sequelize'
-import {IntervalType, TimerStat} from "./TimerStat";
+import {StatType, TimerStat} from "./TimerStat";
 import {DailyBurntFeeStat} from "../../model/DailyBurntFeeStat";
 import {Epoch} from "../../model/Epoch";
 import {StatApp} from "../../StatApp";
@@ -15,7 +15,7 @@ export class StatDailyBurntFee extends TimerStat{
         super(app);
         this.cfx = app.cfx;
         this.suppressFullStateRpcErr = app.suppressFullStateRpcErr;
-        this.baseInterval = IntervalType.HOUR;
+        this.baseInterval = StatType.HOUR;
     }
 
     public bizAlias(): string {
@@ -63,7 +63,7 @@ export class StatDailyBurntFee extends TimerStat{
 
     public async stat(rangeBegin: Date, rangeEnd: Date){
         const hStat = await this.statRaw(rangeBegin, rangeEnd);
-        const dStat = await this.statAnalysis(rangeEnd, IntervalType.DAY);
+        const dStat = await this.statAnalysis(rangeEnd, StatType.DAY);
 
         const statArray = [hStat, dStat];
         await DailyBurntFeeStat.sequelize.transaction(async (dbTx) => {
@@ -71,7 +71,6 @@ export class StatDailyBurntFee extends TimerStat{
                 where: {statType: dStat.statType, statTime: dStat.statTime}, transaction: dbTx});
             await DailyBurntFeeStat.bulkCreate(statArray, {transaction: dbTx});
         });
-        console.log(`[${this.bizAlias()}]record:${JSON.stringify(statArray)}`);
     }
 
     // ------------------------------- biz -----------------------------------
@@ -80,7 +79,7 @@ export class StatDailyBurntFee extends TimerStat{
         return this.statBurntFee(intervalType, beginTime, endTime)
     }
 
-    private async statAnalysis(endTime: Date, destStatType: IntervalType): Promise<DailyBurntFeeStat> {
+    private async statAnalysis(endTime: Date, destStatType: StatType): Promise<DailyBurntFeeStat> {
         const beginTime = this.getRangeBegin(endTime, destStatType);
         return this.statBurntFee(destStatType, beginTime, endTime)
     }
@@ -108,7 +107,7 @@ export class StatDailyBurntFee extends TimerStat{
             }),
         ])
 
-        const statTime = this.getRangeBegin(beginTime, statType as IntervalType);
+        const statTime = this.getRangeBegin(beginTime, statType as StatType);
         const lastStat = await DailyBurntFeeStat.findOne({where: {statType, statTime}})
         const collateralOld = lastStat?.burntStorageFeeTotal || 0
         const feeOld = lastStat?.burntGasFeeTotal || 0

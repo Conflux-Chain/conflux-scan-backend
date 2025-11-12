@@ -1,10 +1,9 @@
 import {StatApp} from "../../stat/StatApp";
 import {getApiService} from "../ApiServer";
 import {setBody} from "../router/middleware";
-import {format, sign} from "js-conflux-sdk";
+import {format} from "js-conflux-sdk";
 import {
     checkPresent,
-    getPagination,
     mustBeAddressArrayParamIfPresent,
     mustBeAddressParamIfPresent,
     mustBeEnumParamIfPresent,
@@ -12,26 +11,32 @@ import {
 } from "../../stat/service/common/utils";
 import {paginateCore} from "../../stat/router/ParamChecker";
 import {Errors} from "../../stat/service/common/LogicError";
+import {TokenQuery} from "../../stat/service/TokenQuery";
 
 const lodash = require('lodash');
 
-export async function listNFTBalances(ctx) {
+export async function listAccountNFTs(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'owner');
     mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
 
     const {owner} = ctx.request.query;
     const {skip, limit} = paginateCore(ctx.request.query);
+
     checkPresent({owner}, ['owner']);
 
-    const data = await getApiService().nftCheckerService.getNftBalancesForOpenApi({owner, skip, limit});
+    const result = await TokenQuery.listByAccount({owner, types: ['ERC721', 'ERC1155'], skip, limit});
 
-    if (StatApp.isEVM) {
-        data?.list?.forEach(row => {
-            row.owner = row.owner ? format.hexAddress(row.owner) : row.owner;
-            row.contract = row.contract ? format.hexAddress(row.contract) : row.contract;
-        });
-    }
-    setBody(ctx, data)
+    result.list = result.list.map((token: any) =>
+        lodash.assign({
+                owner: StatApp.isEVM ? format.hexAddress(owner) : owner,
+                contract: StatApp.isEVM ? format.hexAddress(token.contract) : token.contract,
+            },
+            lodash.pick(token, ['type', 'balance', 'name', 'symbol', 'iconUrl', 'webSite']))
+    );
+
+    result.list = result.list.map(token => lodash.pickBy(token, value => !lodash.isNil(value)));
+
+    setBody(ctx, result);
 }
 
 export async function listNFTTokensPro(ctx) {
@@ -50,7 +55,7 @@ export async function listNFTTokensPro(ctx) {
         throw new Errors.ParameterError(`At least one of the parameters 'contract' and 'owner' is required.`);
     }
 
-    const data = await getApiService().nftCheckerService.getNftTokensForOpenApiPro({
+    const data = await getApiService().nftCheckerService.listNftTokensForOpenApiPro({
         owner, contract, tokenId: tokenId?.toString(), sort, sortField, cursor, skip, limit});
     if(withBrief === 'true' || withMetadata === 'true') {
         const externalMs = await batchGetNFTInfoList({nftList: data?.list, withBrief, withMetadata, suppressMetadataError});

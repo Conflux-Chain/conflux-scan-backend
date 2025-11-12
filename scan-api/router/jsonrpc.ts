@@ -76,8 +76,7 @@ export const jsonrpc_plot = jsonrpc.method_('plot',
       app: { service },
     } = this as ScanCtx;
 
-    const list = await service.statistic.plot(options);
-    return { total: list.length, list };
+    return service.statistic.plot(options);
   },
 );
 
@@ -324,7 +323,7 @@ export const jsonrpc_queryContract = jsonrpc.method_('queryContract',
 
     const result = await service.contract.query({ address, fields });
     if (lodash.includes(fields, 'token')) {
-      result.token = await service.token.queryPlus({ address });
+      result.token = await service.token.query({ address });
     }
 
     return { ...result, isRegistered: result?.name !== undefined };

@@ -2,7 +2,7 @@ import {Conflux, format as sdk_format, sign} from "js-conflux-sdk";
 import {Errors} from "./LogicError";
 import {ScanHttpProvider} from "./ScanHttpProvider";
 import {ConfluxOption} from "../../config/StatConfig";
-import { networkInterfaces } from 'os';
+import {networkInterfaces} from 'os';
 import {ethers} from "ethers";
 import {ConsortiumConflux} from "./ConsortiumConflux";
 import {KEY_EVM_VERSIONS, KV} from "../../model/KV";
@@ -10,7 +10,6 @@ import {useFastFormat} from "./fastFormatter";
 import {CONST} from "./constant";
 
 const lodash = require('lodash');
-const format = require('js-conflux-sdk/src/rpc/types/formatter');
 const {isValidCfxAddress, decodeCfxAddress} = require('js-conflux-sdk/src/util/address');
 
 export function pageParam(obj: object, skipKey: string, limitKey: string, defaultLimit: number) {
@@ -83,8 +82,7 @@ export function patchFormat() {
 
 export function noVerboseAddr(v) {
     const obj = decodeCfxAddress(v)
-    const simple = sdk_format.address(obj.hexAddress, obj.netId)
-    return simple;
+    return sdk_format.address(obj.hexAddress, obj.netId)
 }
 
 // skip exceeds 10_000;
@@ -177,20 +175,6 @@ export function mustBeEnumParamArrayIfPresent(obj, key: string, options:string[]
     obj[key] = paramArray
 }
 
-export function mustBeEnumParamsIfPresent(obj, options:string[], ...keys:string[]) {
-    for (const key of keys) {
-        const v = obj[key]
-        if (v === undefined || v === null) {
-            return
-        }
-        const has = options.includes(v)
-        if (has) {
-            return
-        }
-        throw new Errors.ParameterError(`Invalid parameter [${key}] with value [${v}]. Should be one of [${options.join(',')}]`)
-    }
-}
-
 export function mustBeAddressParamIfPresent(obj, netId, isEVM, ...keys:string[]) {
     for(const k of keys) {
         const v = obj[k];
@@ -251,6 +235,28 @@ export function mustBeHex64ParamIfPresent(obj, ...keys:string[]) {
         }
         if (!/0x[0-9a-fA-F]{64}/.test(v)) {
             throw new Errors.ParameterError(`Invalid Hex64 parameter with value [${v}].`);
+        }
+    }
+}
+
+export function mustBeDateParamIfPresent(obj, ...keys:string[]) {
+    for(const k of keys) {
+        const v = obj[k];
+        if (v === undefined || v === null) {
+            continue;
+        }
+
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+            throw new Errors.ParameterError(`Invalid date parameter [${k}] with value [${v}]. Expected format: yyyy-MM-dd`);
+        }
+
+        const date = new Date(v);
+        const [year, month, day] = v.split('-').map(Number);
+
+        if (date.getFullYear() !== year ||
+            date.getMonth() + 1 !== month ||
+            date.getDate() !== day) {
+            throw new Errors.ParameterError(`Invalid date parameter [${k}] with value [${v}].`);
         }
     }
 }
@@ -368,59 +374,11 @@ export function patchHttpProvider(cfx:Conflux, cfxConf, tag='NotSet') {
     cfx.provider = new ScanHttpProvider(cfxConf, tag);
 }
 
-// batch fetch block detail, with transaction and trace.
-export async function batchBlockDetail(cfx: Conflux, hashes: string[], consortiumMode: boolean = false) : Promise<[any[],any[]]> {
-    if(consortiumMode) {
-        const rpcBlocks = hashes.map(hash=>{return {"method": "cfx_getBlockByHash","params": [hash, true]}});
-        let traces = [];
-        for (const hash of hashes) {
-            const trace = await cfx.traceBlock(hash);
-            traces.push(trace);
-        }
-        return cfx.provider.batch(rpcBlocks).then(blocks=>{
-            formatBlock(blocks)
-            return [blocks, traces]
-        })
-    }
-
-    const rpcBlocks = hashes.map(hash=>{return {"method": "cfx_getBlockByHash","params": [hash, true]}});
-    const rpcTraces = hashes.map(hash=>{return {"method": "trace_block","params": [hash]}});
-    const rpcBoth = [...rpcBlocks, ...rpcTraces]
-    const len = hashes.length
-    return cfx.provider.batch(rpcBoth).then(arr=>{
-        const blocks = arr.slice(0, len)
-        formatBlock(blocks)
-        const traces = arr.slice(len)
-        formatTrace(traces)
-        return [blocks, traces]
-    })
-}
-
-function formatBlock(arr) {
-    arr.forEach((blk, idx)=>{
-        arr[idx] = format.block.$or(null)(blk);
-    })
-}
 export function batchFetchBlock(cfx:Conflux, hashes:string[], pivot: string, epoch: number) {
     pivot = pivot ?? hashes[hashes.length-1];
     return Promise.all(hashes.map(hash=>{
         return cfx.getBlockByHashWithPivotAssumption(hash, pivot, epoch);
     }))
-}
-
-export function isNewFormatTrace(traceArray2d:any[] = []) {
-    // the 1st trace is always gas payment (for now in evm hard-fork)
-    for (let blk of traceArray2d) {
-        for (let tx of blk?.transactionTraces || []) {
-            for (let r of tx?.traces || []) {
-                const {action:{ fromPocket, toPocket, fromSpace, toSpace, space }} = r;
-                if(fromPocket || toPocket || fromSpace || toSpace || space) {
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
 }
 
 export function formatTrace(arr: (object | Error)[]) {
@@ -444,51 +402,10 @@ export function batchTraceBlock(cfx:Conflux, hashes:string[]) {
         return cfx.traceBlock(hash)
     }))
 }
-export function batchTraceBlockSdk(cfx:Conflux, hashes:string[]) {
-    return cfx.provider.batch(
-        hashes.map(hash=>{
-            return {"method": "trace_block",
-                params: [hash]}
-        })
-    ).then(arr=>{
-        formatTrace(arr);
-        return arr
-    })
-}
-
-export function markCallResult(traces:any[]) {
-    const stack = []
-    for(let tr of traces) {
-        const {type, action: {outcome}} = tr
-        if (type === 'call_result') {
-            const pre = stack.pop()
-            pre.markCallResult = outcome
-            tr.markCallResult = outcome
-            continue
-        }
-        if (type !== 'call') {
-            tr.markCallResult = 'success';
-            continue
-        }
-        stack.push(tr)
-    }
-    if (stack.length) {
-        throw new Error(`check trace stack still has element: ${stack.length}. traces:\n ${JSON.stringify(traces)}`);
-    }
-}
 
 export function list2map(arr:any[], key:string) {
     const ret = new Map<any,any>()
     arr.forEach(t=>ret.set(t[key], t))
-    return ret;
-}
-
-// reverse to v,k
-export function reverseMap(map:Map<any, any>) {
-    const ret = new Map<any, any>()
-    for(const k of map.keys()){
-        ret.set(map.get(k), k)
-    }
     return ret;
 }
 
@@ -531,10 +448,6 @@ export function checkSolcOptimization(optimizationUsed, runs) {
         throw new Error(`Invalid parameter <runs> with value [${runs}], expect runs >= 0`);
     }
     return {optimizationUsed, runs}
-}
-
-export function checkFullQualifiedName(fullQualifiedName) {
-    checkPresent({fullQualifiedName}, ['fullQualifiedName'])
 }
 
 // requestVersion: 0.3.10
@@ -633,28 +546,53 @@ export function emptyField(data) {
     return data;
 }
 
-export const INTERVAL_TYPE = {min: 'min', hour: 'hour', day: 'day', month: 'month'};
-export function calCount(minTimestamp, maxTimestamp, intervalType) {
-    const start = minTimestamp !== undefined ? minTimestamp : ((new Date('2020-10-28 16:00:00')).getTime() / 1000);
-    const end = maxTimestamp !== undefined ? maxTimestamp : (Date.now() / 1000);
-    const elapsed = end - start;
+export const INTERVAL_TYPE = {
+    min: 'min',
+    hour: 'hour',
+    day: 'day',
+    month: 'month',
+};
 
-    let count;
-    switch (intervalType) {
-        case INTERVAL_TYPE.day:
-            count = elapsed / (60 * 60 * 24);
-            break;
-        case INTERVAL_TYPE.hour:
-            count = elapsed / (60 * 60);
-            break;
-        case INTERVAL_TYPE.min:
-            count = elapsed / 60;
-            break;
-        default:
-            throw new Error(`intervalType:${intervalType} not supported`);
+export const STAT_TYPE_CONVERTER = {
+    min: '1m',
+    hour: '1h',
+    day: '1d',
+    month: '1mo',
+}
+
+export const ONE_DAY_IN_SECONDS = 86400;
+export const ONE_HOUR_IN_SECONDS = 3600;
+export const ONE_MIN_IN_SECONDS = 60;
+
+export function calCount(
+    {
+        minTimestampUTC,
+        maxTimestampUTC,
+        intervalType,
+    }:{
+        minTimestampUTC: number,
+        maxTimestampUTC?: number,
+        intervalType: string,
+    }) {
+    if (minTimestampUTC === undefined) {
+        throw new Error('Parameter minTimestampUTC not provided.');
+    }
+    if (maxTimestampUTC === undefined) {
+        maxTimestampUTC = Math.floor(Date.now() / 1000);
     }
 
-    return Math.ceil(count);
+    const intervalConverter = {
+        day: ONE_DAY_IN_SECONDS,
+        hour: ONE_HOUR_IN_SECONDS,
+        min: ONE_MIN_IN_SECONDS,
+    };
+
+    const interval = intervalConverter[intervalType];
+    if (interval === undefined) {
+        throw new Error(`IntervalType ${intervalType} not supported.`);
+    }
+
+    return Math.ceil((maxTimestampUTC - (minTimestampUTC - minTimestampUTC % interval)) / interval);
 }
 
 export function formatPrice(priceStr) {

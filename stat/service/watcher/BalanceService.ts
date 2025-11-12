@@ -1,12 +1,13 @@
+import {AccountQuery} from "../AccountQuery";
 
 const lodash = require('lodash');
 import {Token} from "../../model/Token";
-import {getAddrId, Hex40Map, makeId, makeIdV} from "../../model/HexMap";
+import {getAddrId, Hex40Map} from "../../model/HexMap";
 // @ts-ignore
 import {format} from "js-conflux-sdk";
 import {BalanceWatcher} from "./BalanceWatcher";
 import {Op, cast, col} from "sequelize";
-import {fmtAddr, StatApp} from "../../StatApp";
+import {fmtAddr} from "../../StatApp";
 import {BatchBalanceWatcher} from "./BatchBalanceWatcher";
 import {TokenQuery} from "../TokenQuery";
 import {Errors} from "../common/LogicError";
@@ -15,7 +16,7 @@ import {patchSum1155amount} from "./Erc1155DataSync";
 import {ethers} from "ethers";
 
 export class BalanceService {
-    private app: StatApp;
+    private app: {accountQuery: AccountQuery};
     private readonly networkId: number;
 
     constructor(app, networkId:number = 1029) {
@@ -30,20 +31,14 @@ export class BalanceService {
         await Token.update({holder: holder}, {where: {hex40id}})
     }
 
-    async rankHolder(base32: any, skip: any, limit: any) {
-        const {
-            app: { tokenTool },
-        } = this;
-
+    async rankHolder(base32: any, skip: any, limit: any, withTokenInfo: boolean = false) {
         let token = await Token.findOne({where: {base32: base32}, attributes: {exclude: ['icon']}})
         if (token == null) {
-            // return {total: 0, list:[], message: 'token not found '+base32, code: 404}
             // @ts-ignore
             token = {hex40id: await getAddrId(base32), symbol: ''}
         }
         let table = BalanceWatcher.mapModel('', true, token.hex40id);
         if (table == null) {
-            /*return {total: 0, list:[], message: 'token not found '+base32, code: 6404}*/
             throw new Errors.ParameterError(`token ${base32} not found`);
         }
         const start = Date.now()
@@ -66,7 +61,6 @@ export class BalanceService {
         const retList = list.map(holder=>{
             const addr = map.get(holder.addressId)
             const address = addr ? fmtAddr(addr, this.networkId): holder.addressId
-            // console.log(`balance type is : ${typeof  holder.balance}`)
             return {
                 // holder.balance is string
                 balance: is1155 ? holder.balance : this.decimal2drip(holder.balance, 18),
@@ -81,14 +75,17 @@ export class BalanceService {
         })
 
         // add token info
-        const addressArray = retList.map(item => item.account.address);
-        const accountBasic = await this.app.accountQuery.listPatchInfo(addressArray);
-        retList.forEach((item) => {
-            item['tokenInfo'] = accountBasic.map[item.account.address]?.token;
-            item['contractInfo'] = accountBasic.map[item.account.address]?.contract;
-            item['ensInfo'] = accountBasic.map[item.account.address]?.ens;
-            item['nameTagInfo'] = accountBasic.map[item.account.address]?.nameTag;
-        });
+        let accountBasic
+        if(withTokenInfo) {
+            const addressArray = retList.map(item => item.account.address);
+            accountBasic = await this.app.accountQuery.listPatchInfo(addressArray);
+            retList.forEach((item) => {
+                item['tokenInfo'] = accountBasic.map[item.account.address]?.token;
+                item['contractInfo'] = accountBasic.map[item.account.address]?.contract;
+                item['ensInfo'] = accountBasic.map[item.account.address]?.ens;
+                item['nameTagInfo'] = accountBasic.map[item.account.address]?.nameTag;
+            });
+        }
 
         return {total, list: retList, skip, limit, table: table.getTableName(), holderQuery:elapsed, accountBasic}
     }
@@ -106,11 +103,6 @@ export class BalanceService {
         return ret;
     }
 
-    static async listAccountBalance(base32: string) : Promise<any[]>{
-        return this.listAccountBalanceInner(base32).then(res=>{
-            return res.list
-        })
-    }
     static async listAccountBalanceInner(base32: string, tokenType = []) :
         Promise<{ candidate?: number; list: any[]; message?: string }>{
         const hex = format.hexAddress(base32)
@@ -155,13 +147,6 @@ export class BalanceService {
             }
         )
         return {list:resultList, candidate: tokenList.length}
-    }
-    async getHolderCount(base32: string) : Promise<number> {
-        const token = await Token.findOne({where: {base32: base32}})
-        if (token == null) {
-            return null
-        }
-        return token.holder
     }
 }
 

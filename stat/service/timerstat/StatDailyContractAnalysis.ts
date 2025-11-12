@@ -9,14 +9,14 @@ import {Erc721Transfer} from "../../model/Erc721Transfer";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {makeId} from "../../model/HexMap";
 import {CONST} from "../common/constant"
-import {IntervalType, TimerStat} from "./TimerStat";
+import {StatType, TimerStat} from "./TimerStat";
 import {ConfigInstance, NoCoreSpace} from "../../config/StatConfig";
 
 export class StatDailyContractAnalysis extends TimerStat{
 
     constructor(app: any) {
         super(app);
-        this.baseInterval = IntervalType.DAY;
+        this.baseInterval = StatType.DAY;
     }
 
     public bizAlias(): string {
