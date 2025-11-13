@@ -224,12 +224,7 @@ export class TokenQuery {
             if (tokens?.length) {
                 list = [...list, ...tokens];
             }
-            list.forEach(item => {
-                item.name = Desensitizer.mosaicStr(item.address, item.name);
-                item.symbol = Desensitizer.mosaicStr(item.address, item.symbol);
-                item.icon = Desensitizer.mosaicIcon(item.address, item.icon);
-                item.iconUrl = Desensitizer.mosaicUri(item.address, item.iconUrl);
-            });
+            list.forEach(TokenQuery.mosaicToken);
             count = list.length;
         }
 
@@ -363,6 +358,7 @@ export class TokenQuery {
         list.forEach((token: any) => {
             token.contract = StatApp.isEVM ? format.hexAddress(token.contract) : token.contract;
             token.type = StatApp.isEVM ? token.type : token.type?.replace('ERC', 'CRC');
+            TokenQuery.mosaicToken(token);
         });
 
         if (withRealtimeBalance && list.length) {
@@ -375,6 +371,14 @@ export class TokenQuery {
         }
 
         return {total, list};
+    }
+
+    private static mosaicToken(token: any) {
+        const address = token.address || token.contract;
+        token.name = Desensitizer.mosaicStr(address, token.name);
+        token.symbol = Desensitizer.mosaicStr(address, token.symbol);
+        token.icon = Desensitizer.mosaicIcon(address, token.icon);
+        token.iconUrl = Desensitizer.mosaicUri(address, token.iconUrl);
     }
 
     static async listAccountTokens({ accountAddress }) {

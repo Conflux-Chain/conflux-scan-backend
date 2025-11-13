@@ -346,6 +346,7 @@ export class StatsQuery {
         }
         const createDate = truncateHour(addressInfo.createdAt);
         const latestDate = truncateHour(new Date());
+        latestDate.setDate(latestDate.getDate() - 1);
 
         const {isEmpty, totalDays: total, minDate, maxDate} = this.calDateRange(sort, skip, limit, createDate, latestDate);
         if (isEmpty) {
@@ -589,8 +590,8 @@ export class StatsQuery {
         return {
             totalDays,
             isEmpty: false,
-            minDate: addDays(baseDate, direction * (skip + (isAsc ? 0 : limit))),
-            maxDate: addDays(baseDate, direction * (skip + (isAsc ? limit : 0))),
+            minDate: addDays(baseDate, direction * (effectiveSkip + (isAsc ? 0 : effectiveLimit))),
+            maxDate: addDays(baseDate, direction * (effectiveSkip + (isAsc ? effectiveLimit : 0))),
         };
     }
 

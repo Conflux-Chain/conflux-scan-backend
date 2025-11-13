@@ -113,7 +113,7 @@ export class StatApp{
         this.statsQuery = new StatsQuery(this);
         this.nftPreviewService = new NFTPreviewService(this);
         this.nftCheckerService = new NFTCheckerService(this);
-        this.desensitizer = new Desensitizer(this);
+        this.desensitizer = new Desensitizer();
         this.rankService = new RankService(this)
         this.rankService.repeatUpdateTxnCache(); // scheduleCache
         this.fullBlockQuery = new FullBlockQuery(this);

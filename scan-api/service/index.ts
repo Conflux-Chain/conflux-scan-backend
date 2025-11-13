@@ -97,7 +97,7 @@ export function serviceLoader(app) {
     announce: new AnnounceService(app),
     transfer: new TransferService(app),
     recaptcha: new RecaptchaService(app),
-    desensitizer: new Desensitizer(app),
+    desensitizer: new Desensitizer(),
     homeDashboard: HomeDashboardService.getInstance(app),
     statsQuery: new StatsQuery(app),
     fullBlock: new FullBlockQuery(app),
