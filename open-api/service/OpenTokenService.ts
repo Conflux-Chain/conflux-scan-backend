@@ -6,11 +6,12 @@ import {Token} from "../../stat/model/Token";
 import {checkPresent, formatPrice, mustBeAddressArrayParamIfPresent} from "../../stat/service/common/utils";
 import {setBody} from "../router/middleware";
 import {fixIconUrl} from "./OpenAccountService";
-import {TokenQuery} from "../../stat/service/TokenQuery";
+import {CONST} from "../../stat/service/common/constant";
+import {Errors} from "../../stat/service/common/LogicError";
 
 const lodash = require('lodash');
 
-export async function queryTokenInfo(address) {
+export async function getToken(address) {
     const token = await getApiService().tokenQuery.query({address});
     const result = {
         contractAddress: token.address,
@@ -32,8 +33,15 @@ export async function queryTokenInfo(address) {
     return result;
 }
 
+export async function validERC20Token(address) {
+    const token = await getApiService().tokenQuery.query({address})
+    if(!token || token.transferType !== CONST.TRANSFER_TYPE.ERC20) {
+        throw new Errors.ParameterError(`ERC20 token ${address} not found.`);
+    }
+}
+
 const MAX_TOKENS = 30;
-export async function getTokenInfos(ctx) {
+export async function listTokens(ctx) {
     mustBeAddressArrayParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contracts');
     const { contracts: addrArray } = ctx.request.query;
     checkPresent({contracts: addrArray}, ['contracts']);

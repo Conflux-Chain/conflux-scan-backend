@@ -31,8 +31,9 @@ import {
     getContractCreation,
 } from "../service/OpenContractService";
 import {
-    getTokenInfos,
-    queryTokenInfo
+    getToken,
+    listTokens,
+    validERC20Token,
 } from "../service/OpenTokenService";
 import {
     listAccountNFTs,
@@ -489,6 +490,7 @@ async function getTokenBalance(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contractaddress', 'address');
     const {contractaddress, address} = ctx.request.query;
     checkPresent({contractaddress, address}, ['contractaddress', 'address']);
+    await validERC20Token(contractaddress);
 
     const result = await getApiService().tokenTool.getTokenBalance(contractaddress, address, undefined, true);
     checkError(result);
@@ -506,6 +508,7 @@ async function getTokenBalanceHistory(ctx) {
     mustBeIntParamIfPresent(ctx.request.query, 'blockno');
     const {contractaddress, address, blockno: epochNumber} = ctx.request.query;
     checkPresent({contractaddress, address, blockno: epochNumber}, ['contractaddress', 'address', 'blockno']);
+    await validERC20Token(contractaddress);
 
     let result = await getApiService().tokenTool.getTokenBalance(contractaddress, address, epochNumber);
     result = result === undefined ? '0' : result;
@@ -609,23 +612,15 @@ async function listLogs(ctx) {
     setBody(ctx, result)
 }
 
-/*
-https://evmapi-stage.confluxscan.net/api?module=tokens&action=tokenholderlist&contractaddress=0x94bd7a37d2ce24cc597e158facaa8d601083ffec
-*/
 async function listTokenHolders(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contractaddress');
     mustBeIntParamIfPresent(ctx.request.query, 'page', 'offset');
 
     const {contractaddress} = ctx.request.query;
     checkPresent({contractaddress}, ['contractaddress']);
+    await validERC20Token(contractaddress);
     const {page, offset} = paginateEVM(ctx.request.query, {limit: 10});
     const skip = (page - 1) * offset;
-
-    const token = await getApiService().tokenQuery.query({address: contractaddress})
-    if(!token || token.transferType !== CONST.TRANSFER_TYPE.ERC20) {
-        setBody(ctx, undefined, 1, `ERC20 token ${contractaddress} not found` )
-        return;
-    }
 
     const data = await getApiService().balanceService.rankHolder(contractaddress, skip, offset)
     if(!data?.list) {
@@ -642,9 +637,6 @@ async function listTokenHolders(ctx) {
     setBody(ctx, list)
 }
 
-/*
-https://evmapi-stage.confluxscan.net/api?chainid=1&module=token&action=topholderlist&contractaddress=0xdAC17F958D2ee523a2206206994597C13D831ec7&offset=10&apikey=N93565EZUT1FY9Y5U46VG4M4CISWF6WSWM
-*/
 async function getTokenHolderCount(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contractaddress');
 
@@ -668,15 +660,11 @@ async function listTokenTopHolders(ctx) {
 
     const {contractaddress, offset} = ctx.request.query;
     checkPresent({contractaddress}, ['contractaddress']);
+    await validERC20Token(contractaddress);
+
     const limit = offset || DEFAULT_TOP_HOLDERS;
     if (limit > MAX_TOP_HOLDERS) {
         throw new Errors.ParameterError(`Parameter offset exceeds ${MAX_TOP_HOLDERS}`);
-    }
-
-    const tokenInfo = await queryTokenInfo(contractaddress);
-    if(!tokenInfo){
-        setBody(ctx, undefined, 1, `token ${contractaddress} not found` );
-        return;
     }
 
     const data = await getApiService().balanceService.rankHolder(contractaddress, 0, limit)
@@ -691,6 +679,7 @@ async function listTokenTopHolders(ctx) {
             TokenHolderQuantity: tokenBalance.balance,
         })
     )
+
     setBody(ctx, list)
 }
 
@@ -699,13 +688,12 @@ async function getTokenInfo(ctx) {
     const {contractaddress} = ctx.request.query;
     checkPresent({contractaddress}, ['contractaddress']);
 
-    const tokenInfo = await queryTokenInfo(contractaddress);
-    if(!tokenInfo){
-        setBody(ctx, undefined, 1, `token ${contractaddress} not found` );
-        return;
+    const token = await getToken(contractaddress);
+    if(!token){
+        throw new Errors.ParameterError(`Token ${contractaddress} not found.`);
     }
 
-    const result = [tokenInfo];
+    const result = [token];
     setBody(ctx, result)
 }
 
@@ -807,6 +795,7 @@ async function getTokenSupply(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contractaddress');
     const {contractaddress} = ctx.request.query;
     checkPresent({contractaddress}, ['contractaddress']);
+    await validERC20Token(contractaddress);
 
     const result = await getApiService().tokenTool.getTokenTotalSupply(contractaddress, undefined, true);
     checkError(result);
@@ -818,6 +807,7 @@ async function getTokenSupplyHistory(ctx) {
     mustBeIntParamIfPresent(ctx.request.query, 'blockno');
     const {contractaddress, blockno: epochNumber} = ctx.request.query;
     checkPresent({contractaddress, blockno: epochNumber}, ['contractaddress', 'blockno']);
+    await validERC20Token(contractaddress);
 
     let result = await getApiService().tokenTool.getTokenTotalSupply(contractaddress, epochNumber, true);
     checkError(result);
@@ -1055,7 +1045,7 @@ export function registerRouter(router: Router) {
     router.get('/statistics/block/gas-used', listCIP1559Stats(CIP1559StatType.GAS_USED));
     router.get('/statistics/block/txs-by-type', listCIP1559Stats(CIP1559StatType.TXS_BY_TYPE));
 
-    // account(deprecated)
+    // account
     router.get('/account/transactions', listAccountTransaction)
     router.get('/account/cfx/transfers', listAccountCfxTransfer)
     router.get('/account/crc20/transfers', listAccountTransfer20)
@@ -1070,8 +1060,8 @@ export function registerRouter(router: Router) {
     router.get('/account/approvals', listApproval)
     router.get('/account/tokens', listAccountAssets)
 
-    // token(deprecated)
-    router.get('/token/tokeninfos', getTokenInfos);
+    // token
+    router.get('/token/tokeninfos', listTokens);
 
     registerDataApi(router)
 }

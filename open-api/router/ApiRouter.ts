@@ -25,7 +25,10 @@ import {
     verifyProxyContract,
     verifySourcecode
 } from "../service/OpenContractService";
-import {getTokenInfos, queryTokenInfo} from "../service/OpenTokenService";
+import {
+    getToken,
+    listTokens,
+} from "../service/OpenTokenService";
 import {
     getNFTPreview,
     listAccountNFTs,
@@ -93,7 +96,7 @@ async function getTokenInfo(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM,'contract');
     const {contract} = ctx.request.query;
 
-    const result = await queryTokenInfo(contract);
+    const result = await getToken(contract);
     setBody(ctx, result)
 }
 
@@ -173,7 +176,7 @@ function registerRouter(router: Router) {
 
     // token
     router.get('/token/tokeninfo', getTokenInfo);
-    router.get('/token/tokeninfos', getTokenInfos);
+    router.get('/token/tokeninfos', listTokens);
 
     // nft assets
     router.get('/nft/balances', listAccountNFTs);
