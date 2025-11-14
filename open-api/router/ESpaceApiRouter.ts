@@ -941,6 +941,7 @@ function parseGatewayParam(ctx) {
 }
 
 function parseListTransferParam(ctx) {
+    mustBeHex64ParamIfPresent(ctx.request.query, 'txhash');
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contractaddress', 'address');
     mustBeIntParamIfPresent(ctx.request.query, 'page', 'offset', 'startblock', 'endblock');
     mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['asc', 'desc']);
