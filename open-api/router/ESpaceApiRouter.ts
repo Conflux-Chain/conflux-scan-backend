@@ -482,7 +482,16 @@ async function getBalanceHistory(ctx) {
     const {address, blockno: epochNumber} = ctx.request.query;
     checkPresent({address, blockno: epochNumber}, ['address', 'blockno']);
 
-    const result = await getApiService().cfx.getBalance(address, epochNumber);
+    let result;
+    try{
+        result = await getApiService().cfx.getBalance(address, epochNumber);
+    } catch (e){
+        // code: -32602,
+        // message: 'Invalid parameters: num',
+        // data: '"Specified epoch 226979060 is not executed, the latest state epoch is 134633298"'
+        throw new Errors.ParameterError(`${e?.data ? e.data : e?.message}`);
+    }
+
     setBody(ctx, result)
 }
 
