@@ -9,16 +9,12 @@ import {CfxWatcher} from "./service/watcher/BalanceWatcher";
 import {BalanceService} from "./service/watcher/BalanceService";
 import {ChainWatcher} from "./service/watcher/chain/ChainWatcher";
 import {BatchBalanceWatcher} from "./service/watcher/BatchBalanceWatcher";
-import {DailyTxnQuery} from "./service/DailyTxnQuery";
-import {CfxHolderQuery} from "./service/CfxHolderQuery";
 import {TokenQuery} from "./service/TokenQuery";
-import {BlockTraceCreateQuery} from "./service/BlockTraceCreateQuery";
-import {ReportService} from "./service/ReportService";
+import {ContractTraceCreateQuery} from "./service/ContractTraceCreateQuery";
 import {IPFSGatewaySync} from "./service/IPFSGatewaySync";
 import {HomeDashboardService} from "./service/HomeDashboardService";
 import {ContractQuery} from "./service/ContractQuery";
-import {DailyContractStatQuery} from "./service/DailyContractStatQuery";
-import {DailyBlockDataStatQuery} from "./service/DailyBlockDataStatQuery";
+import {StatsQuery} from "./service/StatsQuery";
 import {NFTPreviewService} from "./service/nftchecker/NFTPreviewService";
 import {NFTCheckerService} from "./service/nftchecker/NFTCheckerService";
 import {initCfxSdk, initEthSdk} from "./service/common/utils";
@@ -53,16 +49,12 @@ export class StatApp{
     public batchBalanceWatcher: BatchBalanceWatcher;
     public cfxWatcher:CfxWatcher;
     public posQuery: PosQuery
-    public dailyTxnQuery: DailyTxnQuery;
-    public cfxHolderQuery: CfxHolderQuery;
     public tokenQuery: TokenQuery;
-    public traceCreateQuery: BlockTraceCreateQuery;
-    public siteVerify: ReportService;
+    public traceCreateQuery: ContractTraceCreateQuery;
     public ipfsGatewaySync: IPFSGatewaySync;
     public homeDashboardService: HomeDashboardService;
     public contractQuery: ContractQuery;
-    public contractStatQuery: DailyContractStatQuery;
-    public blockDataStatQuery: DailyBlockDataStatQuery;
+    public statsQuery: StatsQuery;
     public nftPreviewService: NFTPreviewService;
     public nftCheckerService: NFTCheckerService;
     public fullBlockQuery: FullBlockQuery;
@@ -113,19 +105,15 @@ export class StatApp{
         // @ts-ignore
         this.balanceService = new BalanceService(this, StatApp.networkId)
         new ChainWatcher().watchPivotSwitch({cfxWsUrl: this.config.cfxWsUrl}).then()
-        this.dailyTxnQuery = new DailyTxnQuery();
         this.posQuery = new PosQuery(this.cfx);
-        this.cfxHolderQuery = new CfxHolderQuery();
         this.tokenQuery = new TokenQuery(this);
-        this.traceCreateQuery = new BlockTraceCreateQuery(this);
-        this.siteVerify = new ReportService(this);
+        this.traceCreateQuery = new ContractTraceCreateQuery(this);
         this.ipfsGatewaySync = new IPFSGatewaySync();
         this.contractQuery = new ContractQuery(this);
-        this.contractStatQuery = new DailyContractStatQuery();
-        this.blockDataStatQuery = new DailyBlockDataStatQuery(null);
+        this.statsQuery = new StatsQuery(this);
         this.nftPreviewService = new NFTPreviewService(this);
-        this.nftCheckerService = new NFTCheckerService(this, utilContract);
-        this.desensitizer = new Desensitizer(this);
+        this.nftCheckerService = new NFTCheckerService(this);
+        this.desensitizer = new Desensitizer();
         this.rankService = new RankService(this)
         this.rankService.repeatUpdateTxnCache(); // scheduleCache
         this.fullBlockQuery = new FullBlockQuery(this);

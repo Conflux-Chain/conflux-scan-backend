@@ -82,6 +82,7 @@ import {AuthAction, AuthBlockStub} from "../model/EIP7702model";
 import {ContractImpl} from "../model/ContractImpl";
 import {VerifiedContracts} from "../model/VerifiedContracts";
 import {initBlockWithdrawModel} from "../model/ZG";
+import {DailyGasStat} from "../model/DailyGasStat";
 
 let conf
 export function createDB(config) {
@@ -200,6 +201,7 @@ export async function initPartialModel(sequelize) {
     VerifiedContracts.register(sequelize);
     ProxyVerify.register(sequelize);
     DailyBlockDataStat.register(sequelize);
+    DailyGasStat.register(sequelize);
     CfxBalance.register(sequelize);
     TokenSecurityAudit.register(sequelize);
     PruneInfo.register(sequelize);

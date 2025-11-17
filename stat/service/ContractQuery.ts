@@ -443,7 +443,7 @@ export class ContractQuery {
         addressArray.forEach((address) => { map[address] = {contract: {address}, token: {address}}; });
 
         // query contract and token
-        const tokenService = tokenQuery || service.tokenRdb;
+        const tokenService = tokenQuery || service.tokenQuery;
         const [ contractArray, verifiedArray, tokenArray ] = await Promise.all([
             this.list(addressArray).then(list => list.map(contract => {
                 return { address: contract.address, name: contract.name }})),

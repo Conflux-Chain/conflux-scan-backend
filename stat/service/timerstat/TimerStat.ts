@@ -10,7 +10,7 @@ const moment = require('moment');
 
 export abstract class TimerStat {
     protected app: any;
-    protected baseInterval: IntervalType;
+    protected baseInterval: StatType;
     protected debug = false;
     minDbTime: Date
 
@@ -57,7 +57,7 @@ export abstract class TimerStat {
 
     protected async doStat() {
         const {status, rangeBegin, rangeEnd} = await this.checkPivotBlockTime();
-        this.debug && console.log(`debug-4,status:${status},rangeBegin:${rangeBegin},rangeEnd:${rangeEnd}`);
+        this.debug && console.log(`step4 status:${status},rangeBegin:${rangeBegin},rangeEnd:${rangeEnd}`);
         if(status !== StatStatus.STAT_ABLE) {
             return false;
         }
@@ -70,19 +70,19 @@ export abstract class TimerStat {
         const { cfx } = this.app;
 
         const {rangeBegin, rangeEnd, skip} = await this.nextStatRange();
-        this.debug && console.log(`debug-1,rangeBegin:${rangeBegin},rangeEnd:${rangeEnd}, data:${new Date()}`);
+        this.debug && console.log(`step1 rangeBegin:${rangeBegin},rangeEnd:${rangeEnd},data:${new Date()}`);
         if(skip || new Date() < rangeEnd) {
             return {status: StatStatus.TIME_NOT_REACH};
         }
 
         const epochDB = await this.firstEpochAfterRangeEnd(rangeEnd);
-        this.debug && console.log(`debug-2,epochDB:${epochDB}`);
+        this.debug && console.log(`step2 epochDB:${epochDB}`);
         if(epochDB === undefined || isNaN(epochDB)){
             return {status: StatStatus.EPOCH_NOT_SYNC};
         }
 
         const epochFinalized = await cfx.getEpochNumber(SDK_CONST.EPOCH_NUMBER.LATEST_FINALIZED);
-        this.debug && console.log(`debug-3,epochDB:${epochDB},epochFinalized:${epochFinalized}`);
+        this.debug && console.log(`step3 epochDB:${epochDB},epochFinalized:${epochFinalized}`);
         if(epochDB > epochFinalized){
             return {status: StatStatus.EPOCH_NOT_FINAL};
         }
@@ -90,47 +90,47 @@ export abstract class TimerStat {
         return {status: StatStatus.STAT_ABLE, rangeBegin, rangeEnd};
     }
 
-    protected supportInterval(beginTime, endTime, exceptInterval: IntervalType): { intervalType: string, intervalSec: number } {
+    protected supportInterval(beginTime, endTime, expectInterval: StatType): { intervalType: string, intervalSec: number } {
         let intervalType;
         const intervalByMinutes = (endTime.getTime() - beginTime.getTime())/ (1000 * 60);
         switch (intervalByMinutes){
             case 1:
-                intervalType = IntervalType.MIN; break;
+                intervalType = StatType.MIN; break;
             case 10:
-                intervalType = IntervalType.TEN_MIN; break;
+                intervalType = StatType.TEN_MIN; break;
             case 60:
-                intervalType = IntervalType.HOUR; break;
+                intervalType = StatType.HOUR; break;
             case 1440:
-                intervalType = IntervalType.DAY; break;
+                intervalType = StatType.DAY; break;
             default:
                 throw new Error(`interval not supported, ${beginTime.toLocaleString()}-${endTime.toLocaleString()}`);
         }
 
-        if(intervalType !== exceptInterval){
-            throw new Error(`interval not supported, expect:${exceptInterval}, get:${intervalType}`);
+        if(intervalType !== expectInterval){
+            throw new Error(`interval not supported, expect:${expectInterval}, get:${intervalType}`);
         }
 
         return {intervalType, intervalSec: intervalByMinutes * 60};
     }
 
-    protected getRangeBegin(endTime: Date, rangeType: IntervalType): Date {
+    protected getRangeBegin(endTime: Date, rangeType: StatType): Date {
         let rangeStart = new Date(endTime);
 
         switch (rangeType) {
-            case IntervalType.MONTH:
+            case StatType.MONTH:
                 rangeStart.setDate(1);
                 rangeStart.setHours(0, 0, 0, 0);
                 if (moment(endTime).format('D HH:mm:ss') === '1 00:00:00') {
                     rangeStart.setMonth(rangeStart.getMonth() - 1);
                 }
                 break;
-            case IntervalType.DAY:
+            case StatType.DAY:
                 rangeStart.setHours(0, 0, 0, 0);
                 if (moment(endTime).format('HH:mm:ss') === '00:00:00') {
                     rangeStart.setDate(rangeStart.getDate() - 1);
                 }
                 break;
-            case IntervalType.HOUR:
+            case StatType.HOUR:
                 rangeStart.setMinutes(0, 0, 0);
                 if (moment(endTime).format('mm:ss') === '00:00') {
                     rangeStart.setHours(rangeStart.getHours() - 1);
@@ -205,10 +205,10 @@ export enum StatStatus {
     EPOCH_NOT_FINAL,
 }
 
-export enum IntervalType {
+export enum StatType {
     MIN = '1m',
     TEN_MIN = '10m',
     HOUR = '1h',
     DAY = '1d',
-    MONTH = '1m',
+    MONTH = '1mo',
 }

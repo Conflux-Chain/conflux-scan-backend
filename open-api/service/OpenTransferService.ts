@@ -58,7 +58,7 @@ export async function listAccountTransfer(ctx) {
     let {cursor} = ctx.request.query;
     cursor = cursor === undefined ? 0 : cursor;
 
-    return listTransfer(ctx, getApiService().addrTransferQuery, cursor, 'cursorId', true)
+    return listTransfer(ctx, getApiService().accountTransferQuery, cursor, 'cursorId', true)
 }
 
 export async function listNFTTransfers(ctx) {

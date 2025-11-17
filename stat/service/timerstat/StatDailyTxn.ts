@@ -2,7 +2,7 @@ import {col, fn, literal, Op, QueryTypes} from 'sequelize'
 import {DailyTransaction} from "../../model/DailyTransaction";
 import {FullTransaction} from "../../model/FullBlock";
 import {fmtDtUTC} from "../../model/Utils";
-import {IntervalType, TimerStat} from "./TimerStat";
+import {StatType, TimerStat} from "./TimerStat";
 
 const BigFixed = require('bigfixed');
 const lodash = require('lodash');
@@ -11,7 +11,7 @@ export class StatDailyTxn extends TimerStat{
 
     constructor(app: any) {
         super(app);
-        this.baseInterval = IntervalType.TEN_MIN;
+        this.baseInterval = StatType.TEN_MIN;
     }
 
     public bizAlias(): string {
@@ -39,21 +39,17 @@ export class StatDailyTxn extends TimerStat{
 
     public async stat(rangeBegin: Date, rangeEnd: Date){
         const mStat = await this.statRaw(rangeBegin, rangeEnd);
-        const dStat = await this.statAnalysis(rangeEnd, IntervalType.TEN_MIN, IntervalType.DAY, mStat);
-        this.debug && console.log(`debug-5,mStat:${JSON.stringify(mStat)},dStat:${JSON.stringify(dStat)}`);
+        const dStat = await this.statAnalysis(rangeEnd, StatType.TEN_MIN, StatType.DAY, mStat);
 
         const statArray = [mStat, dStat];
         await DailyTransaction.sequelize.transaction(async (dbTx) => {
             await DailyTransaction.destroy({
                 where: {statType: dStat.statType, statDay: dStat.statDay}, transaction: dbTx,
-                /*logging: msg => console.log(`[${this.bizAlias()}]destroy ${msg}`),*/
             });
             await DailyTransaction.bulkCreate(statArray, {
                 transaction: dbTx,
-                /*logging: msg => console.log(`[${this.bizAlias()}]bulkCreate ${msg}`),*/
             });
         });
-        console.log(`[${this.bizAlias()}]record:${JSON.stringify(statArray)}`);
     }
 
     // ------------------------------- biz -----------------------------------
@@ -74,7 +70,6 @@ export class StatDailyTxn extends TimerStat{
                 ]
             },
             raw: true,
-            /*logging: msg => console.log(`[${this.bizAlias()}]tx daily query ${msg}`)*/
         });
 
         const {senderCount, txCount, gasFee} = stat;
@@ -84,7 +79,7 @@ export class StatDailyTxn extends TimerStat{
         } as DailyTransaction;
     }
 
-    public async statAnalysis(endTime: Date, srcStatType: IntervalType, destStatType: IntervalType,
+    public async statAnalysis(endTime: Date, srcStatType: StatType, destStatType: StatType,
                               latestStat = undefined): Promise<DailyTransaction> {
         const beginTime = this.getRangeBegin(endTime, destStatType);
 
@@ -92,7 +87,6 @@ export class StatDailyTxn extends TimerStat{
                     WHERE statType = '${srcStatType}' and statDay >= ? and statDay < ?` ;
         const statList = await DailyTransaction.sequelize.query(statSql, { type: QueryTypes.SELECT, raw: true,
             replacements: [fmtDtUTC(beginTime), fmtDtUTC(endTime)],
-            /*logging: msg => console.log(`[${this.bizAlias()}]stat list query ${msg}`)*/
         });
         if(latestStat) {
             statList.push(latestStat);
