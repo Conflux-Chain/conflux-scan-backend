@@ -191,7 +191,7 @@ export class TokenQuery {
             eoaList?.forEach(nameTag => {
                 if(nameTag?.labels) {
                     nameTag.labels = nameTag.labels.split(NAME_TAG_SPLIT);
-                    const caution = nameTag.labels.find(label => accountSrv?.cautionSet.has(label));
+                    const caution = nameTag.labels.find(label => accountSrv?.cautionLabels.has(label));
                     delete nameTag.labels;
                     nameTag.caution = caution ? 1 : 0;
                 }
@@ -358,8 +358,8 @@ export class TokenQuery {
             const zeroAdmin = account?.admin && (format.hexAddress(account.admin) === CONST.ZERO_ADDRESS);
 
             const nameTag = await NameTag.findOne({where:{base32}});
-            const officialLabels = nameTag?.labels.split(NAME_TAG_SPLIT)
-                .filter(label => this.officialLabels.has(label)).join(NAME_TAG_SPLIT);
+            const officialLabels = nameTag?.labels?.split(NAME_TAG_SPLIT)
+                .filter(label => this.officialLabels.has(label)).join(NAME_TAG_SPLIT) || null;
 
             await TokenSecurityAudit.upsert({
                 hex40id: token.hex40id,
@@ -437,8 +437,10 @@ export class TokenQuery {
                 track: {
                     coinMarketCap: securityAudit?.trackCoinMarketCap,
                 },
-                officialLabels: securityAudit?.officialLabels?.split(NAME_TAG_SPLIT),
             };
+            if (securityAudit?.officialLabels) {
+                item.securityAudit.officialLabels = securityAudit.officialLabels?.split(NAME_TAG_SPLIT);
+            }
         });
     }
 

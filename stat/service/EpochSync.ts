@@ -167,7 +167,7 @@ export class EpochSync extends SyncBase {
             let [announceInfo, nameTagArray, bytes32NameTagArray, tokenArray,
                 cfxTransferArray, tokenTransferArray] = await Promise.all([
                 this.getAnnounceInfo(epochNumber, eventLogInfo.announcementArray),
-                this.getNameTagInfo(epochNumber, eventLogInfo.nameTagArray, eventLogInfo.labelArray),
+                this.getNameTagInfo(epochNumber, epochTimestamp, eventLogInfo.nameTagArray, eventLogInfo.labelArray),
                 this.getBytes32NameTagInfo(epochNumber, eventLogInfo.byte32NameTagArray),
                 this.getTokensAutoDetected(tokenLogs),
                 this.getCFXTransferArrayDB(pivotHash, epochNumber),
@@ -307,7 +307,7 @@ export class EpochSync extends SyncBase {
                 NftMeta.bulkCreate(modelData.transferredNftArray, { transaction: dbTx,
                     updateOnDuplicate: ["epochNumber"]}),
                 NameTag.bulkCreate([...modelData.nameTagArray, ...modelData.bytes32NameTagArray], {transaction: dbTx,
-                    updateOnDuplicate: ["eoa", "auditor", "epoch", "nameTag", "website", "desc", "labels"]}),
+                    updateOnDuplicate: ["eoa", "auditor", "epoch", "nameTag", "website", "desc", "labels", "updatedAt"] as any}),
 
                 this.syncCensorItem ? CensorItem.bulkCreate(modelData.censorItemArray, { transaction: dbTx,
                         updateOnDuplicate: ["epochNumber", "censorType", "censorStatus", "createdAt", "updatedAt"],})
@@ -674,7 +674,7 @@ export class EpochSync extends SyncBase {
     }
 
     // --------------------- business method for name tag -----------------------
-    private async getNameTagInfo(epochNumber, nameTagArray, labelArray) {
+    private async getNameTagInfo(epochNumber, epochTimestamp, nameTagArray, labelArray) {
         nameTagArray = nameTagArray.filter(item => this.checkAddrMeta(epochNumber, item['address']))
         labelArray = labelArray.filter(item => this.checkAddrMeta(epochNumber, item['address']))
         const base32Array = [...nameTagArray, ...labelArray].map(i => formatToBase32(i.addr));
@@ -699,6 +699,7 @@ export class EpochSync extends SyncBase {
             nameTagMap[base32].website = newWebsite;
             nameTagMap[base32].desc = newDesc;
         }
+
         for (const item of labelArray) {
             const {auditor, addr, oldLabel, newLabel} = item;
             const base32 = formatToBase32(addr);
@@ -732,7 +733,9 @@ export class EpochSync extends SyncBase {
             item['hex40id'] = addressInfoMap[item['base32']].hex40id;
             item['eoa'] = !contractIdSet.has(addressInfoMap[item['base32']].hex40id);
             item['auditor'] = formatToBase32(item['auditor']);
-            item['labels'] = [...item['labels']].join(NAME_TAG_SPLIT);
+            item['labels'] = item['labels']?.size ? [...item['labels']].join(NAME_TAG_SPLIT) : null;
+            item['createdAt'] = epochTimestamp;
+            item['updatedAt'] = epochTimestamp;
             return item;
         });
     }
