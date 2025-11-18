@@ -957,7 +957,7 @@ router_get(router,'/token/:address',
   }),
   async function(option) {
     const addr = this.app.parseParam(()=>this.app.type.address(option.address));
-    const result = await (this as ScanCtx).app.service.token.queryPlus({address: addr});
+    const result = await (this as ScanCtx).app.service.token.query({address: addr});
     this.app.formatAddrObj(result, ['address']);
     return result;
   }

@@ -19,7 +19,7 @@ const {abi: abiSwappiRouter} = require('./abi/SwappiRouter');
 const response = 3_000;
 const deadline = 3_000;
 
-export class QuoteSync {
+export class TokenQuoteSync {
     private readonly app;
     private tick = -1; // 1 min per tick
 
@@ -390,20 +390,23 @@ export class QuoteSync {
         config.wrappedUSDT0 && quoteArray.push({address: config.wrappedUSDT0, price: 1});
 
         quoteArray.map(async quote => {
-            const {address, price, src, quoteUrl} = quote;
+            const {address, price, quoteUrl} = quote;
             const base32 = format.address(address, StatApp.networkId);
             const dbToken: Token = await Token.findOne({where: {base32}});
             const totalSupply = await tokenTool.getTokenTotalSupply(base32);
+
             if (dbToken) {
                 let totalPrice = (price && totalSupply && Number.isInteger(dbToken.decimals))
                     ? BigFixed(price).mul(totalSupply).div(BigFixed(10).pow(dbToken.decimals)).toNumber()
                     : null;
                 totalPrice = totalPrice === 0 ? null : totalPrice;
-                await Token.update({price, totalSupply, totalPrice, updatedAt: new Date()}, {where: {id: dbToken.id}});
+
+                const token = {price, totalSupply, totalPrice, updatedAt: new Date()};
                 if(!dbToken.quoteUrl && quoteUrl) {
-                    await Token.update({quoteUrl, updatedAt: new Date()}, {where: {id: dbToken.id}});
+                    lodash.assign(token, {quoteUrl});
                 }
-                // console.log(`[token_quote] via ${src} ${dbToken.symbol} ${price}`);
+
+                await Token.update(token, {where: {id: dbToken.id}});
             }
         });
     }

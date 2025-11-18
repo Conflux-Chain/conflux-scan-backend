@@ -517,7 +517,7 @@ export class NFTPreviewService {
     private async getCache(address: string, contractId: number, tokenId: string,
         options: {method: string, gateway: string}) {
         const nftMeta = await NftMeta.findOne({where: {contractId, tokenId}, raw: true});
-        if(!nftMeta || nftMeta.status !== MetaStatus.SUCCESS){
+        if (!nftMeta || nftMeta.status !== MetaStatus.SUCCESS || !nftMeta.content) {
             return null;
         }
 

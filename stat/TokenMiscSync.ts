@@ -8,7 +8,7 @@ import {initCfxSdk} from "./service/common/utils";
 import {StatApp} from "./StatApp";
 import {IS_EVM2, KV} from "./model/KV";
 import {TokenTool} from "./service/tool/TokenTool";
-import {QuoteSync} from "./service/QuoteSync";
+import {TokenQuoteSync} from "./service/TokenQuoteSync";
 import {repeatCheckAccount} from "./service/watcher/AccountChecker";
 import {listenPort} from "./monitor/serverApi";
 
@@ -27,8 +27,8 @@ async function main() {
     // quote service
     if (config?.syncQuote?.open) {
         const tokenTool = new TokenTool(cfx);
-        const quoteSync = new QuoteSync({cfx, config, tokenTool})
-        await quoteSync.schedule()
+        const tokenQuoteSync = new TokenQuoteSync({cfx, config, tokenTool})
+        await tokenQuoteSync.schedule()
     }
     console.log(`\n${__filename} started.\n`)
 }

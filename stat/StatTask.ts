@@ -6,7 +6,7 @@ import {BlockAndMinerSync} from "./service/BlockAndMinerSync";
 import {removeDate1970, scheduleDailyActiveAddress} from "./model/StatAddress";
 import {scheduleDailyTokenStat} from "./service/DailyTokenSync";
 import {calcDailyUniqueAddrSchedule} from "./service/UniqueAddressStat";
-import {BlockTraceCreateQuery} from "./service/BlockTraceCreateQuery";
+import {ContractTraceCreateQuery} from "./service/ContractTraceCreateQuery";
 import {
     ADDRESS_COUNT_ALL,
     ADDRESS_COUNT_ID,
@@ -40,6 +40,7 @@ import {listenPort} from "./monitor/serverApi";
 import {buildTxSenderReceiverHourly} from "./PeriodTxnSummary";
 import {safeAddErrorLog} from "./monitor/ErrorMonitor";
 import {checkAllTableDataTime} from "./monitor/DataTimeChecker";
+import {StatDailyGas} from "./service/timerstat/StatDailyGas";
 
 async function runTools() {
     const [,, cmd, arg1] = process.argv;
@@ -73,7 +74,7 @@ async function main() {
     const blockAndMinerSync = new BlockAndMinerSync();
     blockAndMinerSync.schedule().then()
     //
-    const traceCreateQuery = new BlockTraceCreateQuery({});
+    const traceCreateQuery = new ContractTraceCreateQuery({});
     if(config.censorApiKey && config.censorSecretKey) {
         const censorService = new CensorService({config, cfx, traceCreateQuery},
             {tx: 10, token: 10, nft: 10});
@@ -91,6 +92,9 @@ async function main() {
     //
     const statDailyBlockData = new StatDailyBlockData({cfx});
     statDailyBlockData.schedule(1000 * 60).then();
+    //
+    const statDailyGas = new StatDailyGas({cfx});
+    statDailyGas.schedule(1000 * 60).then();
     //
     const statDailyContractAnalysis = new StatDailyContractAnalysis({cfx});
     statDailyContractAnalysis.schedule().then();

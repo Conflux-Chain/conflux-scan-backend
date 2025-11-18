@@ -131,9 +131,10 @@ export interface StatConfig{
     censorSecretKey: string,
 
     asyncWrappedToken: boolean,
-    wrappedCFX: string,
     wrappedUSDT: string,
     wrappedUSDT0: string,
+    wrappedCFX: string,
+    wrappedBTC: string,
 
     enableProfile: boolean,
 

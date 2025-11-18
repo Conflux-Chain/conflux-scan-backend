@@ -8,10 +8,10 @@ import {FullTransaction} from "../model/FullBlock";
 import {Errors} from "./common/LogicError";
 import {PATH_TOP_BY_GAS} from "./CacheService";
 import {ethers} from "ethers";
-import {IntervalType} from "./timerstat/TimerStat";
 import {GasConsumer, IGasConsumer} from "../model/GasConsumer";
 import {sqlLogFn} from "../model/Utils";
 import {NoCoreSpace} from "../config/StatConfig";
+import {StatType} from "./timerstat/TimerStat";
 
 export class TxnQuery{
     static cacheFilePrefix = PATH_TOP_BY_GAS;
@@ -27,9 +27,9 @@ export class TxnQuery{
     // parameter days is negative.
     static async gasUsedSum(days:number) : Promise<{txCount, gasFee}> {
         const {beginTime, endTime} = TxnQuery.buildTimeRange(days);
-        let statType = IntervalType.DAY;
+        let statType = StatType.DAY;
         if (days == -1) {
-            statType = IntervalType.TEN_MIN;
+            statType = StatType.TEN_MIN;
         }
         const sum = await DailyTransaction.findOne({
             attributes: [

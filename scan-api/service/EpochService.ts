@@ -1,4 +1,5 @@
 import {ScanApp, ScanCtx} from "./index";
+import {Epoch} from "../../stat/model/Epoch";
 
 const lodash = require('lodash');
 
@@ -19,12 +20,10 @@ export class EpochService {
 
     return ttlMap.cache(`EpochService.query(${epochNumber})`,
       async () => {
-        let epoch;
-          epoch = await service.epochRdb.query(epochNumber);
-          if (epoch) {
-            epoch.timestamp = epoch.timestamp.getTime() / 1000;
-          }
-
+        const epoch: any = await Epoch.findOne({where: {epoch: epochNumber}, raw: true});
+        if (epoch) {
+          epoch.timestamp = epoch.timestamp.getTime() / 1000;
+        }
         return epoch || service.conflux.getEpochByEpochNumber(epochNumber);
       },
       { ttl: (epoch) => (lodash.isEmpty(epoch) ? 1000 : 5 * 1000) },

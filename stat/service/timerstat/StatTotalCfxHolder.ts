@@ -2,13 +2,13 @@ import {Op} from 'sequelize'
 import {CfxBalance} from "../../model/Balance";
 import {DailyCfxHolder} from "../../model/DailyCfxHolder";
 import {CfxTransfer} from "../../model/CfxTransfer";
-import {IntervalType, TimerStat} from "./TimerStat";
+import {StatType, TimerStat} from "./TimerStat";
 
 export class StatTotalCfxHolder extends TimerStat{
 
     constructor(app: any) {
         super(app);
-        this.baseInterval = IntervalType.TEN_MIN;
+        this.baseInterval = StatType.TEN_MIN;
     }
 
     public bizAlias(): string {
@@ -36,33 +36,27 @@ export class StatTotalCfxHolder extends TimerStat{
     public async stat(rangeBegin: Date, rangeEnd: Date) {
         const mStat = await this.statRaw(rangeBegin, rangeEnd);
         const dStat = {
-            statDay: this.getRangeBegin(rangeEnd, IntervalType.DAY),
-            statType: IntervalType.DAY,
+            statDay: this.getRangeBegin(rangeEnd, StatType.DAY),
+            statType: StatType.DAY,
             holderCount: mStat.holderCount,
         };
-        this.debug && console.log(`debug-5,mStat:${JSON.stringify(mStat)},dStat:${JSON.stringify(dStat)}`);
 
         const statArray = [mStat, dStat];
         await DailyCfxHolder.sequelize.transaction(async (dbTx) => {
             await DailyCfxHolder.destroy({
                 where: {statType: dStat.statType, statDay: dStat.statDay}, transaction: dbTx,
-                /*logging: msg => console.log(`[${this.bizAlias()}]destroy ${msg}`),*/
             });
             await DailyCfxHolder.bulkCreate(statArray, {
                 transaction: dbTx,
-                /*logging: msg => console.log(`[${this.bizAlias()}]bulkCreate ${msg}`),*/
             });
         });
-        console.log(`[${this.bizAlias()}]record:${JSON.stringify(statArray)}`);
     }
 
     // ------------------------------- biz -----------------------------------
     public async statRaw(beginTime: Date, endTime: Date): Promise<DailyCfxHolder> {
         const { intervalType } = this.supportInterval(beginTime, endTime, this.baseInterval);
 
-        const holderCount = await CfxBalance.count({
-            /*logging: msg => console.log(`[${this.bizAlias()}]cfx holder query ${msg}`)*/
-        });
+        const holderCount = await CfxBalance.count({});
 
         return {
             statDay: beginTime, statType: intervalType, holderCount

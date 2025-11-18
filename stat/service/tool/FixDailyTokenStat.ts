@@ -3,7 +3,6 @@ import {Erc20Transfer} from "../../model/Erc20Transfer";
 process.env.TZ = 'UTC'
 
 import {calcDailyActiveAddress, DailyActiveAddress} from "../../model/StatAddress";
-import {getYesterday} from "./DateTool";
 
 import {loadConfig, StatConfig} from "../../config/StatConfig";
 import {createDB, initModel} from "../DBProvider";

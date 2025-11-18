@@ -3,7 +3,7 @@ import {format} from 'js-conflux-sdk';
 import {Op, QueryTypes, Sequelize} from 'sequelize';
 import {DailyToken, Token} from "../model/Token";
 import {decodeUtf8} from "./tool/StringTool";
-import {ESpaceHex40Map, formatToBase32, Hex40Map} from "../model/HexMap";
+import {formatToBase32, Hex40Map} from "../model/HexMap";
 import {toBase32} from "./tool/AddressTool";
 import {Contract} from "../model/Contract";
 import {Erc20Transfer, T_ADDRESS_ERC20TRANSFER} from "../model/Erc20Transfer";
@@ -20,17 +20,17 @@ import {NameTag} from "../model/NameTag";
 import {ScanCtx} from "../../scan-api/service/index";
 import {ConfigInstance, NoCoreSpace} from "../config/StatConfig";
 import {VerifiedContracts} from "../model/VerifiedContracts";
-import {diffCount, KEY_FULL_CFX_TRANSFER_COUNT, KEY_OFFICIAL_LABELS, KV} from "../model/KV";
-import {AddressCfxTransfer, CfxTransfer} from "../model/CfxTransfer";
-import {TraceCreateContract} from "../model/TraceCreateContract";
-import {CfxUser, EpochHashCfxTransfer} from "../CfxTransferSync";
+import {KEY_OFFICIAL_LABELS, KV} from "../model/KV";
+import {BatchBalanceWatcher} from "./watcher/BatchBalanceWatcher";
 
 const lodash = require('lodash');
 const REGEX_URL = /^(https?:\/\/(([a-zA-Z0-9]+-?)+[a-zA-Z0-9]+\.)+[a-zA-Z]+)(:\d+)?(\/.*)?(\?.*)?(#.*)?$/;
 
 export class TokenQuery {
     static wrappedCFXAddr: string;
+    static wrappedBTCAddr: string;
     static wrappedCFX: Token;
+    static wrappedBTC: Token;
 
     private app: any;
     private OFFICIAL_LABEL_FLUSH_INTERVAL = 180_000; // 3 min
@@ -40,20 +40,12 @@ export class TokenQuery {
     constructor(app: any) {
         this.app = app;
         if(this.app.config.asyncWrappedToken) {
-            if(!this.app.config.wrappedCFX) {
-                throw new Error(`Wrapped CFX should be config!`);
+            if(!this.app.config.wrappedCFX || !this.app.config.wrappedBTC) {
+                throw new Error(`Wrapped CFX/BTC should be config!`);
             }
             TokenQuery.wrappedCFXAddr = format.address(this.app.config.wrappedCFX, StatApp.networkId);
+            TokenQuery.wrappedBTCAddr = format.address(this.app.config.wrappedBTC, StatApp.networkId);
         }
-    }
-
-    public async sync({id}) {
-        const t = await Token.findOne({where: {id}});
-        if(t) {
-            const a = await TokenSecurityAudit.findOne({where:{base32: t.base32}})
-            return {token: t, audit: a}
-        }
-        return {}
     }
 
     public async query({address}) {
@@ -69,10 +61,29 @@ export class TokenQuery {
         return token;
     }
 
-    public async list({addressArray, name, transferType, fields, orderBy, reverse, showDestroyed = true, skip = 0, limit = 10
-      }: { addressArray?: string[], name?: string, transferType?: string, fields?: string[], orderBy?: string,
-        reverse?: boolean | string, showDestroyed?: boolean, skip?: number, limit?: number
-    }) {
+    public async list(
+        {
+            addressArray,
+            name,
+            transferType,
+            fields,
+            orderBy,
+            reverse,
+            showDestroyed = true,
+            skip = 0,
+            limit = 10,
+        }: {
+            addressArray?: string[],
+            name?: string,
+            transferType?: string,
+            fields?: string[],
+            orderBy?: string,
+            reverse?: boolean | string,
+            showDestroyed?: boolean,
+            skip?: number,
+            limit?: number,
+        }
+    ) {
         const {
             app: {accountQuery, contractQuery, service},
         } = this;
@@ -87,6 +98,7 @@ export class TokenQuery {
             attributes.push('icon');
         }
         options.attributes = attributes;
+
         // where
         const where: any = {auditResult: true};
         if (name) {
@@ -98,11 +110,15 @@ export class TokenQuery {
             if (transferType) {
                 where.type = transferType;
             }
+            if (ConfigInstance.onlyStatActiveContract) {
+                where.transfer = {[Op.gt]: 10};
+            }
         }
         if (!showDestroyed) {
             where.destroyed = false;
         }
         options.where = where;
+
         // order
         if (name) {
             options.order = [['securityCredits', 'DESC'], ['transfer', 'DESC']];
@@ -111,12 +127,11 @@ export class TokenQuery {
             }
         } else if (addressArray?.length) {// NO-OP
         } else {
-            if (ConfigInstance.onlyStatActiveContract) {
-                options.where.transfer = {[Op.gt]: 10};
-            }
             if (orderBy) {
-                if (NoCoreSpace && (orderBy === 'totalPrice' || orderBy === 'securityCredits' || orderBy === 'price')) {
-                    orderBy = 'transferCount';
+                if (NoCoreSpace) {
+                    if(orderBy !== 'holderCount') {
+                        orderBy = 'transferCount';
+                    }
                 }
                 const rev = reverse === 'true' ? 'DESC' : 'ASC';
                 if (orderBy === 'totalPrice')
@@ -129,6 +144,7 @@ export class TokenQuery {
                 if (orderBy === 'holderCount') options.order = [['holder', rev]];
             }
         }
+
         //query
         let rawList;
         let count;
@@ -158,8 +174,9 @@ export class TokenQuery {
         let registeredTokens;
         if (rawList) {
             registeredTokens = rawList.map(item => item.address);
-            const contractSrv = contractQuery || service.contractQuery
-            const verifiedTokens = await contractSrv.listVerifyInBatch(registeredTokens).then(arr => arr.map(t => t.address))
+            const contractSrv = contractQuery || service.contractQuery;
+            const verifiedTokens = await contractSrv.listVerifyInBatch(registeredTokens)
+                .then(arr => arr.map(t => t.address));
             rawList.forEach(row => {
                 row['transferType'] = lodash.toUpper(row['transferType']);
                 if (lodash.includes(fields, 'icon')) {
@@ -170,6 +187,7 @@ export class TokenQuery {
                 list.push(row);
             });
         }
+
         // add additional info
         let contractList;
         let eoaList;
@@ -183,11 +201,15 @@ export class TokenQuery {
                 attributes: [['base32', 'address'], 'name', 'epoch'], where,
                 order: [['epoch', 'ASC']]
             });
-            eoaList = await NameTag.findAll({ offset: 0, limit: 100, raw: true,
-                attributes: [['base32', 'address'], 'nameTag', 'labels'], where: {nameTag: {[Op.like]: `%${name}%`}, eoa: true},
-                order: [['epoch', 'ASC']]
+            eoaList = await NameTag.findAll({
+                attributes: [['base32', 'address'], 'nameTag', 'labels'],
+                where: {nameTag: {[Op.like]: `%${name}%`}, eoa: true},
+                order: [['epoch', 'ASC']],
+                offset: 0,
+                limit: 100,
+                raw: true,
             });
-            const accountSrv = accountQuery || service.accountQuery
+            const accountSrv = accountQuery || service.accountQuery;
             eoaList?.forEach(nameTag => {
                 if(nameTag?.labels) {
                     nameTag.labels = nameTag.labels.split(NAME_TAG_SPLIT);
@@ -202,29 +224,43 @@ export class TokenQuery {
             if (tokens?.length) {
                 list = [...list, ...tokens];
             }
-            list.forEach(item => {
-                item.name = Desensitizer.mosaicStr(item.address, item.name);
-                item.symbol = Desensitizer.mosaicStr(item.address, item.symbol);
-                item.icon = Desensitizer.mosaicIcon(item.address, item.icon);
-                item.iconUrl = Desensitizer.mosaicUri(item.address, item.iconUrl);
-            });
+            list.forEach(TokenQuery.mosaicToken);
             count = list.length;
         }
+
         // add security audit
         await this.addSecurityAuditInfo(list);
 
-        return {total: count, list, contractTotal: contractList?.length, contractList, eoaTotal: eoaList?.length, eoaList};
+        return {
+            total: count,
+            list,
+            contractTotal: contractList?.length,
+            contractList,
+            eoaTotal: eoaList?.length,
+            eoaList,
+        };
     }
 
-    public async listLatest({accountAddress, transferType, latestTransfer = 10000}
-       : {accountAddress: string, transferType: string, latestTransfer?: number
-    }){
+    public async listLatest(
+        {
+            accountAddress,
+            transferType,
+            latestTransfer = 10000
+        }: {
+            accountAddress: string,
+            transferType: string,
+            latestTransfer?: number
+        }
+    ) {
         const {
             app: {sequelize},
         } = this;
 
         const hex40 = await Hex40Map.findOne({where: {hex: format.hexAddress(accountAddress).substr(2)}});
-        if(!hex40) return [];
+        if(!hex40) {
+            return [];
+        }
+
         const addressId = hex40?.id
         let tableName;
         if(transferType === CONST.TRANSFER_TYPE.ERC20){
@@ -236,13 +272,14 @@ export class TokenQuery {
         } else {
             return [];
         }
-        if(latestTransfer <= 0 || latestTransfer > 10000) return [];
+
+        if(latestTransfer <= 0 || latestTransfer > 10000) {
+            return [];
+        }
 
         const sql = `select hex from hex40 where id in (select distinct(contractId) from ( select contractId 
             from ${tableName} where addressId = ${addressId} order by epoch desc limit ${latestTransfer}) tmp);`;
-        const list = await sequelize.query(sql, {type: QueryTypes.SELECT,
-            // logging: console.log
-        });
+        const list = await sequelize.query(sql, {type: QueryTypes.SELECT,});
         const addressArray = list.map(item=> format.address(`0x${item.hex}`, StatApp.networkId));
 
         const response = await this.list({addressArray});
@@ -250,7 +287,98 @@ export class TokenQuery {
             .filter(token => (token?.name?.trim()?.length > 0) && (token?.symbol?.trim()?.length > 0))
             .map(token => lodash.pick(token, ['address', 'name', 'symbol', 'iconUrl']));
         tokenArray = lodash.sortBy(tokenArray, item => lodash.toUpper(item.name));
-        return {total: response.total, list: tokenArray};
+
+        return {
+            total: response.total,
+            list: tokenArray
+        };
+    }
+
+    static async listByAccount(
+        {
+            owner,
+            types,
+            skip = 0,
+            limit = 100,
+            maxOfAllType = 10000,
+            withTotalInfo = false,
+            withRealtimeBalance = false,
+        }: {
+            owner: string,
+            types?: TokenType[],
+            skip?: number,
+            limit?: number,
+            maxOfAllType?: number,
+            withTotalInfo?: boolean
+            withRealtimeBalance?: boolean
+        }
+    ) {
+        const hex = await Hex40Map.findOne({where: {hex: format.hexAddress(owner).substr(2)}});
+        if (!hex) {
+            return {total: 0, list: []};
+        }
+
+        const addressId = hex.id;
+        const token = await TokenBalance.findOne({
+            where: {addressId}, order: [["updatedAt", "desc"]], offset: maxOfAllType, limit: 1
+        });
+
+        let cond = 'where auditResult=1 and destroyed=0';
+        if(types?.length) {
+            cond = `${cond} and (${types.map(type => `t.type = '${type.replace('CRC', 'ERC')}'`).join(' or ')})`;
+        }
+
+        const total = token ?  maxOfAllType : (await TokenBalance.sequelize.query(`
+            select count(*) cntr
+            from (select * from token_balance where addressId = ?) b
+            left join token t on b.contractId = t.hex40id
+            ${cond};
+        `, {
+            type: QueryTypes.SELECT,
+            replacements: [addressId],
+        }).then(list => list[0]['cntr']));
+
+        let fields = `t.base32 as contract, t.type, b.balance, t.name, t.symbol, t.decimals, t.iconUrl, t.webSite, 
+            t.price, t.quoteUrl`
+        fields = withTotalInfo ? `${fields}, t.transfer as totalTransfer, t.totalSupply` : fields;
+
+        const list = await TokenBalance.sequelize.query(`
+            select 
+            ${fields}
+            from (select * from token_balance where addressId = ? order by updatedAt desc limit ?) b
+            left join token t on b.contractId = t.hex40id
+            ${cond}
+            order by b.updatedAt desc
+            limit ?, ?;
+        `, {
+            type: QueryTypes.SELECT,
+            replacements: [addressId, maxOfAllType, skip, limit],
+        });
+
+        list.forEach((token: any) => {
+            token.contract = StatApp.isEVM ? format.hexAddress(token.contract) : token.contract;
+            token.type = StatApp.isEVM ? token.type : token.type?.replace('ERC', 'CRC');
+            TokenQuery.mosaicToken(token);
+        });
+
+        if (withRealtimeBalance && list.length) {
+            const tokens = list.map((token: any) => token.contract);
+            const balances = await BatchBalanceWatcher.getBalances(owner, tokens);
+            const tokenBalances = lodash.zipObject(tokens, balances);
+            list.forEach((token: any) => {
+                token.balance = tokenBalances[token.contract] || token.balance;
+            });
+        }
+
+        return {total, list};
+    }
+
+    private static mosaicToken(token: any) {
+        const address = token.address || token.contract;
+        token.name = Desensitizer.mosaicStr(address, token.name);
+        token.symbol = Desensitizer.mosaicStr(address, token.symbol);
+        token.icon = Desensitizer.mosaicIcon(address, token.icon);
+        token.iconUrl = Desensitizer.mosaicUri(address, token.iconUrl);
     }
 
     static async listAccountTokens({ accountAddress }) {
@@ -278,9 +406,7 @@ export class TokenQuery {
             .map(tableName => {
                 TokenBalance.sequelize.query(`select distinct(contractId) from ( select contractId from ${tableName} 
                         where addressId = ${addressId} order by epoch desc limit 10) tmp;`,
-                    {type: QueryTypes.SELECT,
-                        // logging: console.log
-                    })
+                    {type: QueryTypes.SELECT,})
                     .then(transfers => transfers?.forEach(transfer =>
                         hexIdArray.push(transfer["contractId"])));
             }));
@@ -299,41 +425,6 @@ export class TokenQuery {
             }
         })
         return {balanceMap, tokenArray};
-    }
-
-    static  async listAddress({ accountAddress, where = {}
-    } : { accountAddress?: string, where?: object
-    } = {}) {
-
-        let tokenArray;
-        const options: any = { attributes: ['base32'], where: { auditResult: true }, raw: true };
-        if(accountAddress){
-            const hex40 = await Hex40Map.findOne({where:{hex:format.hexAddress(accountAddress).substr(2)}});
-            if(!hex40) return { total: 0, list: [] };
-            const addressId = hex40.id;
-
-            const hexIdArray = [];
-            await TokenBalance.findAll({attributes: ['contractId'], where: {addressId}})
-                .then(balanceArray => balanceArray?.forEach(balance => hexIdArray.push(balance.contractId)));
-            await Promise.all([T_ADDRESS_ERC20TRANSFER, T_ADDRESS_ERC721_TRANSFER, T_ADDRESS_ERC1155_TRANSFER]
-                .map(tableName => {
-                    TokenBalance.sequelize.query(`select distinct(contractId) from ( select contractId from ${tableName} 
-                        where addressId = ${addressId} order by epoch desc limit 10) tmp;`,
-                        {type: QueryTypes.SELECT,
-                            // logging: console.log
-                        })
-                        .then(transfers => transfers?.forEach(transfer =>
-                            hexIdArray.push(transfer["contractId"])));
-                }));
-            if(hexIdArray.length === 0) return { total: 0, list: [] };
-            where = {hex40id: {[Op.in]: hexIdArray}};
-        }
-
-        options.where = lodash.defaults(options.where, where);
-        tokenArray = await Token.findAll(options);
-        const addressArray = tokenArray.map(item => item.base32);
-
-        return {total: addressArray.length, list: addressArray};
     }
 
     public async audit(address) {
@@ -465,7 +556,6 @@ export class TokenQuery {
         credits += [dexMoonSwap].filter(item => item?.trim()?.match(REGEX_URL)).length > 0 ? 1 : 0;
         credits += [trackCoinMarketCap].filter(item => item?.trim()?.match(REGEX_URL)).length > 0 ? 1 : 0;
         credits += officialLabels?.split(NAME_TAG_SPLIT).length > 0 ? 10 : 0;
-
         return Promise.resolve(credits);
     }
 
@@ -541,20 +631,6 @@ export class TokenQuery {
         return {hex40id, type};
     }
 
-    public static async getAddrIdTokenMap(list, ...keys) {
-        const tokenIdSet = new Set();
-        list.forEach(item => keys.forEach(key => tokenIdSet.add(item[key])));
-        const tokenIdArray = [...tokenIdSet] as number[];
-
-        const tokenArray = await Token.findAll({
-            attributes:['hex40id','type'],
-            where:{hex40id:{[Op.in]: tokenIdArray}},
-            raw: true,
-        });
-
-        return lodash.keyBy(tokenArray, 'hex40id');
-    }
-
     public async scheduleWrappedCFX(delay: number = 1000) {
         console.log(`schedule native token with delay: ${delay}`)
         const that = this
@@ -570,9 +646,17 @@ export class TokenQuery {
     }
 
     private async syncWrappedCFX() {
-        TokenQuery.wrappedCFX = await Token.findOne({
+        const tokens: Token[]  = await Token.findAll({
             attributes: {exclude: ['icon']},
-            where: {base32: TokenQuery.wrappedCFXAddr}
+            where: {base32: {
+                    [Op.in] : [TokenQuery.wrappedCFXAddr, TokenQuery.wrappedBTCAddr],
+                },
+            },
         });
+
+        TokenQuery.wrappedCFX = tokens.find(token => token.base32 === TokenQuery.wrappedCFXAddr);
+        TokenQuery.wrappedBTC = tokens.find(token => token.base32 === TokenQuery.wrappedBTCAddr);
     }
 }
+
+export type TokenType = 'ERC20' | 'ERC721' | 'ERC1155';

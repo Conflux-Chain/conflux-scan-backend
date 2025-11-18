@@ -3,7 +3,7 @@ import {enablePerformance, performance_mark} from "../../common/tool.js";
 import {polishContract} from "../service/OpenContractService";
 import {polishTransferList} from "../service/OpenTransferService";
 import {TransferQueryBase} from "../../stat/service/TransferQueryBase";
-import {listNFTBalances} from "../service/OpenNFTService";
+import {listAccountNFTs} from "../service/OpenNFTService";
 
 
 export async function checkTest() {
@@ -58,7 +58,7 @@ export async function checkTest() {
 async function testNftBalances(arg1, arg2) {
     async function once({account}) {
         let ctx = {request: {query:{owner: account}}, body: {data:{total: -1, list: []}}};
-        await listNFTBalances(ctx)
+        await listAccountNFTs(ctx)
         const {data:{total, list}} = ctx.body;
         console.log(`total ${total}`)
     }
