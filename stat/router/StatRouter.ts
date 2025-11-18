@@ -252,9 +252,8 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'accountAddress');
         mustBeEnumParamIfPresent(ctx.request.query, 'transferType', ['ERC20', 'ERC721', 'ERC1155']);
 
-        const {accountAddress, transferType} = ctx.request.query;
-        const result = await statApp.tokenQuery.listLatest({accountAddress, transferType});
-        ctx.body = result;
+        const {accountAddress: owner, transferType: type} = ctx.request.query;
+        ctx.body = await statApp.tokenQuery.listRecently({owner, type});
     })
 
     router.get('/tokens/fiat/list', async (ctx)=>{

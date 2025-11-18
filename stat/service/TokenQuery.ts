@@ -241,57 +241,57 @@ export class TokenQuery {
         };
     }
 
-    public async listLatest(
+    private MAX_TRANSFERS_LATEST = 10000;
+
+    public async listRecently(
         {
-            accountAddress,
-            transferType,
-            latestTransfer = 10000
+            owner,
+            type,
         }: {
-            accountAddress: string,
-            transferType: string,
-            latestTransfer?: number
+            owner: string,
+            type: string,
         }
     ) {
-        const {
-            app: {sequelize},
-        } = this;
-
-        const hex40 = await Hex40Map.findOne({where: {hex: format.hexAddress(accountAddress).substr(2)}});
-        if(!hex40) {
+        const hex40 = await Hex40Map.findOne({
+            where: {hex: format.hexAddress(owner).substr(2)},
+        });
+        if (!hex40) {
             return [];
         }
 
-        const addressId = hex40?.id
-        let tableName;
-        if(transferType === CONST.TRANSFER_TYPE.ERC20){
-            tableName = T_ADDRESS_ERC20TRANSFER;
-        } else if(transferType === CONST.TRANSFER_TYPE.ERC721){
-            tableName = T_ADDRESS_ERC721_TRANSFER;
-        } else if(transferType === CONST.TRANSFER_TYPE.ERC1155){
-            tableName = T_ADDRESS_ERC1155_TRANSFER;
-        } else {
-            return [];
+        const tableNameConverter = {
+            [CONST.TRANSFER_TYPE.ERC20]: T_ADDRESS_ERC20TRANSFER,
+            [CONST.TRANSFER_TYPE.ERC721]: T_ADDRESS_ERC721_TRANSFER,
+            [CONST.TRANSFER_TYPE.ERC721]: T_ADDRESS_ERC1155_TRANSFER,
+        };
+        const tableName = tableNameConverter[type];
+        if (!tableName) {
+            throw new Error("Transfer type not supported.")
         }
 
-        if(latestTransfer <= 0 || latestTransfer > 10000) {
-            return [];
-        }
+        const addressArray = await Hex40Map.sequelize.query(`
+            select hex from hex40 
+            where id in (
+                select distinct(contractId) from (
+                    select contractId
+                    from ${tableName}
+                    where addressId = ${hex40.id} 
+                    order by epoch desc 
+                    limit ${this.MAX_TRANSFERS_LATEST}
+                ) tmp
+            )`, {
+            type: QueryTypes.SELECT,
+        }).then((items: any[]) => items.map(
+            item => format.address(`0x${item.hex}`, StatApp.networkId)
+        ));
 
-        const sql = `select hex from hex40 where id in (select distinct(contractId) from ( select contractId 
-            from ${tableName} where addressId = ${addressId} order by epoch desc limit ${latestTransfer}) tmp);`;
-        const list = await sequelize.query(sql, {type: QueryTypes.SELECT,});
-        const addressArray = list.map(item=> format.address(`0x${item.hex}`, StatApp.networkId));
-
-        const response = await this.list({addressArray});
-        let tokenArray = response.list
+        const {total, list: tokens} = await this.list({addressArray});
+        let list = tokens
             .filter(token => (token?.name?.trim()?.length > 0) && (token?.symbol?.trim()?.length > 0))
             .map(token => lodash.pick(token, ['address', 'name', 'symbol', 'iconUrl']));
-        tokenArray = lodash.sortBy(tokenArray, item => lodash.toUpper(item.name));
+        list = lodash.sortBy(list, item => lodash.toUpper(item.name));
 
-        return {
-            total: response.total,
-            list: tokenArray
-        };
+        return {total, list};
     }
 
     static async listByAccount(
@@ -301,7 +301,6 @@ export class TokenQuery {
             skip = 0,
             limit = 100,
             maxOfAllType = 10000,
-            withTotalInfo = false,
             withRealtimeBalance = false,
         }: {
             owner: string,
@@ -309,7 +308,6 @@ export class TokenQuery {
             skip?: number,
             limit?: number,
             maxOfAllType?: number,
-            withTotalInfo?: boolean
             withRealtimeBalance?: boolean
         }
     ) {
@@ -338,9 +336,8 @@ export class TokenQuery {
             replacements: [addressId],
         }).then(list => list[0]['cntr']));
 
-        let fields = `t.base32 as contract, t.type, b.balance, t.name, t.symbol, t.decimals, t.iconUrl, t.webSite, 
-            t.price, t.quoteUrl`
-        fields = withTotalInfo ? `${fields}, t.transfer as totalTransfer, t.totalSupply` : fields;
+        const fields = `b.balance, t.base32 as contract, t.type, t.name, t.symbol, t.decimals, t.iconUrl, t.webSite, 
+            t.price, t.quoteUrl, t.transfer as totalTransfer`
 
         const list = await TokenBalance.sequelize.query(`
             select 
@@ -556,6 +553,7 @@ export class TokenQuery {
         credits += [dexMoonSwap].filter(item => item?.trim()?.match(REGEX_URL)).length > 0 ? 1 : 0;
         credits += [trackCoinMarketCap].filter(item => item?.trim()?.match(REGEX_URL)).length > 0 ? 1 : 0;
         credits += officialLabels?.split(NAME_TAG_SPLIT).length > 0 ? 10 : 0;
+
         return Promise.resolve(credits);
     }
 

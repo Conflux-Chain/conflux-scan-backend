@@ -107,7 +107,6 @@ export class TokenService {
   async listByAccount(accountAddress) {
     const resp = await TokenQuery.listByAccount({
       owner: accountAddress,
-      withTotalInfo: true,
       withRealtimeBalance: true
     });
 
