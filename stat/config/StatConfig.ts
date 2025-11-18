@@ -133,6 +133,7 @@ export interface StatConfig{
     asyncWrappedToken: boolean,
     wrappedCFX: string,
     wrappedUSDT: string,
+    wrappedUSDT0: string,
 
     enableProfile: boolean,
 

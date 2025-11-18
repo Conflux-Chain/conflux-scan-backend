@@ -8,6 +8,7 @@ import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import {ScanApp} from "../../scan-api/service/index";
 import {TokenTool} from "./tool/TokenTool";
 import {formatToBase32} from "../model/HexMap";
+import {CONST} from "./common/constant";
 
 const lodash = require('lodash');
 const superagent = require('superagent');
@@ -24,6 +25,13 @@ export class QuoteSync {
 
     constructor(app: any) {
         this.app = app;
+        const {config} = this.app;
+        if(CONST.NETWORKS_USDT_ENABLED.includes(StatApp.networkId) && !config.wrappedUSDT) {
+            throw new Error("Wrapped USDT config not found");
+        }
+        if(CONST.NETWORKS_USDT0_ENABLED.includes(StatApp.networkId) && !config.wrappedUSDT0) {
+            throw new Error("Wrapped USDT0 config not found");
+        }
     }
 
     public async query({address, convertSymbol = 'USDT'}) {
@@ -378,7 +386,8 @@ export class QuoteSync {
     private async upsertQuote(quoteArray) {
         const {config, tokenTool} = this.app;
 
-        quoteArray.push({address: config.wrappedUSDT, price: 1});
+        config.wrappedUSDT && quoteArray.push({address: config.wrappedUSDT, price: 1});
+        config.wrappedUSDT0 && quoteArray.push({address: config.wrappedUSDT0, price: 1});
 
         quoteArray.map(async quote => {
             const {address, price, src, quoteUrl} = quote;
