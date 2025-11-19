@@ -94,7 +94,12 @@ export class VoteParams extends Model<IVoteParams> implements IVoteParams{
             sequelize: sequelize,
             tableName: 'vote_params',
             timestamps: false,
-            indexes: []
+            indexes: [
+                {
+                    name: 'time_idx',
+                    fields: ['timestamp']
+                },
+            ]
         })
     }
 

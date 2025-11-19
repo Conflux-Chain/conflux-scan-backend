@@ -9,7 +9,7 @@ import {CONST} from "./common/constant"
 
 const lodash = require('lodash');
 
-export class BlockTraceCreateQuery{
+export class ContractTraceCreateQuery{
     protected app
 
     constructor(app: any) {

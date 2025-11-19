@@ -148,7 +148,10 @@ export abstract class TransferQueryBase {
             const tx = await FullTransaction.findOne({
                 attributes: ['epoch', ['blockPosition', 'blockIndex'], ['txPosition','txIndex'], 'hash'],
                 where: {hash: transactionHash}, raw: true});
-            txParas = tx ? lodash.pick(tx, ['epoch', 'blockIndex', 'txIndex']) : undefined;
+            if(!tx) {
+                throw new Error(`Tx ${transactionHash} not found.`);
+            }
+            txParas = lodash.pick(tx, ['epoch', 'blockIndex', 'txIndex']);
         }
         const tokenAddressIdArray = [];
         if(tokenArray?.length){

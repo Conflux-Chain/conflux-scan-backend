@@ -309,10 +309,14 @@ export const CONST = {
         TX_LIST_INTERNAL: 'txlistinternal',
         TOKEN_TX: 'tokentx',
         TOKEN_NFT_TX: 'tokennfttx',
+        TOKEN_1155_TX: 'token1155tx',
         GET_MINED_BLOCKS: 'getminedblocks',
         BALANCE_HISTORY: 'balancehistory',
         TOKEN_BALANCE: 'tokenbalance',
         TOKEN_BALANCE_HISTORY: 'tokenbalancehistory',
+        ADDRESS_TOKEN_BALANCE: 'addresstokenbalance',
+        ADDRESS_TOKEN_NFT_BALANCE: 'addresstokennftbalance',
+        ADDRESS_TOKEN_NFT_INVENTORY: 'addresstokennftinventory',
       }
     },
     CONTRACT: {
@@ -349,14 +353,30 @@ export const CONST = {
     TOKEN: {
       module: 'token',
       action: {
+        TOKEN_HOLDER_LIST: 'tokenholderlist',
+        TOKEN_HOLDER_COUNT: 'tokenholdercount',
+        TOP_HOLDERS: 'topholders',
         TOKEN_INFO: 'tokeninfo',
       }
     },
     STATS: {
       module: 'stats',
       action: {
+        CFX_SUPPLY: 'cfxsupply',
+        CFX_PRICE: 'cfxprice',
         TOKEN_SUPPLY: 'tokensupply',
         TOKEN_SUPPLY_HISTORY: 'tokensupplyhistory',
+        DAILY_BLOCK: 'dailyblkcount',
+        DAILY_TX: 'dailytx',
+        DAILY_TX_FEE: 'dailytxnfee',
+        DAILY_NEW_ADDRESS: 'dailynewaddress',
+        DAILY_AVG_HASHRATE: 'dailyavghashrate',
+        DAILY_AVG_DIFFICULTY: 'dailyavgnetdifficulty',
+        DAILY_AVG_BLOCKTIME: 'dailyavgblocktime',
+        DAILY_AVG_GASLIMIT: 'dailyavggaslimit',
+        DAILY_TOTAL_GASUSED: 'dailygasused',
+        DAILY_AVG_GASPRICE: 'dailyavggasprice',
+        DAILY_NETWORK_UTILIZATION: 'dailynetutilization',
       }
     },
   },

@@ -1,6 +1,6 @@
 import {Op} from 'sequelize'
 import {NFTBalance} from "../../model/Balance";
-import {IntervalType, TimerStat} from "./TimerStat";
+import {StatType, TimerStat} from "./TimerStat";
 import {DailyNFTHolder} from "../../model/DailyNFTStat";
 import {Erc721Transfer} from "../../model/Erc721Transfer";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
@@ -13,7 +13,7 @@ export class StatTotalNFTHolder extends TimerStat{
 
     constructor(app: any) {
         super(app);
-        this.baseInterval = IntervalType.HOUR;
+        this.baseInterval = StatType.HOUR;
     }
 
     public bizAlias(): string {
@@ -37,27 +37,22 @@ export class StatTotalNFTHolder extends TimerStat{
     public async stat(rangeBegin: Date, rangeEnd: Date) {
         const hStat = await this.statRaw(rangeBegin, rangeEnd);
         const dStat =
-            lodash.assign({...hStat}, {statTime: this.getRangeBegin(rangeEnd, IntervalType.DAY), statType: IntervalType.DAY});
+            lodash.assign({...hStat}, {statTime: this.getRangeBegin(rangeEnd, StatType.DAY), statType: StatType.DAY});
         const mStat =
-            lodash.assign({...hStat}, {statTime: this.getRangeBegin(rangeEnd, IntervalType.MONTH), statType: IntervalType.MONTH});
-        this.debug && console.log(`debug-5,hStat:${JSON.stringify(hStat)},dStat:${JSON.stringify(dStat)}`);
+            lodash.assign({...hStat}, {statTime: this.getRangeBegin(rangeEnd, StatType.MONTH), statType: StatType.MONTH});
 
         const statArray = [hStat, dStat, mStat];
         await DailyNFTHolder.sequelize.transaction(async (dbTx) => {
             await DailyNFTHolder.destroy({
                 where: {statType: dStat.statType, statTime: dStat.statTime}, transaction: dbTx,
-                /*logging: msg => console.log(`[${this.bizAlias()}]destroy ${msg}`),*/
             });
             await DailyNFTHolder.destroy({
                 where: {statType: mStat.statType, statTime: mStat.statTime}, transaction: dbTx,
-                /*logging: msg => console.log(`[${this.bizAlias()}]destroy ${msg}`),*/
             });
             await DailyNFTHolder.bulkCreate(statArray, {
                 transaction: dbTx,
-                /*logging: msg => console.log(`[${this.bizAlias()}]bulkCreate ${msg}`),*/
             });
         });
-        console.log(`[${this.bizAlias()}]record:${JSON.stringify(statArray)}`);
     }
 
     // ------------------------------- biz -----------------------------------
