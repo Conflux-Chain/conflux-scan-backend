@@ -305,6 +305,21 @@ async function migDB(seq: Sequelize) {
         type: DataTypes.CHAR(255),
         allowNull: true,
     });
+
+    const dailyNFTStat = DailyNFTStat.getTableName().toString();
+    await addColumnIfNotExistsV2(qi, dailyNFTStat, 'statType', {
+        type: DataTypes.CHAR(3), allowNull: false, defaultValue: '1d',
+    });
+
+    const dailyPosRewardStat = DailyPosRewardStat.getTableName().toString();
+    await addColumnIfNotExistsV2(qi, dailyPosRewardStat, 'statType', {
+        type: DataTypes.CHAR(3), allowNull: false, defaultValue: '1d',
+    });
+
+    const dailyPowRewardStat = DailyPowRewardStat.getTableName().toString();
+    await addColumnIfNotExistsV2(qi, dailyPowRewardStat, 'statType', {
+        type: DataTypes.CHAR(3), allowNull: false, defaultValue: '1d',
+    });
 }
 
 async function dropEmptyTables() {

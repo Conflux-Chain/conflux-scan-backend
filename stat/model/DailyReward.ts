@@ -21,7 +21,7 @@ export class DailyPowRewardStat extends Model<IDailyPowRewardStat> implements ID
         DailyPowRewardStat.init({
             id: {type: DataTypes.BIGINT, primaryKey: true, allowNull: false, autoIncrement: true},
             statTime: {type: DataTypes.DATE, allowNull: false},
-            statType: {type: DataTypes.CHAR(2), allowNull: false, defaultValue: '1d'},
+            statType: {type: DataTypes.CHAR(3), allowNull: false, defaultValue: '1d'},
 
             powReward: {type: DataTypes.DECIMAL(65,18), allowNull: false, defaultValue: 0},
             powRewardTotal: {type: DataTypes.DECIMAL(65,18), allowNull: false, defaultValue: 0},
@@ -71,7 +71,7 @@ export class DailyPosRewardStat extends Model<IDailyPosRewardStat> implements ID
         DailyPosRewardStat.init({
             id: {type: DataTypes.BIGINT, primaryKey: true, allowNull: false, autoIncrement: true},
             statTime: {type: DataTypes.DATE, allowNull: false},
-            statType: {type: DataTypes.CHAR(2), allowNull: false, defaultValue: '1d'},
+            statType: {type: DataTypes.CHAR(3), allowNull: false, defaultValue: '1d'},
 
             posReward: {type: DataTypes.DECIMAL(65,18), allowNull: false, defaultValue: 0},
             posRewardTotal: {type: DataTypes.DECIMAL(65,18), allowNull: false, defaultValue: 0},
