@@ -201,7 +201,7 @@ async function decodeMethod(toAddr, data) {
         return result;
     }
 
-    const impl = await getApiService().contractQuery.queryImplementation(base32)
+    const impl = await getApiService().contractQuery.getImpl(base32)
     contract = await getVerifiedContract(impl.implementation);
     if(!contract){
         return  { error: `The proxy's (${formatAddr(toAddr)}) implementation contract (${formatAddr(impl.implementation)}) not verified` };

@@ -14,7 +14,9 @@ import {TokenQuery} from "../TokenQuery";
 import {emptyField} from "../common/utils";
 import {getNFTOwnerCount} from "../../model/TransferCount";
 import {AddressNfts} from "../../model/AddrNft";
-import {fmtAddr} from "../../StatApp";
+import {fmtAddr, StatApp} from "../../StatApp";
+import {ethers} from "ethers";
+import {format} from "js-conflux-sdk";
 
 const lodash = require('lodash');
 
@@ -36,8 +38,7 @@ export class NFTCheckerService {
             skip = 0,
             limit = 10,
             type,
-        }
-        : {
+        }: {
             owner?: string,
             contract?: string[],
             tokenId?: string,
@@ -45,60 +46,70 @@ export class NFTCheckerService {
             sortField?: string,
             cursor?: number,
             skip?: number,
-            limit?: number
-            type?: NFTType
+            limit?: number,
+            type?: NFTType,
         }) {
         const ownerId = owner ? await getAddrId(owner) : owner;
-        const contractIdArray = contract ? await getAddrIdArray(contract) : contract;
-        if ((owner && !ownerId) || ( contract?.length && !contractIdArray?.length)) {
+        const contractIds = contract ? await getAddrIdArray(contract) : contract;
+        if ((owner && !ownerId) || (contract?.length && !contractIds?.length)) {
             return {total: 0, list: []};
         }
 
-        const cursorField = sortField === 'latest_update_time' ? 'updatedCursor' : 'id'
-        const cursorValue = cursor
+        const cursorField = sortField === 'latest_update_time' ? 'updatedCursor' : 'id';
+        const cursorValue = cursor;
+
         async function doQuery() {
-	        const model = AddressNfts;
-            if(cursor > 0 && skip === 0) {
+            let page;
+            if (cursor > 0 && skip === 0) {
                 delete options.offset;
                 options.where[cursorField] = {[sort === 'DESC' ? Op.lt : Op.gt]: cursorValue};
-                const rows = await model.findAll(options);
+                const rows = await AddressNfts.findAll(options);
                 delete options.attributes;
                 delete options.where[cursorField];
-                const count = await model.count(options);
+                const count = await AddressNfts.count(options);
                 page = {count, rows};
-            } else{
-                if(cursorField === 'id') {
-                    // Using 'order by updatedAt desc, id desc' in case of duplicate updatedAt
+            } else {
+                if (cursorField === 'id') {
                     options.order.unshift(['updatedAt', sort]);
                 }
-                page = await model.findAndCountAll(options);
+                page = await AddressNfts.findAndCountAll(options);
             }
             return page;
         }
 
-        let page;
-        const options: any = { offset: skip, limit, raw: true, order: [[cursorField, sort]]};
-        const contractLen = contractIdArray?.length;
-        const contractId = contractLen ? (contractLen === 1 ? contractIdArray[0] : {[Op.in]: contractIdArray}) : undefined;
+        const options: any = {offset: skip, limit, raw: true, order: [[cursorField, sort]]};
+        const contractLen = contractIds?.length;
+        const contractId = contractLen ? (contractLen === 1 ? contractIds[0] : {[Op.in]: contractIds}) : undefined;
         options.attributes = ['id', 'contractId', 'addressId', 'tokenId', 'value', 'type', 'updatedCursor'];
-        options.where = emptyField({addressId: ownerId, contractId, tokenId, value: {[Op.gt]: 0},
-                type: type ? parseInt(type.substr(-2)) : type});
-        page = await doQuery();
+        options.where = emptyField({
+            addressId: ownerId, contractId, tokenId, value: {[Op.gt]: 0},
+            type: type ? parseInt(type.substr(-2)) : type
+        });
 
-        const list = [];
-        const {count: total, rows} = page;
+        const {count: total, rows} = await doQuery();
+
+        let list = [];
         if (rows?.length) {
-            const idBase32Map = await getAddrIdBase32Map(rows, 'contractId', 'addressId');
-            rows.forEach(item => list.push({
-                owner: idBase32Map.get(item.addressId),
-                contract: idBase32Map.get(item.contractId),
-                tokenId: item.tokenId,
-                amount: item.value,
-                type: item.type === CONST.ADDRESS_TRANSFER_TYPE.ERC721.code ? 'CRC721' : 'CRC1155',
-            }));
+            const mapIdToHex = await idHex40Map([...new Set(rows.flatMap(r => [r.addressId, r.contractId]))], true);
+
+            const addressMapper = (address) => {
+                return StatApp.isEVM ?
+                    ethers.utils.getAddress(format.hexAddress(address)) :
+                    format.address(address, StatApp.networkId);
+            }
+
+            list = rows.map(item =>
+                ({
+                    owner: addressMapper(mapIdToHex.get(item.addressId)),
+                    contract: addressMapper(mapIdToHex.get(item.contractId)),
+                    tokenId: item.tokenId,
+                    amount: item.value,
+                    type: item.type === CONST.ADDRESS_TRANSFER_TYPE.ERC721.code ? 'CRC721' : 'CRC1155',
+                })
+            );
         }
 
-        return {total, list, next: rows?.length ? rows[rows.length-1][cursorField] : 0};
+        return {total, list, next: rows?.length ? rows[rows.length - 1][cursorField] : 0};
     }
 
     public async getNftTokensByFtsForOpenApi({contract, name}: {contract?: string, name: string}) {

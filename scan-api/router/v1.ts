@@ -908,8 +908,8 @@ router_get(router,'/contract-and-token',
   }),
 
   async function (options) {
-    const {app: {service: {contractQuery}}} = this as ScanCtx
-    return contractQuery.listBasic({ addressArray: toArray(options.address) });
+    const {app: {service: {accountQuery}}} = this as ScanCtx
+    return accountQuery.listPatchInfo(toArray(options.address), {withContractInfo: true});
   },
 );
 
@@ -1267,9 +1267,11 @@ router_get(router,'/nametag',
 
     async function (options) {
       const {app: { service: {accountQuery} },} = this as ScanCtx;
-      const accountBasic = await accountQuery.listPatchInfo(toArray(options.address));
-      const map = {};
-      Object.keys(accountBasic.map).forEach(address => (map[address] = accountBasic.map[address]?.nameTag));
+      const accounts = await accountQuery.list(toArray(options.address), {withNameTagInfo: true});
+      const map = Object.fromEntries(Object.keys(accounts).map(item => [
+        item,
+        accounts[item].nameTag,
+      ]));
       return {
         total: Object.keys(map).length,
         map,

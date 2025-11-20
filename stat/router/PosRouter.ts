@@ -41,15 +41,16 @@ export function registerPosRouter(router: Router<any, {}>, statApp: StatApp) {
             {skip, limit, orderBy, order: reverse === 'true' ? 'desc' : 'asc'}
         )
 
-        // `Name tag`
-        const hex64Array = page.rows.map(row => row.hex)
-        const {map} = await statApp.accountQuery.listBytes32NameTagInfo(hex64Array)
+        const accounts = await statApp.accountQuery.list(page.rows.map(row => row.hex), {withByte32NameTagInfo: true});
         page.rows.forEach(row => {
-            const tag = map[row.hex]?.byte32NameTag || {}
-            if(tag?.nameTag) {
-                tag.nameTag = tag.nameTag.replace('(Public Pos Pool)', '').replace('(Personal Node)', '')
+            const tag = accounts[row.hex]?.nameTag;
+            if(!tag) {
+                return;
             }
-            row[`byte32NameTagInfo`] = tag
+            if(tag.nameTag) {
+                tag.nameTag = tag.nameTag.replace('(Public Pos Pool)', '').replace('(Personal Node)', '');
+            }
+            row.byte32NameTagInfo = tag;
         })
 
         ctx.body = {

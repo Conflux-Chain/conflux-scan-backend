@@ -779,7 +779,7 @@ async function listAddressTokenInventory(ctx) {
         limit: offset, type: CONST.TRANSFER_TYPE.ERC721 as NFTType});
 
     result.list = result.list.map((nft: any) => ({
-        TokenAddress: StatApp.isEVM ? format.hexAddress(nft.contract) : nft.contract,
+        TokenAddress: nft.contract,
         TokenId: nft.tokenId,
     }))
 
@@ -986,8 +986,8 @@ function parseStatParam(ctx) {
 }
 
 async function addTokenBasicInfo(result) {
-    const addressArray = result.map(item => item.contractAddress);
-    const tokenArray = await getApiService().tokenQuery.list({addressArray}).then(response => response.list);
+    const addresses = result.map(item => item.contractAddress);
+    const tokenArray = await getApiService().tokenQuery.list({addresses}).then(response => response.list);
     const tokenMap = lodash.keyBy(tokenArray, item => checksum_hexAddress(item.address));
     result.forEach(item => {
         const {name, symbol, decimals, transferType} = tokenMap[item.contractAddress] || {} as any;

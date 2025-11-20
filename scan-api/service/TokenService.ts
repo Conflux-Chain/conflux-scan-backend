@@ -84,7 +84,7 @@ export class TokenService {
     } = this as ScanCtx;
 
     const resp = await service.tokenQuery.list({
-      addressArray: [...addressArray],
+      addresses: [...addressArray],
       fields: lodash.intersection(fields, ['icon']),
     });
 

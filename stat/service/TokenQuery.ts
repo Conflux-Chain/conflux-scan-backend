@@ -49,7 +49,7 @@ export class TokenQuery {
     }
 
     public async query({address}) {
-        const response = await this.list({addressArray: [address]});
+        const response = await this.list({addresses: [address]});
         const token = (response.list)[0] || {};
 
         if (token.isRegistered) {
@@ -63,7 +63,7 @@ export class TokenQuery {
 
     public async list(
         {
-            addressArray,
+            addresses,
             name,
             transferType,
             fields,
@@ -73,7 +73,7 @@ export class TokenQuery {
             skip = 0,
             limit = 10,
         }: {
-            addressArray?: string[],
+            addresses?: string[],
             name?: string,
             transferType?: string,
             fields?: string[],
@@ -103,9 +103,9 @@ export class TokenQuery {
         const where: any = {auditResult: true};
         if (name) {
             where[Op.or] = [{name: {[Op.like]: `%${name}%`}}, {symbol: {[Op.like]: `%${name}%`}}];
-        } else if (addressArray?.length) {
-            addressArray = addressArray.map(item => toBase32(item));
-            where.base32 = {[Op.in]: addressArray};
+        } else if (addresses?.length) {
+            addresses = addresses.map(item => toBase32(item));
+            where.base32 = {[Op.in]: addresses};
         } else {
             if (transferType) {
                 where.type = transferType;
@@ -125,7 +125,7 @@ export class TokenQuery {
             if (NoCoreSpace) {
                 options.order = [['transfer', 'DESC']];
             }
-        } else if (addressArray?.length) {// NO-OP
+        } else if (addresses?.length) {// NO-OP
         } else {
             if (orderBy) {
                 if (NoCoreSpace) {
@@ -148,7 +148,7 @@ export class TokenQuery {
         //query
         let rawList;
         let count;
-        if (addressArray?.length) {
+        if (addresses?.length) {
             delete options.where['auditResult'];
             if (ConfigInstance.onlyStatActiveContract) {
                 // when exporting TX of an account, we may encounter too many tokens(ZG testnet).
@@ -164,10 +164,10 @@ export class TokenQuery {
             rawList = page?.rows;
             count = page?.count;
         }
-        if (rawList.length > 100) {
+        if (rawList.length > 200) {
             const msg = `token list with bad size ${rawList.length}`;
             console.log(msg);
-            console.log(`addressArray`, addressArray, 'name', name, 'limit', limit)
+            console.log(`addresses`, addresses, 'name', name, 'limit', limit)
             throw new Errors.BizError(msg)
         }
         let list = [];
@@ -218,12 +218,13 @@ export class TokenQuery {
                     nameTag.caution = caution ? 1 : 0;
                 }
             })
-        } else if (addressArray) {// add unregistered tokens
-            const unregisteredTokens = addressArray.filter(address => !lodash.includes(registeredTokens, address));
-            const tokens = await Promise.all(unregisteredTokens.map(item => this.getTokenInfo(item)));
-            if (tokens?.length) {
-                list = [...list, ...tokens];
-            }
+        } else if (addresses) {// add unregistered tokens
+            const tokens = (await Promise.all(addresses
+                .filter(address => !registeredTokens.includes(address))
+                .map(this.getTokenInfo, this)
+            )).filter(Boolean);
+
+            list = [...list, ...tokens].filter(item => item.transferType);
             list.forEach(TokenQuery.mosaicToken);
             count = list.length;
         }
@@ -269,7 +270,7 @@ export class TokenQuery {
             throw new Error("Transfer type not supported.")
         }
 
-        const addressArray = await Hex40Map.sequelize.query(`
+        const addresses = await Hex40Map.sequelize.query(`
             select hex from hex40 
             where id in (
                 select distinct(contractId) from (
@@ -285,7 +286,7 @@ export class TokenQuery {
             item => format.address(`0x${item.hex}`, StatApp.networkId)
         ));
 
-        const {total, list: tokens} = await this.list({addressArray});
+        const {total, list: tokens} = await this.list({addresses});
         let list = tokens
             .filter(token => (token?.name?.trim()?.length > 0) && (token?.symbol?.trim()?.length > 0))
             .map(token => lodash.pick(token, ['address', 'name', 'symbol', 'iconUrl']));
@@ -478,24 +479,25 @@ export class TokenQuery {
             app: {tokenTool, service},
         } = this as unknown as ScanCtx;
 
-        const hex40 = await Hex40Map.findOne({where: {hex: format.hexAddress(base32).substr(2)}});
-        const toolkit = tokenTool || service.tokenTool
-        const [tokenBasic, totalSupply, transferInfo] = await Promise.all([
+        const {type} = await TokenQuery.detectTokenType({base32});
+
+        if (!type) {
+            return;
+        }
+
+        const toolkit = tokenTool || service.tokenTool;
+
+        const [basicInfo, totalSupply] = await Promise.all([
             toolkit.getToken(base32, undefined, true),
             toolkit.getTokenTotalSupply(base32, undefined, false),
-            TokenQuery.getTransferInfo(hex40?.id),
         ]);
 
-        return lodash.defaults(tokenBasic, {totalSupply}, transferInfo,
-            {isRegistered: false, holderIncreasePercent: 0});
-    }
-
-    private static async getTransferInfo(addressId) {
-        if (addressId === undefined)
-            return {transferCount: 0};
-
-        const token = await Token.findOne({attributes: ['type', 'transfer'], where: {hex40id: addressId}});
-        return {transferType: token?.type, transferCount: token?.transfer};
+        return lodash.defaults(basicInfo, {totalSupply}, {
+            transferType: type,
+            transferCount: 0,
+            holderIncreasePercent: 0,
+            isRegistered: false,
+        });
     }
 
     private async addSecurityAuditInfo(tokenArray) {

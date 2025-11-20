@@ -73,25 +73,26 @@ export class ENSCheckerQuery {
         return this.ensChecker.getReverseNameByAddress(this.ensAddr, this.reverseRegistrarAddr, addr);
     }
 
-    public async nameBatch(addressArray: string[]) {
-        const result = {};
-        if(!this.ensEnable) {
-            return result;
+    public async nameBatch(addresses: string[]) {
+        if (!this.ensEnable) {
+            return {};
         }
 
-        const base32Array = [...new Set(addressArray.filter(Boolean).map(a => format.address(a, StatApp.networkId)))];
-        /*const nameArray = await this.ensChecker.matchNames(this.ensAddr, this.reverseRegistrarAddr, base32Array)*/
-        const nameArray = await this.reverseRecords.getNames(base32Array)
-            .catch(e => {
-                console.log(`nameBatch ens ${this.ensAddr} reverse ${this.reverseRegistrar} error`, e);
-                this.ensEnable = false;
-                return result;
-            });
-        for (let i = 0; i < base32Array.length; i++) {
-            result[base32Array[i]] = {name: nameArray[i] || ''};
-        }
+        const hexes = [...new Set(addresses.filter(item => item?.trim()).map(item => format.hexAddress(item)))];
 
-        return result;
+        const names = await this.reverseRecords.getNames(hexes).catch(err => {
+            console.log(`List ENS names error, ens ${this.ensAddr} reverse ${this.reverseRegistrar}`, err);
+            this.ensEnable = false;
+            return {};
+        });
+
+        return Object.fromEntries(hexes
+            .filter((_, index) => names[index])
+            .map((hex, index) => [
+                hex,
+                {name: names[index]},
+            ])
+        );
     }
 
     public async resolveName(name) {

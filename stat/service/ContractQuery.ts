@@ -1,9 +1,10 @@
-import {toBase32} from "./tool/AddressTool";
 import {
     Hex40Map,
     hex40IdMap,
     POCKET_ADDRESS_MAP,
-    ESpaceHex40Map, getAddrId,
+    ESpaceHex40Map,
+    getAddrId,
+    formatToBase32,
 } from "../model/HexMap";
 import {Op, QueryTypes} from "sequelize";
 import {fmtAddr, StatApp} from "../StatApp";
@@ -39,11 +40,11 @@ const abi = require('./tool/abi');
 const NodeCache = require( "node-cache" );
 const DEFAULT_VERIFY_CACHE_TTL: number = 60 * 60 * 24 * 7 //7days
 const ZERO_LABS_PROXY_BEACON_MAP = {
-    "0xea224dbb52f57752044c0c86ad50930091f561b9":"0x0000000000000000000000000e9cc1be1060e3dd036f16977a186a8185acc513",
-    "0x712a30816a8756c8fdb78de63db55aa70d3cf3b4":"0x000000000000000000000000335ae8961fface946c25900aa689d793dc3ff1bf",
-    "0x81568b27b210538869f5659035ebf506d2fc3384":"0x000000000000000000000000335ae8961fface946c25900aa689d793dc3ff1bf",
-    "0x8ee1af5b2791c7fa6065a02e4b579a9cc78388fb":"0x000000000000000000000000335ae8961fface946c25900aa689d793dc3ff1bf",
-    "0xcb8fb96dd0f60085c9b0ef4ffaea219caffbf972":"0x000000000000000000000000335ae8961fface946c25900aa689d793dc3ff1bf"
+    "0xea224dbb52f57752044c0c86ad50930091f561b9":"0x0e9cc1be1060e3dd036f16977a186a8185acc513",
+    "0x712a30816a8756c8fdb78de63db55aa70d3cf3b4":"0x335ae8961fface946c25900aa689d793dc3ff1bf",
+    "0x81568b27b210538869f5659035ebf506d2fc3384":"0x335ae8961fface946c25900aa689d793dc3ff1bf",
+    "0x8ee1af5b2791c7fa6065a02e4b579a9cc78388fb":"0x335ae8961fface946c25900aa689d793dc3ff1bf",
+    "0xcb8fb96dd0f60085c9b0ef4ffaea219caffbf972":"0x335ae8961fface946c25900aa689d793dc3ff1bf"
 }
 let _instance: ContractQuery;
 
@@ -54,8 +55,8 @@ export function getContractQuery() {
 export class ContractQuery {
     public app: ScanApp;
     private readonly cacheTtl: number
-    private CACHE_VERIFY_ADDRESS: any // hex => true
-    private CACHE_VERIFY_DETAIL: any  // hex => {}: Contract
+    private CACHE_VERIFY_ADDRESS: any // hex => {address, name}
+    private CACHE_VERIFY_DETAIL: any  // hex => Contract
 
     constructor(app: ScanApp, verifyCacheTTL?: number) {
         this.app = app;
@@ -76,28 +77,27 @@ export class ContractQuery {
         return list?.length ? list[0] : {}
     }
 
-    public async list(addressArray) {
-        if(!addressArray){
-            return []
+    public async list(addresses: string[]) {
+        if(!addresses?.length){
+            return [];
         }
 
-        const addresses = addressArray.map(item => toBase32(item))
         const list = await Contract.findAll({
             attributes: [
                 'hex40id',
                 ['base32', 'address'],
                 'name',
-                'website'
+                'website',
             ],
-            where: {base32: {[Op.in]: addresses}},
-            raw: true
+            where: {base32: {[Op.in]: addresses.map(item => formatToBase32(item))}},
+            raw: true,
+        });
+
+        list.forEach((item: any) => {
+            item.name = Desensitizer.mosaicStr(item.address, item.name);
         })
 
-        list?.forEach(item => {
-            item.name = Desensitizer.mosaicStr(item.address, item.name)
-        })
-
-        return list
+        return list;
     }
 
     public async queryVerify(address, withDetail = false) {
@@ -123,15 +123,9 @@ export class ContractQuery {
         }
 
         // real-time impl info
-        const proxyInfo = await this.queryImplementation(address)
-            .catch((e) => {
-                console.log('queryVerify error ', e)
-            });
-        if(proxyInfo?.implementation){
-            verified.beacon = proxyInfo.beacon;
-            verified.implementation = proxyInfo.implementation;
-            verified.proxy = true
-            verified.proxyPattern = proxyInfo.proxyPattern;
+        const implInfo = await this.getImpl(address);
+        if(implInfo){
+            lodash.assign(verified, implInfo, {proxy: true});
         }
 
         // extra info
@@ -163,9 +157,10 @@ export class ContractQuery {
                     });
                 }
             });
-            const verifyMap = {};
-            const verifyArray = await this.listVerify(libs.map(item => item.address))
-            verifyArray?.forEach((item: any) => verifyMap[item.address] = true);
+
+            const verifyArray = await this.listVerify(libs.map(item => item.address));
+            const verifyMap = Object.fromEntries(verifyArray.map(item => [item.address, true]));
+
             libs.forEach(item => ( item['exactMatch'] = !!verifyMap[item.address]));
             verified.libraries = libs;
         } else{
@@ -175,68 +170,71 @@ export class ContractQuery {
         return verified;
     }
 
-    private MAX_CONTRACTS = 100
+    private MAX_CONTRACTS = 100;
 
-    public async listVerify(addressArray) {
-        if(!addressArray){
-            return []
+    public async listVerify(addresses: string[]) {
+        if (!addresses?.length) {
+            return [];
         }
-        if (!lodash.isArray(addressArray)) {
-            addressArray = [addressArray]
-        }
-        if(addressArray?.length > this.MAX_CONTRACTS) {
-            throw Error(`Contract addresses up to ${this.MAX_CONTRACTS} at a time`)
-        }
-        addressArray = addressArray.map(format.hexAddress)
 
-        let internals = []
-        let contractAddresses = []
-        addressArray.forEach(address => {
-            if(this.isInternalContract(address)) {
-                internals.push(address)
-            } else{
-                contractAddresses.push(address)
+        if (addresses.length > this.MAX_CONTRACTS) {
+            throw Error(`Contract addresses up to ${this.MAX_CONTRACTS} at a time`);
+        }
+
+        let internals = [];
+        let contracts = [];
+        addresses.map(format.hexAddress).forEach(address => {
+            if (this.isInternalContract(address)) {
+                internals.push(address);
+            } else {
+                contracts.push(address);
             }
-        })
+        });
 
-        let contracts: string[] = []
-        if(contractAddresses.length) {
-            const cache = contractAddresses.filter(a => this.CACHE_VERIFY_ADDRESS.get(a))
-            if(cache.length === contractAddresses.length) {
-                contracts = cache
-            } else{
-                const results = await this.listVerifyByDB(contractAddresses)
-                contracts = results.map((r: any) => format.hexAddress(r.address))
-                if(results?.length < contractAddresses.length) {
-                    const results: any[] = await this.listVerifyBySourcify(contractAddresses.filter(c => !contracts.includes(c)))
-                    const founded = results.map(r => format.hexAddress(r.address))
-                    contracts = [...contracts, ...founded]
+        const verified: { address: string, name: string, }[] = [];
+        if (contracts.length) {
+            const hits = contracts.map(item=>this._getCache(item, false)).filter(Boolean);
+            if (hits.length === contracts.length) {
+                verified.push(...hits);
+            } else {
+                verified.push(...(await this.listVerifyByDB(contracts)));
+
+                if (verified.length < contracts.length) {
+                    const founded = verified.map(item => format.hexAddress(item.address));
+                    const fetched = await this.listVerifyBySourcify(contracts.filter(item => !founded.includes(item)));
+                    verified.push(...fetched);
                 }
-                contracts.forEach(a => this._addCache(this.CACHE_VERIFY_ADDRESS, a, true))
+
+                verified.forEach(item => this._addCache(format.hexAddress(item.address), item));
             }
         }
 
-        return [...internals, ...contracts].map(a => ({address: format.address(a, StatApp.networkId)}))
+        return [
+            ...internals.map(item => ({
+                address: format.address(item, StatApp.networkId),
+                name: CONST.INTERNAL_ADDR_CONTRACT_MAP[item].name,
+            })),
+            ...verified,
+        ];
     }
 
-    public async listVerifyInBatch(addressArray, chunkSize = this.MAX_CONTRACTS) {
-        if(!addressArray){
-            return []
+    public async listVerifyInBatch(addresses: string[], chunkSize = this.MAX_CONTRACTS) {
+        if(!addresses?.length){
+            return [];
         }
-        if (!lodash.isArray(addressArray)) {
-            addressArray = [addressArray]
-        }
-        if(addressArray?.length < this.MAX_CONTRACTS) {
-            return this.listVerify(addressArray)
+
+        if(addresses.length < this.MAX_CONTRACTS) {
+            return this.listVerify(addresses);
         }
 
         const tasks = Array.from(
-            { length: Math.ceil(addressArray.length / chunkSize) },
-            (_, index) => addressArray.slice(index * chunkSize, (index + 1) * chunkSize)
-        ).map(addressArray => this.listVerify(addressArray))
-        const chunkedContracts = await Promise.all(tasks)
+            { length: Math.ceil(addresses.length / chunkSize) },
+            (_, index) => addresses.slice(index * chunkSize, (index + 1) * chunkSize)
+        ).map(addresses => this.listVerify(addresses));
 
-        return chunkedContracts?.flat() || []
+        const contracts = await Promise.all(tasks);
+
+        return contracts?.flat() || [];
     }
 
     private isInternalContract(address) {
@@ -263,38 +261,36 @@ export class ContractQuery {
     }
 
     private async getVerifyBySourcify(contractAddress, withDetail = false) {
-        const hex = ethers.utils.getAddress(format.hexAddress(contractAddress))
+        const hex = ethers.utils.getAddress(format.hexAddress(contractAddress));
 
-        let cache = withDetail ? this.CACHE_VERIFY_DETAIL.get(hex) : this.CACHE_VERIFY_ADDRESS.get(hex)
-        if(cache) {
-            return withDetail ? cache : {address: format.address(hex, StatApp.networkId)}
+        const hit = this._getCache(hex, withDetail);
+        if (hit) {
+            return hit;
         }
 
-        cache = await this.getVerifyByDB(contractAddress, withDetail)
-        if(cache) {
-            if(withDetail)
-                this._addCache(this.CACHE_VERIFY_DETAIL, hex, cache)
-            else
-                this._addCache(this.CACHE_VERIFY_ADDRESS, hex, true)
-            return cache
+        const local = await this.getVerifyByDB(contractAddress, withDetail);
+        if (local) {
+            this._addCache(hex, local);
+            return local;
         }
 
-        const fields = withDetail ? '?fields=stdJsonInput,compilation,abi' : ''
+        const fields = `?fields=compilation${withDetail ? ',stdJsonInput,abi' : ''}`;
         const resp = await this._getJsonRequest({
-                url: `${this.app.config.contractVerificationUrl}/contract/${StatApp.networkId}/${hex}${fields}`
-            })
-        if(!resp) {
-            return null
+            url: `${this.app.config.contractVerificationUrl}/contract/${StatApp.networkId}/${hex}${fields}`
+        });
+        if (!resp) {
+            return null;
         }
 
-        const {address, match, abi, compilation, stdJsonInput, licenseType, contractLabel} = resp.data
+        const {address, match, abi, compilation, stdJsonInput, licenseType, contractLabel} = resp.data;
         if (!match) {
-            return null
+            return null;
         }
 
-        if(!withDetail) {
-            this._addCache(this.CACHE_VERIFY_ADDRESS, hex, true)
-            return {address: format.address(address, StatApp.networkId)}
+        if (!withDetail) {
+            const verified = {address: format.address(address, StatApp.networkId), name: compilation.name};
+            this._addCache(hex, verified);
+            return verified;
         }
 
         let {
@@ -302,28 +298,28 @@ export class ContractQuery {
             compilerVersion,
             compilerSettings,
             fullyQualifiedName,
-        } = compilation
+        } = compilation;
         console.log('Succeed to get contract compilation info', JSON.stringify({
             language,
             compilerVersion,
             compilerSettings,
             fullyQualifiedName,
-        }))
+        }));
 
         for (const [key, value] of Object.entries(stdJsonInput.sources)) {
-            stdJsonInput.sources[key].content = (value as any).content
+            stdJsonInput.sources[key].content = (value as any).content;
         }
-        let sourceCode
+        let sourceCode;
         if(fullyQualifiedName.startsWith(':')) {
-            fullyQualifiedName = fullyQualifiedName.substring(1)
-            sourceCode = stdJsonInput.sources[''].content
+            fullyQualifiedName = fullyQualifiedName.substring(1);
+            sourceCode = stdJsonInput.sources[''].content;
         } else{
-            sourceCode = JSON.stringify(stdJsonInput)
+            sourceCode = JSON.stringify(stdJsonInput);
         }
 
         if(language === 'Vyper') {
-            compilerVersion = convertVyperVersion(compilerVersion, this.VYPER_VERSIONS)
-            fullyQualifiedName = contractLabel
+            compilerVersion = convertVyperVersion(compilerVersion, this.VYPER_VERSIONS);
+            fullyQualifiedName = contractLabel;
         }
 
         const verified = {
@@ -339,210 +335,132 @@ export class ContractQuery {
             libraries: compilerSettings?.libraries,
             license: CONST.CONTRACT_LICENSE[licenseType || 1].code,
             constructorArgs: '',
-        }
+        };
 
         VerifiedContracts.create({
             ...verified,
             libraries: JSON.stringify(verified.libraries)
-        }).then()
-        this._addCache(this.CACHE_VERIFY_DETAIL, hex, verified)
+        }).then();
+        this._addCache(hex, verified);
 
-        this.saveABI(address, abi).then()
+        this.saveABI(address, abi).then();
 
-        return verified
+        return verified;
     }
 
-    private async listVerifyBySourcify(contractAddresses) {
-        const commaSeparatedAddresses = contractAddresses.map(a => ethers.utils.getAddress(format.hexAddress(a))).join(',')
+    private async listVerifyBySourcify(addresses: string[]) {
+        const addressesParam = addresses.map(item => ethers.utils.getAddress(format.hexAddress(item))).join(',');
 
         const resp = await this._getJsonRequest({
-            url: `${this.app.config.contractVerificationUrl}/contracts/${StatApp.networkId}?addresses=${commaSeparatedAddresses}`
-        })
+            url: `${this.app.config.contractVerificationUrl}/contracts/${StatApp.networkId}?addresses=${addressesParam}`,
+        });
+
         if(!resp) {
-            return []
+            return [];
         }
 
-        const {results} = resp.data
-        return results
+        return resp.data.results.map(item => ({
+            address: format.address(item.address, StatApp.networkId),
+            name: item.name,
+        }));
     }
 
     private async getVerifyByDB(contractAddress, withDetail = false) {
-        let attributes: any = ['address']
+        const attributes: any[] = ['address', 'name'];
+
         if(withDetail) {
-            attributes = ['address', 'language', 'sourceCode', 'name', 'abi', 'version', 'evmVersion',
-                'optimization', 'runs', 'libraries', 'license', 'constructorArgs']
+            attributes.push(...['language', 'sourceCode', 'name', 'abi', 'version', 'evmVersion', 'optimization',
+                'runs', 'libraries', 'license', 'constructorArgs']);
         }
+
         return VerifiedContracts.findOne({
             attributes,
             where: {address: format.address(contractAddress, StatApp.networkId)},
-            raw: true
-        }).then((verify: any) => {
+            raw: true,
+        }).then((verify: VerifiedContracts) => {
             if(verify?.language?.substring(0, 8) === 'solidity') {
-                verify.language = 'solidity'
+                verify.language = 'solidity';
             }
-            return verify
+            return verify;
         })
     }
 
-    private async listVerifyByDB(contractAddresses) {
-        contractAddresses = contractAddresses.map(a => format.address(a, StatApp.networkId))
+    private async listVerifyByDB(addresses: string[]) {
         return VerifiedContracts.findAll({
             attributes: [
                 'address',
+                'name',
             ],
             where: {
-                address: {[Op.in]: contractAddresses},
+                address: {[Op.in]: addresses.map(item => format.address(item, StatApp.networkId))},
             },
             order: [['id', 'DESC']],
             raw: true,
         })
     }
 
-    public async listBasic({ addressArray = []}: {
-        addressArray?: string[]
-    }) {
-        const {
-            app: { tokenQuery, service },
-        } = this as ScanCtx;
-
-        // remove repeat
-        const networkId = StatApp.networkId;
-        addressArray = [...new Set(addressArray.filter(Boolean).map(address => format.hexAddress(address)))];
-        if (addressArray.length === 0) { return { total: 0, map: {} };}
-
-        const hexIdMap = await hex40IdMap(addressArray);
-        const traceCreates = await TraceCreateContract.findAll({where: {to: {[Op.in]: [...hexIdMap.values()]}}});
-        const registeredContracts = await Contract.findAll({where: {hex40id: {[Op.in]: [...hexIdMap.values()]}}});
-        const hexIdArray = [...new Set([...traceCreates.map(item => item.to), ...registeredContracts.map(item => item.hex40id)])];
-
-        const eSpaceHex40Array = await ESpaceHex40Map.findAll({where: {hexId: {[Op.in]: [...hexIdMap.values()]}}});
-        const eSpaceBase32Hex40Map = {};
-        if(eSpaceHex40Array?.length){
-            for(const item of eSpaceHex40Array){
-                eSpaceBase32Hex40Map[`0x${item.hex}`] = `0x${item.hex}`;
-            }
+    async getImpl(address: string): Promise<{
+        implementation: string,
+        proxyPattern: string,
+        beacon?: string,
+    } | undefined> {
+        const impl = await this._getImpl(address);
+        if (!impl) {
+            return;
         }
 
-        if (hexIdArray.length === 0) {
-            const map = {};
-            Object.keys(eSpaceBase32Hex40Map).forEach((address) => {
-                map[address] = {eSpace: {address: eSpaceBase32Hex40Map[address]}}
-            });
-            const total = Object.keys(map)?.length;
-            return { total, map };
+        const hex = await Hex40Map.findOne({where: {hex: impl.implementation.substr(2)}, raw: true});
+        if (!hex) {
+            return;
         }
 
-        const idHexMap = {};
-        hexIdMap.forEach((hexId,hex) => (idHexMap[hexId] = hex));
-        addressArray = [];
-        hexIdArray.forEach(hexId => addressArray.push(`0x${idHexMap[hexId]}`));
-        addressArray = addressArray.map(address => format.address(address, networkId));
-
-        // init
-        const map = {};
-        addressArray.forEach((address) => { map[address] = {contract: {address}, token: {address}}; });
-
-        // query contract and token
-        const tokenService = tokenQuery || service.tokenQuery;
-        const [ contractArray, verifiedArray, tokenArray ] = await Promise.all([
-            this.list(addressArray).then(list => list.map(contract => {
-                return { address: contract.address, name: contract.name }})),
-            this.listVerify(addressArray).then(response => response.map(verified => verified.address)),
-            tokenService.list({addressArray}).then(response => response.list),
-        ]);
-
-        // build response
-        contractArray.forEach((contract) => {
-            map[contract.address].contract = lodash.defaults(map[contract.address].contract, {
-                name: contract.name,
-                isVirtual: POCKET_ADDRESS_MAP[contract.name] == format.hexAddress(contract.address),
-                // v1: POCKET_ADDRESS_MAP[contract.name], v2: format.hexAddress(contract.address),
-                verify: { result: lodash.includes(verifiedArray, contract.address) ? 1 : 0 },
-            });
-        });
-        verifiedArray.forEach((verifiedAddress) => {
-            map[verifiedAddress].contract = lodash.defaults(map[verifiedAddress].contract, {
-                verify: { result: 1 },
-            });
-        });
-        tokenArray.forEach((token) => {
-            map[token.address].token = lodash.defaults(map[token.address].token, {
-                name: token.name,
-                symbol: token.symbol,
-                decimals: token.decimals,
-                icon: token.icon,
-                iconUrl: token.iconUrl,
-                website: token.website,
-                tokenType: token.transferType,
-            });
-        });
-        Object.keys(eSpaceBase32Hex40Map).forEach((address) => {
-            if(!map[address]) map[address] = {};
-            map[address].eSpace = {address: eSpaceBase32Hex40Map[address]};
-        });
-
-        if (StatApp.isEVM) {
-            Object.keys(map).forEach(base32=>{
-                const obj = map[base32];
-                // delete map[base32]; // do not delete, keep both, others may query map by base32.
-                const hex = fmtAddr(base32, StatApp.networkId);
-                map[hex] = obj;
-                Object.keys(obj).forEach(k=>{
-                    obj[k].address = hex;
-                })
-            })
-        }
-
-        return {total: addressArray.length, map};
+        return impl;
     }
 
-    public async queryImplementation(contractAddress) {
-        const {cfx} = this.app
-        const base32 = format.address(contractAddress, StatApp.networkId)
-        let result = {proxy: false}
-        const implementation = await Promise.all([
+    private async _getImpl(address: string) {
+        const {cfx} = this.app;
+
+        const hex = format.address(address, StatApp.networkId);
+        const validSlotValue = (value: string) => value && value !== CONST.ZERO_VALUE_IN_SLOT;
+
+        const impl = await Promise.all([
             CONST.POSITION_IMPLEMENTATION_SLOT,
             CONST.IMPLEMENTATION_SLOT_OZ,
             CONST.IMPLEMENTATION_SLOT_EIP1822,
-        ].map(slot=>{
-            return cfx.getStorageAt(base32, slot).then(res=>{
-                return res
-            })
-        })).then(arr=>arr.find(implementation=>
-            implementation !== null && implementation !== CONST.ZERO_VALUE_IN_SLOT
-        ))
+        ].map(slot => cfx.getStorageAt(hex, slot))).then(values => {
+            const value = values.find(validSlotValue);
+            return value ? `0x${value.substr(26)}` : undefined;
+        });
 
-        let beacon = await cfx.getStorageAt(base32, CONST.POSITION_BEACON_SLOT)
-        if (!beacon || beacon === CONST.ZERO_VALUE_IN_SLOT) {
-            beacon = ZERO_LABS_PROXY_BEACON_MAP[format.hexAddress(base32)]
+        if (impl) {
+            return {
+                implementation: fmtAddr(impl, StatApp.networkId),
+                proxyPattern: "OpenZeppelin's Unstructured Storage",
+            };
         }
 
-        let beaconHex40
-        let implHex40
-        if (implementation) {
-            implHex40 = implementation.substr(26)
-        }
-        if (beacon && beacon !== CONST.ZERO_VALUE_IN_SLOT) {
-            beaconHex40 = `0x${beacon.substr(26)}`;
-            const contract = cfx.Contract({abi});
-            const impl = await contract.implementation()
-            .call({to: beaconHex40}, undefined)
-            .catch(() => undefined)
-            implHex40 = format.hexAddress(impl).substr(2)
-        }
-        if (!implHex40) return result
+        const beacon = await cfx.getStorageAt(hex, CONST.POSITION_BEACON_SLOT).then(value => {
+            return validSlotValue(value) ? `0x${value.substr(26)}` : ZERO_LABS_PROXY_BEACON_MAP[hex];
+        });
 
-        const hex40 = await Hex40Map.findOne({where: {hex: implHex40}, raw: true})
-        if (!hex40) return result
+        if (!beacon) {
+            return;
+        }
 
-        const beaconAddress = beaconHex40 ? fmtAddr(beaconHex40, StatApp.networkId) : null
-        const implAddress = fmtAddr(`0x${hex40.hex}`, StatApp.networkId)
-        return lodash.assign(result, {
-            proxy: true,
-            beacon: beaconAddress,
-            implementation: implAddress,
-            proxyPattern: "OpenZeppelin's Unstructured Storage"
-        })
+        const beaconImpl = await cfx.Contract({abi}).implementation()
+            .call({to: beacon}, undefined)
+            .then(format.hexAddress)
+            .catch(() => undefined);
+
+        if (!beaconImpl) {
+            return;
+        }
+
+        return {
+            beacon: fmtAddr(beacon, StatApp.networkId),
+            implementation: fmtAddr(beaconImpl, StatApp.networkId),
+            proxyPattern: "OpenZeppelin's Unstructured Storage",
+        };
     }
 
     public async queryDestroyInfo(address) {
@@ -575,8 +493,8 @@ export class ContractQuery {
     }
 
     public async submitVerifyProxy({ address, expectedImpl }) {
-        const base32 = toBase32(address);
-        expectedImpl = !expectedImpl ? null : toBase32(expectedImpl);
+        const base32 = formatToBase32(address);
+        expectedImpl = !expectedImpl ? null : formatToBase32(expectedImpl);
 
         const verify = await ProxyVerify.findOne({where: {base32, expectedImpl}, useMaster: true});
         if(verify) {
@@ -595,9 +513,12 @@ export class ContractQuery {
             throw new Errors.ParameterError(`guid ${guid} not exist`);
         }
 
-        const implInfo =  await this.queryImplementation(record.base32);
-        return lodash.assign(lodash.pick(record, ['guid', 'base32', 'expectedImpl']),
-            lodash.pick(implInfo, ['proxy', 'implementation']));
+        const {implementation} = await this.getImpl(record.base32) || {};
+
+        return lodash.assign(
+            lodash.pick(record, ['guid', 'base32', 'expectedImpl']),
+            {proxy: !!implementation, implementation}
+        );
     }
 
     private genGUID(base32){
@@ -934,12 +855,17 @@ export class ContractQuery {
         return result;
     }
 
-    _addCache(cache, key, val) {
+    _addCache(key: string, val: any) {
         try {
-            cache.set(key, val, this.cacheTtl)
-        } catch (e){
+            const withDetail = !!val?.language?.length;
+            (withDetail ? this.CACHE_VERIFY_DETAIL : this.CACHE_VERIFY_ADDRESS).set(key, val, this.cacheTtl);
+        } catch (e) {
             //error: Cache max keys amount exceeded
         }
+    }
+
+    _getCache(key: string, withDetail: boolean = false) {
+        return (withDetail ? this.CACHE_VERIFY_DETAIL : this.CACHE_VERIFY_ADDRESS).get(key);
     }
 }
 
