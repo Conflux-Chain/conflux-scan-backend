@@ -6,7 +6,7 @@ import {FailedTx, FullTransaction} from "../../stat/model/FullBlock";
 import {closestEpochByTimeStamp, ClosestType} from "../../stat/model/Epoch";
 import {setBody} from "./middleware";
 import {
-    listAccountAssets,
+    listAccountAssets, listAccountInfos,
 } from "../service/OpenAccountService";
 import {
     abiDecode, abiDecodeRaw,
@@ -1069,6 +1069,7 @@ export function registerRouter(router: Router) {
     router.get('/account/transfers', listAccountTransfer)
     router.get('/account/approvals', listApproval)
     router.get('/account/tokens', listAccountAssets)
+    router.get('/account/infos', listAccountInfos)
 
     // token
     router.get('/token/tokeninfos', listTokens);

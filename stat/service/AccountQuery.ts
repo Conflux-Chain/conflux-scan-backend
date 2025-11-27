@@ -202,7 +202,7 @@ export class AccountQuery {
     }
 
     // contracts:  hex => {name}
-    // verifies: hex => boolean
+    // verifies: hex => {name}
     // tokens: hex => token
     private async _listContractInfos(mapIdToHex: {[id: number]: string}) {
         const {

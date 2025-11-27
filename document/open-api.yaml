@@ -316,6 +316,20 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/AssetsOfAccount"
+  '/account/infos':
+    get:
+      description: "Get the accounts' name information. Supports up to 100 account at a time."
+      tags:
+        - 'Accounts'
+      parameters:
+        - $ref: '#/components/parameters/accountArrayParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/AccountInfos"
   '/contract/getabi':
     get:
       tags:
@@ -1420,6 +1434,89 @@ components:
                   stakingAmount:
                     description: 'The staking token/native-token balance of an account, the string is not divided by the token decimal.'
                     type: 'string'
+    AccountInfos:
+      type: object
+      additionalProperties:
+        type: object
+        properties:
+          contract:
+            type: object
+            properties:
+              name:
+                type: string
+                description: "Name of the contract."
+          token:
+            type: object
+            properties:
+              name:
+                type: string
+                description: "Name of the token."
+              symbol:
+                type: string
+                description: "Symbol of the token."
+              decimals:
+                type: integer
+                description: "Decimal of the token, omit if empty."
+              iconUrl:
+                type: string
+                description: "Icon url, optional"
+              website:
+                type: string
+                description: "Website  of the token, optional"
+              tokenType:
+                type: string
+                description: "Token type, CRC20、CRC721 or CRC1155"
+          verification:
+            type: object
+            properties:
+              name:
+                type: string
+                description: "Name of the verified contract."
+          eSpace:
+            type: object
+            properties:
+              address:
+                type: string
+                description: "ESpace address."
+          ens:
+            type: object
+            properties:
+              name:
+                type: string
+                description: "ENS name."
+          nameTag:
+            type: object
+            properties:
+              nameTag:
+                type: string
+                description: "Name tag."
+              website:
+                type: string
+                description: "Website."
+              desc:
+                type: string
+                description: "Description."
+              labels:
+                type: array
+                description: "Label array."
+                items:
+                  type: string
+                  description: "Label."
+              caution:
+                type: string
+                description: "The caution = 1 when labels contains a caution label. The caution = 0 when others"
+          implementation:
+            type: object
+            properties:
+              name:
+                type: string
+                description: "Name of the implementation contract."
+              address:
+                type: string
+                description: "Address of the implementation contract."
+              proxyPattern:
+                type: string
+                description: "Proxy pattern."
     TokenInfos:
       type: object
       properties:
@@ -3148,6 +3245,15 @@ components:
       in: query
       description: "Account address, on testnet, it's like cfxtest:aatmcd6m3e4gjczt9v9d1gca1d77trk3vjr04w5yha,
       on mainnet it's like cfx:aanjcf1esdz50j6zhkm0k60wc7669tfkw28mzudg24"
+      required: true
+      schema:
+        type: string
+    accountArrayParam:
+      description: "Account addresses, separated by comma,
+      eg. on testnet it's like cfxtest:aaka4zypus90zrt7vzgsz437r1cwkgkahe374ds80v,cfxtest:aatmcd6m3e4gjczt9v9d1gca1d77trk3vjr04w5yha,
+      eg. on mainnet it's like cfx:aamgvyzht7h1zxdghb9ee9w26wrz8rd3gj837392dp,cfx:aanjcf1esdz50j6zhkm0k60wc7669tfkw28mzudg24"
+      name: accounts
+      in: query
       required: true
       schema:
         type: string
