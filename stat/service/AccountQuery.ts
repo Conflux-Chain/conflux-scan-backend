@@ -58,7 +58,7 @@ export class AccountQuery {
             withByte32NameTagInfo: true,
     }) {
         const [addresses1, addresses2] = lodash.partition(
-            [...new Set(addresses.filter(item => item.trim()))],
+            [...new Set(addresses.filter(item => item?.trim()))],
             (item: string) => ethers.utils.isHexString(item) && item.length === 66,
         );
 
