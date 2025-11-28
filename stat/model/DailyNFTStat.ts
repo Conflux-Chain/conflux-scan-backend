@@ -80,7 +80,7 @@ export class DailyNFTStat extends Model<IDailyNFTStat> implements IDailyNFTStat{
         DailyNFTStat.init({
             id: {type: DataTypes.BIGINT, primaryKey: true, allowNull: false, autoIncrement: true},
             statTime: {type: DataTypes.DATE, allowNull: false},
-            statType: {type: DataTypes.CHAR(2), allowNull: false, defaultValue: '1d'},
+            statType: {type: DataTypes.CHAR(3), allowNull: false, defaultValue: '1d'},
 
             nftAsset: {type: DataTypes.DECIMAL(20,0), allowNull: false, defaultValue: 0},
             nftContract: {type: DataTypes.DECIMAL(20,0), allowNull: false, defaultValue: 0},

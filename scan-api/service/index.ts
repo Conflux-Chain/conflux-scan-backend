@@ -27,7 +27,6 @@ import {AccountQuery} from "../../stat/service/AccountQuery";
 import {CensorService} from "../../stat/service/censor/CensorService";
 import {TokenTool} from "../../stat/service/tool/TokenTool";
 import {StatConfig} from "../../stat/config/StatConfig";
-import {JsonRPCSDK} from "../../common/JsonRPCSDK";
 import {StatsQuery} from "../../stat/service/StatsQuery";
 
 export interface ScanCtx {
@@ -42,12 +41,10 @@ export interface ScanApp {
   error?: any;
   tool?: any;
   logger?: any;
-  syncSDK?: any;
   tokenTool?: TokenTool;
   dingTalk?: any;
   type?: any;
   tokenQuery?: TokenQuery;
-  jsonRpc?: JsonRPCSDK & any;
   contractQuery?: ContractQuery;
 }
 

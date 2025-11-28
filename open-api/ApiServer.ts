@@ -22,7 +22,7 @@ import {IS_EVM2, KEY_FASTEST_IPFS_GATEWAY, KV} from "../stat/model/KV";
 import {Metrics} from "./common/Metrics";
 import {CONST} from "../stat/service/common/constant"
 import {AccountTransferQuery} from "../stat/service/AccountTransferQuery";
-import {getVipInfo, initWeb3payClient, initWeb3payVipClient} from "web3pay-sdk-js/lib/rpc";
+import {getVipInfo, initWeb3payVipClient} from "web3pay-sdk-js/lib/rpc";
 import {IPFSGatewaySync} from "../stat/service/IPFSGatewaySync";
 import {ENSCheckerQuery} from "../stat/service/ens/ENSCheckerQuery";
 import {AccountQuery} from "../stat/service/AccountQuery";
@@ -36,7 +36,6 @@ import {TxnQuery} from "../stat/service/TxnQuery";
 import {TxnSync} from "../stat/service/TxnSync";
 import {scheduleSwaggerReporter} from "../stat/monitor/swaggerMetrics";
 import {ContractTraceCreateQuery} from "../stat/service/ContractTraceCreateQuery";
-import {JsonRPCSDK} from "../common/JsonRPCSDK";
 import {BalanceService} from "../stat/service/watcher/BalanceService";
 
 const Koa = require('koa');
@@ -130,8 +129,7 @@ export class ApiServer {
         const tokenTool = new TokenTool(this.cfx)
         apiService.tokenTool = tokenTool
         apiService.tokenQuery = new TokenQuery(apiApp)
-        apiService.jsonRpc = new JsonRPCSDK(config.jsonRpc);
-        apiService.contractQuery = new ContractQuery({cfx: this.cfx, config: this.config, jsonRpc: apiService.jsonRpc,
+        apiService.contractQuery = new ContractQuery({cfx: this.cfx, config: this.config,
             tokenQuery: apiService.tokenQuery, tokenTool})
         apiService.ipfsGatewaySync = new IPFSGatewaySync();
         apiService.txnQuery = new TxnQuery()

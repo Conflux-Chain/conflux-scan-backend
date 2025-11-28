@@ -30,14 +30,14 @@ export class AccountService {
       transactionCount = await service.transaction.count({ accountAddress: address });
     }
 
-    const tabMap = await service.accountQuery.getBasicInfo(address);
+    const tabSwitches = await service.accountQuery.getTabSwitches(address);
 
-    const collateralForStorageInfo = await service.accountQuery.getCollateralForStorageInfo(address);
+    const collateralForStorageInfo = await service.accountQuery.getStorageCollaterals(address);
 
     return lodash.defaults({ address }, account, {
       blockCount,
       transactionCount,
-      ...tabMap,
+      ...tabSwitches,
       collateralForStorageInfo,
     });
   }

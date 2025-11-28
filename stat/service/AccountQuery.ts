@@ -1,10 +1,11 @@
 import {Op} from "sequelize";
 import {format} from "js-conflux-sdk";
-import {StatApp} from "../StatApp";
-import {Contract} from "../model/Contract";
+import {fmtAddr, StatApp} from "../StatApp";
 import {TraceCreateContract} from "../model/TraceCreateContract";
 import {
-    POCKET_ADDRESS_MAP, ESpaceHex40Map, Hex40Map, getAddrId, makeIdV
+    ESpaceHex40Map,
+    Hex40Map,
+    POCKET_ADDRESS_MAP,
 } from "../model/HexMap";
 import {AddressCfxTransfer} from "../model/CfxTransfer";
 import {AddressErc20Transfer} from "../model/Erc20Transfer";
@@ -16,8 +17,10 @@ import {NameTag} from "../model/NameTag";
 import {KEY_CAUTION_LABELS, KV} from "../model/KV";
 import {NAME_TAG_SPLIT} from "./EpochSync";
 import {ethers} from "ethers";
-import {ScanCtx} from "../../scan-api/service/index";
 import {AuthAction} from "../model/EIP7702model";
+import {TokenQuery} from "./TokenQuery";
+import {ContractQuery} from "./ContractQuery";
+import {CONST} from "./common/constant";
 
 const lodash = require('lodash');
 const BigFixed = require('bigfixed');
@@ -28,223 +31,56 @@ export function getAccountQuery() {
 }
 
 export class AccountQuery {
-    public app: any;
-    protected CAUTION_LABEL_FLUSH_INTERVAL = 180_000; // 3 min
-    protected cautionLabelLoadTimestamp;
     public cautionLabels: Set<string> = new Set<string>();
 
+    private app: any;
+    private CAUTION_LABEL_FLUSH_INTERVAL = 180_000; // 3 min
+    private cautionLabelLoadTimestamp;
 
     constructor(app: any) {
         this.app = app;
         _accountQuery = this;
     }
 
-    public async listPatchInfo(addrArray, options : {
-        withContractInfo?: boolean, withESpaceInfo?: boolean, withEns?: boolean, withNameTag?: boolean
-    } = {withContractInfo: true, withESpaceInfo: true, withEns: true, withNameTag: true}) {
-        const hexArray = [...new Set(addrArray?.filter(Boolean).map(item => format.hexAddress(item)))];
-        if (hexArray.length === 0) {
-            return { total: 0, map: {} };
-        }
+    async list(
+        addresses: string[],
+        options: {
+            withContractInfo?: boolean,
+            withESpaceInfo?: boolean,
+            withENSInfo?: boolean,
+            withNameTagInfo?: boolean
+            withByte32NameTagInfo?: boolean
+        } = {
+            withContractInfo: true,
+            withESpaceInfo: true,
+            withENSInfo: true,
+            withNameTagInfo: true,
+            withByte32NameTagInfo: true,
+    }) {
+        const [addresses1, addresses2] = lodash.partition(
+            [...new Set(addresses.filter(item => item?.trim()))],
+            (item: string) => ethers.utils.isHexString(item) && item.length === 66,
+        );
 
-        const idHexMap = await this.idHex40Map(hexArray);
-        const [contractResp, eSpaceResp, ensResp, nameTagResp] = await Promise.all([
-            options.withContractInfo ? this.listContractInfo(idHexMap) : {} as any,
-            options.withESpaceInfo ? this.listESpaceInfo(idHexMap) : {} as any,
-            options.withEns ? this.listEnsInfo(idHexMap) : {} as any,
-            options.withNameTag ? this.listNameTagInfo(idHexMap) : {} as any,
-        ]);
+        const map = await this._list(addresses2, options);
 
-        const map = {};
-        [ensResp, eSpaceResp, contractResp, nameTagResp].forEach(
-            resp => {
-                if(!resp?.total) return;
-                Object.keys(resp.map).forEach(addr => {
-                    const destAddr = StatApp.isEVM ? ethers.utils.getAddress(format.hexAddress(addr)) : addr;
-                    const preObj = map[destAddr] || {};
-                    const newObj = resp.map[addr];
-                    Object.keys(newObj).forEach(key=>{
-                        if (newObj[key].address) {
-                            newObj[key].address = destAddr;
-                        }
-                    })
-                    map[destAddr] = lodash.defaults(preObj, newObj);
-                });
-            }
-        )
-
-        return { total: Object.keys(map).length, map };
-    }
-
-    public async listContractInfo(idHexMap) {
-        const {
-            app: { tokenQuery, contractQuery, service },
-        } = this as ScanCtx;
-
-        // get synced info
-        const idArray = Object.keys(idHexMap);
-        const [traceCreates, registeredContracts] = await Promise.all([
-            TraceCreateContract.findAll({attributes: ['to'], where: {to: {[Op.in]: idArray}}}),
-            Contract.findAll({attributes: ['hex40id'], where: {hex40id: {[Op.in]: idArray}}}),
-        ]);
-
-        // get contract address
-        const contractIdArray = [
-            ...new Set([...traceCreates.map(item => item.to),
-                ...registeredContracts.map(item => item.hex40id)
-            ])];
-        const addressArray = contractIdArray.map(item => format.address(idHexMap[item], StatApp.networkId));
-        if (addressArray.length === 0) {
-            return { total: 0, map: {} };
-        }
-
-        // init
-        const map = {};
-        addressArray.forEach((address) => { map[address] = {contract: {address}, token: {address}}; });
-
-        // query contract and token
-        const tokenService = tokenQuery || service.tokenQuery;
-        const contractService = contractQuery || service.contractQuery;
-        const [contractArray, verifiedArray, tokenArray] = await Promise.all([
-            contractService.list(addressArray)
-                .then(list => list.map(contract => ({ address: contract.address, name: contract.name }))),
-            contractService.listVerifyInBatch(addressArray)
-                .then(list => list.map(verified => verified.address)),
-            tokenService.list({addressArray})
-                .then(response => response.list),
-        ]);
-
-        // build map
-        contractArray.forEach((contract) => {
-            map[contract.address].contract = lodash.defaults(map[contract.address].contract, {
-                name: contract.name  || undefined,
-                isVirtual: POCKET_ADDRESS_MAP[contract.name] == format.hexAddress(contract.address),
-                verify: { result: lodash.includes(verifiedArray, contract.address) ? 1 : 0 },
+        if (options.withByte32NameTagInfo) {
+            const nameTags = await this._listBytes32NameTagInfos(addresses1);
+            Object.keys(nameTags).forEach(item => {
+                map[item] = {nameTag: nameTags[item]};
             });
-        });
-        verifiedArray.forEach((verifiedAddress) => {
-            map[verifiedAddress].contract = lodash.defaults(map[verifiedAddress].contract, {
-                verify: { result: 1 },
-            });
-        });
-        tokenArray.forEach((token) => {
-            map[token.address].token = lodash.defaults(map[token.address].token, {
-                name: token.name || undefined,
-                symbol: token.symbol || undefined,
-                decimals: token.decimals || undefined,
-                icon: token.icon || undefined,
-                iconUrl: token.iconUrl || undefined,
-                website: token.website || undefined,
-                tokenType: token.transferType || undefined,
-            });
-        });
-
-        return { total: Object.keys(map).length, map };
-    }
-
-    public async listESpaceInfo(idHexMap) {
-        // query eSpace address
-        const idArray = Object.keys(idHexMap);
-        const eSpaceHexBeanArray = await ESpaceHex40Map.findAll({where: {hexId: {[Op.in]: idArray}}});
-
-        // build map
-        const map = {};
-        eSpaceHexBeanArray.forEach(item => {
-            map[format.address(`${idHexMap[item.hexId]}`, StatApp.networkId)] = {eSpace: {address: `0x${item.hex}`}};
-        });
-
-        return { total: Object.keys(map).length, map };
-    }
-
-    public async listEnsInfo(idHexMap) {
-        const {
-            app: { ensCheckerQuery, service },
-        } = this;
-
-        // query ens
-        const hexArray = Object.values(idHexMap);
-        const ensCheckerService = ensCheckerQuery || service.ensCheckerQuery;
-        const ensMap = await ensCheckerService.nameBatch(hexArray as string[]);
-
-        // build map
-        const map = {};
-        Object.keys(ensMap).forEach(base32 => {
-            map[base32] = {ens: ensMap[base32]};
-        });
-
-        return { total: Object.keys(map).length, map };
-    }
-
-    public async listNameTagInfo(idHexMap) {
-        // filter by tld
-        const {
-            app: { config },
-        } = this;
-        if(config?.tldOpenapi === 'net') {
-            return {total: 0, map: {}};
         }
 
-        // init caution labels
-        if(!this.cautionLabels.size || (Date.now() - this.cautionLabelLoadTimestamp >= this.CAUTION_LABEL_FLUSH_INTERVAL)) {
-            const cautionLabels = await KV.getString(KEY_CAUTION_LABELS, '');
-            cautionLabels.split(',').forEach(label => this.cautionLabels.add(label));
-            this.cautionLabelLoadTimestamp = Date.now();
-        }
-
-        // query name tag
-        const base32Array = Object.values(idHexMap).map(item => format.address(item, StatApp.networkId));
-        const nameTagArray = await NameTag.findAll({
-            attributes: ['base32', 'nameTag', 'website', 'desc', 'labels'],
-            where: {base32: {[Op.in]: [...base32Array]}}, raw: true
-        });
-
-        // build map
-        const map = {};
-        nameTagArray.forEach(item => {
-            const nameTag = lodash.pick(item, ['nameTag', 'website', 'desc', 'labels']);
-            if(nameTag?.labels) {
-                nameTag.labels = nameTag.labels.split(NAME_TAG_SPLIT);
-                const caution = nameTag.labels.find(label => this.cautionLabels.has(label));
-                nameTag.labels = caution ? [caution] : nameTag.labels;
-                nameTag.caution = caution ? 1 : 0;
-            }
-            map[item.base32] = {nameTag};
-        });
-
-        return {total: Object.keys(map).length, map};
+        return map;
     }
 
-    public async listBytes32NameTagInfo(hex64Array) {
-        const hex64List = [...hex64Array].filter(Boolean).map(hex => hex.startsWith('0x') ? hex.substr(2) : hex)
-        if (!hex64List?.length) {
-            return {total: 0, map: {}}
-        }
-
-        // query name tag
-        const nameTagArray = await NameTag.findAll({
-            attributes: ['base32', 'nameTag', 'website', 'desc'],
-            where: {base32: {[Op.in]: hex64List}}, raw: true
+    async getTabSwitches(address: string) {
+        const addressInfo = await Hex40Map.findOne({
+            where: {hex: format.hexAddress(address).substr(2)},
+            raw: true,
         });
 
-        // build map
-        const map = {};
-        nameTagArray.forEach(item => {
-            map[`0x${item.base32}`] = {byte32NameTag: lodash.pick(item, ['nameTag', 'website', 'desc'])}
-        });
-
-        return {total: Object.keys(map).length, map};
-    }
-
-    public async getBasicInfo(addr) {
-        const addrId = await getAddrId(addr, 0);
-        const has7702 = AuthAction.findOne({
-            where: {author: format.hexAddress(addr)},
-            raw: true, attributes: ['id'],
-        }).then(v=>v ? 1 : 0);
-        if(!addrId) {
-            if (await has7702) {
-                await makeIdV(addr)
-            }
+        if (!addressInfo) {
             return {
                 cfxTransferTab: 0,
                 erc20TransferTab: 0,
@@ -252,71 +88,49 @@ export class AccountQuery {
                 erc1155TransferTab: 0,
                 nftAssetTab: 0,
                 minedBlockTab: 0,
-                authorizationsTab: await has7702,
+                authorizationsTab: 0,
             };
         }
 
-        const tabMap = {
-            cfxTransferTab: {model: AddressCfxTransfer, addressIdFieldName: 'addressId'},
-            erc20TransferTab: {model: AddressErc20Transfer, addressIdFieldName: 'addressId'},
-            erc721TransferTab: {model: AddressErc721Transfer, addressIdFieldName: 'addressId'},
-            erc1155TransferTab: {model: AddressErc1155Transfer, addressIdFieldName: 'addressId'},
-            nftAssetTab: {model: NftMint, addressIdFieldName: 'toId'},
-            nftAssetTab2: {model: Erc1155Data, addressIdFieldName: 'addressId'},
-            minedBlockTab: {model: FullMinerBlock, addressIdFieldName: 'minerId'},
-            authorizationsTab: {model: AuthAction, addressIdFieldName: 'author'},
+        const tabSwitches = {
+            cfxTransferTab: {model: AddressCfxTransfer, field: 'addressId'},
+            erc20TransferTab: {model: AddressErc20Transfer, field: 'addressId'},
+            erc721TransferTab: {model: AddressErc721Transfer, field: 'addressId'},
+            erc1155TransferTab: {model: AddressErc1155Transfer, field: 'addressId'},
+            nftAssetTab: {model: NftMint, field: 'toId'},
+            nftAssetTab2: {model: Erc1155Data, field: 'addressId'},
+            minedBlockTab: {model: FullMinerBlock, field: 'minerId'},
+            authorizationsTab: {model: AuthAction, field: 'author', value: `0x${addressInfo.hex}`},
         } as any;
 
-        await Promise.all(Object.keys(tabMap).map((tabType)=>{
-            const {model, addressIdFieldName} = tabMap[tabType];
-            if (addressIdFieldName == 'author') {
-                return has7702.then(v => tabMap[tabType] = v);
-            }
+        await Promise.all(Object.keys(tabSwitches).map((tab) => {
+            const {model, field, value} = tabSwitches[tab];
             return model.findOne({
-                where: {[addressIdFieldName]: addrId},
-                raw: true, attributes: [addressIdFieldName],
-            }).then(record=>{
-                tabMap[tabType] = record ? 1 : 0;
+                where: {[field]: value || addressInfo.id},
+            }).then((record: any) => {
+                tabSwitches[tab] = record ? 1 : 0;
             });
-        }))
-        tabMap.nftAssetTab = tabMap.nftAssetTab || tabMap.nftAssetTab2;
-        delete tabMap.nftAssetTab2;
+        }));
 
-        return tabMap;
+        tabSwitches.nftAssetTab = tabSwitches.nftAssetTab || tabSwitches.nftAssetTab2;
+        delete tabSwitches.nftAssetTab2;
+
+        return tabSwitches;
     }
 
-    private async idHex40Map(hexArray) {
-        hexArray = hexArray.map(hex=>hex.startsWith('0x') ? hex.substr(2) : hex)
-        const hexBeanArray = await Hex40Map.findAll({
-            where: {hex: {[Op.in]: hexArray}},
-        })
-        const result = {};
-        hexBeanArray.forEach(hexBean=>{
-            result[hexBean.id] = `0x${hexBean.hex}`;
-        })
-        return result;
-    }
-
-    public async getCollateralForStorageInfo(addr) {
-        const {
-            app: { cfx },
-        } = this;
-
-        if(StatApp.isEVM) {
-            return undefined;
+    async getStorageCollaterals(address: string) {
+        if (StatApp.isEVM) {
+            return;
         }
 
-        const accountInfo = await cfx.getAccount(addr);
-        const sponsorInfo = await cfx.getSponsorInfo(addr);
+        const accountInfo = await this.app.cfx.getAccount(address);
+        const sponsorInfo = await this.app.cfx.getSponsorInfo(address);
 
-        const usedStoragePoints = BigFixed(sponsorInfo.usedStoragePoints??0);
+        const usedStoragePoints = BigFixed(sponsorInfo.usedStoragePoints ?? 0);
         const usedStoragePointsInCFX = usedStoragePoints.div(BigFixed(1024)).mul(BigFixed(1e18));
         const usedRefundableInCFX = BigFixed(accountInfo.collateralForStorage).sub(BigFixed(usedStoragePointsInCFX));
 
-        const totalStoragePoints = BigFixed(sponsorInfo.availableStoragePoints??0).add(BigFixed(sponsorInfo.usedStoragePoints??0));
-        const totalRefundableInCFX = BigFixed(sponsorInfo.sponsorBalanceForCollateral).add(usedRefundableInCFX);
-
-        const availStoragePoints = BigFixed(sponsorInfo.availableStoragePoints??0);
+        const availStoragePoints = BigFixed(sponsorInfo.availableStoragePoints ?? 0);
         const availRefundableInCFX = BigFixed(sponsorInfo.sponsorBalanceForCollateral);
 
         return {
@@ -327,8 +141,230 @@ export class AccountQuery {
             storageQuota: {
                 storagePoint: availStoragePoints, // in points
                 storageCollateral: availRefundableInCFX, // in drip
-            }
+            },
         };
+    }
+
+    private async _list(
+        addresses: string[],
+        options: {
+            withContractInfo?: boolean,
+            withESpaceInfo?: boolean,
+            withENSInfo?: boolean,
+            withNameTagInfo?: boolean
+        } = {
+            withContractInfo: true,
+            withESpaceInfo: true,
+            withENSInfo: true,
+            withNameTagInfo: true,
+        }) {
+        const hexes: string[] = addresses.map(format.hexAddress);
+
+        if (!hexes.length) {
+            return {};
+        }
+
+        const mapIdToHex = await Hex40Map.findAll({
+            where: {hex: {[Op.in]: hexes.map(item => item.substr(2))}},
+        }).then(list => Object.fromEntries(
+            list.map(item => [
+                item.id,
+                `0x${item.hex}`
+            ])
+        ));
+
+        if (!Object.keys(mapIdToHex).length) {
+            return {};
+        }
+
+        const [{contracts, tokens, verifies, impls}, evmSpaceInfos, ensInfos, nameTagInfos] = await Promise.all([
+            options.withContractInfo ? this._listContractInfos(mapIdToHex) :
+                {contracts: {}, tokens: {}, verifies: {}, impls: {}},
+            options.withESpaceInfo ? this._listEVMSpaceInfos(mapIdToHex) : {},
+            options.withENSInfo ? this._listENSInfos(mapIdToHex) : {},
+            options.withNameTagInfo ? this._listNameTagInfos(mapIdToHex) : {},
+        ]);
+
+        const map = Object.fromEntries(Object.values(mapIdToHex).map(hex => [
+            StatApp.isEVM ? ethers.utils.getAddress(hex) : format.address(hex, StatApp.networkId),
+            lodash.omitBy({
+                contract: contracts[hex],
+                token: tokens[hex],
+                verification: verifies[hex],
+                eSpace: evmSpaceInfos[hex] ? {address: ethers.utils.getAddress(hex)} : undefined,
+                ens: ensInfos[hex],
+                nameTag: nameTagInfos[hex],
+                implementation: impls[hex],
+            }, lodash.isNil)
+        ]));
+
+        return lodash.omitBy(map, lodash.isEmpty);
+    }
+
+    // contracts:  hex => {name}
+    // verifies: hex => {name}
+    // tokens: hex => token
+    private async _listContractInfos(mapIdToHex: {[id: number]: string}) {
+        const {
+            app: {tokenQuery, contractQuery, service},
+        } = this;
+
+        const addresses = await TraceCreateContract.findAll({
+            where: {to: {[Op.in]: Object.keys(mapIdToHex)}}
+        }).then(list => list.map(item => mapIdToHex[item.to]));
+
+        const contractSrv: ContractQuery = contractQuery || service.contractQuery;
+        const tokenSrv: TokenQuery = tokenQuery || service.tokenQuery;
+
+        const impls = lodash.zipObject(addresses, await Promise.all(addresses.map(item => contractSrv.getImpl(item))));
+        addresses.push(...Object.values(impls).filter(Boolean).map((item: any) => item.implementation));
+
+        const fieldMapper = (item: any) => [format.hexAddress(item.address), {name: item.name}];
+
+        const [contracts, verifies, tokens] = await Promise.all([
+            contractSrv.list(addresses).then( // hex => {name}
+                list => Object.fromEntries(list.filter((item: any) => item.name?.trim()).map(fieldMapper))
+            ),
+            contractSrv.listVerifyInBatch(addresses).then( // hex => {name}
+                list => Object.fromEntries(list.map(fieldMapper))
+            ),
+            tokenSrv.list({addresses}).then( // hex => token
+                page => Object.fromEntries(page.list.map(item => [
+                    format.hexAddress(item.address),
+                    lodash.omitBy({
+                            ...lodash.pick(item, ['name', 'symbol', 'decimals', 'iconUrl', 'website']),
+                            tokenType: item.transferType,
+                        },
+                        lodash.isNil,
+                    )
+                ]))
+            ),
+        ]);
+
+        for (const address of Object.values(mapIdToHex)) {
+            const internal = CONST.INTERNAL_ADDR_CONTRACT_MAP[address];
+            if (internal) {
+                contracts[address] = {name: internal.name};
+                verifies[address] = {name: internal.name};
+            }
+        }
+
+        Object.entries(impls).forEach(([item, impl]: [string, any]) => { // hex => {name, address, proxyPattern}
+            const verify = impl && verifies[format.hexAddress(impl.implementation)];
+            impls[item] = verify ? {
+                name: verify.name,
+                address: fmtAddr(impl.implementation, StatApp.networkId),
+                proxyPattern: impl.proxyPattern,
+            } : undefined;
+        });
+
+        return {contracts, tokens, verifies, impls};
+    }
+
+    // hex => boolean
+    private async _listEVMSpaceInfos(mapIdToHex: {[id: number]: string}) {
+        const list = await ESpaceHex40Map.findAll({
+            where: {hex: {[Op.in]: Object.values(mapIdToHex).map(hex => hex.substr(2))}},
+        });
+
+        return Object.fromEntries(
+            list.map(item => [`0x${item.hex}`, true])
+        );
+    }
+
+    // hex => {name}
+    private async _listENSInfos(mapIdToHex: {[id: number]: string}) {
+        const {
+            app: {ensCheckerQuery, service},
+        } = this;
+
+        return (ensCheckerQuery || service.ensCheckerQuery).nameBatch(Object.values(mapIdToHex));
+    }
+
+    // hex => {nameTag, website, desc, labels, caution}
+    private async _listNameTagInfos(mapIdToHex: {[id: number]: string}) {
+        await this._refreshCautionLabelsIfNeeded();
+
+        const list = await NameTag.findAll({where: {hex40id: {[Op.in]: Object.keys(mapIdToHex)}}, raw: true});
+
+        return Object.fromEntries(
+            list.map(item => {
+                const nameTag = lodash.omitBy(lodash.pick(item, ['nameTag', 'website', 'desc', 'labels']), lodash.isNil);
+
+                if (nameTag?.labels) {
+                    const labels: string[] = nameTag.labels.split(NAME_TAG_SPLIT);
+                    const caution = labels.find(label => this.cautionLabels.has(label));
+
+                    nameTag.labels = caution ? [caution] : labels;
+                    nameTag.caution = caution ? 1 : 0;
+                }
+
+                return [mapIdToHex[item.hex40id], nameTag];
+            })
+        );
+    }
+
+    // hex => {nameTag, website, desc}
+    private async _listBytes32NameTagInfos(hexes: string[]) {
+        if (!hexes?.length) {
+            return {};
+        }
+
+        const list = await NameTag.findAll({
+            where: {base32: {[Op.in]: hexes.map(hex => hex.substr(2))}}, raw: true
+        });
+
+        return Object.fromEntries(
+            list.map(item => [
+                `0x${item.base32}`,
+                lodash.omitBy(lodash.pick(item, ['nameTag', 'website', 'desc']), lodash.isNil),
+            ])
+        );
+    }
+
+    private async _refreshCautionLabelsIfNeeded() {
+        if (!this.cautionLabels.size ||
+            (Date.now() - this.cautionLabelLoadTimestamp >= this.CAUTION_LABEL_FLUSH_INTERVAL)) {
+            this.cautionLabels = new Set((await KV.getString(KEY_CAUTION_LABELS, '')).split(',').filter(Boolean));
+            this.cautionLabelLoadTimestamp = Date.now();
+        }
+    }
+
+    public async listPatchInfo(
+        addresses: string[],
+        options: {
+            withContractInfo?: boolean,
+            withEVMSpaceInfo?: boolean,
+            withENSInfo?: boolean,
+            withNameTagInfo?: boolean
+        } = {
+            withContractInfo: true,
+            withEVMSpaceInfo: true,
+            withENSInfo: true,
+            withNameTagInfo: true
+        }) {
+        const accounts = await this.list(addresses, options);
+
+        let map = Object.fromEntries(Object.entries(accounts).map(([address, info]: [string, any]) => [
+            address,
+            {
+                contract: {
+                    name: info.contract?.name,
+                    isVirtual: POCKET_ADDRESS_MAP[info.contract?.name] == format.hexAddress(address),
+                    verify: {
+                        result: info.verification?.name ? 1 : 0,
+                    }
+                },
+                token: info.token,
+                eSpace: info.eSpace,
+                ens: info.ens,
+                nameTag: info.nameTag,
+            },
+        ]));
+
+        map = lodash.omitBy(map, lodash.isEmpty);
+
+        return { total: Object.keys(map).length, map };
     }
 
     public async patchAddressInfo(list: any[], fromKey: string, toKey: string) {
@@ -351,5 +387,4 @@ export class AccountQuery {
             }
         });
     }
-
 }

@@ -305,6 +305,21 @@ async function migDB(seq: Sequelize) {
         type: DataTypes.CHAR(255),
         allowNull: true,
     });
+
+    const dailyNFTStat = DailyNFTStat.getTableName().toString();
+    await changeColumnIfNecessary(qi, dailyNFTStat, 'statType', {
+        type: DataTypes.CHAR(3), allowNull: false, defaultValue: '1d',
+    });
+
+    const dailyPosRewardStat = DailyPosRewardStat.getTableName().toString();
+    await changeColumnIfNecessary(qi, dailyPosRewardStat, 'statType', {
+        type: DataTypes.CHAR(3), allowNull: false, defaultValue: '1d',
+    });
+
+    const dailyPowRewardStat = DailyPowRewardStat.getTableName().toString();
+    await changeColumnIfNecessary(qi, dailyPowRewardStat, 'statType', {
+        type: DataTypes.CHAR(3), allowNull: false, defaultValue: '1d',
+    });
 }
 
 async function dropEmptyTables() {
@@ -443,6 +458,31 @@ export async function addIndexIfNotExistsMySQL(
             console.log(`mig DB error: ${error.message}`);
         } else {
             console.error(`Error checking/adding index "${indexName}" to table "${tableName}":`, error);
+            throw error;
+        }
+    }
+}
+
+export async function changeColumnIfNecessary(
+    queryInterface: QueryInterface,
+    tableName: string,
+    columnName: string,
+    options: ColumnAdditionOptions
+): Promise<void> {
+    try {
+        const tableDescription = await queryInterface.describeTable(tableName);
+        if (!tableDescription[columnName]) {
+            console.log(`Column "${columnName}" not exists in table "${tableName}"`);
+        } else {
+            console.log(`Changing column "${columnName}" on table "${tableName}"...`);
+            await queryInterface.changeColumn(tableName, columnName, options);
+            console.log(`Column "${columnName}" changed successfully`);
+        }
+    } catch (error) {
+        if (error.message.startsWith('No description found for')) {
+            console.log(` --- table doesn't exist. --- should be created by model. check it.`)
+        } else {
+            console.error(`Error checking/changing column "${columnName}" to table "${tableName}":`, error);
             throw error;
         }
     }

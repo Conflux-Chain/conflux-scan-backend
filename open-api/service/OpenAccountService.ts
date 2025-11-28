@@ -1,6 +1,7 @@
 import {StatApp} from "../../stat/StatApp";
 import {
     checkPresent, formatPrice,
+    mustBeAddressArrayParamIfPresent,
     mustBeAddressParamIfPresent,
     mustBeEnumParamArrayIfPresent,
     mustBeIntParamIfPresent
@@ -68,6 +69,22 @@ export async function listAccountAssets(ctx) {
     result.list = result.list.map(token => lodash.pickBy(token, value => !lodash.isNil(value)));
 
     setBody(ctx, result)
+}
+
+const MAX_ACCOUNTS = 100;
+
+export async function listAccountInfos(ctx) {
+    mustBeAddressArrayParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'accounts');
+    const {accounts} = ctx.request.query;
+    checkPresent({accounts}, ['accounts']);
+    if (accounts.length > MAX_ACCOUNTS) {
+        setBody(ctx, null, 1, `The max size of accounts is ${MAX_ACCOUNTS}`);
+        return;
+    }
+
+    const data = await getApiService().accountQuery.list(accounts);
+
+    setBody(ctx, data);
 }
 
 export function fixIconUrl(row, addressKey) {

@@ -5,7 +5,7 @@ import {ApiServer, getApiService} from '../ApiServer'
 import {StatApp} from "../../stat/StatApp";
 import {registerRouter as registerRouterESpace} from "./ESpaceApiRouter";
 import {addSwagger, executionTime, handleException, setBody} from "./middleware";
-import {listAccountAssets} from "../service/OpenAccountService";
+import {listAccountAssets, listAccountInfos} from "../service/OpenAccountService";
 import {abiDecode, abiDecodeRaw, listAccountTransaction} from "../service/OpenTxService";
 import {
     listAccountCfxTransfer,
@@ -164,6 +164,7 @@ function registerRouter(router: Router) {
     router.get('/account/transfers', checkRateByAddr, listAccountTransfer)
     router.get('/account/approvals', checkRateByAddr, listApproval)
     router.get('/account/tokens', checkRateByAccount, listAccountAssets)
+    router.get('/account/infos', checkRateByAccount, listAccountInfos)
 
     // contract
     router.get('/contract/getabi', getABI)

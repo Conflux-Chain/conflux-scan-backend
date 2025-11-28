@@ -46,10 +46,10 @@ export class DailyGasStat extends Model<IDailyGasStat> implements IDailyGasStat{
             gasUsedSum: {type: DataTypes.DECIMAL(65,0), allowNull: false, defaultValue: 0},
             gasPriceSum: {type: DataTypes.DECIMAL(65,0), allowNull: false, defaultValue: 0},
 
-            gasLimitAvg: {type: DataTypes.DECIMAL(20,0), allowNull: false, defaultValue: 0},
-            gasPriceMin: {type: DataTypes.DECIMAL(20,0), allowNull: false, defaultValue: 0},
-            gasPriceMax: {type: DataTypes.DECIMAL(20,0), allowNull: false, defaultValue: 0},
-            gasPriceAvg: {type: DataTypes.DECIMAL(20,0), allowNull: false, defaultValue: 0},
+            gasLimitAvg: {type: DataTypes.DECIMAL(30,0), allowNull: false, defaultValue: 0},
+            gasPriceMin: {type: DataTypes.DECIMAL(30,0), allowNull: false, defaultValue: 0},
+            gasPriceMax: {type: DataTypes.DECIMAL(30,0), allowNull: false, defaultValue: 0},
+            gasPriceAvg: {type: DataTypes.DECIMAL(30,0), allowNull: false, defaultValue: 0},
             networkUtilization: {type: DataTypes.DECIMAL(5,4), allowNull: false, defaultValue: 0},
         },{
             sequelize: sequelize,

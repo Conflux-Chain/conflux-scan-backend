@@ -63,9 +63,7 @@ export async function listNFTTokensPro(ctx) {
     }
 
     if(StatApp.isEVM) {
-        data?.list?.forEach(row => {
-            row.contract = row.contract ? format.hexAddress(row.contract) : row.contract;
-            row.owner = row.owner ? format.hexAddress(row.owner) : row.owner;
+        data.list.forEach(row => {
             row.type = row.type ? row.type.replace('CRC', 'ERC') : row.type;
         });
     }

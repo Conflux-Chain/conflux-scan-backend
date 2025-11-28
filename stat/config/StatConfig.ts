@@ -114,7 +114,6 @@ export interface StatConfig{
     blacklist: boolean,
 
     databaseRW: DatabaseRW,
-    jsonRpc: JSONRpcOption,
     metricsEnv: string,
 
     ensEnable: boolean,

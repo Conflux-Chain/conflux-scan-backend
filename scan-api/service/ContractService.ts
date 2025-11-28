@@ -48,7 +48,7 @@ export class ContractService {
       }
     }
 
-    const collateralForStorageInfo = await service.accountQuery.getCollateralForStorageInfo(address);
+    const collateralForStorageInfo = await service.accountQuery.getStorageCollaterals(address);
 
     return lodash.defaults(account, createInfo, announceInfo, lodash.pick(verify, ['abi', 'sourceCode']),
         {verify, proxy, beacon, implementation, destroy, collateralForStorageInfo});

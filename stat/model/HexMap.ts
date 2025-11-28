@@ -114,7 +114,7 @@ export class ESpaceHex40Map extends Model<ESpaceHexMapAttributes> implements ESp
             {
                 tableName: 'e_space_hex40',
                 sequelize: sequelize,
-                timestamps: false, // prevent default columns: createdAt, updatedAt
+                timestamps: false,
                 indexes: [
                     {
                         name: `index_hexId`,

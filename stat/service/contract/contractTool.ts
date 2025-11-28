@@ -15,8 +15,8 @@ async function mergeVerifiedImplAbi(ref: IContractImplAbiRef) {
 		where: {cid: ref.contractId}, raw: true,
 	})
 	if (!implInfo) {
-		getContractQuery().queryImplementation(ref.base32).then(async res=>{
-			const {proxy, implementation} = res || {};
+		getContractQuery().getImpl(ref.base32).then(async res=>{
+			const {implementation} = res || {};
 			const implId = await getAddrId(implementation);
 			await ContractImpl.bulkCreate([{
 				cid: ref.contractId, implId: implId, proxyType: '',

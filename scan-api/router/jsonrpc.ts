@@ -590,7 +590,7 @@ export const jsonrpc_exportTransaction = jsonrpc.method_('exportTransaction',
       addressSet.add(each.to);
     });
 
-    const accountBasic = await service.accountQuery.listPatchInfo([...addressSet]);
+    const accountBasic = await service.accountQuery.listPatchInfo([...addressSet] as string[]);
     list.forEach((each) => {
       each['From_AddressName'] = accountBasic.map[each.from]?.contract?.name || accountBasic.map[each.from]?.token?.name || '';
       each['To_AddressName'] = accountBasic.map[each.to]?.contract?.name || accountBasic.map[each.to]?.token?.name || '';
@@ -698,7 +698,7 @@ export const jsonrpc_exportTransfer = jsonrpc.method_('exportTransfer',
       each.address && addressSet.add(each.address);
     }
 
-    const accountBasic = await service.accountQuery.listPatchInfo([...addressSet], {withContractInfo: true});
+    const accountBasic = await service.accountQuery.listPatchInfo([...addressSet] as string[], {withContractInfo: true});
     list.forEach((each) => {
       each['From_AddressName'] = accountBasic.map[each.from]?.contract?.name || accountBasic.map[each.from]?.token?.name || '';
       each['To_AddressName'] = accountBasic.map[each.to]?.contract?.name || accountBasic.map[each.to]?.token?.name || '';

@@ -100,38 +100,5 @@ export class AnnounceService {
   _getBytes(v){
     return Buffer.isBuffer(v) ? v : Buffer.from(v);
   }
-
-  async query({ address, announcer, ...rest }) {
-    const {
-      app: { config, syncSDK, ttlMap },
-    } = this;
-
-    address = address || config.announcementAddress;
-    announcer = announcer || `${this.announcer}`;
-
-    const announce = await ttlMap.cache(`AnnounceService.query(${JSON.stringify({ address, announcer, ...rest })})`,
-      () => syncSDK.queryAnnounce({ address, announcer, ...rest }), // announcer might be Account instance
-      { ttl: 60 * 1000 },
-    );
-
-    return announce || {};
-  }
-
-  /**
-   * @param address
-   * @param announcer
-   * @param rest
-   * @return {Promise<{list:[]}>}
-   */
-  async list({ address, announcer, ...rest }) {
-    const {
-      app: { config, syncSDK },
-    } = this;
-
-    address = address || config.announcementAddress;
-    announcer = announcer || `${this.announcer}`;
-
-    return syncSDK.listAnnounce({ address, announcer, ...rest }); // announcer might be Account instance
-  }
 }
 

@@ -1022,6 +1022,20 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/AssetsOfAccountResp"
+  '/account/infos':
+    get:
+      description: "Get the accounts' name information. Supports up to 100 account at a time."
+      tags:
+        - 'Accounts'
+      parameters:
+        - $ref: '#/components/parameters/accountArrayParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/AccountInfos"
   '/nft/balances':
     get:
       tags:
@@ -2165,6 +2179,89 @@ components:
               error:
                 description: 'A string describing a particular reason that we were unable to get token info.'
                 type: 'string'
+    AccountInfos:
+      type: object
+      additionalProperties:
+        type: object
+        properties:
+          contract:
+            type: object
+            properties:
+              name:
+                type: string
+                description: "Name of the contract."
+          token:
+            type: object
+            properties:
+              name:
+                type: string
+                description: "Name of the token."
+              symbol:
+                type: string
+                description: "Symbol of the token."
+              decimals:
+                type: integer
+                description: "Decimal of the token, omit if empty."
+              iconUrl:
+                type: string
+                description: "Icon url, optional"
+              website:
+                type: string
+                description: "Website  of the token, optional"
+              tokenType:
+                type: string
+                description: "Token type, CRC20、CRC721 or CRC1155"
+          verification:
+            type: object
+            properties:
+              name:
+                type: string
+                description: "Name of the verified contract."
+          eSpace:
+            type: object
+            properties:
+              address:
+                type: string
+                description: "ESpace address."
+          ens:
+            type: object
+            properties:
+              name:
+                type: string
+                description: "ENS name."
+          nameTag:
+            type: object
+            properties:
+              nameTag:
+                type: string
+                description: "Name tag."
+              website:
+                type: string
+                description: "Website."
+              desc:
+                type: string
+                description: "Description."
+              labels:
+                type: array
+                description: "Label array."
+                items:
+                  type: string
+                  description: "Label."
+              caution:
+                type: string
+                description: "The caution = 1 when labels contains a caution label. The caution = 0 when others"
+          implementation:
+            type: object
+            properties:
+              name:
+                type: string
+                description: "Name of the implementation contract."
+              address:
+                type: string
+                description: "Address of the implementation contract."
+              proxyPattern:
+                type: string
+                description: "Proxy pattern."
     TokenHolderList:
       type: object
       properties:
@@ -4212,6 +4309,14 @@ components:
       name: account
       in: query
       description: "Account address, it's like 0x672158893ce87d812befd2209bc1b7818fe48b2a"
+      required: true
+      schema:
+        type: string
+    accountArrayParam:
+      description: "Account addresses, separated by comma,
+      eg. it's like 0x672158893ce87d812befd2209bc1b7818fe48b2a,0xfd2209bc1b7818fe48b2a672158893ce87d812be"
+      name: accounts
+      in: query
       required: true
       schema:
         type: string

@@ -490,7 +490,7 @@ async function buildImages() {
     await initOss(config.oss)
     const {public_dir, dir} = getImageDir();
     console.log(`will save at ${public_dir}\n${dir}`)
-    const list = await Token.findAll({where: {auditResult: true,}})
+    const list = await Token.findAll({where: {auditResult: true}})
     for (let i = 0; i < list.length; i++){
         let token = list[i];
         const {absPath, filename} = await base64ToPNG(token, dir) || {}

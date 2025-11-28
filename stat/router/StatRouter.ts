@@ -46,13 +46,13 @@ import {getAccountQuery} from "../service/AccountQuery";
 import {CONST} from "../service/common/constant";
 
 const superagent = require('superagent');
-
 const e2k = require('express-to-koa');
 const swStats = require('swagger-stats');
 const NodeCache = require( "node-cache" );
 const cors = require('@koa/cors');
 const BigFixed = require('bigfixed');
 const moment = require("moment/moment");
+const lodash = require('lodash');
 
 const dbCache = new NodeCache()
 const cacheTtl = 60 // 1 minutes
@@ -229,7 +229,6 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
 
     router.get('/tokens/list', async (ctx)=>{
         mustBeEnumParamIfPresent(ctx.request.query, 'transferType', ['ERC20', 'ERC721', 'ERC1155']);
-        // mustBeEnumParamIfPresent(ctx.request.query, 'fields', ['icon']);
         mustBeEnumParamIfPresent(ctx.request.query, 'orderBy', ['totalPrice','price', 'securityCredits','transferCount', 'holderCount']);
         mustBeEnumParamIfPresent(ctx.request.query, 'reverse', ['true', 'false']);
         mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
@@ -239,10 +238,10 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const result = await statApp.tokenQuery.list({transferType, fields, orderBy, reverse, showDestroyed: false,
             skip: skip? parseInt(skip): skip, limit: limit ? parseInt(limit): limit});
 
-        const addressArray = result.list.map(item => item.address);
-        const ensBasic = await statApp.ensCheckerQuery.nameBatch(addressArray );
+        const addresses = result.list.map(item => item.address);
+        const ensInfos = await statApp.ensCheckerQuery.nameBatch(addresses);
         result.list.forEach(item => {
-            item.ensInfo = ensBasic[item.address];
+            item.ensInfo = ensInfos[format.address(item.address, StatApp.networkId)];
         });
 
         ctx.body = result;
@@ -663,7 +662,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = nftDetail;
     })
 
-    async function list1155assets(ctx) {
+    router.get('/nft/list1155inventory', async function (ctx) {
         mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contractAddr', 'userAddr');
         mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit', 'tokenId');
         const {skip, limit} = paginateCore(ctx.request.query, {skipMax: undefined});
@@ -672,24 +671,18 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const result = await statApp.nftCheckerService.listNftTokensForOpenApiPro({
             owner: userAddr, contract: contractAddr, tokenId: tokenId?.toString(), skip, limit});
 
-        const addressArray = result.list.map(item => item.owner);
-        const {map} = await statApp.contractQuery.listBasic({addressArray});
-        result?.list?.forEach(row => {
-            row.ownerTokenInfo = map[row.owner]?.token || {};
-            row.ownerContractInfo = map[row.owner]?.contract || {};
-            if(StatApp.isEVM) {
-                row.contract = row.contract ? format.hexAddress(row.contract) : row.contract;
-                row.owner = row.owner ? format.hexAddress(row.owner) : row.owner;
-            }
+        const addresses = result.list.map(item => item.owner);
+        const map = await statApp.accountQuery.list(addresses);
+        result.list.forEach(row => {
+            lodash.defaults(row, {
+                ownerTokenInfo: map[row.owner]?.token,
+                ownerContractInfo: map[row.owner]?.contract
+            });
         });
 
         result["listLimit"] = 10_000;
         ctx.body = result;
-    }
-
-    router.get('/nft/list1155assets', list1155assets);
-
-    router.get('/nft/list1155inventory', list1155assets);
+    });
 
     router.get('/nft/active-token-ids', async function (ctx) {
         mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contractAddress');

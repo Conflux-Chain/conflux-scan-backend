@@ -6,7 +6,7 @@ import {FailedTx, FullTransaction} from "../../stat/model/FullBlock";
 import {closestEpochByTimeStamp, ClosestType} from "../../stat/model/Epoch";
 import {setBody} from "./middleware";
 import {
-    listAccountAssets,
+    listAccountAssets, listAccountInfos,
 } from "../service/OpenAccountService";
 import {
     abiDecode, abiDecodeRaw,
@@ -779,7 +779,7 @@ async function listAddressTokenInventory(ctx) {
         limit: offset, type: CONST.TRANSFER_TYPE.ERC721 as NFTType});
 
     result.list = result.list.map((nft: any) => ({
-        TokenAddress: StatApp.isEVM ? format.hexAddress(nft.contract) : nft.contract,
+        TokenAddress: nft.contract,
         TokenId: nft.tokenId,
     }))
 
@@ -986,8 +986,8 @@ function parseStatParam(ctx) {
 }
 
 async function addTokenBasicInfo(result) {
-    const addressArray = result.map(item => item.contractAddress);
-    const tokenArray = await getApiService().tokenQuery.list({addressArray}).then(response => response.list);
+    const addresses = result.map(item => item.contractAddress);
+    const tokenArray = await getApiService().tokenQuery.list({addresses}).then(response => response.list);
     const tokenMap = lodash.keyBy(tokenArray, item => checksum_hexAddress(item.address));
     result.forEach(item => {
         const {name, symbol, decimals, transferType} = tokenMap[item.contractAddress] || {} as any;
@@ -1069,6 +1069,7 @@ export function registerRouter(router: Router) {
     router.get('/account/transfers', listAccountTransfer)
     router.get('/account/approvals', listApproval)
     router.get('/account/tokens', listAccountAssets)
+    router.get('/account/infos', listAccountInfos)
 
     // token
     router.get('/token/tokeninfos', listTokens);

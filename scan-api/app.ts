@@ -18,8 +18,6 @@ import {format} from "js-conflux-sdk";
 const e2k = require('express-to-koa');
 const swStats = require('swagger-stats');
 const {parameterErrorCode} = require('../common/error')
-import {JsonRPCSDK} from "../common/JsonRPCSDK";
-import {status} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 const apiSpec = require('../document/api-place-hoder-for-swagger-stat.json');
 
 export class ApiApp extends AppBase {
@@ -52,8 +50,6 @@ export class ApiApp extends AppBase {
     this.type.simpleAddress = this.type((v) => fmtAddr(v, StatApp.networkId));
     this.router = router;
 
-    // 2024.1.9, it only calls to compiler.
-    this.syncSDK = new JsonRPCSDK(config.sync);
     this.service = serviceLoader(this);
     this.startLog();
 
@@ -145,12 +141,6 @@ export class ApiApp extends AppBase {
   }
 
   startLog() {
-    this.traceLog.traceMethod(this.syncSDK, 'call', {
-      module: 'syncSDK',
-      level: 'debug',
-      params: (...args) => args,
-      error: (e) => e.message,
-    });
     lodash.forEach(jsonrpc.methods, (func, method) => {
       this.traceLog.traceMethod(jsonrpc.methods, method, {
         module: 'JsonRPC',
@@ -175,7 +165,6 @@ export class ApiApp extends AppBase {
   }
 
   async close() {
-    await this.syncSDK.close();
     if (!ApiApp.injectedSequelize) {
       await KV.sequelize.close();
     }
