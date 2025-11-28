@@ -13,6 +13,7 @@ import {polishContract} from "./OpenContractService";
 import {fixApprovalData} from "../../stat/service/tool/ApprovalTool";
 import {BlockAndMinerSync} from "../../stat/service/BlockAndMinerSync";
 import {CIP1559StatType} from "../../stat/service/StatsQuery";
+import {HomepageDashboard} from "../../stat/service/HomepageDashboard";
 
 export async function listCoreMiningStat(ctx) {
     mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['min','hour','day']);
@@ -46,8 +47,7 @@ export async function listNFTHolderStats(ctx) {
 }
 
 export async function getSupplyStat(ctx) {
-    const marketData = await getApiService().marketDataQuery.getMarketData();
-    setBody(ctx, marketData);
+    setBody(ctx, HomepageDashboard.getData()?.supplyInfo);
 }
 
 export async function listTpsStats(ctx) {

@@ -18,7 +18,7 @@ import {Errors} from "./common/LogicError";
 import { ethers } from "ethers";
 import {ResultCache, TopUniqueCache} from "../model/ResultCache";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
-import {getHomeDashboarData} from "./HomeDashboardService";
+import {HomepageDashboard} from "./HomepageDashboard";
 
 export class RankService{
     private app: any;
@@ -148,7 +148,7 @@ export class RankService{
         const isEvm = await KV.getSwitch(IS_EVM2)
         let totalCfx: any;
         if (isEvm) {
-            const data = getHomeDashboarData() as any;
+            const data = HomepageDashboard.getData() as any;
             const maybe = (data?.supplyInfo?.totalEspaceTokens || data?.supplyInfo?.totalCirculating);
             totalCfx = BigInt(maybe) ?? BigInt(1e18);
             if (data?.supplyInfo?.calculateEvmPosSupply && data.supplyInfo.nullAddressBalance) {

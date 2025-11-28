@@ -14,7 +14,7 @@ import {ContractQuery} from "../stat/service/ContractQuery";
 import {TokenQuery} from "../stat/service/TokenQuery";
 import {TokenTool} from "../stat/service/tool/TokenTool";
 import {CfxTransferQuery} from "../stat/service/CfxTransferQuery";
-import {MarketDataQuery} from "../stat/service/MarketDataQuery";
+import {HomepageDashboard} from "../stat/service/HomepageDashboard";
 import {RankService} from "../stat/service/RankService";
 import {NFTPreviewService} from "../stat/service/nftchecker/NFTPreviewService";
 import {NFTCheckerService} from "../stat/service/nftchecker/NFTCheckerService";
@@ -60,7 +60,7 @@ export class ApiService {
     rankService: RankService;
     tokenTool: TokenTool;
     tokenQuery: TokenQuery;
-    marketDataQuery: MarketDataQuery;
+    homepageDashboard: HomepageDashboard;
     nftCheckerService: NFTCheckerService;
     nftPreviewService: NFTPreviewService;
     ensCheckerQuery: ENSCheckerQuery;
@@ -120,7 +120,7 @@ export class ApiServer {
         apiService.accountTransferQuery = new AccountTransferQuery(apiApp)
         apiService.statsQuery = new StatsQuery(apiApp)
         apiService.rankService = new RankService(apiApp)
-        apiService.marketDataQuery = new MarketDataQuery(apiApp);
+        apiService.homepageDashboard = new HomepageDashboard(apiApp);
         apiService.nftCheckerService = new NFTCheckerService(apiApp);
         apiService.nftPreviewService = new NFTPreviewService(apiApp);
         apiService.ensCheckerQuery = new ENSCheckerQuery(apiApp);
@@ -145,7 +145,6 @@ export class ApiServer {
         let utilContract = await BatchBalanceWatcher.getUtilContractAddr();
         console.log(` util contract ${utilContract}`)
         new BatchBalanceWatcher(this.cfx, utilContract)
-        await apiService.marketDataQuery.scheduleCache();
         await apiService.txnQuery.scheduleCache()
         config.asyncWrappedToken && (await apiService.tokenQuery.scheduleWrappedCFX());
         if(config.syncIPFSGateway) {

@@ -3,6 +3,7 @@ import {VerificationJob, VerifyInput} from "../../stat/service/ContractQuery";
 import {sleep} from "../../stat/service/tool/ProcessTool";
 import {fmtAddr, StatApp} from "../../stat/StatApp";
 import {CONST} from "../../stat/service/common/constant";
+import {HomepageDashboard} from "../../stat/service/HomepageDashboard";
 
 const lodash = require('lodash');
 const {format} = require('js-conflux-sdk');
@@ -72,7 +73,7 @@ export class ContractService {
 
     const announcements = await service.contractQuery.list(list.map(item => item.address))
     const announcementMap = lodash.keyBy(announcements, 'address')
-    const internalTxCountMap = service.homeDashboard.getData()?.internalContractInfo
+    const internalTxCountMap = HomepageDashboard.getData()?.internalContractInfo
     await Promise.all(list.map(async (c) => {
       const address = format.address(c.address, StatApp.networkId)
       c.name = announcementMap[address]?.name

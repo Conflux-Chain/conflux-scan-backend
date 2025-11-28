@@ -12,7 +12,6 @@ import {AnnounceService} from "./AnnounceService";
 import {TransferService} from "./TransferService";
 import {RecaptchaService} from "./RecaptchaService";
 import {Desensitizer} from "../../stat/service/Desensitizer";
-import {HomeDashboardService} from "../../stat/service/HomeDashboardService";
 import {FullBlockQuery} from "../../stat/service/FullBlockQuery";
 import {CfxTransferQuery} from "../../stat/service/CfxTransferQuery";
 import {Crc20TransferQuery} from "../../stat/service/Crc20TransferQuery";
@@ -63,7 +62,6 @@ export interface ScanServices {
   transfer: TransferService;
   recaptcha: RecaptchaService;
   desensitizer: Desensitizer;
-  homeDashboard: HomeDashboardService;
   statsQuery: StatsQuery,
   fullBlock: FullBlockQuery;
   cfxTransfer: CfxTransferQuery;
@@ -95,7 +93,6 @@ export function serviceLoader(app) {
     transfer: new TransferService(app),
     recaptcha: new RecaptchaService(app),
     desensitizer: new Desensitizer(),
-    homeDashboard: HomeDashboardService.getInstance(app),
     statsQuery: new StatsQuery(app),
     fullBlock: new FullBlockQuery(app),
     cfxTransfer: new CfxTransferQuery(app),
