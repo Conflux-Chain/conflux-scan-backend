@@ -54,8 +54,6 @@ export class ApiApp extends AppBase {
     this.startLog();
 
     // stat service
-    StatApp.readonly = config.database?.readonly;
-    StatApp.networkId = this.networkId;
     if (!ApiApp.injectedSequelize) {
       await initPartialModel(this.sequelize);
       if (config.database?.syncSchema) {
@@ -71,12 +69,6 @@ export class ApiApp extends AppBase {
       const defaultVersions = CONST_TS.EVM_VERSION.join(',')
       await KV.create({key: KEY_EVM_VERSIONS, value: defaultVersions})
       console.log(`evm versions not set, use default`)
-    }
-
-    StatApp.isEVM = await KV.getSwitch(IS_EVM2);
-    await this.service.homeDashboard.schedule().catch(() => undefined);
-    if (config.blacklist) {
-      await this.service.desensitizer.scheduleRefreshBlacklist();
     }
   }
 

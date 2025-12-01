@@ -82,6 +82,7 @@ import {detectAccountType} from "../../stat/service/eip/eip7702";
 import {Errors} from "../../stat/service/common/LogicError";
 import {TokenQuery, TokenType} from "../../stat/service/TokenQuery";
 import {NFTType} from "../../stat/service/nftchecker/NFTCheckerService";
+import {HomepageDashboard} from "../../stat/service/HomepageDashboard";
 
 const lodash = require('lodash');
 
@@ -787,7 +788,7 @@ async function listAddressTokenInventory(ctx) {
 }
 
 async function getCfxSupply(ctx) {
-    const {totalEspaceTokens} = await getApiService().marketDataQuery.getMarketData();
+    const {totalEspaceTokens} = HomepageDashboard.getData()?.supplyInfo as any;
     setBody(ctx, totalEspaceTokens);
 }
 

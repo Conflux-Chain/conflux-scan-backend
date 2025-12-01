@@ -12,7 +12,7 @@ import {BatchBalanceWatcher} from "./service/watcher/BatchBalanceWatcher";
 import {TokenQuery} from "./service/TokenQuery";
 import {ContractTraceCreateQuery} from "./service/ContractTraceCreateQuery";
 import {IPFSGatewaySync} from "./service/IPFSGatewaySync";
-import {HomeDashboardService} from "./service/HomeDashboardService";
+import {HomepageDashboard} from "./service/HomepageDashboard";
 import {ContractQuery} from "./service/ContractQuery";
 import {StatsQuery} from "./service/StatsQuery";
 import {NFTPreviewService} from "./service/nftchecker/NFTPreviewService";
@@ -52,7 +52,7 @@ export class StatApp{
     public tokenQuery: TokenQuery;
     public traceCreateQuery: ContractTraceCreateQuery;
     public ipfsGatewaySync: IPFSGatewaySync;
-    public homeDashboardService: HomeDashboardService;
+    public homepageDashboard: HomepageDashboard;
     public contractQuery: ContractQuery;
     public statsQuery: StatsQuery;
     public nftPreviewService: NFTPreviewService;
@@ -120,6 +120,7 @@ export class StatApp{
         this.ensCheckerQuery = new ENSCheckerQuery(this);
         this.accountQuery = new AccountQuery(this);
         this.statOnRealtime = new StatOnRealtime()
+        this.homepageDashboard = new HomepageDashboard(this);
         this.txnQuery = new TxnQuery()
         this.txnSync.scheduleCache()
         if (this.config.syncIPFSGateway) {

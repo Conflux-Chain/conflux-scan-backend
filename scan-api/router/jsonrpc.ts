@@ -11,6 +11,7 @@ import {ApiApp} from "../app";
 import {NoCoreSpace} from "../../stat/config/StatConfig";
 import {Errors} from "../../stat/service/common/LogicError";
 import {CONST} from "../../stat/service/common/constant";
+import {HomepageDashboard} from "../../stat/service/HomepageDashboard";
 
 const lodash = require('lodash');
 const Big = require('big.js');
@@ -39,11 +40,7 @@ export const jsonrpc_dag = jsonrpc.method_('dag',
   cacheFlow(1000),
   durationAlarmFlow(5 * 1000, { method: 'dag' }),
   async function () {
-    const {
-      app: { service },
-    } = this as ScanCtx;
-    const data = service.homeDashboard.getData();
-    return data?.dagInfo;
+    return HomepageDashboard.getData()?.dagInfo;
   },
 
   type({

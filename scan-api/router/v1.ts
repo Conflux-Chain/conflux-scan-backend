@@ -26,6 +26,7 @@ import {safeAddErrorLog} from "../../stat/monitor/ErrorMonitor";
 import {getAccountQuery} from "../../stat/service/AccountQuery";
 import {fmtAddr} from "../../stat/StatApp";
 import {Errors} from "../../stat/service/common/LogicError";
+import {HomepageDashboard} from "../../stat/service/HomepageDashboard";
 const {router_get, router_post} = require ("../../koaflow/src/koaHelper");
 const {OpenAPI} = require('../../koaflow/lib/OpenAPI');
 const error = require('../../common/error');
@@ -86,31 +87,6 @@ router_get(router,'/echo', function (ctx) {
 // --------------------------------- OpenAPI ----------------------------------
 
 // -------------------------------- Statistic ---------------------------------
-router_get(router,'/supply',
-  OpenAPI.flow({
-    tags: ['statistic'],
-    input: {},
-    output: {
-      200: {
-        totalCirculating: 'string',
-        totalCollateral: 'string',
-        totalIssued: 'string',
-        totalStaking: 'string',
-        nullAddressBalance: 'string',
-        twoYearUnlockBalance: 'string',
-        fourYearUnlockBalance: 'string',
-      },
-      600: { code: 'integer', message: 'string' },
-    },
-  }),
-  async function () {
-    const { app: { service }, } = this as ScanCtx;
-    const data = service.homeDashboard.getData();
-    return data?.supplyInfo;
-  }
-
-);
-
 router_get(router,'/dag',
   OpenAPI.flow({
     tags: ['statistic'],
@@ -205,9 +181,7 @@ router_get(router, '/homeDashboard',
   }),
 
     async function () {
-      const { app: { service }, } = this as ScanCtx;
-      const data = service.homeDashboard.getData();
-      return data?.blockchainInfo;
+      return HomepageDashboard.getData()?.blockchainInfo;
     },
 );
 

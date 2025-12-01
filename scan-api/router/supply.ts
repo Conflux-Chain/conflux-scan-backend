@@ -1,6 +1,5 @@
-import {ScanCtx} from "../service/index";
-
 import * as KoaRouter from "koa-router";
+import {HomepageDashboard} from "../../stat/service/HomepageDashboard";
 const {router_get} = require("../../koaflow/src/koaHelper");
 const {Drip} = require('js-conflux-sdk');
 const {formatDecimal} = require('../../stat/service/common/utils');
@@ -11,22 +10,23 @@ router_get(router, '/circulating',
 
 	// eslint-disable-next-line prefer-arrow-callback
 	async function () {
-		const {app: {service},} = this as ScanCtx;
-		const data = service.homeDashboard.getData();
-		// @ts-ignore
-		const totalCirculating = data?.supplyInfo?.totalCirculating ?? 0
+		const {
+			totalCirculating,
+			nullAddressBalance,
+		} = HomepageDashboard.getData()?.supplyInfo as any || {totalCirculating: 0, nullAddressBalance: 0,};
+
 		if (totalCirculating == 0) {
-			return ""
+			return "";
 		}
-		return formatDecimal(Drip(totalCirculating).toCFX(), 2);
+
+		return formatDecimal(Drip(`${BigInt(totalCirculating) - BigInt(nullAddressBalance)}`).toCFX(), 2);
 	},
 );
 
 router_get(router, '/total',
 	// eslint-disable-next-line prefer-arrow-callback
 	async function () {
-		const {app: {service},} = this as ScanCtx;
-		const data = service.homeDashboard.getData()?.supplyInfo || {totalIssued: 0, nullAddressBalance: 0};
+		const data = HomepageDashboard.getData()?.supplyInfo || {totalIssued: 0, nullAddressBalance: 0};
 		// @ts-ignore
 		const {totalIssued, nullAddressBalance} = data;
 		if (totalIssued == 0) {
