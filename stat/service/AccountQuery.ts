@@ -223,7 +223,10 @@ export class AccountQuery {
 
         const [contracts, verifies, tokens] = await Promise.all([
             contractSrv.list(addresses).then( // hex => {name}
-                list => Object.fromEntries(list.filter((item: any) => item.name?.trim()).map(fieldMapper))
+                list => {
+                    const map = Object.fromEntries(list.filter((item: any) => item.name?.trim()).map(fieldMapper));
+                    return Object.fromEntries(addresses.map(item => [item, map[item] || {}]));
+                }
             ),
             contractSrv.listVerifyInBatch(addresses).then( // hex => {name}
                 list => Object.fromEntries(list.map(fieldMapper))
@@ -349,13 +352,17 @@ export class AccountQuery {
             address,
             {
                 contract: {
+                    address,
                     name: info.contract?.name,
                     isVirtual: POCKET_ADDRESS_MAP[info.contract?.name] == format.hexAddress(address),
                     verify: {
                         result: info.verification?.name ? 1 : 0,
                     }
                 },
-                token: info.token,
+                token: {
+                    address,
+                    ...info.token,
+                },
                 eSpace: info.eSpace,
                 ens: info.ens,
                 nameTag: info.nameTag,
