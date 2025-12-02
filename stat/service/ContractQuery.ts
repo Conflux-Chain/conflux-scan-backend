@@ -409,7 +409,10 @@ export class ContractQuery {
             return;
         }
 
-        const hex = await Hex40Map.findOne({where: {hex: impl.implementation.substr(2)}, raw: true});
+        const hex = await Hex40Map.findOne({
+            where: {hex: format.hexAddress(impl.implementation).substr(2)},
+            raw: true,
+        });
         if (!hex) {
             return;
         }
@@ -420,7 +423,7 @@ export class ContractQuery {
     private async _getImpl(address: string) {
         const {cfx} = this.app;
 
-        const hex = format.address(address, StatApp.networkId);
+        const hex = format.hexAddress(address);
         const validSlotValue = (value: string) => value && value !== CONST.ZERO_VALUE_IN_SLOT;
 
         const impl = await Promise.all([

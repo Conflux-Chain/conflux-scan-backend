@@ -8,7 +8,7 @@ import {
 import {setBody} from "../router/middleware";
 import {getApiService} from "../ApiServer";
 import {ApprovalRelation} from "../../stat/ApprovalSync";
-import {paginateCoreStat} from "../../stat/router/ParamChecker";
+import {LIMIT_MAX_STAT, paginateCoreStat} from "../../stat/router/ParamChecker";
 import {polishContract} from "./OpenContractService";
 import {fixApprovalData} from "../../stat/service/tool/ApprovalTool";
 import {BlockAndMinerSync} from "../../stat/service/BlockAndMinerSync";
@@ -23,19 +23,19 @@ export async function listCoreMiningStat(ctx) {
 }
 
 export async function listNFTAssetStats(ctx) {
-    mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['hour','day','month']);
+    mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['day','month']);
     const page = await getApiService().statsQuery.listNFTAssetStats(parseStatParam(ctx));
     setBody(ctx, page);
 }
 
 export async function listNFTContractStats(ctx) {
-    mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['hour','day','month']);
+    mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['day','month']);
     const page = await getApiService().statsQuery.listNFTContractStats(parseStatParam(ctx));
     setBody(ctx, page);
 }
 
 export async function listNFTTransferStats(ctx) {
-    mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['hour','day','month']);
+    mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['day','month']);
     const page = await getApiService().statsQuery.listNFTTransferStats(parseStatParam(ctx));
     setBody(ctx, page);
 }
@@ -263,7 +263,7 @@ function parseStatParam(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contract');
 
     const sort = (ctx.request.query.sort || 'DESC').toLowerCase();
-    const {skip, limit} = paginateCoreStat(ctx.request.query);
+    const {skip, limit} = paginateCoreStat(ctx.request.query, {limit: LIMIT_MAX_STAT, limitMax: LIMIT_MAX_STAT});
     const {intervalType, minTimestamp, maxTimestamp, contract} = ctx.request.query
     return {contract, minTimestamp, maxTimestamp, intervalType, sort, skip, limit};
 }
@@ -288,13 +288,13 @@ async function getTokenAnalysisData(ctx){
 }
 
 export async function listPowRewardStats(ctx) {
-    mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['hour','day','month']);
+    mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['day','month']);
     const page = await getApiService().statsQuery.listPowRewardStats(parseStatParam(ctx));
     setBody(ctx, page);
 }
 
 export async function listPosRewardStats(ctx) {
-    mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['hour','day','month']);
+    mustBeEnumParamIfPresent(ctx.request.query, 'intervalType', ['day','month']);
     const page = await getApiService().statsQuery.listPosRewardStats(parseStatParam(ctx));
     setBody(ctx, page);
 }

@@ -3,6 +3,7 @@ import {FullBlock, FullTransaction} from "../../model/FullBlock";
 import {DailyBlockDataStat} from "../../model/DailyBlockDataStat";
 import {fmtDtUTC} from "../../model/Utils";
 import {StatType, TimerStat} from "./TimerStat";
+import {KEY_EVICTED_STAT_BLOCK_DATA, KV} from "../../model/KV";
 
 const BigFixed = require('bigfixed');
 const lodash = require('lodash');
@@ -53,6 +54,8 @@ export class StatDailyBlockData extends TimerStat{
                 transaction: dbTx,
             });
         });
+
+        await this.evict();
     }
 
     // ------------------------------- biz -----------------------------------
@@ -124,5 +127,48 @@ export class StatDailyBlockData extends TimerStat{
             difficultySum, blockCount, txCount,
             blockTime, hashRate, difficulty, tps
         } as DailyBlockDataStat;
+    }
+
+    private async evict() {
+        for (const statType of [StatType.MIN, StatType.HOUR]) {
+            const stat = await DailyBlockDataStat.findOne({
+                where: {statType},
+                order: [["statTime", "desc"]],
+                offset: this.KEEP_ROWS,
+                limit: 1,
+                raw: true,
+            });
+
+            if (!stat) {
+                continue;
+            }
+
+            const key = `${KEY_EVICTED_STAT_BLOCK_DATA}_${statType.toUpperCase()}`
+            let evicted = await KV.getNumber(key, 0);
+
+            while (true) {
+                let rows = 0;
+
+                await DailyBlockDataStat.sequelize.transaction(async (dbTx) => {
+                    rows = await DailyBlockDataStat.destroy({
+                        transaction: dbTx,
+                        where: {
+                            statType,
+                            id: {[Op.lte]: stat.id},
+                        },
+                        limit: this.EVICT_ROWS_PER_TIME,
+                    });
+
+                    if (rows) {
+                        evicted += rows;
+                        await KV.saveNumber(key, evicted, dbTx);
+                    }
+                })
+
+                if (!rows) {
+                    break;
+                }
+            }
+        }
     }
 }

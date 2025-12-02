@@ -12,6 +12,8 @@ export abstract class TimerStat {
     protected app: any;
     protected baseInterval: StatType;
     protected debug = false;
+    protected KEEP_ROWS = 2000;
+    protected EVICT_ROWS_PER_TIME = 5000;
     minDbTime: Date
 
     protected constructor(app: any) {

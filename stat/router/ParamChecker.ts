@@ -3,7 +3,7 @@ import {Errors} from "../service/common/LogicError";
 const lodash = require('lodash');
 
 export const LIMIT_MAX = 100
-export const LIMIT_MAX_STAT = 2000
+export const LIMIT_MAX_STAT = 5000
 
 const optCore = {skip: 0, skipMax: 10000, limit: 10, limitMax: LIMIT_MAX};
 const optCoreStat = {skip: 0, skipMax: 10000, limit: 10, limitMax: LIMIT_MAX_STAT};
