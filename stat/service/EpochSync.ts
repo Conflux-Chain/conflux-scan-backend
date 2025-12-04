@@ -4,13 +4,14 @@ import {fmtAddr, StatApp} from "../StatApp";
 import {
     formatToBase32,
     formatToHex,
-    Hex40Map, idHex40Map,
+    Hex40Map,
+    idHex40Map,
     makeId,
     makeIdV
 } from "../model/HexMap";
 import {Contract} from "../model/Contract";
 import {checkTokenPropLength, Token} from "../model/Token";
-import {Op, QueryTypes, Transaction} from "sequelize";
+import {Op, QueryTypes} from "sequelize";
 import {base64ToPNG, getImageDir, saveOssUrl, uploadOss} from "./tool/TokenTool";
 import {Erc20Transfer} from "../model/Erc20Transfer";
 import {Erc721Transfer} from "../model/Erc721Transfer";
@@ -26,7 +27,6 @@ import {EpochHashTokenTransfer} from "../TokenTransferSync";
 import {AddressNftTransfer, NftTransfer} from "../model/NftTransfer";
 import {AddressNfts, T_ADDRESS_NFTS} from "../model/AddrNft";
 import {
-    AUTO_VERIFY_CURSOR,
     CONTRACT_ADDRESS_METADATA,
     CONTRACT_ANNOUNCEMENT,
     KEY_EPOCH_CIP1559_ENABLED,
@@ -79,32 +79,6 @@ export class EpochSync extends SyncBase {
         this.adminContractId = await makeIdV(CONST.INTERNAL_NAME_CONTRACT_MAP['AdminControl'].address);
         await this.checkConfig()
         await this.loadLatestVoteParam()
-        this.startAutoVerify().then();
-    }
-
-    async startAutoVerify() {
-        let delaySec = 0;
-        try {
-            let lastTraceId = await KV.getNumber(AUTO_VERIFY_CURSOR, -1);
-            if (lastTraceId == -1) {
-                const cv = await TraceCreateContract.findOne({order: [['id', 'desc']], raw: true});
-                if (cv) {
-                    lastTraceId = cv.id;
-                }
-            }
-            const tcc = isNaN(lastTraceId) ? null : await TraceCreateContract.findOne({
-                where: {id: {[Op.gt]: lastTraceId}}, order: [['id', 'asc']]
-            });
-            if (!tcc) {
-                delaySec = 10;
-            } else {
-                await KV.saveNumber(AUTO_VERIFY_CURSOR, tcc.id, null);
-            }
-        } catch (e) {
-            delaySec = 30;
-            console.log(`${__filename} failed to auto verify.`, e)
-        }
-        setTimeout(()=>this.startAutoVerify(), delaySec * 1000);
     }
 
     private async checkConfig() {
@@ -400,20 +374,6 @@ export class EpochSync extends SyncBase {
     }
 
     //--------------------- business method for announce ---------------------
-    private static async saveAnnounceInfo(epochNumber, {tokenArray, contractArray}, dbTx: Transaction = undefined) {
-        for (const token of tokenArray) {
-            let t = lodash.defaults({updatedAt: new Date()}, lodash.pick(token, FIELDS_TOKEN));
-            await Token.upsert(t, {transaction: dbTx});
-        }
-        for (const contract of contractArray) {
-            let c = lodash.defaults({
-                epoch: epochNumber,
-                updatedAt: new Date()
-            }, lodash.pick(contract, FIELDS_CONTRACT));
-            await Contract.upsert(c, {transaction: dbTx});
-        }
-    }
-
     private getAnnouncedTokens(epochNumber, tokenArray) {
         return tokenArray.map(t => lodash.defaults({
             epoch: epochNumber,
@@ -976,12 +936,6 @@ export class EpochSync extends SyncBase {
     }
 
     // ------------------------------ address nft -------------------------------
-    // addressId|epoch|blockIndex|txIndex|txLogIndex|batchIndex|fromId|toId|contractId|tokenId|value|type
-    // addressId|contractId|tokenId|value|type
-    private saveAddressNft(epochNumber, timestamp, addrNftTransferArray, dbTx) {
-        return this.updateAddressNft(epochNumber, timestamp, addrNftTransferArray, false, dbTx)
-    }
-
     private async deleteAddressNft(epochNumber, timestamp, dbTx) {
         const addrNftTransferArray = await AddressNftTransfer.findAll({where: {epoch: epochNumber}})
         return this.updateAddressNft(epochNumber, timestamp, addrNftTransferArray, true, dbTx)
@@ -1034,7 +988,6 @@ export class EpochSync extends SyncBase {
             type: QueryTypes.UPDATE,
             replacements,
             transaction: dbTx,
-            // logging: sql => console.log(`addr nft -> ${pivotSwitch ? 'pop' : 'push'} -> sql ${sql}`)
         })
     }
 

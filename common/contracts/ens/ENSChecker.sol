@@ -4,7 +4,7 @@ pragma solidity ^0.8.4;
 import '../registry/ENS.sol';
 import '../resolvers/Resolver.sol';
 import '../registry/IReverseRegistrar.sol';
-import './ENSNamehash.sol';
+import "./ENSNamehash.sol";
 
 // put this file under  https://github.com/ensdomains/ens-contracts.git/contracts/utils
 // then compile and get abi

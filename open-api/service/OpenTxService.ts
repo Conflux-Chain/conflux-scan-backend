@@ -1,5 +1,5 @@
 import {format} from "js-conflux-sdk";
-import {Hex40Map} from "../../stat/model/HexMap";
+import {formatToBase32, Hex40Map} from "../../stat/model/HexMap";
 import {AddressTransactionIndex} from "../../stat/model/FullBlock";
 import {
     checkPresent,
@@ -12,7 +12,6 @@ import {setBody} from "../router/middleware";
 import {CODE_PARAMETER_ABSENT, CODE_PARAMETER_ABSENT_MSG} from "../common/Def";
 import {getApiService} from "../ApiServer";
 import {polishContract} from "./OpenContractService";
-import {toBase32} from "../../stat/service/tool/AddressTool";
 import {TraceCreateContract} from "../../stat/model/TraceCreateContract";
 import {QueryTypes} from "sequelize";
 import {paginateCore} from "../../stat/router/ParamChecker";
@@ -190,7 +189,7 @@ export async function abiDecodeRaw(ctx){
 }
 
 async function decodeMethod(toAddr, data) {
-    const base32 = toBase32(toAddr);
+    const base32 = formatToBase32(toAddr);
     let contract = await getVerifiedContract(base32);
     if(!contract){
         return  { error: `Contract (${formatAddr(toAddr)}) not verified` };

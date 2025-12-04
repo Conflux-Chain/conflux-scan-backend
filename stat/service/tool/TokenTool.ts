@@ -4,7 +4,6 @@ import {Op} from 'sequelize'
 import {NftMint, Token} from "../../model/Token";
 import {init} from "./FixDailyTokenStat";
 import {initCfxSdk} from "../common/utils";
-import {decodeUtf8} from "./StringTool";
 import * as oss from "ali-oss";
 import {getAddrId} from "../../model/HexMap";
 import {CONST} from "../common/constant";
@@ -437,12 +436,20 @@ export class TokenTool {
     }
 }
 
+export function decodeTokenIcon(bytes) {
+    let encoded = "";
+    for (let i = 0; i < bytes.length; i++) {
+        encoded += '%' + bytes[i].toString(16);
+    }
+    return decodeURIComponent(encoded);
+}
+
 export async function base64ToPNG(token:Token, dir: string, uft8 = '') {
     if (!token.icon && !uft8) {
         console.log(`icon is not present. ${token.symbol} ${token.name} ${token.base32}`)
         return {}
     }
-    let raw_data = uft8 || decodeUtf8(token.icon);
+    let raw_data = uft8 || decodeTokenIcon(token.icon);
     // console.log(`data [${raw_data.substr(0,64)}]`)
     const data = raw_data.replace(/^data:image.*base64,/, '');
     let imageType = '.png'

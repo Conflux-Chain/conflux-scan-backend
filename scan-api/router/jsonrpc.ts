@@ -416,6 +416,26 @@ export const jsonrpc_verifyContract = jsonrpc.method_('verifyContract',
   })),
 );
 
+export const jsonrpc_verifyCrossChain = jsonrpc.method_('verifyCrossChain',
+    serializeByIP(),
+    buildFlow((app) => parameter({
+        address: { path: '0', type: app.type.address, required: true },
+        includeTestnet: { path: '0', type: type.bool },
+    })),
+
+    cacheFlow(5 * 1000),
+    async function (options) {
+        const {
+            app: { service },
+        } = this as ScanCtx;
+        return service.contract.verifyCrossChain(options);
+    },
+
+    buildFlow((app) => type({
+        address: app.type.simpleAddress,
+    })),
+);
+
 export const jsonrpc_countAndListContract = jsonrpc.method_('countAndListContract',
   serializeByIP(),
   buildFlow((app) => parameter({
