@@ -337,12 +337,12 @@ export class AccountQuery {
         addresses: string[],
         options: {
             withContractInfo?: boolean,
-            withEVMSpaceInfo?: boolean,
+            withESpaceInfo?: boolean,
             withENSInfo?: boolean,
             withNameTagInfo?: boolean
         } = {
             withContractInfo: true,
-            withEVMSpaceInfo: true,
+            withESpaceInfo: true,
             withENSInfo: true,
             withNameTagInfo: true
         }) {
@@ -350,26 +350,24 @@ export class AccountQuery {
 
         let map = Object.fromEntries(Object.entries(accounts).map(([address, info]: [string, any]) => [
             address,
-            {
-                contract: {
+            lodash.omitBy({
+                contract: info.contract ? {
                     address,
                     name: info.contract?.name,
                     isVirtual: POCKET_ADDRESS_MAP[info.contract?.name] == format.hexAddress(address),
                     verify: {
                         result: info.verification?.name ? 1 : 0,
                     }
-                },
-                token: {
+                } : undefined,
+                token: info.token ? {
                     address,
                     ...info.token,
-                },
+                } : undefined,
                 eSpace: info.eSpace,
                 ens: info.ens,
                 nameTag: info.nameTag,
-            },
+            }, lodash.isNil),
         ]));
-
-        map = lodash.omitBy(map, lodash.isEmpty);
 
         return { total: Object.keys(map).length, map };
     }

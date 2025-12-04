@@ -1047,13 +1047,12 @@ paths:
       parameters:
         - name: intervalType
           in: query
-          description: "Indicator calculation period, should be one of hour、day or month. Default is day."
+          description: "Indicator calculation period, should be day or month. Default is day."
           required: false
           schema:
             type: string
             default: day
             enum:
-              - hour
               - day
               - month
         - $ref: '#/components/parameters/minTimestampParam'
@@ -1076,13 +1075,12 @@ paths:
       parameters:
         - name: intervalType
           in: query
-          description: "Indicator calculation period, should be one of hour、day or month. Default is day."
+          description: "Indicator calculation period, should be day or month. Default is day."
           required: false
           schema:
             type: string
             default: day
             enum:
-              - hour
               - day
               - month
         - $ref: '#/components/parameters/minTimestampParam'
@@ -1105,13 +1103,12 @@ paths:
       parameters:
         - name: intervalType
           in: query
-          description: "Indicator calculation period, should be one of hour、day or month. Default is day."
+          description: "Indicator calculation period, should be day or month. Default is day."
           required: false
           schema:
             type: string
             default: day
             enum:
-              - hour
               - day
               - month
         - $ref: '#/components/parameters/minTimestampParam'
@@ -1134,7 +1131,7 @@ paths:
       parameters:
         - name: intervalType
           in: query
-          description: "Indicator calculation period, should be one of day or month. Default is day."
+          description: "Indicator calculation period, should be day or month. Default is day."
           required: false
           schema:
             type: string
@@ -1162,13 +1159,12 @@ paths:
       parameters:
         - name: intervalType
           in: query
-          description: "Indicator calculation period, should be one of hour、day or month. Default is day."
+          description: "Indicator calculation period, should be day or month. Default is day."
           required: false
           schema:
             type: string
             default: day
             enum:
-              - hour
               - day
               - month
         - $ref: '#/components/parameters/minTimestampParam'
@@ -1191,13 +1187,12 @@ paths:
       parameters:
         - name: intervalType
           in: query
-          description: "Indicator calculation period, should be one of hour、day or month. Default is day."
+          description: "Indicator calculation period, should be day or month. Default is day."
           required: false
           schema:
             type: string
             default: day
             enum:
-              - hour
               - day
               - month
         - $ref: '#/components/parameters/minTimestampParam'
@@ -3310,12 +3305,12 @@ components:
     limitParamStat:
       name: limit
       in: query
-      description: "The number of records displayed on the page. Maximum 2000."
+      description: "The number of records displayed on the page. Maximum 5000."
       required: false
       schema:
         type: integer
-        maximum: 2000
-        default: 10
+        maximum: 5000
+        default: 5000
     limitParamWithMax100:
       name: limit
       in: query
