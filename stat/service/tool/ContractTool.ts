@@ -1,6 +1,6 @@
 import {Hex40Map, makeId} from "../../model/HexMap";
 import {init as initialize} from "./FixDailyTokenStat";
-import {StatApp} from "../../StatApp";
+import {fmtAddr, StatApp} from "../../StatApp";
 import {StatConfig} from "../../config/StatConfig";
 import {initCfxSdk} from "../common/utils";
 import {CONST} from "../common/constant";
@@ -13,6 +13,8 @@ import {Contract} from "../../model/Contract";
 import {sleep} from "./ProcessTool";
 import {Op} from "sequelize";
 import {execSync} from "child_process";
+import {TraceCreateContract} from "../../model/TraceCreateContract";
+import {keccak256} from "ethers/lib/utils";
 
 const fs = require('fs');
 const path = require('path');
@@ -54,6 +56,9 @@ async function run() {
     }
     if(type === 4){
         await missingVerified()
+    }
+    if(type === 5){
+        await genCodeHash()
     }
     await close();
 }
@@ -304,4 +309,18 @@ async function missingVerified() {
             }
         }
     }
+}
+
+async function genCodeHash() {
+    const traces = await TraceCreateContract.findAll({attributes: ["to"], order: [["id", "asc"]], raw: true});
+    for (const trace of traces) {
+        const address = await Hex40Map.findOne({where: {id: trace.to}, raw: true});
+        const code = await cfx.getCode(`0x${address.hex}`);
+        const codeHash = keccak256(code);
+        const [rows] = await TraceCreateContract.update({codeHash: codeHash.substr(2)}, {where: {to: trace.to}});
+        if (rows === 0) {
+            throw new Error(`gen codehash for ${fmtAddr(`0x${address.hex}`, StatApp.networkId)} error`);
+        }
+    }
+    console.log(`done!`)
 }
