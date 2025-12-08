@@ -8,6 +8,7 @@ import {ConsortiumConflux} from "./ConsortiumConflux";
 import {KEY_EVM_VERSIONS, KV} from "../../model/KV";
 import {useFastFormat} from "./fastFormatter";
 import {CONST} from "./constant";
+import {keccak256} from "ethers/lib/utils";
 
 const lodash = require('lodash');
 const {isValidCfxAddress, decodeCfxAddress} = require('js-conflux-sdk/src/util/address');
@@ -394,7 +395,7 @@ export function formatTrace(arr: (object | Error)[]) {
 
 export async function getCodeHash(address: string, cfx: Conflux) {
 	const code = await cfx.getCode(address);
-	return sign.keccak256(Buffer.from(code)).toString('hex');
+	return keccak256(code);
 }
 
 export function batchTraceBlock(cfx:Conflux, hashes:string[]) {
