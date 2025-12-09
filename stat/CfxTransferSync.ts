@@ -342,6 +342,10 @@ async function save(data:CfxTransferEpochData) {
     if (batchData.shouldWaitBatch()) {
         return;
     }
+    if (batchData.traceArr.length == 0 && batchData.lastEpoch % 10_000 != 0) {
+        batchData.reset();
+        return;
+    }
     return CfxTransfer.sequelize.transaction(async dbTx=>{
         return Promise.all([
             EpochHashCfxTransfer.bulkCreate(batchData.pivotHashArr,{transaction: dbTx}),
@@ -349,7 +353,7 @@ async function save(data:CfxTransferEpochData) {
         ]).then(()=>{
             batchData.reset();
         })
-    })
+    });
 }
 async function pop(epoch: number) {
     if (batchData.batchSize > 0) {
