@@ -264,6 +264,7 @@ export async function getCfxTransferTraces(epoch: number)
                 } else {
                     console.log(`unknown trace type ${type}, epoch ${epoch} block ${blockHash
                     } tx ${txBean.txPosition}, trace ${traceIdx}, tx hash ${transactionHash}`)
+                    console.log(`trace is `, traceArr[traceIdx]);
                     process.exit(8)
                 }
                 if (!from || !to) {
