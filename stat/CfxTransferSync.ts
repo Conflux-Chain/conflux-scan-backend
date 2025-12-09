@@ -1,7 +1,7 @@
 import {redirectLog} from "./config/LoggerConfig";
 import {DataTypes, Model, Op, Sequelize} from "sequelize";
 import {init} from "./service/tool/FixDailyTokenStat";
-import {Conflux} from "js-conflux-sdk";
+import {Conflux, format} from "js-conflux-sdk";
 import {batchTraceBlock, getCodeHash, initCfxSdk} from "./service/common/utils";
 import {Measure} from "./service/common/Measure";
 import {FullBlock, FullTransaction, loadMaxBlockEpoch} from "./model/FullBlock";
@@ -20,9 +20,9 @@ import {
     CFX_TRANSFER_PAGE_MARK_SIZE,
     CfxTransfer,
     checkCfxTransferCountKV,
-    ICfxTransfer,
+    ICfxTransfer, ITrace,
     markCfxTransferPosition,
-    popPartitionCfxTransfer,
+    popPartitionCfxTransfer, Trace,
 } from "./model/CfxTransfer";
 import {regExitHook, sleep} from "./service/tool/ProcessTool";
 import {diffCount, KEY_FULL_CFX_TRANSFER_COUNT} from "./model/KV";
@@ -73,7 +73,7 @@ export class EpochHashCfxTransfer extends Model<IEpochHashCfxTransfer>
             epoch : {type: DataTypes.BIGINT({unsigned: true}), primaryKey: true},
             hash: {type: DataTypes.CHAR(66), allowNull: false},
         },{
-            sequelize: seq, tableName: 'epoch_hash_cfx_transfer',
+            sequelize: seq, tableName: 'epoch_hash_trace',
             updatedAt: false,
         })
     }
@@ -83,6 +83,10 @@ let cfx0:Conflux
 export function setCfxSync(cfx: Conflux) {
     cfx0 = cfx
 }
+let internalContractSet = new Set<string>();
+let internalContracts = '0,1,2,3,4,5,6'.split(',')
+    .map(s=>'0x088800000000000000000000000000000000000'+s);
+
 export async function getCfxTransferTraces(epoch: number)
     : Promise<CfxTransferEpochData>{
     const cfx = cfx0;
@@ -128,8 +132,8 @@ export async function getCfxTransferTraces(epoch: number)
     }
 
     const hashes = blockArrDb.map(blk=>blk.hash);
-    const result:ICfxTransfer[] = [];
-    const addrBeans = []
+    const result:ITrace[] = [];
+    // const addrBeans = []
     let start = Date.now();
     let traceArray2d: any[];
     try {
@@ -196,55 +200,45 @@ export async function getCfxTransferTraces(epoch: number)
                 return {code : 404} // try again
             }
             const traceArr = traces as any[];
-            const traceMap = new Map<number, ICfxTransfer>();
+            const traceMap = new Map<number, ITrace>();
             for (let traceIdx = 0; traceIdx < traceArr.length; traceIdx++) {
-                let {action: {outcome, from, to, value, callType, fromPocket, toPocket, fromSpace, toSpace, space, addr}, type, valid} = traceArr[traceIdx]
+                // console.log(`that is `, traceArr[traceIdx]);
+                let {action: {input, outcome, from, to, value, callType, fromPocket, toPocket, fromSpace, toSpace, space, addr}, type, valid} = traceArr[traceIdx]
                 if (!valid) {
                     continue
                 }
+                if (!internalContractSet.has(from) && !internalContractSet.has(to)) {
+                    continue;
+                }
+                console.log(`from ${from} to ${to} AAA`);
                 from = patchPocketAddress(fromPocket, from);
                 to = patchPocketAddress(toPocket, to)
+                console.log(`from ${from} to ${to} `);
                 if (type === 'create') {
-                    const fromId = (await makeId(from, undefined, {dt: dbPivotBlock.createdAt})).id;
-                    const tcc: ITraceCreateContract = {
-                        epochNumber, txHashId: 0, txHash: transactionHash.substr(2), traceIndex: traceIdx, from: fromId,to: 0,
-                        value: value, outcome: '', blockTime: pivotBlock.timestamp, codeHash: '',
-                    }
-                    contractCreationArr.push(tcc);
-                    contractCreationStack.push(tcc);
-                    tcc['creationTraceIdx'] = traceIdx;
+
                 } else if (type === 'create_result') {
-                    const tcc: ITraceCreateContract = contractCreationStack.pop();
-                    tcc.outcome = outcome;
-                    tcc.codeHash = await getCodeHash(addr, cfx);
-                    tcc.to = (await makeId(addr, undefined, {dt: dbPivotBlock.createdAt})).id;
-                    // fix cfx transfer
-                    const creationBean = traceMap.get(tcc['creationTraceIdx']);
-                    if (creationBean && tcc.to) {
-                        creationBean.toId = tcc.to;
-                        addrBeans.push({...creationBean, addressId: tcc.to})
-                    } else {
-                        console.log(`creation bean not found , block hash`, blockHash , ' trace ', traceIdx);
-                    }
+
                 }
                 await buildCrossAddr(fromSpace, from, dbPivotBlock.createdAt, crossSpaceAddrArr);
                 await buildCrossAddr(toSpace,   to,   dbPivotBlock.createdAt, crossSpaceAddrArr);
                 // doc https://github.com/Conflux-Chain/CIPs/issues/88
-                if (!value
-                    || callType === 'none'
-                    || callType === 'callcode'
-                    || callType === 'delegatecall'
-                    || callType === 'staticcall'
-                    // both side pocket is set , not equal to 'balance', it's sponsor mechanism.
-                    || (fromPocket && fromPocket !== 'balance' && toPocket && toPocket !== 'balance')
-                    ||
-                    (
-                        // scan doesn't save gas/storage payment as cfx transfer records.
-                        fromPocket === 'gas_payment' || toPocket === 'gas_payment' // save it except gas
-                    )
+                if (//!value
+                    type === 'call_result' // missing from and to
+                //     || callType === 'none'
+                //     || callType === 'callcode'
+                //     || callType === 'delegatecall'
+                //     || callType === 'staticcall'
+                //     // both side pocket is set , not equal to 'balance', it's sponsor mechanism.
+                //     || (fromPocket && fromPocket !== 'balance' && toPocket && toPocket !== 'balance')
+                //     ||
+                //     (
+                //         // scan doesn't save gas/storage payment as cfx transfer records.
+                //         fromPocket === 'gas_payment' || toPocket === 'gas_payment' // save it except gas
+                //     )
                 ) {
                     continue
                 }
+                let suicideAddr = '';
                 if (callType !=='call' && type === 'call') {
                     console.log(`unknown call type ${callType} type ${type}, epoch ${epoch} block ${blockHash
                     } tx ${txBean.txPosition}, full-tx-idx ${txIdx} tp ${transactionPosition} ${transactionHash},  trace ${traceIdx}`)
@@ -261,9 +255,10 @@ export async function getCfxTransferTraces(epoch: number)
                     // it seems that the bridge handles this type the same as internal_transfer_action.
                     const trace = traceArr[traceIdx];
                     console.log(`suicide `, trace);
-                    from = trace.action.address;
+                    // from = trace.action.address;
                     value = trace.action.balance;
-                    to = trace.action.refundAddress;
+                    suicideAddr = trace.action.address;
+                    // to = trace.action.refundAddress;
                 } else if (type === 'create_result' || type ==='call_result') {
                     //value should be zero, won't trigger
                 } else {
@@ -271,19 +266,20 @@ export async function getCfxTransferTraces(epoch: number)
                     } tx ${txBean.txPosition}, trace ${traceIdx}, tx hash ${transactionHash}`)
                     process.exit(8)
                 }
-                const fromId = await makeIdV(from)
+                if (!from || !to) {
+                    console.log(`what's it ? `, traceArr[traceIdx]);
+                }
+                const fromId = await makeIdV(from);
                 const toId = await makeIdV(to)
-                const bean:ICfxTransfer = {
-                    epoch, blockIndex: blkIdx, txIndex: txBean.txPosition, txLogIndex: traceIdx,
+                const bean:ITrace = {
+                    epoch, blockIndex: blkIdx, txIndex: txBean.txPosition, traceIndex: traceIdx,
                     fromId, toId, createdAt:txBean.createdAt, value, type,
+                    from, to, suicideAddr,
+                    actionCallType: callType, blockHash, txHash: txBean.hash,
+                    input,
                 }
-                bean['addressId'] = fromId
                 result.push(bean)
-                addrBeans.push(bean)
                 traceMap.set(traceIdx, bean);
-                if (fromId !== toId && toId !== 0) {
-                    addrBeans.push({...bean, addressId: toId})
-                }
             }
         }
     }
@@ -297,7 +293,7 @@ export async function getCfxTransferTraces(epoch: number)
     }
     // removeLongData(traceArray2d);
     // console.log(JSON.stringify(traceArray2d, null, 4))
-    return {result, addrBeans, code: 0, pivotHash: pivotBlock.hash, parentHash: pivotBlock.parentHash, epoch,
+    return {result, addrBeans: [], code: 0, pivotHash: pivotBlock.hash, parentHash: pivotBlock.parentHash, epoch,
         contractCreationArr, crossSpaceAddrArr,
         buildTime: Date.now() - start, traceRpcMs
     }
@@ -305,23 +301,16 @@ export async function getCfxTransferTraces(epoch: number)
 async function setup() {
     const [, , cmd, fromEpoch, ] = process.argv
     const config = await init()
-    await checkCfxTransferCountKV()
     const cfxOpt = config.cfxTransferRpc;
-    if (fromEpoch === 'holder') {
-        redirectLog({subPath:'.holder'})
-        const cfx = await initCfxSdk(cfxOpt);
-        await runHolder(cfx);
-        return;
-    } else if (cmd === 'marker') {
-        redirectLog({subPath:'.marker'})
-        await runMarker();
-        return;
-    }
     redirectLog()
     const cfx = await initCfxSdk(cfxOpt);
     StatApp.networkId = cfx.networkId;
-    setTimeout(()=>runHolder(cfx).then(), 5_000);
-    runMarker().then();
+    internalContracts
+        .map(s=>format.address(s, cfx.networkId, true))
+        .forEach(s=>{
+            console.log(`internal `, s);
+            internalContractSet.add(s);
+        });
     cfx0 = cfx;
     await makeVirtualContractInfo(cfx.networkId);
     console.log(`---------- ${cfxOpt.url} ${cfx.networkId} ---------`)
@@ -329,8 +318,7 @@ async function setup() {
         await test(parseInt(fromEpoch))
         process.exit(0)
     } else {
-        scheduleCrossSpaceStat(cfx).then()
-        return runTask(cfx).then(()=>listenPort('cfx_transfer'));
+        return runTask(cfx);
     }
 }
 async function test(ep:number) {
@@ -340,7 +328,7 @@ async function test(ep:number) {
         await sleep(5_000)
     } else {
         console.log(result.map(t => `ep ${t.epoch} b ${t.blockIndex} t ${t.txIndex
-        } l ${t.txLogIndex} ${t.fromId}->${t.toId} v ${t.value} t ${t.type}`));
+        } l ${t.traceIndex} ${t.fromId}->${t.toId} v ${t.value} t ${t.type}`));
         console.log(addrBeans.map(t => `ad ${t["addressId"]} ep ${t.epoch} b ${t.blockIndex} t ${t.txIndex
         } l ${t.txLogIndex} v ${t.value} t ${t.type}`));
     }
@@ -349,22 +337,15 @@ async function test(ep:number) {
 const batchData = new BatchCfxTransfer();
 
 async function save(data:CfxTransferEpochData) {
-    measure.count('addrBeans', data.addrBeans.length);
+    // measure.count('addrBeans', data.addrBeans.length);
     batchData.enqueue(data)
     if (batchData.shouldWaitBatch()) {
         return;
     }
     return CfxTransfer.sequelize.transaction(async dbTx=>{
         return Promise.all([
-            diffCount(KEY_FULL_CFX_TRANSFER_COUNT, batchData.transferCount, dbTx, ),
-            CfxUser.bulkCreate(batchData.cfxTransArr, {transaction: dbTx}),
-            CfxTransfer.bulkCreate(batchData.cfxTransArr, {transaction: dbTx}),
-            AddressCfxTransfer.bulkCreate(batchData.addrBeans, {transaction: dbTx}),
             EpochHashCfxTransfer.bulkCreate(batchData.pivotHashArr,{transaction: dbTx}),
-            ESpaceHex40Map.bulkCreate(batchData.crossSpaceAddrArr, {transaction: dbTx,
-                updateOnDuplicate: ['createdAt']}),
-            TraceCreateContract.bulkCreate(batchData.contractCreationArr, { transaction: dbTx,
-                updateOnDuplicate: ["epochNumber", "blockTime", "txHash", "traceIndex"]}),
+            Trace.bulkCreate(batchData.traceArr, {transaction: dbTx}),
         ]).then(()=>{
             batchData.reset();
         })
@@ -385,18 +366,6 @@ async function pop(epoch: number) {
     });
 }
 // cfx holder
-async function runHolder(cfx:Conflux) {
-    if (!cfxWatcher) {
-        await cfx.updateNetworkId();
-        cfxWatcher = new CfxWatcher('cfx', cfx);
-    }
-    await holder().catch(err=>{
-        safeAddErrorLog('cfx-tx-sync',`holder-task`, err);
-        console.log(` cfx holder error:`, err)
-        return sleep(10_000)
-    });
-    setTimeout(()=>runHolder(cfx), 0);
-}
 let cfxWatcher:CfxWatcher;
 let lastNoUserLogMinute = -1
 async function holder() {
@@ -433,15 +402,6 @@ async function holder() {
     await Promise.all(batch)
     const delCnt = await CfxUser.destroy({where: {id:{[Op.between]:[min, max]}}})
     console.log(` check cfx holder, count ${idArr.length}, min ${min} max ${max}, deleted ${delCnt}`)
-}
-// marker, handle multiple task situation.
-async function runMarker() {
-    await marker().catch(e=>{
-        safeAddErrorLog('cfx-sync',`marker`, e);
-        console.log(`${__filename} failed to run marker`, e)
-        return sleep(60_000)
-    });
-    setTimeout(runMarker, 0)
 }
 let preMarkEpoch = 0;
 let noTaskLogMinute = -1

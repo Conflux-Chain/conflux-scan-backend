@@ -13,7 +13,13 @@ import {DailyBlockDataStat} from "../model/DailyBlockDataStat";
 import {CfxBalance, createTokenBalanceTable, NFTBalance,} from "../model/Balance";
 import {DailyToken, Erc1155Amount, Erc1155Data, NftId, NftMint, Token} from "../model/Token";
 import {ContractUser, createAddressErc20TransferTable, DailyTokenTxn, Erc20Transfer} from "../model/Erc20Transfer";
-import {CfxTransfer, CfxTransferRowMark, createAddressCfxTransferTable, DailyCfxTxn,} from "../model/CfxTransfer";
+import {
+    CfxTransfer,
+    CfxTransferRowMark,
+    createAddressCfxTransferTable,
+    DailyCfxTxn,
+    Trace,
+} from "../model/CfxTransfer";
 import {create721partition, Erc721Transfer} from "../model/Erc721Transfer";
 import {createAddressErc1155TransferTable, Erc1155Transfer} from "../model/Erc1155Transfer";
 import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
@@ -154,6 +160,7 @@ export async function initPartialModel(sequelize) {
         createFullBlockExtTable(sequelize),
     ])
     ApiLog.register(sequelize)
+    Trace.register(sequelize)
     ReqAccount.register(sequelize)
     ErrorLog.register(sequelize)
     TransferCount.register(sequelize)

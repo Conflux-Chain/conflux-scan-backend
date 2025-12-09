@@ -6,7 +6,7 @@ import {
 	IFailedTx
 } from "../model/FullBlock";
 import {IPosRegister} from "../model/PoS";
-import {IAddressCfxTransfer, ICfxTransfer} from "../model/CfxTransfer";
+import {IAddressCfxTransfer, ICfxTransfer, ITrace} from "../model/CfxTransfer";
 import {IEpochHashCfxTransfer} from "../CfxTransferSync";
 import {ITraceCreateContract} from "../model/TraceCreateContract";
 import {ESpaceHexMapAttributes} from "../model/HexMap";
@@ -38,7 +38,7 @@ export class BatchDataBase {
 }
 
 export class CfxTransferEpochData {
-	result?: ICfxTransfer[]
+	result?: ITrace[]
 	addrBeans?: IAddressCfxTransfer[]
 	code: number
 	epoch?: number
@@ -95,7 +95,7 @@ export class BatchTokenTransfer extends BatchDataBase {
 }
 
 export class BatchCfxTransfer extends BatchDataBase {
-	cfxTransArr: ICfxTransfer[]
+	traceArr: ITrace[]
 	addrBeans: IAddressCfxTransfer[]
 	pivotHashArr: IEpochHashCfxTransfer[]
 	contractCreationArr: ITraceCreateContract[]
@@ -112,7 +112,7 @@ export class BatchCfxTransfer extends BatchDataBase {
 		const {result, addrBeans, pivotHash, epoch, contractCreationArr, crossSpaceAddrArr} = data;
 		if (result.length) {
 			this.transferCount += result.length;
-			this.cfxTransArr.push(...result);
+			this.traceArr.push(...result);
 			this.addrBeans.push(...addrBeans);
 		}
 		this.contractCreationArr.push(...contractCreationArr);
@@ -125,7 +125,7 @@ export class BatchCfxTransfer extends BatchDataBase {
 	}
 
 	reset() {
-		this.cfxTransArr = []
+		this.traceArr = []
 		this.addrBeans = []
 		this.pivotHashArr = []
 		this.contractCreationArr = []

@@ -275,6 +275,86 @@ export async function checkCfxTransferCountKV(update=false) {
     return KV.saveNumber(KEY_FULL_CFX_TRANSFER_COUNT, countNow.toString(), undefined);
 }
 
+export interface ITrace {
+    id?: number; // data is fixed at a delayed time, so id is not consistent with epoch.
+    epoch: number;
+    createdAt: Date;
+    blockIndex: number;
+    blockHash: string;
+    txIndex: number;
+    txHash: string;
+    traceIndex: number;
+    fromId: number;
+    from: string;
+    toId: number;
+    to: string;
+    value: number;
+    type:string;
+    actionCallType:string;
+    suicideAddr:string;
+    input: string;
+}
+
+export class Trace extends Model<ITrace> implements ITrace {
+    id?: number // data is fixed at a delayed time, so id is not consistent with epoch.
+    epoch: number
+    createdAt: Date
+    blockIndex: number;
+    blockHash: string;
+    txIndex: number;
+    txHash: string;
+    traceIndex: number
+    fromId: number;
+    from: string;
+    toId: number;
+    to: string;
+    value: number;
+    type:string;
+    actionCallType:string;
+    suicideAddr:string;
+    input: string;
+
+    static register(seq: Sequelize) {
+        Trace.init({
+            id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true, allowNull: false},
+            epoch: {type: DataTypes.BIGINT, allowNull: false},
+            createdAt: {type: DataTypes.DATE, allowNull: false},
+            blockIndex: {type: DataTypes.SMALLINT, allowNull: false},
+            blockHash: {type: DataTypes.STRING(66), allowNull: false},
+            txIndex: {type: DataTypes.INTEGER, allowNull: false},
+            txHash: {type: DataTypes.STRING(66), allowNull: false, },
+            traceIndex: {type: DataTypes.INTEGER, allowNull: false},
+            fromId: {type: DataTypes.BIGINT, allowNull: false},
+            from: {type: DataTypes.STRING(64), allowNull: false},
+            suicideAddr: {type: DataTypes.STRING(64), allowNull: false},
+            toId: {type: DataTypes.BIGINT, allowNull: false},
+            to: {type: DataTypes.STRING(64), allowNull: false},
+            value: {type: DataTypes.DECIMAL(36, 0), allowNull: false},
+            type: {type: DataTypes.STRING(32), allowNull: false},
+            actionCallType: {type: DataTypes.STRING(32), allowNull: true, defaultValue: ''},
+            input: {type: DataTypes.STRING(1024), allowNull: true, defaultValue: ''},
+        }, {
+            sequelize: seq,
+            updatedAt: false,
+            tableName: 'trace',
+            indexes: [
+                {
+                    name: 'idx_epoch',
+                    fields: [{name: 'epoch', order: "DESC"}]
+                },
+                {
+                    name: 'idx_datetime',
+                    fields: [{name: 'createdAt', order: "DESC"}]
+                },
+                {
+                    name: 'idx_to',
+                    fields: [{name: 'to'}, {name: 'epoch'}]
+                },
+            ],
+        })
+    }
+}
+
 // ============= full table ==============
 export interface ICfxTransfer {
     id?: number // data is fixed at a delayed time, so id is not consistent with epoch.
@@ -404,24 +484,24 @@ export async function doMark(rows, epoch){
 }
 
 export async function popPartitionCfxTransfer(epoch, dbTx = undefined){
-    const cfxTransferArray = await CfxTransfer.findAll({where: {epoch}});
-    if(!cfxTransferArray?.length){
-        return Promise.resolve();
-    }
+    // const cfxTransferArray = await CfxTransfer.findAll({where: {epoch}});
+    // if(!cfxTransferArray?.length){
+    //     return Promise.resolve();
+    // }
 
-    const addressIds = new Set<number>()
-    cfxTransferArray.forEach(row => {
-        addressIds.add(row.fromId);
-        addressIds.add(row.toId);
-    })
+    // const addressIds = new Set<number>()
+    // cfxTransferArray.forEach(row => {
+    //     addressIds.add(row.fromId);
+    //     addressIds.add(row.toId);
+    // })
 
     return Promise.all([
-            AddressCfxTransfer.destroy({
-                where: { epoch, addressId: {[Op.in]: [...addressIds]} },
-                transaction: dbTx
-            }),
-            diffCount(KEY_FULL_CFX_TRANSFER_COUNT, -cfxTransferArray.length, dbTx),
-            CfxTransfer.destroy({where: {epoch}, transaction: dbTx}),
+            // AddressCfxTransfer.destroy({
+            //     where: { epoch, addressId: {[Op.in]: [...addressIds]} },
+            //     transaction: dbTx
+            // }),
+            // diffCount(KEY_FULL_CFX_TRANSFER_COUNT, -cfxTransferArray.length, dbTx),
+            Trace.destroy({where: {epoch}, transaction: dbTx}),
         ]);
 
 }
