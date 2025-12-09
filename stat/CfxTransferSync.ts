@@ -210,10 +210,9 @@ export async function getCfxTransferTraces(epoch: number)
                 if (!internalContractSet.has(from) && !internalContractSet.has(to)) {
                     continue;
                 }
-                console.log(`from ${from} to ${to} AAA`);
+                console.log(`from ${from} to ${to} `);
                 from = patchPocketAddress(fromPocket, from);
                 to = patchPocketAddress(toPocket, to)
-                console.log(`from ${from} to ${to} `);
                 if (type === 'create') {
 
                 } else if (type === 'create_result') {
@@ -239,11 +238,11 @@ export async function getCfxTransferTraces(epoch: number)
                     continue
                 }
                 let suicideAddr = '';
-                if (callType !=='call' && type === 'call') {
-                    console.log(`unknown call type ${callType} type ${type}, epoch ${epoch} block ${blockHash
-                    } tx ${txBean.txPosition}, full-tx-idx ${txIdx} tp ${transactionPosition} ${transactionHash},  trace ${traceIdx}`)
-                    process.exit(8)
-                }
+                // if (callType !=='call' && type === 'call') {
+                //     console.log(`unknown call type ${callType} type ${type}, epoch ${epoch} block ${blockHash
+                //     } tx ${txBean.txPosition}, full-tx-idx ${txIdx} tp ${transactionPosition} ${transactionHash},  trace ${traceIdx}`)
+                //     process.exit(8)
+                // }
                 if (type === 'internal_transfer_action') {
                     if (POCKET_ADDRESS_MAP[fromPocket]) {
                         type = fromPocket
