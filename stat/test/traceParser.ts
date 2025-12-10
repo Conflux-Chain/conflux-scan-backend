@@ -1,7 +1,7 @@
 import {init} from "../service/tool/FixDailyTokenStat";
 import {Trace} from "../model/CfxTransfer";
 import {iterateTable} from "../../tools/tableIterator";
-import {ContractDecoder} from "../../tools/contractDecoder";
+import {ContractDecoder, transformNamedArgs} from "../../tools/contractDecoder";
 import {abi as sponsorAbi} from "../service/abi/SponsorWhitelistControl";
 
 async function processTrace(trace: any) {
@@ -17,7 +17,8 @@ async function processTrace(trace: any) {
 		// 执行一些操作
 		const parsedTransaction = iFace.parseTransaction({ data: trace.input });
 		if (parsedTransaction) {
-			console.log(`that is `, parsedTransaction.name, parsedTransaction.args);
+			const propArg = transformNamedArgs(parsedTransaction.args);
+			console.log(`that is `, parsedTransaction.name, propArg);
 		}
 	}
 }
