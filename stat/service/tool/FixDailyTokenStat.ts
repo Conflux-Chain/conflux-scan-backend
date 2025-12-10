@@ -25,7 +25,7 @@ import {TraceCreateContract} from "../../model/TraceCreateContract";
 let configCache: StatConfig|null = null;
 
 // do not call this method concurrently
-export async function init() {
+export async function init({alter} = {alter: false}) {
     if (configCache) {
         return configCache
     }
@@ -33,7 +33,7 @@ export async function init() {
     // let seq = new Sequelize(config.databaseRW.instanceName, null, null, config.databaseRW as Options);//createDB(config.database)
     let seq = createDB(config.databaseRW)
     await initModel(seq)
-    await seq.sync({})
+    await seq.sync({alter})
     configCache = config;
     return config
 }
