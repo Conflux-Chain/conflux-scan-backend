@@ -293,6 +293,13 @@ export interface ITrace {
     actionCallType:string;
     suicideAddr:string;
     input: string;
+    //
+    fromPocket: string;
+    fromSpace: string;
+    toPocket: string;
+    toSpace: string;
+    suicideActionBalance: bigint;
+    valid: boolean;
 }
 
 export class Trace extends Model<ITrace> implements ITrace {
@@ -313,6 +320,13 @@ export class Trace extends Model<ITrace> implements ITrace {
     actionCallType:string;
     suicideAddr:string;
     input: string;
+    //
+    fromPocket: string;
+    fromSpace: string;
+    toPocket: string;
+    toSpace: string;
+    suicideActionBalance: bigint;
+    valid: boolean;
 
     static register(seq: Sequelize) {
         Trace.init({
@@ -333,6 +347,12 @@ export class Trace extends Model<ITrace> implements ITrace {
             type: {type: DataTypes.STRING(32), allowNull: false},
             actionCallType: {type: DataTypes.STRING(32), allowNull: true, defaultValue: ''},
             input: {type: DataTypes.STRING(1024), allowNull: true, defaultValue: ''},
+            fromPocket: {type: DataTypes.STRING(32), allowNull: true, defaultValue: ''},
+            fromSpace: {type: DataTypes.STRING(32), allowNull: true, defaultValue: ''},
+            toPocket: {type: DataTypes.STRING(32), allowNull: true, defaultValue: ''},
+            toSpace: {type: DataTypes.STRING(32), allowNull: true, defaultValue: ''},
+            suicideActionBalance: {type: DataTypes.DECIMAL(36, 0), allowNull: true, defaultValue: 0},
+            valid: {type: DataTypes.BOOLEAN, allowNull: true, defaultValue: 0},
         }, {
             sequelize: seq,
             updatedAt: false,

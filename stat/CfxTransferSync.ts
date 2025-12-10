@@ -203,26 +203,30 @@ export async function getCfxTransferTraces(epoch: number)
             const traceMap = new Map<number, ITrace>();
             for (let traceIdx = 0; traceIdx < traceArr.length; traceIdx++) {
                 // console.log(`that is `, traceArr[traceIdx]);
-                let {action: {input, outcome, from, to, value, callType, fromPocket, toPocket, fromSpace, toSpace, space, addr}, type, valid} = traceArr[traceIdx]
-                if (!valid) {
-                    continue
-                }
-                if (!internalContractSet.has(from) && !internalContractSet.has(to)) {
+                let suicideActionBalance = 0n;
+                const {action: {input, outcome, from: fromRaw, to: toRaw, value, callType, fromPocket, toPocket, fromSpace, toSpace, space, addr}, type, valid} = traceArr[traceIdx]
+                if (internalContractSet.has(fromRaw)) {
+                } else if (internalContractSet.has(toRaw)) {
+                } else if (fromPocket === 'staking_balance') {
+                } else if (toPocket === 'staking_balance') {
+                } else  {
                     continue;
                 }
-                console.log(`from ${from} to ${to} `);
-                from = patchPocketAddress(fromPocket, from);
-                to = patchPocketAddress(toPocket, to)
+                const from = fromRaw ? format.hexAddress(fromRaw) : "";
+                const to = toRaw ? format.hexAddress(toRaw): "";
+                console.log(`trace type ${type} from [${from}] to ${to}`);
+                // from = patchPocketAddress(fromPocket, from);
+                // to = patchPocketAddress(toPocket, to)
                 if (type === 'create') {
 
                 } else if (type === 'create_result') {
 
                 }
-                await buildCrossAddr(fromSpace, from, dbPivotBlock.createdAt, crossSpaceAddrArr);
-                await buildCrossAddr(toSpace,   to,   dbPivotBlock.createdAt, crossSpaceAddrArr);
+                // await buildCrossAddr(fromSpace, from, dbPivotBlock.createdAt, crossSpaceAddrArr);
+                // await buildCrossAddr(toSpace,   to,   dbPivotBlock.createdAt, crossSpaceAddrArr);
                 // doc https://github.com/Conflux-Chain/CIPs/issues/88
-                if (//!value
-                    type === 'call_result' // missing from and to
+                // if (//!value
+                    // type === 'call_result' // missing from and to
                 //     || callType === 'none'
                 //     || callType === 'callcode'
                 //     || callType === 'delegatecall'
@@ -234,40 +238,23 @@ export async function getCfxTransferTraces(epoch: number)
                 //         // scan doesn't save gas/storage payment as cfx transfer records.
                 //         fromPocket === 'gas_payment' || toPocket === 'gas_payment' // save it except gas
                 //     )
-                ) {
-                    continue
-                }
+                // ) {
+                //     continue
+                // }
                 let suicideAddr = '';
                 // if (callType !=='call' && type === 'call') {
                 //     console.log(`unknown call type ${callType} type ${type}, epoch ${epoch} block ${blockHash
                 //     } tx ${txBean.txPosition}, full-tx-idx ${txIdx} tp ${transactionPosition} ${transactionHash},  trace ${traceIdx}`)
                 //     process.exit(8)
                 // }
-                if (type === 'internal_transfer_action') {
-                    if (POCKET_ADDRESS_MAP[fromPocket]) {
-                        type = fromPocket
-                    } else if (POCKET_ADDRESS_MAP[toPocket]) {
-                        type = toPocket
-                    }
-                } else if (type === 'create' || type ==='call') {
-                } else if ( type === 'suicide') {
+                if ( type === 'suicide') {
                     // it seems that the bridge handles this type the same as internal_transfer_action.
                     const trace = traceArr[traceIdx];
                     console.log(`suicide `, trace);
                     // from = trace.action.address;
-                    value = trace.action.balance;
+                    suicideActionBalance = trace.action.balance;
                     suicideAddr = trace.action.address;
                     // to = trace.action.refundAddress;
-                } else if (type === 'create_result' || type ==='call_result') {
-                    //value should be zero, won't trigger
-                } else {
-                    console.log(`unknown trace type ${type}, epoch ${epoch} block ${blockHash
-                    } tx ${txBean.txPosition}, trace ${traceIdx}, tx hash ${transactionHash}`)
-                    console.log(`trace is `, traceArr[traceIdx]);
-                    process.exit(8)
-                }
-                if (!from || !to) {
-                    console.log(`what's it ? `, traceArr[traceIdx]);
                 }
                 const fromId = await makeIdV(from);
                 const toId = await makeIdV(to)
@@ -277,6 +264,8 @@ export async function getCfxTransferTraces(epoch: number)
                     from, to, suicideAddr,
                     actionCallType: callType, blockHash, txHash: txBean.hash,
                     input,
+                    fromPocket, fromSpace, toPocket, toSpace,
+                    suicideActionBalance, valid,
                 }
                 result.push(bean)
                 traceMap.set(traceIdx, bean);
