@@ -23,7 +23,7 @@ async function processTrace(trace: any) {
 }
 
 async function main() {
-	await init({alter: true});
+	await init();
 	await iterateTable(Trace, processTrace, 1);
 
 	process.exit(0);
