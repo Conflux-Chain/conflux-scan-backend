@@ -6,7 +6,7 @@ import {abi as sponsorAbi} from "../service/abi/SponsorWhitelistControl";
 
 async function processTrace(trace: any) {
 	// 这里写你的处理逻辑
-	console.log(`处理 epoch ${trace.epoch}, block ${trace.blockIndex}`);
+	// console.log(`处理 epoch ${trace.epoch}, block ${trace.blockIndex}`);
 
 	const decoder = new ContractDecoder();
 	const iFace = decoder.getInterface(sponsorAbi);
