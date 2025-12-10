@@ -29,6 +29,7 @@ import {VerifiedContracts} from "../model/VerifiedContracts";
 import {ethers} from "ethers";
 import {saveAbiInfo} from "../model/ContractInfo";
 import {sleep} from "./tool/ProcessTool";
+import axios from "axios";
 
 const path = require('path');
 const superagent = require('superagent');
@@ -64,8 +65,6 @@ export class ContractQuery {
         this.CACHE_VERIFY_ADDRESS = new NodeCache({ maxKeys: 5000,  stdTTL: this.cacheTtl, checkperiod: 60})
         this.CACHE_VERIFY_DETAIL = new NodeCache({ maxKeys: 1000,  stdTTL: this.cacheTtl, checkperiod: 60})
         _instance = this;
-        this.listSolcVersions().then()
-        this.listVyperVersions().then()
     }
 
     public async count({name}) {
@@ -533,15 +532,22 @@ export class ContractQuery {
     private SOLC_VERSIONS
     private SOLC_VERSIONS_UPDATE_TIME
     private readonly SOLC_VERSIONS_UPDATE_INTERVAL = 1000 * 60 * 10 // update every 10 minutes
+    private URL_FETCH_SOLC_VERSIONS = 'https://binaries.soliditylang.org/bin/list.json'
     async listSolcVersions(): Promise<{[shortVersion: string]: string}> {
         if(!this.SOLC_VERSIONS || Date.now() - this.SOLC_VERSIONS_UPDATE_TIME >= this.SOLC_VERSIONS_UPDATE_INTERVAL ) {
-            const resp = await this._getJsonRequest({
-                url: 'https://solc-bin.ethereum.org/bin/list.json'
+            const resp = await this._getJsonRequestByAxios({
+                url: this.URL_FETCH_SOLC_VERSIONS,
+                handleError: false,
+            }).catch(e => {
+                throw new Errors.ListSolcVersionsError(`${this.URL_FETCH_SOLC_VERSIONS} ${e.message}`)
             })
+
             if(!resp) {
                 return
             }
+
             const {data} = resp
+
             this.SOLC_VERSIONS = lodash.mapValues(data.releases, solcName => solcName.substring(8, solcName.length - 3))
             this.SOLC_VERSIONS_UPDATE_TIME = Date.now()
         }
@@ -552,31 +558,32 @@ export class ContractQuery {
     private VYPER_VERSIONS
     private VYPER_VERSIONS_UPDATE_TIME
     private readonly VYPER_VERSIONS_UPDATE_INTERVAL = 1000 * 60 * 10 // update every 10 minutes
+    private URL_FETCH_VYPER_VERSIONS = 'https://api.github.com/repos/vyperlang/vyper/tags'
     async listVyperVersions(): Promise<{[shortVersion: string]: {desc: string, commit: string}}> {
         if(!this.VYPER_VERSIONS || Date.now() - this.VYPER_VERSIONS_UPDATE_TIME >= this.VYPER_VERSIONS_UPDATE_INTERVAL ) {
             const versions = {}
             let page = 1
 
             while (true) {
-                let resp
-                try{
-                    resp = await this._getJsonRequest({
-                        url: `https://api.github.com/repos/vyperlang/vyper/tags?page=${page}&per_page=100`,
-                        headers: {
-                            'User-Agent': 'Vyper-Version-Checker'
-                        }
-                    })
-                    if(!resp) {
-                        continue
+                const resp = await this._getJsonRequest({
+                    url: `${this.URL_FETCH_VYPER_VERSIONS}?page=${page}&per_page=100`,
+                    headers: {
+                        'User-Agent': 'Vyper-Version-Checker'
+                    },
+                    handleError: false,
+                }).catch(e => {
+                    if (e.status === 403 || e.status === 429) {
+                        return this.VYPER_VERSIONS
                     }
-                }catch (e){
-                    if (e.code === 403 || e.code === 429) {
-                        return null
-                    }
-                    throw e
+                    throw new Errors.ListVyperVersionsError(`${this.URL_FETCH_VYPER_VERSIONS} ${e.message}`)
+                })
+
+                if(!resp) {
+                    continue
                 }
 
                 const {data: list} = resp
+
                 if (!list?.length) {
                     break
                 } else {
@@ -781,7 +788,8 @@ export class ContractQuery {
             url,
             body,
             headers = {},
-            timeout = 1000 * 30
+            timeout = 1000 * 30,
+            handleError = true,
         }) {
         try {
             const response = await superagent
@@ -799,6 +807,9 @@ export class ContractQuery {
                 headers: response.headers
             };
         } catch (error) {
+            if (!handleError) {
+                throw error
+            }
             this._handleHttpError(url, error)
         }
     }
@@ -807,7 +818,8 @@ export class ContractQuery {
         {
             url,
             headers = {},
-            timeout = 1000 * 30
+            timeout = 1000 * 30,
+            handleError = true,
         }) {
         try {
             const response = await superagent
@@ -824,6 +836,41 @@ export class ContractQuery {
                 headers: response.headers
             };
         } catch (error) {
+            if (!handleError) {
+                throw error
+            }
+            this._handleHttpError(url, error)
+        }
+    }
+
+    async _getJsonRequestByAxios({
+        url,
+        headers = {},
+        timeout = 1000 * 30,
+        handleError = true,
+    }) {
+        try {
+            const response = await axios({
+                method: 'GET',
+                url,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    ...headers
+                },
+                timeout,
+                family: 4,
+            });
+
+            return {
+                status: response.status,
+                data: response.data,
+                headers: response.headers
+            };
+        } catch (error) {
+            if (!handleError) {
+                throw error
+            }
             this._handleHttpError(url, error)
         }
     }
