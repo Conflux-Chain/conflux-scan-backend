@@ -62,4 +62,6 @@ export const Errors = {
     ContractDecompileError: LogicError.extend({ code: 50702, name: 'Contract Verify Error, failed to decompile the contract' }),
     ExtractMetadataError: LogicError.extend({ code: 50703, name: 'Contract Verify Error, failed to get metadata in Bytecode' }),
     ContractNameError: LogicError.extend({ code: 50704, name: 'Contract Verify Error, the contract could not be found or the contract name was entered incorrectly' }),
+    ListSolcVersionsError: LogicError.extend({ code: 50705, name: 'Failed to fetch solc versions' }),
+    ListVyperVersionsError: LogicError.extend({ code: 50706, name: 'Failed to fetch vyper versions' }),
 }

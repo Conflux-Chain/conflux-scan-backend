@@ -37,7 +37,7 @@ export class TraceCreateContract extends Model<ITraceCreateContract> implements 
             to: {type: DataTypes.BIGINT, allowNull: false},
             outcome: {type: DataTypes.CHAR(10), allowNull: true},
             blockTime: {type: DataTypes.BIGINT, allowNull: false},
-            codeHash: {type: DataTypes.CHAR(64), allowNull: true},
+            codeHash: {type: DataTypes.CHAR(66), allowNull: true},
         },{
             sequelize: seq,
             tableName: 'trace_create_contract',

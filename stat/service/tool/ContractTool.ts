@@ -316,8 +316,7 @@ async function genCodeHash() {
     for (const trace of traces) {
         const address = await Hex40Map.findOne({where: {id: trace.to}, raw: true});
         const code = await cfx.getCode(`0x${address.hex}`);
-        const codeHash = keccak256(code);
-        const [rows] = await TraceCreateContract.update({codeHash: codeHash.substr(2)}, {where: {to: trace.to}});
+        const [rows] = await TraceCreateContract.update({codeHash: keccak256(code)}, {where: {to: trace.to}});
         if (rows === 0) {
             throw new Error(`gen codehash for ${fmtAddr(`0x${address.hex}`, StatApp.networkId)} error`);
         }

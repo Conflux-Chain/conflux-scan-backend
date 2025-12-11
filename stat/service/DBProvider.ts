@@ -320,6 +320,11 @@ async function migDB(seq: Sequelize) {
     await changeColumnIfNecessary(qi, dailyPowRewardStat, 'statType', {
         type: DataTypes.CHAR(3), allowNull: false, defaultValue: '1d',
     });
+
+    const traceCreateContract = TraceCreateContract.getTableName().toString();
+    await changeColumnIfNecessary(qi, traceCreateContract, 'codeHash', {
+        type: DataTypes.CHAR(66), allowNull: true,
+    });
 }
 
 async function dropEmptyTables() {
