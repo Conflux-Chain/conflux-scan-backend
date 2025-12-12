@@ -15,6 +15,7 @@ import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
 import {Contract} from "../../model/Contract";
 import { Errors } from "../common/LogicError";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
+import {loadConfig, OssConf} from "../../config/StatConfig";
 
 const abi = require('./abi');
 const fs = require('fs');
@@ -624,8 +625,8 @@ async function checkOssBucket(accessId: string, accessKey: string, bucket: strin
     })
     console.log(`get oss bucket info result :`, result.bucket.ExtranetEndpoint, result.bucket.Location)
 }
-let ossConf = {accessId:'', accessKey:'', bucket:'', prefix: '', region: ''}
-export async function initOss(conf) {
+let ossConf = {accessId:'', accessKey:'', bucket:'', prefix: '', region: ''} as OssConf
+export async function initOss(conf: OssConf) {
     ossConf = conf;
     let {accessId, accessKey, bucket, prefix, region} = ossConf || {}
     if (!accessId) {
@@ -746,6 +747,10 @@ async function checkNftMintForContract(contractId: number, cfx, token:Token) {
 }
 // node stat/dist/service/tool/TokenTool.js check721OwnerInDb 1
 if (module === require.main) {
+    main().catch(console.error);
+}
+
+async function main() {
     const args = process.argv.slice(2)
     const [,,cmd, arg1, arg2] = process.argv;
     if (args[0] === 'check721OwnerInDb') {
@@ -756,6 +761,11 @@ if (module === require.main) {
         testParseAnnouncement().then()
     } else if (args[0] === 'testParseApproval') {
         testParseApproval(arg1).then()
+    } else if (cmd === 'oss-upload') {
+        const config = loadConfig('Prod');
+        await initOss(config.oss);
+        const result = await uploadOss(arg1, path.basename(arg1))
+        console.log(`uploaded, result is `, result);
     } else if (args[0] === 'build_images') {
         const space = args[1]
         if (space !== 'core' && space !== 'evm') {

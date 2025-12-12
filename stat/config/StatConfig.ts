@@ -40,6 +40,7 @@ export interface DatabaseRW extends Options {
 }
 
 export interface OssConf {
+    region?: string;
     accessId: string
     accessKey: string
     bucket: string
