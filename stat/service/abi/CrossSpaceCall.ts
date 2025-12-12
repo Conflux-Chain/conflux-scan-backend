@@ -129,7 +129,7 @@ export const abi = [
         "outputs": [
             {
                 "internalType": "bytes20",
-                "name": "",
+                "name": "addr",
                 "type": "bytes20"
             }
         ],
@@ -235,7 +235,7 @@ export const abi = [
         "outputs": [
             {
                 "internalType": "uint256",
-                "name": "",
+                "name": "balance",
                 "type": "uint256"
             }
         ],
@@ -254,7 +254,7 @@ export const abi = [
         "outputs": [
             {
                 "internalType": "uint256",
-                "name": "",
+                "name": "nonce",
                 "type": "uint256"
             }
         ],

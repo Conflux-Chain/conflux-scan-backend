@@ -346,7 +346,7 @@ export class Trace extends Model<ITrace> implements ITrace {
             value: {type: DataTypes.DECIMAL(36, 0), allowNull: false},
             type: {type: DataTypes.STRING(32), allowNull: false},
             actionCallType: {type: DataTypes.STRING(32), allowNull: true, defaultValue: ''},
-            input: {type: DataTypes.STRING(1024), allowNull: true, defaultValue: ''},
+            input: {type: DataTypes.STRING(2048), allowNull: true, defaultValue: ''},
             fromPocket: {type: DataTypes.STRING(32), allowNull: true, defaultValue: ''},
             fromSpace: {type: DataTypes.STRING(32), allowNull: true, defaultValue: ''},
             toPocket: {type: DataTypes.STRING(32), allowNull: true, defaultValue: ''},

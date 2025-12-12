@@ -3,7 +3,7 @@ export const abi = [
     "inputs": [
       {
         "internalType": "address[]",
-        "name": "",
+        "name": "addresses",
         "type": "address[]"
       }
     ],
