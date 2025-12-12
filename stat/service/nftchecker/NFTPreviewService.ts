@@ -1,8 +1,7 @@
 import { NFTMap, NFTNames } from './NFTInfo';
-import {toBase32} from "../tool/AddressTool";
 import {Desensitizer} from "../Desensitizer";
 import {NftMint, Token} from "../../model/Token";
-import {Hex40Map} from "../../model/HexMap";
+import {formatToBase32, Hex40Map} from "../../model/HexMap";
 import {format} from "js-conflux-sdk";
 import {QueryTypes} from "sequelize";
 import {Erc721Transfer} from "../../model/Erc721Transfer";
@@ -42,7 +41,7 @@ export class NFTPreviewService {
         withDetail?: boolean;
         forceFlush?: boolean;
     }): Promise<NFTInfoType> {
-        const address = toBase32(contractAddress) as string;
+        const address = formatToBase32(contractAddress) as string;
         let token = await Token.findOne({attributes: ['hex40id', 'type', 'ipfsGateway'], where: {base32: address}});
         if(!token) {
             token = await TokenQuery.detectTokenType({base32: address}) as Token;
@@ -199,7 +198,7 @@ export class NFTPreviewService {
         const creator = await Hex40Map.sequelize
             .query(sql, {type: QueryTypes.SELECT, replacements: [hex.substr(2)]})
             .then(hexBeanArray => {
-                return hexBeanArray?.length ? toBase32(`0x${hexBeanArray[0]['hex']}`) : undefined;
+                return hexBeanArray?.length ? formatToBase32(`0x${hexBeanArray[0]['hex']}`) : undefined;
             });
 
         const sql1 = `select * from ${NftMint.getTableName()} where contractId =(select id from hex40 where hex = ?) 
@@ -210,7 +209,7 @@ export class NFTPreviewService {
                 if(!nftMinterArray?.length) return undefined;
                 const nftMinter = nftMinterArray[0];
                 const ownerHex = await Hex40Map.findOne({where: {id: nftMinter['toId']}});
-                const owner = toBase32(`0x${ownerHex['hex']}`);
+                const owner = formatToBase32(`0x${ownerHex['hex']}`);
                 const mintTime = nftMinter['createdAt'];
                 return {owner, mintTime};
             });
@@ -224,7 +223,7 @@ export class NFTPreviewService {
                 raw: true
             }).then(item => item.toId);
             const ownerHex = await Hex40Map.findOne({where: {id: ownerId}});
-            owner = toBase32(`0x${ownerHex['hex']}`);
+            owner = formatToBase32(`0x${ownerHex['hex']}`);
         }
 
         return {creator, ... minter, owner, type};

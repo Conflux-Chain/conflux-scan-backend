@@ -14,6 +14,8 @@ export interface IVerifiedContracts{
     license?:string
     libraries?: string
     evmVersion?: string
+    similarMatchChainId?: number
+    similarMatchAddress?: string
 }
 
 export class VerifiedContracts extends Model<IVerifiedContracts> implements IVerifiedContracts {
@@ -30,22 +32,26 @@ export class VerifiedContracts extends Model<IVerifiedContracts> implements IVer
     license?: string
     libraries?: string
     evmVersion?: string
+    similarMatchChainId?: number
+    similarMatchAddress?: string
 
     static register(seq: Sequelize) {
         VerifiedContracts.init({
             id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
             address: {type: DataTypes.CHAR(64), allowNull: false, unique: true},
             name: {type: DataTypes.CHAR(255), allowNull: false},
-            language: {type: DataTypes.CHAR(255), allowNull: true},
-            version: {type: DataTypes.CHAR(255), allowNull: true},
-            constructorArgs: {type: DataTypes.TEXT, allowNull: true,},
-            sourceCode: {type: DataTypes.TEXT({length: 'long'}), allowNull: true,},
-            abi: {type: DataTypes.TEXT, allowNull: true,},
+            language: {type: DataTypes.CHAR(255), allowNull: false},
+            version: {type: DataTypes.CHAR(255), allowNull: false},
+            constructorArgs: {type: DataTypes.TEXT},
+            sourceCode: {type: DataTypes.TEXT({length: 'long'}), allowNull: false,},
+            abi: {type: DataTypes.TEXT, allowNull: false},
             optimization: {type: DataTypes.CHAR(20), allowNull: false, defaultValue: '0'},
             runs: {type: DataTypes.INTEGER, allowNull: false, defaultValue: 0},
-            license: {type: DataTypes.CHAR(255), allowNull: true},
-            libraries: {type: DataTypes.STRING(1024), allowNull: true},
-            evmVersion: {type: DataTypes.CHAR(20), allowNull: true},
+            license: {type: DataTypes.CHAR(255)},
+            libraries: {type: DataTypes.STRING(1024)},
+            evmVersion: {type: DataTypes.CHAR(20)},
+            similarMatchChainId: {type: DataTypes.INTEGER},
+            similarMatchAddress: {type: DataTypes.CHAR(64)},
         }, {
             tableName: 'verified_contracts',
             sequelize: seq,

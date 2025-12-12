@@ -1,7 +1,6 @@
 import {Token} from "../model/Token";
 import {TokenQuoteTrack} from "../model/TokenQuoteTrack";
 import {Op} from 'sequelize'
-import {toBase32} from "./tool/AddressTool";
 import {StatApp} from "../StatApp";
 import {format} from "js-conflux-sdk";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
@@ -313,7 +312,7 @@ export class TokenQuoteSync {
         const tokenArray = lodash.get(resp, ['body', 'data', 'list']) || lodash.get(resp, ['body', 'result', 'list']);
 
         const quoteArray = tokenArray.map(({address, name, symbol, price}) => ({
-            address: toBase32(address),
+            address: formatToBase32(address),
             price,
             src: 'HK',
         }));

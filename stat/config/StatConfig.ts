@@ -138,6 +138,7 @@ export interface StatConfig{
     enableProfile: boolean,
 
     contractVerificationUrl: string,
+    verifyByAuto: boolean,
 }
 
 export var FirstBlockNo = 0

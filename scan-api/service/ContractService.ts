@@ -1,5 +1,5 @@
 import {ScanApp, ScanCtx} from "./index";
-import {VerificationJob, VerifyInput} from "../../stat/service/ContractQuery";
+import {VerificationJob, VerificationResult, VerifyByLinkInput, VerifyInput} from "../../stat/service/ContractQuery";
 import {sleep} from "../../stat/service/tool/ProcessTool";
 import {fmtAddr, StatApp} from "../../stat/StatApp";
 import {CONST} from "../../stat/service/common/constant";
@@ -104,12 +104,6 @@ export class ContractService {
       app: {service}
     } = this as ScanCtx;
 
-    console.log(`request verifySourcecode ==\n`, {
-      address: params.address,
-      compiler: params.compiler,
-      codeFormat: params.codeFormat,
-    })
-
     const libraries = (params: any, count: number = 10) => {
       const result: any = {};
       for (let i = 1; i <= count; i++) {
@@ -118,6 +112,13 @@ export class ContractService {
       }
       return result;
     }
+
+    console.log(`request verifySourcecode ==\n`, {
+      address: params.address,
+      compiler: params.compiler,
+      codeFormat: params.codeFormat,
+      libraries,
+    });
 
     const input: VerifyInput = {
       contractAddress: params.address,
@@ -137,35 +138,55 @@ export class ContractService {
     if(submit.message) {
       return {
         address: params.address,
-        errors: [submit.message]
-      }
+        errors: [submit.message],
+      };
     }
 
-    for (let i = 0; i < 10; i++) {
-      const job: VerificationJob = await service.contractQuery.checkVerification(submit.verificationId)
-      if(!job.isJobCompleted) {
-        await sleep(3000)
-        continue
-      }
+    return this.getVerificationResult(params.address, submit.verificationId);
+  }
 
-      if(job?.error) {
-        const e = job.error
-        return {
-          address: params.address,
-          errors: [e?.message ? `${e.customCode}:${e.message}` : `${e.customCode}`]
-        }
-      }
+  public async verifyCrossChain(params) {
+    const {
+      app: {service}
+    } = this as ScanCtx;
 
+    const key = params.includeTestnet ? `${StatApp.networkId}_ALL_OTHER_SPACE` : StatApp.networkId;
+    const linkChainIds = CONST.CHAINS_CROSS_SPACE_VERIFY[key];
+
+    console.log(`request verifyCrossChain ==\n`, {
+      address: params.address,
+      includeTestnet: params.includeTestnet,
+      linkChainIds,
+    });
+
+    const input: VerifyByLinkInput = {
+      contractAddress: params.address,
+      linkChainIds: linkChainIds,
+    }
+
+    const submit: any = await service.contractQuery.verifyByLink(input);
+    if (submit.message) {
       return {
         address: params.address,
-        exactMatch: !!job.contract.match,
-      }
+        errors: [submit.message],
+      };
     }
 
+    return this.getVerificationResult(params.address, submit.verificationId);
+  }
+
+  private async getVerificationResult(address: string, verificationId: string) {
+    const {
+      app: {service}
+    } = this as ScanCtx;
+
+    const result = await service.contractQuery.getVerificationResult(verificationId);
+
     return {
-      address: params.address,
-      errors: ['Pending in queue, please check contract detail page later!']
-    }
+      address,
+      errors: result.error ? [result.error] : undefined,
+      exactMatch: result.match,
+    };
   }
 
   async resolveEIP1167(address) {

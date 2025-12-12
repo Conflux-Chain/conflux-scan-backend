@@ -34,13 +34,13 @@ import {KEY_STAT_TASK, repeatHeartBeat} from "./model/HeartBeat";
 import {StatDailyBurntFee} from "./service/timerstat/StatDailyBurntFee";
 import {statGasConsumer} from "./service/TxnQuery";
 import {TokenSecurityAuditSync} from "./service/TokenSecurityAuditSync";
-import {TokenQuery} from "./service/TokenQuery";
 import {scheduleRollupDailyCfxTxn} from "./model/CfxTransfer";
 import {listenPort} from "./monitor/serverApi";
 import {buildTxSenderReceiverHourly} from "./PeriodTxnSummary";
 import {safeAddErrorLog} from "./monitor/ErrorMonitor";
 import {checkAllTableDataTime} from "./monitor/DataTimeChecker";
 import {StatDailyGas} from "./service/timerstat/StatDailyGas";
+import {ContractQuery} from "./service/ContractQuery";
 
 async function runTools() {
     const [,, cmd, arg1] = process.argv;
@@ -69,22 +69,14 @@ async function main() {
     const cfx = await initCfxSdk(config.conflux, 'StatTask');
     StatApp.networkId = cfx.networkId;
     StatApp.isEVM = await KV.getSwitch(IS_EVM2);
+
     removeDate1970().then();
-    //
-    const blockAndMinerSync = new BlockAndMinerSync();
-    blockAndMinerSync.schedule().then()
-    //
-    const traceCreateQuery = new ContractTraceCreateQuery({});
-    if(config.censorApiKey && config.censorSecretKey) {
-        const censorService = new CensorService({config, cfx, traceCreateQuery},
-            {tx: 10, token: 10, nft: 10});
-        censorService.schedule(1000 * 300).then();
-    }
-    //
     scheduleDailyTokenStat().then()
     scheduleDailyActiveAddress().then()
     calcDailyUniqueAddrSchedule().then()
     scheduleRollupDailyCfxTxn().then();
+    setInterval(countTable, 60_000)
+
     //
     const reporter = new Reporter({config, cfx});
     reporter.start().then();
@@ -123,12 +115,27 @@ async function main() {
     const statDailyPowReward = new StatDailyPowReward({cfx});
     statDailyPowReward.schedule(1000 * 60 * 10).then();
     //
+    const blockAndMinerSync = new BlockAndMinerSync();
+    blockAndMinerSync.schedule().then();
+
+    //
+    if(config.censorApiKey && config.censorSecretKey) {
+        const traceCreateQuery = new ContractTraceCreateQuery({});
+        const censorService = new CensorService({config, cfx, traceCreateQuery}, {tx: 10, token: 10, nft: 10});
+        censorService.schedule(1000 * 300).then();
+    }
+    //
     if (config.syncTokenSecurityAudit) {
-        const tokenQuery = new TokenQuery({cfx, config});
-        const tokenAudit = new TokenSecurityAuditSync({tokenQuery});
+        const tokenAudit = new TokenSecurityAuditSync({cfx});
         await tokenAudit.scheduleRecently();
         await tokenAudit.scheduleOverall();
     }
+    //
+    if (config.verifyByAuto) {
+        const contractQuery = new ContractQuery({cfx, config});
+        contractQuery.scheduleVerifyByAuto().then();
+    }
+
     //
     if(!StatApp.isEVM) {
         let fullCfx = cfx;
@@ -140,8 +147,7 @@ async function main() {
         const statDailyBurntFee = new StatDailyBurntFee({cfx: fullCfx, suppressFullStateRpcErr});
         await statDailyBurntFee.schedule(1000 * 60);
     }
-    //
-    setInterval(countTable, 60_000)
+
     //
     repeatHeartBeat(KEY_STAT_TASK+config.serverTag)
     console.log(`----- Stat tasks scheduled. -----`)
@@ -173,6 +179,7 @@ async function countTableDelta(model, keyCountAll, keyCountId) {
         await KV.upsert({key: keyCountId, value: `${latestId}`}, {transaction: dbTx});
     });
 }
+
 let timer: NodeJS.Timeout;
 async function runAllPeriodicStat() {
     if (timer) {

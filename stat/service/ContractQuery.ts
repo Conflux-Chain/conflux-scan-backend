@@ -1,8 +1,5 @@
 import {
     Hex40Map,
-    hex40IdMap,
-    POCKET_ADDRESS_MAP,
-    ESpaceHex40Map,
     getAddrId,
     formatToBase32,
 } from "../model/HexMap";
@@ -13,7 +10,7 @@ import {ContractDestroy, TraceCreateContract} from "../model/TraceCreateContract
 import {ProxyVerify} from "../model/Contract";
 import {Errors} from "./common/LogicError";
 import {CONST} from "./common/constant"
-import {ScanApp, ScanCtx} from "../../scan-api/service/index";
+import {ScanApp} from "../../scan-api/service/index";
 import {SolidityJsonInput, VyperJsonInput} from "@ethereum-sourcify/compilers-types";
 import {
     checkPresent,
@@ -23,12 +20,17 @@ import {
     checkLibrary,
     checkEVMVersion,
     checkLicense,
-    splitFullyQualifiedName, checkSolcOptimization, checkVyperOptimization, convertVyperVersion
+    splitFullyQualifiedName,
+    checkSolcOptimization,
+    checkVyperOptimization,
+    convertVyperVersion
 } from "./common/utils";
 import {VerifiedContracts} from "../model/VerifiedContracts";
 import {ethers} from "ethers";
 import {saveAbiInfo} from "../model/ContractInfo";
 import {sleep} from "./tool/ProcessTool";
+import {KEY_AUTO_VERIFY_TRACE_ID, KEY_AUTO_VERIFY_VERIFY_ID, KV} from "../model/KV";
+import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import axios from "axios";
 
 const path = require('path');
@@ -281,7 +283,8 @@ export class ContractQuery {
             return null;
         }
 
-        const {address, match, abi, compilation, stdJsonInput, licenseType, contractLabel} = resp.data;
+        const {address, match, abi, compilation, stdJsonInput, licenseType, contractLabel, similarMatchChainId,
+            similarMatchAddress} = resp.data;
         if (!match) {
             return null;
         }
@@ -334,6 +337,8 @@ export class ContractQuery {
             libraries: compilerSettings?.libraries,
             license: CONST.CONTRACT_LICENSE[licenseType || 1].code,
             constructorArgs: '',
+            similarMatchChainId,
+            similarMatchAddress,
         };
 
         VerifiedContracts.create({
@@ -369,7 +374,7 @@ export class ContractQuery {
 
         if(withDetail) {
             attributes.push(...['language', 'sourceCode', 'name', 'abi', 'version', 'evmVersion', 'optimization',
-                'runs', 'libraries', 'license', 'constructorArgs']);
+                'runs', 'libraries', 'license', 'constructorArgs', 'similarMatchChainId', 'similarMatchAddress']);
         }
 
         return VerifiedContracts.findOne({
@@ -716,6 +721,23 @@ export class ContractQuery {
         return verifyResult
     }
 
+    public async verifyByLink(
+        verifyInput: VerifyByLinkInput
+    ) {
+        const contractAddress = verifyInput.contractAddress;
+
+        const input: VerifyFromCrossChain = {
+            chainId: StatApp.networkId,
+            address: contractAddress,
+            linkChainIds: verifyInput.linkChainIds,
+        };
+        const verifyResult = await this.verifyFromCrossChain(input);
+
+        this.saveABI(contractAddress).then();
+
+        return verifyResult;
+    }
+
     private async verifyFromJsonInput(
         input: VerifyFromJsonInput,
     ): Promise<VerifyResponse | VerifyErrorResponse> {
@@ -728,6 +750,28 @@ export class ContractQuery {
                 creationTransactionHash: input.creationTransactionHash,
                 licenseType: input.licenseType,
                 contractLabel: input.contractLabel,
+            },
+        })
+
+        if(!result) {
+            return {
+                customCode: 'malformed_verification_response',
+                message: 'Business is busy, please try again later'
+            }
+        }
+
+        return {
+            verificationId: result.data.verificationId
+        }
+    }
+
+    private async verifyFromCrossChain(
+        input: VerifyFromCrossChain
+    ): Promise<VerifyResponse | VerifyErrorResponse> {
+        const result = await this.postJsonRequest({
+            url: `${this.app.config.contractVerificationUrl}/verify/crosschain/${input.chainId}/${input.address}`,
+            body: {
+                linkChainIds: input.linkChainIds?.join(","),
             },
         })
 
@@ -773,6 +817,7 @@ export class ContractQuery {
         const result = await this._getJsonRequest({
             url: `${this.app.config.contractVerificationUrl}/verify/${verificationId}`,
         });
+
         if(!result) {
             return {
                 verificationId,
@@ -781,6 +826,35 @@ export class ContractQuery {
         }
 
         return result.data as VerificationJob
+    }
+
+    public async getVerificationResult(
+        verificationId: string,
+        retry: number = 10,
+        intervalMs: number = 3000,
+    ): Promise<VerificationResult> {
+        for (let i = 0; i < retry; i++) {
+            const job: VerificationJob = await this.checkVerification(verificationId);
+            if (!job.isJobCompleted) {
+                await sleep(intervalMs);
+                continue;
+            }
+
+            if (job?.error) {
+                const e = job.error;
+                return {
+                    error: e?.message ? `${e.customCode}:${e.message}` : `${e.customCode}`,
+                };
+            }
+
+            return {
+                match: !!job.contract.match,
+            };
+        }
+
+        return {
+            error: 'Pending in queue, please check contract detail page later!',
+        };
     }
 
     private async postJsonRequest(
@@ -917,6 +991,126 @@ export class ContractQuery {
     _getCache(key: string, withDetail: boolean = false) {
         return (withDetail ? this.CACHE_VERIFY_DETAIL : this.CACHE_VERIFY_ADDRESS).get(key);
     }
+
+    async scheduleVerifyByAuto(delay: number = 1000) {
+        const that = this;
+
+        async function repeat() {
+            await that.verifyByTrace().catch(e => {
+                safeAddErrorLog('ContractQuery', `verifyByTrace`, e).then();
+                console.log('Schedule verify by auto fail', e);
+            });
+
+            await that.verifyByVerification().catch(e => {
+                safeAddErrorLog('ContractQuery', `verifyByVerification`, e).then();
+                console.log('Schedule verify by auto fail', e);
+            });
+
+            setTimeout(repeat, delay);
+        }
+
+        repeat().then();
+        console.log(`Schedule verify by auto with delay: ${delay}`);
+    }
+
+    private async verifyByTrace() {
+        const cursor = await KV.getNumber(KEY_AUTO_VERIFY_TRACE_ID, 0);
+
+        const trace = await TraceCreateContract.sequelize.query(`
+                select 
+                    t.id as id, 
+                    concat('0x', h.hex) as address
+                from trace_create_contract t  
+                join hex40 h on t.to = h.id 
+                where t.id > ? 
+                order by t.id asc limit 1
+            `, {
+            type: QueryTypes.SELECT,
+            replacements: [cursor],
+        }).then((list: any[]) => (list?.length ? list[0] : null));
+
+        if (!trace) {
+            return;
+        }
+
+        await this.verifyByAuto(trace.address);
+        await KV.saveNumber(KEY_AUTO_VERIFY_TRACE_ID, trace.id);
+    }
+
+    private async verifyByVerification() {
+        const cursor = await KV.getNumber(KEY_AUTO_VERIFY_VERIFY_ID, 0);
+
+        const verified = await VerifiedContracts.findOne({
+            attributes: ['id', 'address'],
+            where: {id: {[Op.gt]: cursor}},
+            order: [['id', 'asc']],
+        })
+
+        if (!verified) {
+            return;
+        }
+
+        const {codeHash} = await this.app.cfx.getAccount(verified.address);
+
+        const addresses = await TraceCreateContract.sequelize.query(`
+                select 
+                    concat('0x', h.hex) as address
+                from trace_create_contract t  
+                join hex40 h on t.to = h.id 
+                where t.codeHash = ? 
+            `, {
+            type: QueryTypes.SELECT,
+            replacements: [codeHash],
+        }).then((list: any[]) => list.map(item => item.address));
+
+        for (const address of addresses) {
+            await this.verifyByAuto(address);
+        }
+
+        await KV.saveNumber(KEY_AUTO_VERIFY_VERIFY_ID, verified.id);
+    }
+
+    private async verifyByAuto(
+        address: string,
+        retry: number = 3,
+        intervalMs: number = 5000,
+    ) {
+        const verified = await this.queryVerify(address, true);
+        if (verified) {
+            return;
+        }
+
+        for (let i = 0; i < retry; i++) {
+            if (i === retry) {
+                throw new Error("Retry exceeds max times");
+            }
+
+            const input: VerifyByLinkInput = {
+                contractAddress: address,
+                linkChainIds: [StatApp.networkId],
+            };
+
+            const submit: any = await this.verifyByLink(input);
+            if (submit.message) {
+                await sleep(intervalMs);
+                continue; // retry
+            }
+
+            const {error, match} = await this.getVerificationResult(submit.verificationId);
+
+            if (error?.includes("internal_error")) {
+                throw new Error(error);
+            }
+            if (match
+                || error?.includes("already_verified")
+                || error?.includes("no_similar_match_found")) {
+                break;
+            }
+            if (error?.includes("Pending in queue")) {
+                await sleep(intervalMs); // retry
+            }
+        }
+    }
 }
 
 export interface VerifyInput {
@@ -952,6 +1146,11 @@ export interface VerifyInput {
     libraryAddress10?: string;
 }
 
+export interface VerifyByLinkInput {
+    contractAddress: string;
+    linkChainIds?: number[];
+}
+
 export interface VerifyFromJsonInput {
     chainId: number;
     address: string;
@@ -961,6 +1160,12 @@ export interface VerifyFromJsonInput {
     creationTransactionHash?: string;
     licenseType: number;
     contractLabel: string;
+}
+
+export interface VerifyFromCrossChain {
+    chainId: number;
+    address: string;
+    linkChainIds?: number[];
 }
 
 export interface CompilationTarget {
@@ -985,6 +1190,11 @@ export interface VerificationJob {
     compilationTime?: number;
     error?: VerifyErrorResponse;
     contract: VerifiedContractMinimal;
+}
+
+export interface VerificationResult {
+    error?: string;
+    match?: boolean;
 }
 
 export interface VerifiedContractMinimal {

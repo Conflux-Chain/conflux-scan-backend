@@ -2,9 +2,8 @@
 import {format} from 'js-conflux-sdk';
 import {Op, QueryTypes, Sequelize} from 'sequelize';
 import {DailyToken, Token} from "../model/Token";
-import {decodeUtf8} from "./tool/StringTool";
+import {decodeTokenIcon} from "./tool/TokenTool";
 import {formatToBase32, Hex40Map} from "../model/HexMap";
-import {toBase32} from "./tool/AddressTool";
 import {Contract} from "../model/Contract";
 import {Erc20Transfer, T_ADDRESS_ERC20TRANSFER} from "../model/Erc20Transfer";
 import {Erc721Transfer, T_ADDRESS_ERC721_TRANSFER} from "../model/Erc721Transfer";
@@ -19,12 +18,9 @@ import {Errors} from "./common/LogicError";
 import {NameTag} from "../model/NameTag";
 import {ScanCtx} from "../../scan-api/service/index";
 import {ConfigInstance, NoCoreSpace} from "../config/StatConfig";
-import {VerifiedContracts} from "../model/VerifiedContracts";
-import {KEY_OFFICIAL_LABELS, KV} from "../model/KV";
 import {BatchBalanceWatcher} from "./watcher/BatchBalanceWatcher";
 
 const lodash = require('lodash');
-const REGEX_URL = /^(https?:\/\/(([a-zA-Z0-9]+-?)+[a-zA-Z0-9]+\.)+[a-zA-Z]+)(:\d+)?(\/.*)?(\?.*)?(#.*)?$/;
 
 export class TokenQuery {
     static wrappedCFXAddr: string;
@@ -33,9 +29,6 @@ export class TokenQuery {
     static wrappedBTC: Token;
 
     private app: any;
-    private OFFICIAL_LABEL_FLUSH_INTERVAL = 180_000; // 3 min
-    private officialLabelLoadTimestamp;
-    private officialLabels: Set<string> = new Set<string>();
 
     constructor(app: any) {
         this.app = app;
@@ -104,7 +97,7 @@ export class TokenQuery {
         if (name) {
             where[Op.or] = [{name: {[Op.like]: `%${name}%`}}, {symbol: {[Op.like]: `%${name}%`}}];
         } else if (addresses?.length) {
-            addresses = addresses.map(item => toBase32(item));
+            addresses = addresses.map(item => formatToBase32(item));
             where.base32 = {[Op.in]: addresses};
         } else {
             if (transferType) {
@@ -180,7 +173,7 @@ export class TokenQuery {
             rawList.forEach(row => {
                 row['transferType'] = lodash.toUpper(row['transferType']);
                 if (lodash.includes(fields, 'icon')) {
-                    row['icon'] = row['icon'] ? decodeUtf8(row['icon']) : undefined;
+                    row['icon'] = row['icon'] ? decodeTokenIcon(row['icon']) : undefined;
                 }
                 row['isRegistered'] = true;
                 row['verified'] = lodash.includes(verifiedTokens, row['address']);
@@ -425,55 +418,6 @@ export class TokenQuery {
         return {balanceMap, tokenArray};
     }
 
-    public async audit(address) {
-        const {
-            app: {cfx},
-        } = this;
-
-        // load official labels periodically
-        if (!this.officialLabels.size ||
-            (Date.now() - this.officialLabelLoadTimestamp >= this.OFFICIAL_LABEL_FLUSH_INTERVAL)) {
-            const cautionLabels = await KV.getString(KEY_OFFICIAL_LABELS, '');
-            cautionLabels.split(',').forEach(label => this.officialLabels.add(label));
-            this.officialLabelLoadTimestamp = Date.now();
-        }
-
-        const base32 = formatToBase32(address);
-        const account = await cfx.getAccount(base32);
-
-        const token = await Token.findOne({attributes: ['id', 'hex40id'], where: {base32}});
-        if (token) {
-            const verifiedContract = await VerifiedContracts.findOne({where: {address: base32}});
-            const zeroAdmin = account?.admin && (format.hexAddress(account.admin) === CONST.ZERO_ADDRESS);
-
-            const nameTag = await NameTag.findOne({where:{base32}});
-            const officialLabels = nameTag?.labels?.split(NAME_TAG_SPLIT)
-                .filter(label => this.officialLabels.has(label)).join(NAME_TAG_SPLIT) || null;
-
-            await TokenSecurityAudit.upsert({
-                hex40id: token.hex40id,
-                base32,
-                verify: !!verifiedContract,
-                zeroAdmin,
-                officialLabels,
-                updatedAt: new Date(),
-            } as any);
-
-            const securityCredits = await this.calSecurityCredits(base32);
-            await Token.update({securityCredits}, {where: {base32}});
-        }
-
-        const destroyed = account?.codeHash === CONST.CODEHASH_NO_BYTECODE;
-        if (destroyed) {
-            await Token.sequelize.transaction(async dbTx=>{
-                return Promise.all([
-                    Token.update({destroyed}, {transaction: dbTx, where: {base32}}),
-                    Contract.update({destroyed}, {transaction: dbTx, where: {base32}}),
-                ]);
-            });
-        }
-    }
-
     private async getTokenInfo(base32) {
         const {
             app: {tokenTool, service},
@@ -532,31 +476,6 @@ export class TokenQuery {
                 item.securityAudit.officialLabels = securityAudit.officialLabels?.split(NAME_TAG_SPLIT);
             }
         });
-    }
-
-    private async calSecurityCredits(base32): Promise<number> {
-        const {
-            verify,
-            audit,
-            sponsor,
-            zeroAdmin,
-            cexBinance,
-            cexHuobi,
-            cexOKEx,
-            dexMoonSwap,
-            trackCoinMarketCap,
-            officialLabels,
-        } = (await TokenSecurityAudit.findOne({where: {base32}, raw: true})) || {};
-
-        let credits = 0;
-
-        credits += [verify, audit, sponsor, zeroAdmin].filter(Boolean).length;
-        credits += [cexBinance, cexHuobi, cexOKEx].filter(item => item?.trim()?.match(REGEX_URL)).length > 0 ? 1 : 0;
-        credits += [dexMoonSwap].filter(item => item?.trim()?.match(REGEX_URL)).length > 0 ? 1 : 0;
-        credits += [trackCoinMarketCap].filter(item => item?.trim()?.match(REGEX_URL)).length > 0 ? 1 : 0;
-        credits += officialLabels?.split(NAME_TAG_SPLIT).length > 0 ? 10 : 0;
-
-        return Promise.resolve(credits);
     }
 
     public async detectToken(base32){

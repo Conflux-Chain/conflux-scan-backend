@@ -8,10 +8,10 @@ import {
     mustBeAddressParamIfPresent
 } from "../../stat/service/common/utils";
 import {setBody} from "../router/middleware";
-import {toBase32} from "../../stat/service/tool/AddressTool";
 import {FullTransaction} from "../../stat/model/FullBlock";
 import {QueryTypes} from "sequelize";
 import {VerificationJob, VerifyInput} from "../../stat/service/ContractQuery";
+import {formatToBase32} from "../../stat/model/HexMap";
 
 const lodash = require('lodash');
 const util = require('util');
@@ -288,7 +288,7 @@ export async function checkProxyVerification(ctx) {
             setBody(ctx, undefined, 1, `verify with GUID ${guid} not found` );
             return;
         }
-        if(!verify.proxy || (verify.expectedImpl && toBase32(verify.implementation) !== verify.expectedImpl)){
+        if(!verify.proxy || (verify.expectedImpl && formatToBase32(verify.implementation) !== verify.expectedImpl)){
             setBody(ctx, MSG_IMPL_NO_MATCH, 1, 'NOTOK');
             return;
         }

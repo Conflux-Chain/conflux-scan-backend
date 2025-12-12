@@ -1,11 +1,10 @@
-import {DataTypes, Model, Transaction, Sequelize, UniqueConstraintError, QueryTypes} from "sequelize";
+import {DataTypes, Model, Transaction, QueryTypes} from "sequelize";
 import {Cfg_is_EVM} from "../config/StatConfig";
 
 export interface IKV {
     key: string;
     value: string
 }
-export const AUTO_VERIFY_CURSOR = "AUTO_VERIFY_CURSOR"
 export const SCAN_UTIL_CONTRACT = 'SCAN_UTIL_CONTRACT'
 export const CONTRACT_ANNOUNCEMENT = 'CONTRACT_ANNOUNCEMENT'
 export const CONTRACT_ADDRESS_METADATA = 'CONTRACT_ADDRESS_METADATA'
@@ -61,6 +60,8 @@ export const UNIFORM_APPROVAL_EPOCH = "UNIFORM_APPROVAL_EPOCH"
 export const KEY_EPOCH_CIP1559_ENABLED = "EPOCH_CIP1559_ENABLED"
 export const KEY_SUPRESS_FULLSTATE_RPC_ERR = "SUPRESS_FULLSTATE_RPC_ERR"
 export const KEY_EVICTED_STAT_BLOCK_DATA = "EVICTED_STAT_BLOCK_DATA"
+export const KEY_AUTO_VERIFY_TRACE_ID = "AUTO_VERIFY_TRACE_ID"
+export const KEY_AUTO_VERIFY_VERIFY_ID = "AUTO_VERIFY_VERIFY_ID"
 
 export class KV extends Model<IKV> implements IKV {
     key: string;
@@ -78,7 +79,7 @@ export class KV extends Model<IKV> implements IKV {
         }
         return Promise.resolve(parseInt(str))
     }
-    static async saveNumber(key:string, value:any, dbTx:Transaction) {
+    static async saveNumber(key:string, value:any, dbTx?:Transaction) {
         return KV.upsert({key, value: value.toString()}, {transaction: dbTx})
     }
     static async getSwitch(key: string): Promise<boolean> {
