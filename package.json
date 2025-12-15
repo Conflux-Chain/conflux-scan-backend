@@ -40,7 +40,7 @@
     "@types/koa-bodyparser": "~4.3.0",
     "@web3identity/address-encoder": "^0.2.20",
     "agentkeepalive": "^4.1.4",
-    "ali-oss": "~6.16.0",
+    "ali-oss": "^6.23.0",
     "baidu-aip-sdk": "^4.16.10",
     "big.js": "^6.2.1",
     "bigfixed": "0.0.2",
