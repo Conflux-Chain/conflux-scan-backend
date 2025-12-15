@@ -28,6 +28,7 @@ export class ContractService {
       service.contractQuery.queryVerify(address, true),
       service.contractQuery.queryDestroyInfo(address),
     ]);
+
     account.sponsor = this.convertZeroAddressToNullStr(sponsor);
 
     let verify: any = {exactMatch: false}
@@ -35,8 +36,13 @@ export class ContractService {
     let beacon = {};
     let implementation = {};
     if (verified) {
-      verify = lodash.defaults(verified, {exactMatch: true})
-      verify.optimization = parseInt(verify.optimization) // N/A|1|0|gas|codesize|none
+      verify = lodash.assign(verified, {
+        exactMatch: true,
+        optimization: parseInt(verified.optimization), // N/A|1|0|gas|codesize|none
+        similarMatchNetworkId: verified.similarMatchChainId,
+        crossSpace: StatApp.networkId !== verified.similarMatchChainId,
+      });
+      delete verify.similarMatchChainId;
       proxy = lodash.pick(verified, ['proxy', 'proxyPattern']);
       beacon = {address: verified.beacon, verify: { exactMatch: verified.beaconVerified }};
       implementation = { address: verified.implementation, verify: { exactMatch: verified.implementationVerified } };
@@ -145,7 +151,7 @@ export class ContractService {
     return this.getVerificationResult(params.address, submit.verificationId);
   }
 
-  public async verifyCrossChain(params) {
+  public async verifyCrossSpace(params) {
     const {
       app: {service}
     } = this as ScanCtx;
@@ -153,7 +159,7 @@ export class ContractService {
     const key = params.includeTestnet ? `${StatApp.networkId}_ALL_OTHER_SPACE` : StatApp.networkId;
     const linkChainIds = CONST.CHAINS_CROSS_SPACE_VERIFY[key];
 
-    console.log(`request verifyCrossChain ==\n`, {
+    console.log(`request verifyCrossSpace ==\n`, {
       address: params.address,
       includeTestnet: params.includeTestnet,
       linkChainIds,
@@ -181,6 +187,13 @@ export class ContractService {
     } = this as ScanCtx;
 
     const result = await service.contractQuery.getVerificationResult(verificationId);
+
+    if (result.error?.includes("contract_not_deployed")) {
+      result.error = `Error! Unable to locate Contract Code at ${fmtAddr(address, StatApp.networkId)}\nIs this a valid Contract Address ?`
+    }
+    if (result.error?.includes("no_similar_match_found")) {
+      result.error = `Error! Unable to verify source code\nNo similar match found`
+    }
 
     return {
       address,
