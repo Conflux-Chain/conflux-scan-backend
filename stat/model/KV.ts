@@ -62,6 +62,8 @@ export const KEY_SUPRESS_FULLSTATE_RPC_ERR = "SUPRESS_FULLSTATE_RPC_ERR"
 export const KEY_EVICTED_STAT_BLOCK_DATA = "EVICTED_STAT_BLOCK_DATA"
 export const KEY_AUTO_VERIFY_TRACE_ID = "AUTO_VERIFY_TRACE_ID"
 export const KEY_AUTO_VERIFY_VERIFY_ID = "AUTO_VERIFY_VERIFY_ID"
+export const KEY_SOLC_VERSIONS = "SOLC_VERSIONS"
+export const KEY_VYPER_VERSIONS = "VYPER_VERSIONS"
 
 export class KV extends Model<IKV> implements IKV {
     key: string;
@@ -95,7 +97,7 @@ export class KV extends Model<IKV> implements IKV {
     static register(sequelize) {
         KV.init({
             key: {type: DataTypes.CHAR(64), primaryKey: true},
-            value: DataTypes.STRING(1024)
+            value: DataTypes.STRING(8192)
         }, {
             sequelize,
             tableName: 'config',

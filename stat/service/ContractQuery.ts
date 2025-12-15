@@ -29,7 +29,13 @@ import {VerifiedContracts} from "../model/VerifiedContracts";
 import {ethers} from "ethers";
 import {saveAbiInfo} from "../model/ContractInfo";
 import {sleep} from "./tool/ProcessTool";
-import {KEY_AUTO_VERIFY_TRACE_ID, KEY_AUTO_VERIFY_VERIFY_ID, KV} from "../model/KV";
+import {
+    KEY_AUTO_VERIFY_TRACE_ID,
+    KEY_AUTO_VERIFY_VERIFY_ID,
+    KEY_SOLC_VERSIONS,
+    KEY_VYPER_VERSIONS,
+    KV
+} from "../model/KV";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import axios from "axios";
 
@@ -41,7 +47,8 @@ const {Contract} = require("../model/Contract");
 const abi = require('./tool/abi');
 
 const NodeCache = require( "node-cache" );
-const DEFAULT_VERIFY_CACHE_TTL: number = 60 * 60 * 24 * 7 //7days
+const DEFAULT_VERIFY_CACHE_TTL: number = 60 * 60 * 24 * 7 // 7 days
+const DEFAULT_COMPILER_CACHE_TTL: number = 60 * 3 // 3 min
 const ZERO_LABS_PROXY_BEACON_MAP = {
     "0xea224dbb52f57752044c0c86ad50930091f561b9":"0x0e9cc1be1060e3dd036f16977a186a8185acc513",
     "0x712a30816a8756c8fdb78de63db55aa70d3cf3b4":"0x335ae8961fface946c25900aa689d793dc3ff1bf",
@@ -60,12 +67,17 @@ export class ContractQuery {
     private readonly cacheTtl: number
     private CACHE_VERIFY_ADDRESS: any // hex => {address, name}
     private CACHE_VERIFY_DETAIL: any  // hex => Contract
+    private readonly cacheCompilerTtl: number
+    private CACHE_COMPILER_VERSIONS: any  // solc | vyper => {}
 
-    constructor(app: ScanApp, verifyCacheTTL?: number) {
+
+    constructor(app: ScanApp, verifyCacheTTL?: number, compilerCacheTTL?: number) {
         this.app = app;
         this.cacheTtl = verifyCacheTTL || DEFAULT_VERIFY_CACHE_TTL
         this.CACHE_VERIFY_ADDRESS = new NodeCache({ maxKeys: 5000,  stdTTL: this.cacheTtl, checkperiod: 60})
         this.CACHE_VERIFY_DETAIL = new NodeCache({ maxKeys: 1000,  stdTTL: this.cacheTtl, checkperiod: 60})
+        this.cacheCompilerTtl = compilerCacheTTL || DEFAULT_COMPILER_CACHE_TTL
+        this.CACHE_COMPILER_VERSIONS = new NodeCache({maxKeys: 2, stdTTL: this.cacheCompilerTtl, checkperiod: 60})
         _instance = this;
     }
 
@@ -320,7 +332,8 @@ export class ContractQuery {
         }
 
         if(language === 'Vyper') {
-            compilerVersion = convertVyperVersion(compilerVersion, this.VYPER_VERSIONS);
+            const versions = await this.listVyperVersions();
+            compilerVersion = convertVyperVersion(compilerVersion, versions);
             fullyQualifiedName = contractLabel;
         }
 
@@ -534,80 +547,97 @@ export class ContractQuery {
         return random.substr(0, 50);
     }
 
-    private SOLC_VERSIONS
-    private SOLC_VERSIONS_UPDATE_TIME
-    private readonly SOLC_VERSIONS_UPDATE_INTERVAL = 1000 * 60 * 10 // update every 10 minutes
-    private URL_FETCH_SOLC_VERSIONS = 'https://binaries.soliditylang.org/bin/list.json'
-    async listSolcVersions(): Promise<{[shortVersion: string]: string}> {
-        if(!this.SOLC_VERSIONS || Date.now() - this.SOLC_VERSIONS_UPDATE_TIME >= this.SOLC_VERSIONS_UPDATE_INTERVAL ) {
-            const resp = await this._getJsonRequestByAxios({
-                url: this.URL_FETCH_SOLC_VERSIONS,
-                handleError: false,
-            }).catch(e => {
-                throw new Errors.ListSolcVersionsError(`${this.URL_FETCH_SOLC_VERSIONS} ${e.message}`)
-            })
+    async scheduleUpdateCompilerVersions(delay: number = 1000 * 60 * 60 * 12) { // update every 12 hours
+        const that = this;
 
-            if(!resp) {
-                return
-            }
+        async function repeat() {
+            await that.updateSolcVersions().catch(e => {
+                safeAddErrorLog('ContractQuery', `updateSolcVersions`, e).then();
+                console.log('Schedule update compiler versions fail', e);
+            });
 
-            const {data} = resp
+            await that.updateVyperVersions().catch(e => {
+                safeAddErrorLog('ContractQuery', `updateVyperVersions`, e).then();
+                console.log('Schedule update compiler versions fail', e);
+            });
 
-            this.SOLC_VERSIONS = lodash.mapValues(data.releases, solcName => solcName.substring(8, solcName.length - 3))
-            this.SOLC_VERSIONS_UPDATE_TIME = Date.now()
+            setTimeout(repeat, delay);
         }
 
-        return this.SOLC_VERSIONS
+        repeat().then();
+        console.log(`Schedule update compiler versions with delay: ${delay}`);
     }
 
-    private VYPER_VERSIONS
-    private VYPER_VERSIONS_UPDATE_TIME
-    private readonly VYPER_VERSIONS_UPDATE_INTERVAL = 1000 * 60 * 10 // update every 10 minutes
-    private URL_FETCH_VYPER_VERSIONS = 'https://api.github.com/repos/vyperlang/vyper/tags'
-    async listVyperVersions(): Promise<{[shortVersion: string]: {desc: string, commit: string}}> {
-        if(!this.VYPER_VERSIONS || Date.now() - this.VYPER_VERSIONS_UPDATE_TIME >= this.VYPER_VERSIONS_UPDATE_INTERVAL ) {
-            const versions = {}
-            let page = 1
+    // shortVersion => fullVersion
+    private async updateSolcVersions() {
+        const resp = await this._getJsonRequestByAxios({
+            url: 'https://binaries.soliditylang.org/bin/list.json',
+            handleError: false,
+        });
+        const {data} = resp;
+        const versions = lodash.mapValues(data.releases, solcName => solcName.substring(8, solcName.length - 3));
+        await KV.upsert({key: KEY_SOLC_VERSIONS, value: JSON.stringify(versions)});
+    }
 
-            while (true) {
-                const resp = await this._getJsonRequest({
-                    url: `${this.URL_FETCH_VYPER_VERSIONS}?page=${page}&per_page=100`,
-                    headers: {
-                        'User-Agent': 'Vyper-Version-Checker'
-                    },
-                    handleError: false,
-                }).catch(e => {
-                    if (e.status === 403 || e.status === 429) {
-                        return this.VYPER_VERSIONS
-                    }
-                    throw new Errors.ListVyperVersionsError(`${this.URL_FETCH_VYPER_VERSIONS} ${e.message}`)
-                })
+    // shortVersion => {desc, commit}
+    private async updateVyperVersions() {
+        const versions = {};
+        let page = 1;
 
-                if(!resp) {
-                    continue
+        while (true) {
+            const resp = await this._getJsonRequest({
+                url: `https://api.github.com/repos/vyperlang/vyper/tags?page=${page}&per_page=100`,
+                headers: {
+                    'User-Agent': 'Vyper-Version-Checker'
+                },
+                handleError: false,
+            }).catch(e => {
+                if (e.status === 429) {
+                    return null;
                 }
+                throw e;
+            });
 
-                const {data: list} = resp
-
-                if (!list?.length) {
-                    break
-                } else {
-                    list.filter(v => v.name.startsWith('v')).forEach(v => {
-                        const ver = v.name.substring(1)
-                        versions[ver] = {
-                            desc: `vyper:${ver}`,
-                            commit: v.commit.sha.substring(0, 8)
-                        }
-                    })
-                    page++
-                }
+            if (!resp) {
+                continue;
             }
 
-            this.VYPER_VERSIONS = versions
-            this.VYPER_VERSIONS_UPDATE_TIME = Date.now()
+            const {data: list} = resp;
+
+            if (!list?.length) {
+                break;
+            } else {
+                list.filter(v => v.name.startsWith('v')).forEach(v => {
+                    const ver = v.name.substring(1);
+                    versions[ver] = {
+                        desc: `vyper:${ver}`,
+                        commit: v.commit.sha.substring(0, 8)
+                    };
+                });
+                page++;
+            }
         }
 
-        return this.VYPER_VERSIONS
+        if (Object.keys(versions).length) {
+            await KV.upsert({key: KEY_VYPER_VERSIONS, value: JSON.stringify(versions)});
+        }
+    }
+
+    async listSolcVersions(): Promise<{ [shortVersion: string]: string }> {
+        return this.listCompilerVersions(KEY_SOLC_VERSIONS);
+    }
+
+    async listVyperVersions(): Promise<{ [shortVersion: string]: { desc: string, commit: string } }> {
+        return this.listCompilerVersions(KEY_VYPER_VERSIONS);
+    }
+
+    private async listCompilerVersions(key: string): Promise<any> {
+        let versions = this.CACHE_COMPILER_VERSIONS.get(key);
+        if (!versions) {
+            versions = JSON.parse(await KV.getString(key, "{}"));
+            this.CACHE_COMPILER_VERSIONS.set(key, versions, this.cacheCompilerTtl);
+        }
+        return versions;
     }
 
     public async verify(verifyInput: VerifyInput) {
@@ -615,53 +645,59 @@ export class ContractQuery {
             contractAddress, sourceCode, codeFormat, fullQualifiedName,
             compilerVersion, optimizationUsed, runs,
             constructorArguments, evmVersion, licenseType,
-        } = verifyInput
+        } = verifyInput;
         checkPresent({contractAddress, sourceCode, compilerVersion, fullQualifiedName},
-            ['contractAddress', 'sourceCode', 'compilerVersion', 'fullQualifiedName'])
+            ['contractAddress', 'sourceCode', 'compilerVersion', 'fullQualifiedName']);
 
-        checkCodeFormat(codeFormat)
-        let jsonInput, contractPath, contractName, contractLabel
+        checkCodeFormat(codeFormat);
+
+        let jsonInput, contractPath, contractName, contractLabel;
         if(CONST.CONTRACT_CODE_FORMATS_SOLIDITY.includes(codeFormat)) {
-            compilerVersion = checkSolcVersion(compilerVersion, this.SOLC_VERSIONS)
+            const versions = await this.listSolcVersions();
+            compilerVersion = checkSolcVersion(compilerVersion, versions);
             if(codeFormat === CONST.CONTRACT_CODE_FORMAT_INFO.SOLIDITY_STANDARD_JSON_INPUT.code){
                 jsonInput = JSON.parse(sourceCode);
                 optimizationUsed = jsonInput.settings.optimizer.enabled;
                 runs = jsonInput.settings.optimizer.runs;
             }
-            const optimize = checkSolcOptimization(optimizationUsed, runs)
-            optimizationUsed = optimize.optimizationUsed
-            runs = optimize.runs
-            const fqn = splitFullyQualifiedName(fullQualifiedName)
-            contractPath = fqn.contractPath
-            contractName = fqn.contractName
-            contractLabel = ''
+            const optimize = checkSolcOptimization(optimizationUsed, runs);
+            optimizationUsed = optimize.optimizationUsed;
+            runs = optimize.runs;
+            const fqn = splitFullyQualifiedName(fullQualifiedName);
+            contractPath = fqn.contractPath;
+            contractName = fqn.contractName;
+            contractLabel = '';
         } else {
-            compilerVersion = checkVyperVersion(compilerVersion, this.VYPER_VERSIONS)
+            const versions = await this.listVyperVersions();
+            compilerVersion = checkVyperVersion(compilerVersion, versions);
             if(codeFormat === CONST.CONTRACT_CODE_FORMAT_INFO.VYPER_JSON.code) {
                 jsonInput = JSON.parse(sourceCode);
-                optimizationUsed = jsonInput.settings.optimize
+                optimizationUsed = jsonInput.settings.optimize;
             }
-            optimizationUsed = checkVyperOptimization(optimizationUsed)
-            const fqn = splitFullyQualifiedName(fullQualifiedName)
+            optimizationUsed = checkVyperOptimization(optimizationUsed);
+            const fqn = splitFullyQualifiedName(fullQualifiedName);
             if(codeFormat === CONST.CONTRACT_CODE_FORMAT_INFO.VYPER_SINGLE_FILE.code) {
-                contractPath = "."
-                contractName = ""
+                contractPath = ".";
+                contractName = "";
             } else{
-                contractPath = fqn.contractPath
-                contractName = path.parse(fqn.contractPath).name
+                contractPath = fqn.contractPath;
+                contractName = path.parse(fqn.contractPath).name;
             }
-            contractLabel = fqn.contractName || 'Vyper_contract'
+            contractLabel = fqn.contractName || 'Vyper_contract';
         }
-        const librariesInfo: Record<string, {name: any; address: any;}> = {}
+
+        const librariesInfo: Record<string, {name: any; address: any;}> = {};
         for(let i = 1; i <= 10; i++) {
             librariesInfo[`library${i}`] = {
                 name: verifyInput[`libraryName${i}` as keyof typeof verifyInput],
                 address: verifyInput[`libraryAddress${i}` as keyof typeof verifyInput]
-            }
+            };
         }
         const libraries = checkLibrary(librariesInfo);
+
         evmVersion = await checkEVMVersion(evmVersion);
-        licenseType = checkLicense(licenseType)
+
+        licenseType = checkLicense(licenseType);
 
         if(codeFormat === CONST.CONTRACT_CODE_FORMAT_INFO.SOLIDITY_SINGLE_FILE.code) {
             jsonInput = {
@@ -679,8 +715,9 @@ export class ContractQuery {
                     },
                     libraries: Object.keys(libraries).length ? { [contractPath]: libraries } : undefined,
                 },
-            }
+            };
         }
+
         if(codeFormat === CONST.CONTRACT_CODE_FORMAT_INFO.VYPER_SINGLE_FILE.code) {
             jsonInput = {
                 language: "Vyper",
@@ -693,7 +730,7 @@ export class ContractQuery {
                     evmVersion,
                     optimize: optimizationUsed,
                 },
-            }
+            };
         }
 
         const trace: any = await TraceCreateContract.sequelize.query(
@@ -701,7 +738,7 @@ export class ContractQuery {
             {
                 type: QueryTypes.SELECT,
                 replacements:[contractAddress.substr(2)]
-            }).then(traces => {return traces?.length ? traces[0] : undefined})
+            }).then(traces => {return traces?.length ? traces[0] : undefined});
 
         const input: VerifyFromJsonInput = {
             chainId: StatApp.networkId,
@@ -715,10 +752,11 @@ export class ContractQuery {
             creationTransactionHash: trace?.txHash,
             licenseType,
             contractLabel,
-        }
-        const verifyResult = await this.verifyFromJsonInput(input)
-        this.saveABI(contractAddress).then()
-        return verifyResult
+        };
+
+        const verifyResult = await this.verifyFromJsonInput(input);
+        this.saveABI(contractAddress).then();
+        return verifyResult;
     }
 
     public async verifyByLink(

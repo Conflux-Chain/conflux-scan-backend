@@ -298,7 +298,7 @@ export class StatsQuery {
 
         let total;
         let list;
-        if(intervalType === undefined || intervalType === INTERVAL_TYPE.month) {
+        if(intervalType === undefined || intervalType === INTERVAL_TYPE.month || intervalType === INTERVAL_TYPE.day) {
             const page = await model.findAndCountAll(options);
             total = page.count;
             list = page.rows;
