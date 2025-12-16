@@ -333,6 +333,11 @@ async function migDB(seq: Sequelize) {
     await changeColumnIfNecessary(qi, traceCreateContract, 'codeHash', {
         type: DataTypes.CHAR(66), allowNull: true,
     });
+
+    const kv = KV.getTableName().toString();
+    await changeColumnIfNecessary(qi, kv, 'value', {
+        type: DataTypes.STRING(8192)
+    });
 }
 
 async function dropEmptyTables() {

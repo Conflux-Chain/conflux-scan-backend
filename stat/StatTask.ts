@@ -117,6 +117,9 @@ async function main() {
     //
     const blockAndMinerSync = new BlockAndMinerSync();
     blockAndMinerSync.schedule().then();
+    //
+    const contractQuery = new ContractQuery({cfx, config});
+    contractQuery.scheduleUpdateCompilerVersions().then()
 
     //
     if(config.censorApiKey && config.censorSecretKey) {
@@ -132,7 +135,6 @@ async function main() {
     }
     //
     if (config.verifyByAuto) {
-        const contractQuery = new ContractQuery({cfx, config});
         contractQuery.scheduleVerifyByAuto().then();
     }
 
