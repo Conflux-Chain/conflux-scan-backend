@@ -205,7 +205,7 @@ export async function getCfxTransferTraces(epoch: number)
                 // console.log(`that is `, traceArr[traceIdx]);
                 let suicideActionBalance = 0n;
                 const {action: {input, outcome, from: fromRaw, to: toRaw, value, callType, fromPocket, toPocket, fromSpace, toSpace, space, addr}, type, valid} = traceArr[traceIdx]
-                if (input?.length > 65530) {
+                if (input?.length > 16_777_000) {
                     console.log(`trace input it too large, `, traces[traceIdx]);
                     process.exit(1);
                 }
