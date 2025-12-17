@@ -10,12 +10,14 @@ module.exports = {
     8889: [scan8888, scan8889],
     6666: [scan6666, scan6667],
     6667: [scan6666, scan6667],
+    1025: [scan6666, scan6667],
   },
   networks: [
     {      name: 'Conflux Core (Hydra)',      id: 1029, space: 'core'    },
     {      name: 'Conflux eSpace (Hydra)',    id: 1030, space: 'evm'    },
     {      name: 'Conflux Core (Testnet)',    id: 1,    space: 'core'    },
     {      name: 'Conflux eSpace (Testnet)',  id: 71,   space: 'evm'    },
+    {      name: 'Conflux eSpace (Devnet-1025)',  id: 1025,   space: 'evm'    },
   ],
   contracts: [
     {
