@@ -148,15 +148,17 @@ export function limitListOnBody(ctx: any) {
     }
 }
 export async function queryPosStatMix(biz1: BIZ, biz2: BIZ, ctx:any, dayCondition = '') {
-    const t = PosDailyStatMix.getTableName()
-    const sql = `select day, v  from ${t} where biz='${biz1}' ${dayCondition}`
-    const sql2 = `select day, v from ${t} where biz='${biz2}' ${dayCondition}`
-    const join = `select t.day, t.v as ${biz1}, t2.v as ${biz2} from (${sql}) t join (${sql2}) t2 using(day)`
+    const t = PosDailyStatMix.getTableName();
+    mustBeIntParamIfPresent(ctx.request.query, 'minTimestamp', 'maxTimestamp');
+    const dtFilter = buildMinMaxTimestampFilter(ctx);
+    const sql = `select day, v  from ${t} where biz='${biz1}' ${dayCondition} ${dtFilter}`;
+    const sql2 = `select day, v from ${t} where biz='${biz2}' ${dayCondition}`;
+    const join = `select t.day, t.v as ${biz1}, t2.v as ${biz2} from (${sql}) t join (${sql2}) t2 using(day)`;
     const list = await PosDailyStatMix.sequelize.query(join, {
         type: QueryTypes.SELECT, raw: true
-    })
-    ctx.body = { total:list.length, list }
-    limitListOnBody(ctx)
+    });
+    ctx.body = { total:list.length, list };
+    limitListOnBody(ctx);
     return list;
 }
 export async function scheduleDailyStatMix(cfx:Conflux) {
