@@ -15,7 +15,7 @@ import {
   jsonrpc_queryContract,
   jsonrpc_queryTransaction,
   jsonrpc_trend,
-  jsonrpc_verifyContract, jsonrpc_verifyCrossChain,
+  jsonrpc_verifyContract, jsonrpc_verifyCrossSpace,
   listEVMVersion
 } from "./jsonrpc";
 import {CONST} from "../../stat/service/common/constant";
@@ -735,7 +735,7 @@ router_post(router, '/contract/verify',
   toArray, jsonrpc_verifyContract,
 );
 
-router_post(router, '/contract/verify/crosschain',
+router_post(router, '/contract/verify/cross-space',
     OpenAPI.flow({
       tags: ['contract'],
       input: {
@@ -757,7 +757,7 @@ router_post(router, '/contract/verify/crosschain',
       },
     }),
 
-    toArray, jsonrpc_verifyCrossChain,
+    toArray, jsonrpc_verifyCrossSpace,
 );
 
 router_get(router,'/contract/:address',

@@ -1113,6 +1113,13 @@ export class ContractQuery {
         retry: number = 3,
         intervalMs: number = 5000,
     ) {
+        const {codeHash} = await this.app.cfx.getAccount(address);
+        if (codeHash === CONST.CODEHASH_NO_BYTECODE) {
+            const hex = await Hex40Map.findOne({where: {hex: address.substr(2)}});
+            TraceCreateContract.update({codeHash}, {where: {to: hex.id}}).then();
+            return;
+        }
+
         const verified = await this.queryVerify(address, true);
         if (verified) {
             return;
@@ -1141,6 +1148,7 @@ export class ContractQuery {
             }
             if (match
                 || error?.includes("already_verified")
+                || error?.includes("contract_not_deployed")
                 || error?.includes("no_similar_match_found")) {
                 break;
             }

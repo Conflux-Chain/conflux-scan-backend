@@ -416,7 +416,7 @@ export const jsonrpc_verifyContract = jsonrpc.method_('verifyContract',
   })),
 );
 
-export const jsonrpc_verifyCrossChain = jsonrpc.method_('verifyCrossChain',
+export const jsonrpc_verifyCrossSpace = jsonrpc.method_('verifyCrossChain',
     serializeByIP(),
     buildFlow((app) => parameter({
         address: { path: '0', type: app.type.address, required: true },
@@ -428,7 +428,7 @@ export const jsonrpc_verifyCrossChain = jsonrpc.method_('verifyCrossChain',
         const {
             app: { service },
         } = this as ScanCtx;
-        return service.contract.verifyCrossChain(options);
+        return service.contract.verifyCrossSpace(options);
     },
 
     buildFlow((app) => type({
