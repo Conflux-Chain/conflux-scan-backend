@@ -5,7 +5,7 @@ import {init} from "./tool/FixDailyTokenStat";
 import {Hex40Map, makeIdV} from "../model/HexMap";
 import {FullTransaction} from "../model/FullBlock";
 import {IS_EVM2, KV} from "../model/KV";
-import {initCfxSdk} from "./common/utils";
+import {buildMinMaxTimestampFilter, initCfxSdk} from "./common/utils";
 import {EvmDB} from "../config/StatConfig";
 import {findCfxSyncMaxDate} from "./tool/CfxTransferTool";
 import {patchDateOnlyField} from "../model/Utils";
@@ -35,8 +35,9 @@ export class CrossSpaceStat extends Model<ICrossSpaceStat> implements ICrossSpac
 export async function queryCrossSpaceStat(biz1: CrossSpaceStat_BIZ, biz2: CrossSpaceStat_BIZ,
                                           biz3: CrossSpaceStat_BIZ, biz4: CrossSpaceStat_BIZ,
                                           ctx:any) {
+    const dtFilter = buildMinMaxTimestampFilter(ctx);
     const t = CrossSpaceStat.getTableName()
-    const sql = `select day, v  from ${t} where biz='${biz1}'`
+    const sql = `select day, v  from ${t} where biz='${biz1}' ${dtFilter}`
     const sql2 = `select day, v from ${t} where biz='${biz2}'`
     const sql3 = `select day, v from ${t} where biz='${biz3}'`
     const sql4 = `select day, v from ${t} where biz='${biz4}'`

@@ -121,6 +121,17 @@ export function intParam(obj: object, key: string, defaultV: number) {
     return number;
 }
 
+export function buildMinMaxTimestampFilter(ctx: any) {
+    const {minTimestamp, maxTimestamp} = ctx?.request?.query || {};
+    return [minTimestamp, maxTimestamp].map(str=>{
+        return str ? new Date( str * 1000) : null;
+    }).map(dt=>{
+        return dt ? dt.toISOString().split('T')[0] : ""
+    }).map((str, idx)=>{
+        return str ? ` and day ${idx == 0 ? '>=' : '<='} '${str}' ` : '';
+    }).join(' ');
+}
+
 export function mustBeIntParamIfPresent(obj, ...keys:string[]) {
     for (const k of keys) {
         const v = obj[k];

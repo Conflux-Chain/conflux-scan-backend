@@ -1,13 +1,13 @@
 import {Conflux, Drip} from "js-conflux-sdk";
 import {PosAccount, PosAccountBlock, PosBlock, PosCommittee, PosDailyStat, PosGap, PosReward} from "../../model/PoS";
-import {col, DataTypes, QueryTypes, fn, literal, Model, Op, Sequelize} from 'sequelize'
+import {col, DataTypes, fn, literal, Model, Op, QueryTypes, Sequelize} from 'sequelize'
 import {PosQuery} from "./PosQuery";
 import {KV, TOTAL_POS_REWARD} from "../../model/KV";
 import {Epoch} from "../../model/Epoch";
 import {init} from "../tool/FixDailyTokenStat";
 import {CfxTransfer} from "../../model/CfxTransfer";
 import {makeIdV} from "../../model/HexMap";
-import {initCfxSdk, mustBeIntParamIfPresent} from "../common/utils";
+import {buildMinMaxTimestampFilter, mustBeIntParamIfPresent} from "../common/utils";
 import {paginateCoreStat} from "../../router/ParamChecker";
 
 const lodash = require('lodash');
@@ -118,11 +118,20 @@ export async function queryDailyPosRewardAvgAccount(ctx:any, dayCondition:Date =
     return list;
 }
 export async function fetchDailyStatMix(biz: BIZ, ctx:any, dayCondition:Date = null) {
-    const where = {biz, day: {[Op.gte]:dayCondition}}
-    if (dayCondition === null) {
-        delete where.day
-    }
-    const list = await PosDailyStatMix.findAll({where, order: [['day','asc']]})
+    mustBeIntParamIfPresent(ctx.request.query, 'minTimestamp', 'maxTimestamp');
+    const t = PosDailyStatMix.getTableName();
+    const dayCondStr = dayCondition ? ` and day >= ${dayCondition.toISOString().split('T')[0]} ` : '';
+    const dtFilter = buildMinMaxTimestampFilter(ctx);
+    const sql = `select * from ${t} where biz = ? ${dtFilter} ${dayCondStr}
+        order by day asc`;
+    // const where = {biz, day: {[Op.gte]:dayCondition}}
+    // if (dayCondition === null) {
+    //     delete where.day
+    // }
+    // const list = await PosDailyStatMix.findAll({where, order: [['day','asc']]})
+    const list = await PosDailyStatMix.sequelize.query(sql, {
+        type: QueryTypes.SELECT, replacements: [biz],
+    })
     ctx.body = { total:list.length, list }
     limitListOnBody(ctx)
     return list;

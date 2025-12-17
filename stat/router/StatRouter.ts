@@ -28,7 +28,7 @@ import {queryCrossSpaceStat} from "../service/CrossSpaceStat";
 import {
     formatBalance,
     formatPercentage,
-    mustBeAddressParamIfPresent,
+    mustBeAddressParamIfPresent, mustBeDateParamIfPresent,
     mustBeEnumParamIfPresent,
     mustBeHex64ParamIfPresent,
     mustBeIntParamIfPresent,
@@ -601,6 +601,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     })
 
     router.get('/cross-space-cfx', async (ctx)=>{
+        mustBeIntParamIfPresent(ctx.request.query, 'minTimestamp', 'maxTimestamp');
         await queryCrossSpaceStat('DailyCfxToEVM', 'DailyCfxFromEVM',
             'DailyCfxCountToEVM', 'DailyCfxCountFromEVM',
             ctx)
