@@ -40,7 +40,7 @@ export class ContractService {
         exactMatch: true,
         optimization: parseInt(verified.optimization), // N/A|1|0|gas|codesize|none
         similarMatchNetworkId: verified.similarMatchChainId,
-        crossSpace: StatApp.networkId !== verified.similarMatchChainId,
+        crossSpace: Boolean(verified.similarMatchChainId && StatApp.networkId !== verified.similarMatchChainId),
       });
       delete verify.similarMatchChainId;
       proxy = lodash.pick(verified, ['proxy', 'proxyPattern']);
@@ -119,6 +119,10 @@ export class ContractService {
       return result;
     }
 
+    if (!params.codeFormat) {
+      params.codeFormat = CONST.CONTRACT_CODE_FORMAT_INFO.SOLIDITY_SINGLE_FILE.code;
+    }
+
     console.log(`request verifySourcecode ==\n`, {
       address: params.address,
       compiler: params.compiler,
@@ -156,12 +160,12 @@ export class ContractService {
       app: {service}
     } = this as ScanCtx;
 
-    const key = params.includeTestnet ? `${StatApp.networkId}_ALL_OTHER_SPACE` : StatApp.networkId;
+    const key = params.includeAllOtherSpace ? `${StatApp.networkId}_ALL_OTHER_SPACE` : StatApp.networkId;
     const linkChainIds = CONST.CHAINS_CROSS_SPACE_VERIFY[key];
 
     console.log(`request verifyCrossSpace ==\n`, {
       address: params.address,
-      includeTestnet: params.includeTestnet,
+      includeAllOtherSpace: params.includeAllOtherSpace,
       linkChainIds,
     });
 
@@ -189,10 +193,10 @@ export class ContractService {
     const result = await service.contractQuery.getVerificationResult(verificationId);
 
     if (result.error?.includes("contract_not_deployed")) {
-      result.error = `Error! Unable to locate Contract Code at ${fmtAddr(address, StatApp.networkId)}\nIs this a valid Contract Address ?`
+      result.error = `contract_not_deployed`
     }
     if (result.error?.includes("no_similar_match_found")) {
-      result.error = `Error! Unable to verify source code\nNo similar match found`
+      result.error = `no_similar_match_found`
     }
 
     return {
