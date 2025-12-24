@@ -333,8 +333,8 @@ else
 		CORE_RPC="conflux2: '$CORE_RPC',"
 	fi
 	echo """
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
+'use strict';
+Object.defineProperty(exports, '__esModule', { value: true });
 // eslint-disable-next-line no-unused-vars
 exports.default = {
     port: $STAT_PORT,
