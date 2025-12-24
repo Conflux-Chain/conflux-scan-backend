@@ -1,8 +1,9 @@
 set -e
+_COMPOSE_FILE="./dev-compose.yaml"
 _GIT_REPO="git@github.com:Conflux-Chain/conflux-scan-backend.git"
 if [ "$1" == "clean" ]; then
 	rm stat/config/Prod.*
-	docker compose stop
+	docker compose -f "$_COMPOSE_FILE" down -v
 	exit
 fi
 
@@ -30,6 +31,7 @@ if [ -s "./scan.env" ]; then
 	fi
 
 	if [ "$1" == "dropDB" ]; then
+	  docker compose -f "$_COMPOSE_FILE" down -v
 		echo "drop db now, wait a moment. $_DB_NAME"
 		_DB_V=$(mysql -h $_DB_HOST -P$_DB_PORT -u $_DB_USER -p$_DB_PWD -e "drop database $_DB_NAME" && echo "OK" || echo "failed to access db")
 		echo "db result: $_DB_V"
@@ -357,6 +359,8 @@ export default {
     logging: false,
   },
   wrappedCFX: '0x2ed3dddae5b2f321af0806181fbfa6d049be47d8', // placeholder
+  wrappedBTC: '0x2ed3dddae5b2f321af0806181fbfa6d049be47d8', // placeholder
+  contractVerificationUrl: '',
 }
 	""" > ./stat/config/Prod.ts
 	echo """
@@ -379,9 +383,9 @@ fi
 
 npm run compile || exit
 
-dc="sudo docker compose"
+dc="sudo docker compose -f "$_COMPOSE_FILE" "
 fn_up() {
-	if [ "0" == "$(sudo docker compose ps -a | grep $1 | wc -l)" ]; then
+	if [ "0" == "$(sudo docker compose -f "$_COMPOSE_FILE" ps -a | grep $1 | wc -l)" ]; then
 		echo "create container: $1..."
 		$dc up -d $1
 	else
@@ -395,7 +399,7 @@ fn_up epoch
 fn_up cfx_transfer
 fn_up token_transfer
 fn_up token_x
-fn_up compiler
+#fn_up compiler
 sleep 5
 fn_up api
 fn_up open_api
