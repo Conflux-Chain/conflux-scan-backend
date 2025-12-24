@@ -333,8 +333,10 @@ else
 		CORE_RPC="conflux2: '$CORE_RPC',"
 	fi
 	echo """
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 // eslint-disable-next-line no-unused-vars
-export default {
+exports.default = {
     port: $STAT_PORT,
     apiPort: $OPEN_PORT,
     v1port: $V1_PORT,
