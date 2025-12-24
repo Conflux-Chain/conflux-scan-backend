@@ -1,8 +1,10 @@
 set -e
+_COMPOSE_FILE="./dev-compose.yaml"
 _GIT_REPO="git@github.com:Conflux-Chain/conflux-scan-backend.git"
 if [ "$1" == "clean" ]; then
 	rm stat/config/Prod.*
-	docker compose stop
+	unlink conf.js
+	docker compose -f "$_COMPOSE_FILE" down -v
 	exit
 fi
 
@@ -13,6 +15,7 @@ _NO_CORE_SPACE=""
 CORE_RPC=""
 CORE_DB=core
 V1_PORT=8895
+diffMonitorPort=-9000
 STAT_PORT=8087
 OPEN_PORT=9527
 #_DB_PWD=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 13; )
@@ -30,6 +33,7 @@ if [ -s "./scan.env" ]; then
 	fi
 
 	if [ "$1" == "dropDB" ]; then
+	  docker compose -f "$_COMPOSE_FILE" down -v
 		echo "drop db now, wait a moment. $_DB_NAME"
 		_DB_V=$(mysql -h $_DB_HOST -P$_DB_PORT -u $_DB_USER -p$_DB_PWD -e "drop database $_DB_NAME" && echo "OK" || echo "failed to access db")
 		echo "db result: $_DB_V"
@@ -312,7 +316,7 @@ else
 	npm i
 fi
 
-if [ -s "./stat/config/Prod.ts" ]; then
+if [ -s "./stat/config/Prod.js" ]; then
 	echo "config file exists"
 else
 	echo "generate config file ..."
@@ -329,11 +333,14 @@ else
 		CORE_RPC="conflux2: '$CORE_RPC',"
 	fi
 	echo """
+'use strict';
+Object.defineProperty(exports, '__esModule', { value: true });
 // eslint-disable-next-line no-unused-vars
-export default {
+exports.default = {
     port: $STAT_PORT,
     apiPort: $OPEN_PORT,
     v1port: $V1_PORT,
+    diffMonitorPort: $diffMonitorPort,
     serverTag: 'test-sync',
     conflux:          { url: '$_RPC' ,keepAlive: true, },
     tokenTransferRpc: { url: '$_RPC',keepAlive: true, },
@@ -357,8 +364,11 @@ export default {
     logging: false,
   },
   wrappedCFX: '0x2ed3dddae5b2f321af0806181fbfa6d049be47d8', // placeholder
+  wrappedBTC: '0x2ed3dddae5b2f321af0806181fbfa6d049be47d8', // placeholder
+  contractVerificationUrl: '',
 }
-	""" > ./stat/config/Prod.ts
+	""" > ./stat/config/Prod.js
+	ln -s ./stat/config/Prod.js ./conf.js
 	echo """
 const frontend = require('./frontend');
 module.exports = {
@@ -379,9 +389,9 @@ fi
 
 npm run compile || exit
 
-dc="sudo docker compose"
+dc="sudo docker compose -f "$_COMPOSE_FILE" "
 fn_up() {
-	if [ "0" == "$(sudo docker compose ps -a | grep $1 | wc -l)" ]; then
+	if [ "0" == "$(sudo docker compose -f "$_COMPOSE_FILE" ps -a | grep $1 | wc -l)" ]; then
 		echo "create container: $1..."
 		$dc up -d $1
 	else
@@ -395,7 +405,7 @@ fn_up epoch
 fn_up cfx_transfer
 fn_up token_transfer
 fn_up token_x
-fn_up compiler
+#fn_up compiler
 sleep 5
 fn_up api
 fn_up open_api
