@@ -3,6 +3,7 @@ _COMPOSE_FILE="./dev-compose.yaml"
 _GIT_REPO="git@github.com:Conflux-Chain/conflux-scan-backend.git"
 if [ "$1" == "clean" ]; then
 	rm stat/config/Prod.*
+	unlink conf.js
 	docker compose -f "$_COMPOSE_FILE" down -v
 	exit
 fi
@@ -315,7 +316,7 @@ else
 	npm i
 fi
 
-if [ -s "./stat/config/Prod.ts" ]; then
+if [ -s "./stat/config/Prod.js" ]; then
 	echo "config file exists"
 else
 	echo "generate config file ..."
@@ -364,7 +365,8 @@ export default {
   wrappedBTC: '0x2ed3dddae5b2f321af0806181fbfa6d049be47d8', // placeholder
   contractVerificationUrl: '',
 }
-	""" > ./stat/config/Prod.ts
+	""" > ./stat/config/Prod.js
+	ln -s ./stat/config/Prod.js ./conf.js
 	echo """
 const frontend = require('./frontend');
 module.exports = {
