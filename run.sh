@@ -14,6 +14,7 @@ _NO_CORE_SPACE=""
 CORE_RPC=""
 CORE_DB=core
 V1_PORT=8895
+diffMonitorPort=-9000
 STAT_PORT=8087
 OPEN_PORT=9527
 #_DB_PWD=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 13; )
@@ -336,6 +337,7 @@ export default {
     port: $STAT_PORT,
     apiPort: $OPEN_PORT,
     v1port: $V1_PORT,
+    diffMonitorPort: $diffMonitorPort,
     serverTag: 'test-sync',
     conflux:          { url: '$_RPC' ,keepAlive: true, },
     tokenTransferRpc: { url: '$_RPC',keepAlive: true, },
