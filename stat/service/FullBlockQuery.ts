@@ -218,7 +218,7 @@ export class FullBlockQuery {
             list.forEach(row=>{
                 const minerId = row['miner'];
                 if(minerId && hex40Map.get(minerId)){
-                    row['miner'] = fmtAddr(`0x${hex40Map.get(minerId)}`, this.app?.networkId);
+                    row['miner'] = fmtAddr(`0x${hex40Map.get(minerId)}`, StatApp.networkId);
                 }
                 const timestampInSec =  row['timestamp'].getTime() / 1000;
                 row['timestamp'] = timestampInSec;
@@ -480,10 +480,10 @@ export class FullBlockQuery {
             // fields mapping
             list.forEach(row=>{
                 toIdArr.push(row['to'] ?? 0);
-                row['from'] = fmtAddr(`0x${hex40Map.get(row['from'])}`, this.app?.networkId, verboseAddress);
-                row['to'] = row['to'] ? fmtAddr(`0x${hex40Map.get(row['to'])}`, this.app?.networkId, verboseAddress) : null;
+                row['from'] = fmtAddr(`0x${hex40Map.get(row['from'])}`, StatApp.networkId, verboseAddress);
+                row['to'] = row['to'] ? fmtAddr(`0x${hex40Map.get(row['to'])}`, StatApp.networkId, verboseAddress) : null;
                 if(hex40Map.get(row['contractCreated'])){
-                    row['contractCreated'] = fmtAddr(`0x${hex40Map.get(row['contractCreated'])}`, this.app?.networkId);
+                    row['contractCreated'] = fmtAddr(`0x${hex40Map.get(row['contractCreated'])}`, StatApp.networkId);
                 }
                 if(row['contractCreated'] === 0){
                     row['contractCreated'] = null;
@@ -991,14 +991,11 @@ export async function queryEvmBlockCountInEachEpoch(epochMin: number, epochMax: 
     arr.forEach(row=>{
         ret[row['epoch']] = row['blockCount'] - row['coreCount'];
     })
-    debugRpc && console.log(`debug block mark from DB `, ret);
     return ret;
 }
 
-let debugRpc: Conflux = null;
-
 async function queryBlockByEpochRangeRpc(epochMin: number, epochMax: number) {
-    const rpc = debugRpc || CoreSpaceRpc;
+    const rpc = CoreSpaceRpc;
     if (!rpc) {
         return {}
     }
@@ -1022,20 +1019,5 @@ async function queryBlockByEpochRangeRpc(epochMin: number, epochMax: number) {
         cursor ++;
     }
     await Promise.all(tasks);
-    debugRpc && console.log(`debug block mark from rpc`, ret);
     return ret;
-}
-
-async function main() {
-    const[,,cmd, p1, p2] = process.argv;
-    const cfg = await init();
-    debugRpc = await initCfxSdk(cfg.conflux2);
-    await queryEvmBlockCountInEachEpoch(parseInt(p1), parseInt(p2));
-    await queryBlockByEpochRangeRpc(parseInt(p1), parseInt(p2));
-    await FullBlockExt.sequelize.close();
-}
-
-// node stat/service/FullBlockQuery.js test 11102420  11102440
-if (module == require.main) {
-    main().then()
 }

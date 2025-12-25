@@ -2,12 +2,12 @@ import {Token} from "../model/Token";
 import {TokenQuoteTrack} from "../model/TokenQuoteTrack";
 import {Op} from 'sequelize'
 import {StatApp} from "../StatApp";
-import {format} from "js-conflux-sdk";
+import {Conflux, format} from "js-conflux-sdk";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
-import {ScanApp} from "../../scan-api/service/index";
 import {TokenTool} from "./tool/TokenTool";
 import {formatToBase32} from "../model/HexMap";
 import {CONST} from "./common/constant";
+import {ConfigInstance, QuoteOptions} from "../config/StatConfig";
 
 const lodash = require('lodash');
 const superagent = require('superagent');
@@ -17,20 +17,27 @@ const {abi: abiSwappiPair} = require('./abi/SwappiPair');
 const {abi: abiSwappiRouter} = require('./abi/SwappiRouter');
 const response = 3_000;
 const deadline = 3_000;
+const PEER_URLS = {
+    1029: 'https://www.confluxscan.org',
+    1030: 'https://evm.confluxscan.org',
+};
 
 export class TokenQuoteSync {
-    private readonly app;
+    private config: QuoteOptions;
+    private cfx: Conflux;
+    private readonly tokenTool: TokenTool;
     private tick = -1; // 1 min per tick
 
-    constructor(app: any) {
-        this.app = app;
-        const {config} = this.app;
-        if(CONST.NETWORKS_USDT_ENABLED.includes(StatApp.networkId) && !config.wrappedUSDT) {
-            throw new Error("Wrapped USDT config not found");
+    constructor(cfx: Conflux, config: QuoteOptions) {
+        if(config.enable && (!config.binanceAccessToken || !config.coinMarketCapAccessToken)) {
+            throw new Error(`Token quote service configurations (binanceAccessToken,coinMarketCapAccessToken) should be provided!`);
         }
-        if(CONST.NETWORKS_USDT0_ENABLED.includes(StatApp.networkId) && !config.wrappedUSDT0) {
-            throw new Error("Wrapped USDT0 config not found");
-        }
+
+        this.config = config;
+        this.cfx = cfx;
+        this.tokenTool = new TokenTool(cfx);
+
+        this.schedule().then();
     }
 
     public async query({address, convertSymbol = 'USDT'}) {
@@ -38,7 +45,7 @@ export class TokenQuoteSync {
     }
 
     public async schedule(delay: number = 60_000) {
-        console.log(`schedule token_quote sync with delay: ${delay}`)
+        console.log(`[token_quote]schedule in ${delay/1000}s interval`)
         const that = this
 
         async function repeat() {
@@ -53,10 +60,6 @@ export class TokenQuoteSync {
     }
 
     private async run() {
-        const {
-            app: {config},
-        } = this;
-
         this.tick ++;
 
         const tokenList = await Token.findAll({
@@ -76,27 +79,21 @@ export class TokenQuoteSync {
             raw: true,
         });
 
-        if((config.syncQuote?.interval?.peer) && (this.tick % config.syncQuote.interval.peer === 0)) {
-            await this.pullPrice(tokenList).catch((e) => console.error(`token_quote.fromHk ${e}`));
+        await this.pullPrice(tokenList).catch(e => console.error(`token_quote.fromHk ${e}`));
+        await this.updateByMoonswap().catch(e => console.error(`token_quote.fromMoonswap ${e}`));
+        await this.updateBySwappi().catch(e => console.error(`token_quote.fromSwappi ${e}`));
+
+        // every 10 ticks
+        if (this.tick % 10 === 0) {
+            await this.updateByBN(tokenList).catch(e => console.error(`token_quote.fromBN ${e}`));
         }
 
-        if(config.syncQuote?.interval?.bn && (this.tick % config.syncQuote.interval.bn === 0)) {
-            await this.updateByBN(tokenList).catch((e) => console.error(`token_quote.fromBN ${e}`));
-        }
-        if(config.syncQuote?.interval?.cmc && (this.tick % config.syncQuote.interval.cmc === 0)) {
-            await this.updateByCMC(tokenList).catch((e) => console.error(`token_quote.fromCMC ${e}`));
+        // every 60 ticks
+        if (this.tick % 60 === 0) {
+            await this.updateByCMC(tokenList).catch(e => console.error(`token_quote.fromCMC ${e}`));
         }
 
-        if(StatApp.networkId === 1029 && config.syncQuote?.interval?.moonswap
-            && (this.tick % config.syncQuote.interval.moonswap === 0)) {
-            await this.updateByMoonswap().catch((e) => console.error(`token_quote.fromMoonswap ${e}`));
-        }
-        if(StatApp.networkId === 1030 && config.syncQuote?.interval?.swappi
-            && (this.tick % config.syncQuote.interval.swappi === 0)) {
-            await this.updateBySwappi().catch((e) => console.error(`token_quote.fromSwappi ${e}`));
-        }
-
-        this.tick = this.tick % 3600 === 0 ? 0 : this.tick; // reset tick per hour
+        this.tick = this.tick % 60 === 0 ? 0 : this.tick;
     }
 
     //======================================================================
@@ -117,45 +114,21 @@ export class TokenQuoteSync {
                 src: 'BN',
             };
         });
-        /*const quoteArray = await Promise.all(tokenArray.map(async ({address, bnId}) => {
-            const quote = await this.getFromBN(bnId) || {};
-            return {
-                address,
-                price: quote || null,
-                src: 'BN',
-            };
-        }));*/
+
         await this.upsertQuote(quoteArray);
     }
 
-    private async getFromBN(symbol, convert = 'USDT') {
-        const {
-            app: {config},
-        } = this;
-
-        const resp = await superagent.get('https://api.binance.com/api/v3/ticker/price')
-            .set('X-MBX-APIKEY', config.binanceToken)
-            .timeout({response, deadline})
-            .query({
-                symbol: `${symbol}${convert}`,
-            });
-        return lodash.get(resp, ['body', 'price']);
-    }
-
     private async getFromBNBatch(symbolArray, convert = 'USDT') {
-        const {
-            app: {config},
-        } = this;
-
         symbolArray = [...new Set(symbolArray)];
         const symbols = `[${symbolArray.map(symbol => `"${symbol}${convert}"`).join(",")}]`;
 
         const resp = await superagent.get('https://api.binance.com/api/v3/ticker/price')
-            .set('X-MBX-APIKEY', config.binanceToken)
+            .set('X-MBX-APIKEY', this.config.binanceAccessToken)
             .timeout({response, deadline})
             .query({
                 symbols,
             });
+
         return lodash.get(resp, ['body']);
     }
 
@@ -185,16 +158,13 @@ export class TokenQuoteSync {
                 src: 'CMC',
             };
         });
+
         await this.upsertQuote(quoteArray);
     }
 
     private async getFromCMC(idArray, convert = 'USDT') {
-        const {
-            app: {config},
-        } = this;
-
         const resp = await superagent.get('https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest')
-            .set('X-CMC_PRO_API_KEY', config.marketCapToken)
+            .set('X-CMC_PRO_API_KEY', this.config.coinMarketCapAccessToken)
             .timeout({response, deadline})
             .query({id: idArray.join(','), convert});
         return lodash.mapValues(resp.body.data, (each) => each.quote[convert]);
@@ -202,6 +172,10 @@ export class TokenQuoteSync {
 
     //======================================================================
     private async updateByMoonswap() {
+        if (StatApp.networkId !== 1029) {
+            return;
+        }
+
         // define const
         const ROUTER = 'cfx:acam64yj323zd4t1fhybxh3jsg7hu4012yz9kakxs9';
         const wUSDT = "cfx:acf2rcsh8payyxpg6xj7b0ztswwh81ute60tsw35j7";
@@ -246,11 +220,15 @@ export class TokenQuoteSync {
         const quoteArray = Object.keys(tokenPriceMap).filter(token => !wTokens.has(token))
             .map(token => ({address: token, price: tokenPriceMap[token], src: 'moonswap',
                 quoteUrl: `${quoteUri}${format.address(token, StatApp.networkId)}`}));
+
         await this.upsertQuote(quoteArray);
     }
     //======================================================================
     private async updateBySwappi() {
-        const {cfx} = this.app;
+        if (StatApp.networkId !== 1030) {
+            return;
+        }
+
         // define const
         const FARM_CONTROLLER = '0xca49dbc049fca1916a1e51315b992a0d1eb308e7';
         const ROUTER = '0x62b0873055bf896dd869e172119871ac24aea305';
@@ -261,7 +239,7 @@ export class TokenQuoteSync {
         const wUSDC_EVM = '0x6963efed0ab40f6c3d7bda44a05dcf1437c44372';
         const wCFX_EVM = '0x14b2d3bc65e74dae1030eafd8ac30c533c976a9b';
         const wTokens_EVM = new Set([wBTC_EVM, wETH_EVM, wBNB_EVM, wUSDC_EVM, wCFX_EVM]); // exclude tokens fetching price via binance
-        const contractFarmController = cfx.Contract({address: FARM_CONTROLLER, abi: abiSwappiFarmController});
+        const contractFarmController = this.cfx.Contract({address: FARM_CONTROLLER, abi: abiSwappiFarmController});
         const poolArray = await contractFarmController.getPoolInfo(0);
 
         // collect swap map
@@ -269,7 +247,7 @@ export class TokenQuoteSync {
         const pairArray = [];
         for (const pool of poolArray) {
             const {token: pairAddr} = pool;
-            const contractPair = cfx.Contract({address: pairAddr, abi: abiSwappiPair});
+            const contractPair = this.cfx.Contract({address: pairAddr, abi: abiSwappiPair});
             const token0 = format.hexAddress(await contractPair.token0());
             const token1 = format.hexAddress(await contractPair.token1());
             pairArray.push({pairAddr, token0, token1});
@@ -298,14 +276,21 @@ export class TokenQuoteSync {
         const quoteArray = Object.keys(tokenPriceMap).filter(token => !wTokens_EVM.has(token))
             .map(token => ({address: token, price: tokenPriceMap[token], src: 'swappi',
                 quoteUrl: `${quoteUri}${token}`}));
+
         await this.upsertQuote(quoteArray);
     }
 
     //======================================================================
     private async pullPrice(tokenList) {
-        if(!tokenList?.length) return;
+        const url = PEER_URLS[StatApp.networkId];
+        if (
+            !url ||
+            !tokenList?.length ||
+            !ConfigInstance.serverTag.includes("bj")
+        ) {
+            return;
+        }
 
-        const url = this.getSrcUrl();
         const queryParams = tokenList.map(token => `addressArray=${token['address']}`).join('&');
         const resp = await superagent.get(`${url}/v1/token?${queryParams}`)
             .timeout({response, deadline});
@@ -316,35 +301,20 @@ export class TokenQuoteSync {
             price,
             src: 'HK',
         }));
-        await this.upsertQuote(quoteArray);
-    }
 
-    private getSrcUrl() {
-        switch (StatApp.networkId) {
-            case 1029:
-                return 'https://www.confluxscan.io';
-            case 1:
-                return 'https://testnet.confluxscan.io';
-            case 1030:
-                return 'https://evm.confluxscan.io';
-            case 71:
-                return 'https://evmtestnet.confluxscan.io';
-            default:
-                throw new Error(`pull price at network ${StatApp.networkId} not supported`)
-        }
+        await this.upsertQuote(quoteArray);
     }
 
     //======================================================================
     private async swap(routerAddr, usdtAddr, directSwap, forwardSwap, backwardSwap) {
-        const {cfx, tokenTool} = this.app as ScanApp;
         const tokenPriceMap = {};
 
         // direct swap
         const directConvertTokens = Object.keys(directSwap);
-        const contractRouter = cfx.Contract({address: routerAddr, abi: abiSwappiRouter});
+        const contractRouter = this.cfx.Contract({address: routerAddr, abi: abiSwappiRouter});
         for (const token0 of directConvertTokens) {
             const [amount0, amount1] = await contractRouter.getAmountsOut(100000, [token0, usdtAddr]);
-            const token0Decimals = await getDecimals(tokenTool, token0); // (await tokenTool.getToken(token0)).decimals;
+            const token0Decimals = await getDecimals(this.tokenTool, token0);
             if(amount0 === BigInt(0)) continue
             tokenPriceMap[token0] = BigFixed(amount1).div(BigFixed(amount0)).div(BigFixed(10).pow(18 - token0Decimals))
                 .toNumber();
@@ -356,8 +326,8 @@ export class TokenQuoteSync {
             const {token1} = forwardSwap[token0];
             const ratio1 = await contractRouter.getAmountsOut(100000, [token0, token1]);
             const ratio2 = await contractRouter.getAmountsOut(100000, [token1, usdtAddr]);
-            const token0Decimals = await getDecimals(tokenTool, token0); // (await tokenTool.getToken(token0)).decimals;
-            const token1Decimals = await getDecimals(tokenTool, token1); // (await tokenTool.getToken(token1)).decimals;
+            const token0Decimals = await getDecimals(this.tokenTool, token0);
+            const token1Decimals = await getDecimals(this.tokenTool, token1);
             if(ratio1[0] === BigInt(0) || ratio2[0] === BigInt(0)) continue
             tokenPriceMap[token0] = BigFixed(ratio1[1]).div(BigFixed(ratio1[0])).div(BigFixed(10).pow(token1Decimals - token0Decimals))
                 .mul(BigFixed(ratio2[1]).div(BigFixed(ratio2[0])).div(BigFixed(10).pow(18 - token1Decimals)))
@@ -370,8 +340,8 @@ export class TokenQuoteSync {
             const {token0} = backwardSwap[token1];
             const ratio1 = await contractRouter.getAmountsOut(100000, [token0, token1]);
             const ratio2 = await contractRouter.getAmountsOut(100000, [token0, usdtAddr]);
-            const token0Decimals = await getDecimals(tokenTool, token0); // (await tokenTool.getToken(token0)).decimals;
-            const token1Decimals = await getDecimals(tokenTool, token1); // (await tokenTool.getToken(token1)).decimals;
+            const token0Decimals = await getDecimals(this.tokenTool, token0);
+            const token1Decimals = await getDecimals(this.tokenTool, token1);
             if(ratio1[1] === BigInt(0) || ratio2[0] === BigInt(0)) continue
             tokenPriceMap[token1] = BigFixed(ratio1[0]).div(BigFixed(ratio1[1])).div(BigFixed(10).pow(token0Decimals - token1Decimals))
                 .mul(BigFixed(ratio2[1]).div(BigFixed(ratio2[0])).div(BigFixed(10).pow(18 - token0Decimals)))
@@ -383,16 +353,15 @@ export class TokenQuoteSync {
 
     //======================================================================
     private async upsertQuote(quoteArray) {
-        const {config, tokenTool} = this.app;
-
-        config.wrappedUSDT && quoteArray.push({address: config.wrappedUSDT, price: 1});
-        config.wrappedUSDT0 && quoteArray.push({address: config.wrappedUSDT0, price: 1});
+        const {wrappedUSDT, wrappedUSDT0} = CONST.WRAPPED_TOKENS[StatApp.networkId] || {};
+        wrappedUSDT && quoteArray.push({address: wrappedUSDT, price: 1});
+        wrappedUSDT0 && quoteArray.push({address: wrappedUSDT0, price: 1});
 
         quoteArray.map(async quote => {
             const {address, price, quoteUrl} = quote;
             const base32 = format.address(address, StatApp.networkId);
             const dbToken: Token = await Token.findOne({where: {base32}});
-            const totalSupply = await tokenTool.getTokenTotalSupply(base32);
+            const totalSupply = await this.tokenTool.getTokenTotalSupply(base32);
 
             if (dbToken) {
                 let totalPrice = (price && totalSupply && Number.isInteger(dbToken.decimals))

@@ -27,18 +27,11 @@ export class TokenQuery {
     static wrappedBTCAddr: string;
     static wrappedCFX: Token;
     static wrappedBTC: Token;
-
     private app: any;
 
     constructor(app: any) {
         this.app = app;
-        if(this.app.config.asyncWrappedToken) {
-            if(!this.app.config.wrappedCFX || !this.app.config.wrappedBTC) {
-                throw new Error(`Wrapped CFX/BTC should be config!`);
-            }
-            TokenQuery.wrappedCFXAddr = format.address(this.app.config.wrappedCFX, StatApp.networkId);
-            TokenQuery.wrappedBTCAddr = format.address(this.app.config.wrappedBTC, StatApp.networkId);
-        }
+        this.scheduleWrappedToken().then();
     }
 
     public async query({address}) {
@@ -550,21 +543,31 @@ export class TokenQuery {
         return {hex40id, type};
     }
 
-    public async scheduleWrappedCFX(delay: number = 1000) {
-        console.log(`schedule native token with delay: ${delay}`)
-        const that = this
-
-        async function repeat() {
-            await that.syncWrappedCFX().catch(err => {
-                console.log(`sync native token fail: `, err);
-            });
-            setTimeout(repeat, delay)
+    public async scheduleWrappedToken(delay: number = 1000) {
+        const wrappedTokens = CONST.WRAPPED_TOKENS[StatApp.networkId];
+        if (!wrappedTokens) {
+            console.log('Schedule wrapped token info disabled');
+            return;
         }
 
-        repeat().then()
+        const {wrappedCFX, wrappedBTC} = wrappedTokens || {};
+        TokenQuery.wrappedCFXAddr = format.address(wrappedCFX, StatApp.networkId);
+        TokenQuery.wrappedBTCAddr = format.address(wrappedBTC, StatApp.networkId);
+
+        console.log(`Schedule wrapped token info with delay: ${delay}`);
+        const that = this;
+
+        async function repeat() {
+            await that.syncWrappedToken().catch(err => {
+                console.log(`Schedule wrapped token info fail: `, err);
+            });
+            setTimeout(repeat, delay);
+        }
+
+        repeat().then();
     }
 
-    private async syncWrappedCFX() {
+    private async syncWrappedToken() {
         const tokens: Token[]  = await Token.findAll({
             attributes: {exclude: ['icon']},
             where: {base32: {

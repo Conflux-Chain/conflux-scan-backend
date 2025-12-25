@@ -1,6 +1,5 @@
 const superagent = require('superagent');
 import * as Router from "koa-router";
-const addressSdk = require('js-conflux-sdk/src/util/address')
 import {StatApp} from "../StatApp";
 import {Context} from "koa";
 const proxy = require('koa-proxy');
@@ -9,7 +8,6 @@ import {DailyToken, Token} from "../model/Token";
 import {QueryTypes} from "sequelize";
 import {
     BlockRowMark,
-    buildTxHigherCondition,
     FullBlock,
     FullTransaction, pagingFullBlock,
     pagingFullTx,
@@ -139,7 +137,7 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
     router.get('/devops/db-partition',async (ctx) => {
         const sql = `SELECT TABLE_SCHEMA,TABLE_NAME,PARTITION_NAME,PARTITION_METHOD,PARTITION_EXPRESSION,PARTITION_DESCRIPTION,TABLE_ROWS,CREATE_TIME,UPDATE_TIME
        FROM INFORMATION_SCHEMA.PARTITIONS
-       WHERE PARTITION_NAME is not null and TABLE_SCHEMA = '${statApp.config.databaseRW.instanceName}';`
+       WHERE PARTITION_NAME is not null and TABLE_SCHEMA = '${statApp.config.database.instanceName}';`
         const list = await Hex40Map.sequelize.query(sql,{
             type: QueryTypes.SELECT
         })
@@ -218,11 +216,6 @@ export function addDevopsRouter(router: Router<any, {}>, statApp: StatApp) {
             }
         }
     )
-    router.post('/devops/blacklist', async function (ctx) {
-        const {address, remark} = ctx.request["body"] as any;
-        const result = await statApp.desensitizer.markBlacklist({address, remark});
-        ctx.body = {code: 0, data: result};
-    });
     router.get('/devops/echo', (ctx)=>{
         ctx.body = {
             "headers": ctx.headers,

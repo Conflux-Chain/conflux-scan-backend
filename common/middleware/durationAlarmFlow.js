@@ -1,5 +1,7 @@
 const assert = require('assert');
 const lodash = require('lodash');
+const {ConfigInstance} = require("../../stat/config/StatConfig");
+const {dingMsg} = require("../../stat/monitor/Monitor");
 
 const SEND_COOL_DELTA = 10 * 1000;
 let lastSendTimestamp = 0;
@@ -9,10 +11,6 @@ function durationAlarmFlow(threshold, object = {}) {
   assert(lodash.isPlainObject(object), `object must be plain object, got ${object}`);
 
   return async function (options, next, end) {
-    const {
-      app: { dingTalk },
-    } = this;
-
     const startTimestamp = Date.now();
     let error;
     try {
@@ -26,13 +24,14 @@ function durationAlarmFlow(threshold, object = {}) {
       const sendDelta = endTimestamp - lastSendTimestamp;
 
       if (duration >= threshold && sendDelta > SEND_COOL_DELTA) {
-        dingTalk.sendObject('Method execute too long', {
+        dingMsg(JSON.stringify({
+          title: 'Method execute too long',
           ...object,
           threshold,
           duration,
           options,
           error: error ? lodash.pick(error, ['name', 'message', 'stack']) : undefined,
-        });
+        }), ConfigInstance?.dingTalkToken).then();
 
         lastSendTimestamp = Date.now();
       }

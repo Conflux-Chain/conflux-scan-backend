@@ -6,7 +6,7 @@ import {Epoch} from "../../model/Epoch";
 import {Op} from "sequelize";
 async function init() {
     const config = loadConfig('Prod')
-    let seq = createDB(config.databaseRW)
+    let seq = createDB(config.database)
     await seq.sync({})
     await initModel(seq)
 }

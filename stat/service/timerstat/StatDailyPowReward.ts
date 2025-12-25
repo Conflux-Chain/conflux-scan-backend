@@ -10,9 +10,10 @@ const lodash = require('lodash');
 
 export class StatDailyPowReward extends TimerStat{
 
-    constructor(app: any) {
+    constructor(app: any, interval: number = 1000 * 60 * 10) {
         super(app);
         this.baseInterval = StatType.HOUR;
+        this.schedule(interval).then();
     }
 
     public bizAlias(): string {

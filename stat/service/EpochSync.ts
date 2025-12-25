@@ -60,7 +60,6 @@ export const NAME_TAG_SPLIT = "__,__";
 export class EpochSync extends SyncBase {
     private announcementContract: string
     private addressMetadataContract: string
-    private syncCensorItem: boolean
     private transferTypeMap: object
     private latestVoteParams: VoteParams
     private statOnRealtime: StatOnRealtime
@@ -107,10 +106,6 @@ export class EpochSync extends SyncBase {
                 process.exit(9)
             }
             StatApp.epochCIP1559Enabled = epochCIP1559Enabled
-        }
-
-        if (this.app.config.censorApiKey && this.app.config.censorSecretKey) {
-            this.syncCensorItem = true
         }
     }
 
@@ -282,10 +277,8 @@ export class EpochSync extends SyncBase {
                     updateOnDuplicate: ["epochNumber"]}),
                 NameTag.bulkCreate([...modelData.nameTagArray, ...modelData.bytes32NameTagArray], {transaction: dbTx,
                     updateOnDuplicate: ["eoa", "auditor", "epoch", "nameTag", "website", "desc", "labels", "updatedAt"] as any}),
-
-                this.syncCensorItem ? CensorItem.bulkCreate(modelData.censorItemArray, { transaction: dbTx,
-                        updateOnDuplicate: ["epochNumber", "censorType", "censorStatus", "createdAt", "updatedAt"],})
-                    : undefined as any,
+                CensorItem.bulkCreate(modelData.censorItemArray, { transaction: dbTx,
+                        updateOnDuplicate: ["epochNumber", "censorType", "censorStatus", "createdAt", "updatedAt"],}),
 
                 modelData.addressNfts.replacements.length ? AddressNfts.sequelize.query(`
                     insert into ${T_ADDRESS_NFTS}(addressId, contractId, tokenId, type, value, updatedCursor, 
@@ -895,8 +888,12 @@ export class EpochSync extends SyncBase {
     }
 
     // ------------------------------ text censor -------------------------------
+    get shouldCensor(): boolean {
+        return Boolean(this.app.config?.censor?.enable);
+    }
+
     public getCensorItemArray(txArray: FullTransaction[]) {
-        if (!this.syncCensorItem) {
+        if (!this.shouldCensor) {
             return []
         }
         return txArray.map(tx=>{

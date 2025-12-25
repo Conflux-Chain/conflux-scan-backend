@@ -1,4 +1,4 @@
-import {redirectLog} from "./config/LoggerConfig";
+import {redirectLog} from "./service/tool/LoggerConfig";
 import {loadConfig, NoCoreSpace, StatConfig} from "./config/StatConfig";
 import {autoAddPartition, createDB, initModel} from "./service/DBProvider";
 import {format} from "js-conflux-sdk";
@@ -38,7 +38,7 @@ export async function run() {
     StatApp.networkId = cfx.networkId
     PowSidePosSync.POS_CONTRACT_VERBOSE = format.address(PowSidePosSync.POS_CONTRACT_HEX, cfx.networkId, true)
 
-    let seq = createDB(config.databaseRW)
+    let seq = createDB(config.database)
     await initModel(seq)
     if (config.database?.syncSchema) {
         console.log(`sync model begin...`);

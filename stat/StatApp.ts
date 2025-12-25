@@ -11,7 +11,6 @@ import {ChainWatcher} from "./service/watcher/chain/ChainWatcher";
 import {BatchBalanceWatcher} from "./service/watcher/BatchBalanceWatcher";
 import {TokenQuery} from "./service/TokenQuery";
 import {ContractTraceCreateQuery} from "./service/ContractTraceCreateQuery";
-import {IPFSGatewaySync} from "./service/IPFSGatewaySync";
 import {HomepageDashboard} from "./service/HomepageDashboard";
 import {ContractQuery} from "./service/ContractQuery";
 import {StatsQuery} from "./service/StatsQuery";
@@ -51,7 +50,6 @@ export class StatApp{
     public posQuery: PosQuery
     public tokenQuery: TokenQuery;
     public traceCreateQuery: ContractTraceCreateQuery;
-    public ipfsGatewaySync: IPFSGatewaySync;
     public homepageDashboard: HomepageDashboard;
     public contractQuery: ContractQuery;
     public statsQuery: StatsQuery;
@@ -80,7 +78,7 @@ export class StatApp{
         StatApp.readonly = this.config.database.readonly
         console.log(`conflux network id ${StatApp.networkId}, config:`, this.config.conflux)
         this.tokenTool = new TokenTool(this.cfx);
-        this.sequelize = createDB(this.config.databaseRW);
+        this.sequelize = createDB(this.config.database);
         const {sequelize} = this;
         await Promise.all([
             initModel(sequelize),
@@ -108,7 +106,6 @@ export class StatApp{
         this.posQuery = new PosQuery(this.cfx);
         this.tokenQuery = new TokenQuery(this);
         this.traceCreateQuery = new ContractTraceCreateQuery(this);
-        this.ipfsGatewaySync = new IPFSGatewaySync();
         this.contractQuery = new ContractQuery(this);
         this.statsQuery = new StatsQuery(this);
         this.nftPreviewService = new NFTPreviewService(this);
@@ -117,19 +114,12 @@ export class StatApp{
         this.rankService = new RankService(this)
         this.rankService.repeatUpdateTxnCache(); // scheduleCache
         this.fullBlockQuery = new FullBlockQuery(this);
-        this.ensCheckerQuery = new ENSCheckerQuery(this);
+        this.ensCheckerQuery = new ENSCheckerQuery(this.cfx);
         this.accountQuery = new AccountQuery(this);
         this.statOnRealtime = new StatOnRealtime()
         this.homepageDashboard = new HomepageDashboard(this);
         this.txnQuery = new TxnQuery()
         this.txnSync.scheduleCache()
-        if (this.config.syncIPFSGateway) {
-            IPFSGatewaySync.fastest = await KV.getString(KEY_FASTEST_IPFS_GATEWAY, '');
-            await this.ipfsGatewaySync.schedule(this.config.syncIPFSGatewayDelay);
-        }
-        if(this.config.blacklist) {
-            await this.desensitizer.scheduleRefreshBlacklist();
-        }
         this.txnQuery.scheduleCache().then()
         let fullStateRpc = await KV.getString(KEY_FULL_STATE_RPC, "");
         if (fullStateRpc) {

@@ -3,7 +3,6 @@ import {CONST} from "../../stat/service/common/constant";
 
 const lodash = require('lodash');
 const limitMap = require('limit-map');
-const {fetchEnsMap} = require("../../stat/service/ens/EnsService");
 
 const TOKEN_FIELDS = ['name', 'symbol', 'decimals', 'granularity'];
 
@@ -51,10 +50,8 @@ export class TransferService {
       result = await this._countAndListByTransactionHash(options);
     } else {
         result = await this._countAndListByRdb(options);
-        await fetchEnsMap(result.list,'from','to')
         return result;
     }
-    await fetchEnsMap(result.list,'from','to')
     return result;
   }
 

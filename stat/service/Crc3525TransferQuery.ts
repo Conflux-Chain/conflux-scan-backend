@@ -85,10 +85,10 @@ export class Crc3525TransferQuery extends TransferQueryBase{
     }
     public processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>,
         txMap: Map<string, FullTransaction>): Promise<any>{
-        row['address'] = fmtAddr(`0x${hex40Map.get(row['address'])}`, this.app?.networkId);
+        row['address'] = fmtAddr(`0x${hex40Map.get(row['address'])}`, StatApp.networkId);
         row['transferType'] = CONST.TRANSFER_TYPE.ERC3525;
         if (row['from'] === '' && row['fromId'] == 0) {
-            row['from'] = fmtAddr('0x0000000000000000000000000000000000000000', this.app?.networkId)
+            row['from'] = fmtAddr('0x0000000000000000000000000000000000000000', StatApp.networkId)
         }
         delete row['fromId'];
         return row;

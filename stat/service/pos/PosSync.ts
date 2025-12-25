@@ -1,4 +1,4 @@
-import {redirectLog} from "../../config/LoggerConfig";
+import {redirectLog} from "../tool/LoggerConfig";
 import {Conflux} from "js-conflux-sdk";
 const lodash = require('lodash');
 import {regExitHook, sleep} from "../tool/ProcessTool";

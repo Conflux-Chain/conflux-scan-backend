@@ -1,5 +1,5 @@
 import {Server} from 'http'
-import {redirectLog} from "./config/LoggerConfig";
+import {redirectLog} from "./service/tool/LoggerConfig";
 import {loadConfig, StatConfig} from "./config/StatConfig";
 import {registerConsortiumRouter} from "./router/ConsortiumBridgeRouter";
 import {initCfxSdk} from "./service/common/utils";

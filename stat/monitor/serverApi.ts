@@ -1,7 +1,7 @@
 import * as Router from "koa-router";
 import {StatApp} from "../StatApp";
 import {ConfigInstance} from "../config/StatConfig";
-import {getAppEntryName} from "../config/LoggerConfig";
+import {getAppEntryName} from "../service/tool/LoggerConfig";
 import {IS_EVM2, KV} from "../model/KV";
 
 const Koa = require('koa');

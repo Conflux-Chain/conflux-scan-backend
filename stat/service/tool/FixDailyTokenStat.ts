@@ -30,8 +30,7 @@ export async function init() {
         return configCache
     }
     const config = loadConfig('Prod');
-    // let seq = new Sequelize(config.databaseRW.instanceName, null, null, config.databaseRW as Options);//createDB(config.database)
-    let seq = createDB(config.databaseRW)
+    const seq = createDB(config.database)
     await initModel(seq)
     await seq.sync({})
     configCache = config;

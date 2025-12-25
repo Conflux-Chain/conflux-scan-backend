@@ -28,6 +28,7 @@ export class NFTPreviewService {
     constructor(app: any) {
         this.app = app;
         this.cfx = app.cfx;
+        new IPFSGatewaySync();
     }
 
     public async getNFTInfo ({
@@ -495,7 +496,7 @@ export class NFTPreviewService {
         }
 
         const sysGateway = IPFSGatewaySync.fastest;
-        if (config.syncIPFSGateway && sysGateway) {
+        if (sysGateway) {
             uri = `${sysGateway}/ipfs/${cid}`
         }
 

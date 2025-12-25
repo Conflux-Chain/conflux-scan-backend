@@ -10,9 +10,10 @@ const lodash = require('lodash');
 
 export class StatDailyBlockData extends TimerStat{
 
-    constructor(app: any) {
+    constructor(app: any, interval: number = 1000 * 60) {
         super(app);
         this.baseInterval = StatType.MIN;
+        this.schedule(interval).then();
     }
 
     public bizAlias(): string {

@@ -11,11 +11,13 @@ const BigFixed = require('bigfixed');
 export class StatDailyBurntFee extends TimerStat{
     public cfx: Conflux;
     public suppressFullStateRpcErr: boolean;
-    constructor(app: {cfx: Conflux, suppressFullStateRpcErr: boolean}) {
+
+    constructor(app: {cfx: Conflux, suppressFullStateRpcErr: boolean}, interval: number = 1000 * 60) {
         super(app);
         this.cfx = app.cfx;
         this.suppressFullStateRpcErr = app.suppressFullStateRpcErr;
         this.baseInterval = StatType.HOUR;
+        this.schedule(interval).then();
     }
 
     public bizAlias(): string {

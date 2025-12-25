@@ -10,7 +10,7 @@ export class ChainWatcher{
     private latest_confirmed: number = 0;
     private latest_state: number = 0;
     async watchPivotSwitch({cfxWsUrl}) {
-        if (cfxWsUrl === '') {
+        if (!cfxWsUrl) {
             console.log(`${__filename} cfx websocket not set`)
             return;
         }

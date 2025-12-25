@@ -2,19 +2,16 @@ import {router} from "./router";
 import {ScanServices, serviceLoader} from "./service";
 import {fmtAddr, StatApp} from "../stat/StatApp";
 import {AppBase} from "./AppBase";
-const lodash = require('lodash');
-import { Sequelize } from 'sequelize';
 import {checkRate, loadRateConfig} from "../stat/router/RateLimiter";
 import {setSwStatFn} from "../stat/router/StatRouter";
-import {initPartialModel} from "../stat/service/DBProvider";
 import ApiDef from "../stat/router/ApiDef";
 import {jsonrpc} from "./router/jsonrpc";
 import {saveApiLog} from "../stat/monitor/ApiLog";
-import {EVM_RPC_URL, IS_EVM2, KEY_EVM_VERSIONS, KV} from "../stat/model/KV";
-import {setCfxRpcUrl} from "../koaflow/lib/flow/JsonRPCFlow";
-import {CONST, CONST as CONST_TS} from "../stat/service/common/constant";
+import {KV} from "../stat/model/KV";
 import {format} from "js-conflux-sdk";
+import {StatConfig} from "../stat/config/StatConfig";
 
+const lodash = require('lodash');
 const e2k = require('express-to-koa');
 const swStats = require('swagger-stats');
 const {parameterErrorCode} = require('../common/error')
@@ -22,54 +19,26 @@ const apiSpec = require('../document/api-place-hoder-for-swagger-stat.json');
 
 export class ApiApp extends AppBase {
   service: ScanServices;
-  static injectedSequelize: Sequelize;
-  public networkId: number;
-  static injectContext(seq: Sequelize) {
-    this.injectedSequelize = seq;
-  }
-  constructor(config) {
+
+  constructor(config: StatConfig) {
     super(config);
   }
 
   async init() {
     await super.init();
     this.proxy = true;
-    // networkId
-    this.networkId = this.cfx.networkId;
-    console.log(`================== start api, networkId ${this.cfx.networkId} ==================`);
 
     // db
-    const {config} = this;
-    config[EVM_RPC_URL] = (CONST.CHAIN_INFO[StatApp.networkId] || {})[EVM_RPC_URL];
-    setCfxRpcUrl(config.conflux.url);
-    this.sequelize = ApiApp.injectedSequelize || new Sequelize(config.databaseRW.instanceName, null, null, config.databaseRW);
+    this.sequelize = KV.sequelize;
 
     // type converter
-    this.type.checksumAddress = this.type((v) => format.address(v, this.networkId, true));
+    this.type.checksumAddress = this.type((v) => format.address(v, StatApp.networkId, true));
     this.type.address = (this.type.checksumAddress.$after((v) => format.hexAddress(v))).$or(this.type.hex40);
     this.type.simpleAddress = this.type((v) => fmtAddr(v, StatApp.networkId));
     this.router = router;
 
     this.service = serviceLoader(this);
     this.startLog();
-
-    // stat service
-    if (!ApiApp.injectedSequelize) {
-      await initPartialModel(this.sequelize);
-      if (config.database?.syncSchema) {
-        await this.sequelize.sync({alter: false});
-      } else {
-        console.log(`${new Date().toISOString()} ScanApi skip sync schema`);
-      }
-    }
-
-    // check config
-    const value = await KV.getString(KEY_EVM_VERSIONS, undefined)
-    if(!value) {
-      const defaultVersions = CONST_TS.EVM_VERSION.join(',')
-      await KV.create({key: KEY_EVM_VERSIONS, value: defaultVersions})
-      console.log(`evm versions not set, use default`)
-    }
   }
 
   // wrap error as ParameterError
@@ -95,13 +64,13 @@ export class ApiApp extends AppBase {
     });
   }
 
-  listen(port = undefined) {
+  listen(port) {
     const pathArr = this.router.stack.map((layer) => {
       return layer.path.split('/').map((sec) => {
         return sec.startsWith(':') ? `{${sec.substr(1)}}` : sec;
       }).join('/');
     });
-    const pathDef = process.env['unified_mod'] ? ApiDef.paths : {};
+    const pathDef = ApiDef.paths;
     pathArr.forEach((p) => {
       pathDef[p] = { get: {} };
     });
@@ -128,7 +97,6 @@ export class ApiApp extends AppBase {
       saveApiLog(ctx, ms).catch()
     })
 
-    console.log(`================== /v1 api listen on port ${port || this.config.port} ==================`);
     return super.listen(port);
   }
 
@@ -152,16 +120,16 @@ export class ApiApp extends AppBase {
   }
 
   async start() {
+    console.log(`${new Date().toISOString()}=======start scan api========`);
     await this.init();
-    this.listen();
+    const port = this.config.v1port;
+    this.listen(port);
+    console.log(`${new Date().toISOString()}=======scan api listen on port ${port} network ${StatApp.networkId}========`);
   }
 
   async close() {
-    if (!ApiApp.injectedSequelize) {
-      await KV.sequelize.close();
-    }
     await super.close();
-    console.log('================== close scan api ==================');
+    console.log(`${new Date().toISOString()}=======close scan api========`);
     process.exit(0);
   }
 }

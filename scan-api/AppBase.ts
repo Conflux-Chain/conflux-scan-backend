@@ -1,19 +1,17 @@
 import {TokenTool} from "../stat/service/tool/TokenTool";
 import {initCfxSdk} from "../stat/service/common/utils";
+import {setCfxRpcUrl} from "../koaflow/lib/flow/JsonRPCFlow";
+import {StatConfig} from "../stat/config/StatConfig";
 
-const lodash = require('lodash');
 const koaBodyParser = require('koa-bodyparser');
 const {requestLogger} = require('../koaflow/lib/middleware/requestLogger');
 const TTLMap = require('../common/lib/TTLMap');
-const DingTalkRobot = require('../common/lib/DingTalkRobot');
-const CONST = require('../common/const');
 const error = require('../common/error');
 const tool = require('../common/tool');
 const type = require('../common/type');
 const TraceLog = require('../common/TraceLog');
 const {createLogger} = require("../common/utils");
 const Koa = require('koa');
-
 
 // eslint-disable-next-line no-extend-native
 // @ts-ignore
@@ -22,45 +20,38 @@ BigInt.prototype.toJSON = function () {
 };
 
 export class AppBase extends Koa {
-  public config: any;
+  public config: StatConfig;
+
   constructor(config) {
     super();
-    this.use(koaBodyParser({ enableTypes: ['json', 'form', 'text'] }));
     this.config = config;
+    this.use(koaBodyParser({ enableTypes: ['json', 'form', 'text'] }));
   }
 
   async init() {
     const {config} = this;
-    this.CONST = CONST;
+
     this.error = error;
     this.tool = tool;
     this.type = type;
 
     this.ttlMap = new TTLMap();
-    // console.log(`cwd`, process.cwd()) // it's '/'
-    // In docker container, '/log' is bind to ./log/<api|compiler>
-    this.logger = createLogger('scan', config.SERVICE, `${process.cwd()}/log`, 'info', true);
-    if (config.conflux) {
-      // compiler app doesn't need it
-      this.cfx = await initCfxSdk(config.conflux, 'common-conflux-sdk');
-      this.tokenTool = new TokenTool(this.cfx);
-    }
-    this.dingTalk = new DingTalkRobot(lodash.defaults(config.dingTalk, {
-      machine: config.machine,
-      service: process.env.SERVICE,
-    }));
+    this.logger = createLogger('scan', 'api', `${process.cwd()}/log`, 'info', true);
+    this.cfx = await initCfxSdk(config.conflux, 'common-conflux-sdk');
+    setCfxRpcUrl(config.conflux.url);
+    this.tokenTool = new TokenTool(this.cfx);
 
-    // traceLog
     this.traceLog = new TraceLog();
     this.traceLog.traceModule(this, { level: 'info' });
   }
 
   listen(port) {
-    const {config: {requestLogger: reqLogConf}} = this;
-    const reqLogger = requestLogger(this.logger, this.config.requestLogger);
+    const {config: {requestLogger: reqLoggerCfg}} = this;
+
+    const reqLogger = requestLogger(this.logger, reqLoggerCfg);
     this.use(async function (ctx, next) {
       // use curl localhost:8895/switch-req-log to control it.
-      if (reqLogConf.enable ?? true) {
+      if (reqLoggerCfg.enable ?? true) {
         return reqLogger(ctx, next);
       }
       return next();
@@ -69,7 +60,7 @@ export class AppBase extends Koa {
     if (!this.server) {
       this.use(this.router.routes());
       this.use(this.router.allowedMethods());
-      this.server = super.listen(port || this.config.port);
+      this.server = super.listen(port);
     }
   }
 

@@ -18,15 +18,14 @@ import {HomepageDashboard} from "../stat/service/HomepageDashboard";
 import {RankService} from "../stat/service/RankService";
 import {NFTPreviewService} from "../stat/service/nftchecker/NFTPreviewService";
 import {NFTCheckerService} from "../stat/service/nftchecker/NFTCheckerService";
-import {IS_EVM2, KEY_FASTEST_IPFS_GATEWAY, KV} from "../stat/model/KV";
+import {IS_EVM2, KV} from "../stat/model/KV";
 import {Metrics} from "./common/Metrics";
 import {CONST} from "../stat/service/common/constant"
 import {AccountTransferQuery} from "../stat/service/AccountTransferQuery";
 import {getVipInfo, initWeb3payVipClient} from "web3pay-sdk-js/lib/rpc";
-import {IPFSGatewaySync} from "../stat/service/IPFSGatewaySync";
 import {ENSCheckerQuery} from "../stat/service/ens/ENSCheckerQuery";
 import {AccountQuery} from "../stat/service/AccountQuery";
-import {redirectLog} from "../stat/config/LoggerConfig";
+import {redirectLog} from "../stat/service/tool/LoggerConfig";
 import {regExitHook} from "../stat/service/tool/ProcessTool";
 import {initRateLimiters} from "../stat/router/RateLimiter";
 import {checkTest} from "./test/TestCase";
@@ -42,7 +41,6 @@ const Koa = require('koa');
 const app = new Koa();
 const {createLogger} = require('../common/utils.js');
 
-const config = loadConfig('Prod')
 let apiService: ApiService
 export function getApiService() {
     return apiService
@@ -65,14 +63,12 @@ export class ApiService {
     nftPreviewService: NFTPreviewService;
     ensCheckerQuery: ENSCheckerQuery;
     accountQuery: AccountQuery;
-    ipfsGatewaySync: IPFSGatewaySync;
     txnQuery: TxnQuery;
     txnSync: TxnSync;
     traceCreateQuery: ContractTraceCreateQuery;
     balanceService: BalanceService;
     cfx: Conflux;
     eth;
-    jsonRpc;
     logger: any
     moduleSet: Set<string>;
     actionSet: Set<string>;
@@ -82,35 +78,31 @@ export class ApiService {
 
 export class ApiServer {
     config: StatConfig
-    cfx: Conflux;
-    eth;
 
     constructor() {
-        this.config = config
+        this.config = loadConfig('Prod');
     }
 
     public async init() {
-        let logger = createLogger('apiServer', 'open-api', './log/open-api', 'info');
-        console.log(`-------- start api server, port ${config.apiPort} --------`)
+        const config = this.config;
+        const logger = createLogger('apiServer', 'open-api', './log/open-api', 'info');
+        console.log(`-------- start api server, port ${config.apiPort} --------`);
 
-        this.cfx = await initCfxSdk(config.conflux);
-        this.eth = initEthSdk(config.ether?.url)
-        StatApp.networkId = this.cfx.networkId;
+        const cfx = await initCfxSdk(config.conflux);
+        const eth = initEthSdk(config.ether?.url)
+        StatApp.networkId = cfx.networkId;
 
         StatApp.readonly = config.database.readonly
-        const sequelize = createDB(config.databaseRW)
+        const sequelize = createDB(config.database)
         await initModel(sequelize)
         await sequelize.sync({})
 
         await initRateLimiters();
 
         StatApp.isEVM = await KV.getSwitch(IS_EVM2);
-        if (StatApp.isEVM) {
-            // evm open api will access wrapped cfx in token list
-            this.config.asyncWrappedToken = true
-        }
+
         apiService = new ApiService()
-        const apiApp = {networkId: this.cfx.networkId, cfx: this.cfx, service: apiService, config: this.config};
+        const apiApp = {networkId: cfx.networkId, cfx, service: apiService, config};
         apiService.fullBlockQuery = new FullBlockQuery(apiApp)
         apiService.crc20transferQuery = new Crc20TransferQuery(apiApp)
         apiService.cfxTransferQuery = new CfxTransferQuery(apiApp)
@@ -123,34 +115,28 @@ export class ApiServer {
         apiService.homepageDashboard = new HomepageDashboard(apiApp);
         apiService.nftCheckerService = new NFTCheckerService(apiApp);
         apiService.nftPreviewService = new NFTPreviewService(apiApp);
-        apiService.ensCheckerQuery = new ENSCheckerQuery(apiApp);
+        apiService.ensCheckerQuery = new ENSCheckerQuery(cfx);
         const accountQuery = new AccountQuery(apiApp);
         apiService.accountQuery = accountQuery;
-        const tokenTool = new TokenTool(this.cfx)
+        const tokenTool = new TokenTool(cfx)
         apiService.tokenTool = tokenTool
         apiService.tokenQuery = new TokenQuery(apiApp)
-        apiService.contractQuery = new ContractQuery({cfx: this.cfx, config: this.config,
-            tokenQuery: apiService.tokenQuery, tokenTool})
-        apiService.ipfsGatewaySync = new IPFSGatewaySync();
+        apiService.contractQuery = new ContractQuery({cfx, config, tokenQuery: apiService.tokenQuery, tokenTool})
         apiService.txnQuery = new TxnQuery()
-        apiService.txnSync = new TxnSync({cfx: this.cfx, accountQuery})
-        apiService.traceCreateQuery = new ContractTraceCreateQuery({cfx: this.cfx});
+        apiService.txnSync = new TxnSync({cfx, accountQuery})
+        apiService.traceCreateQuery = new ContractTraceCreateQuery({cfx});
         apiService.balanceService = new BalanceService(this, StatApp.networkId)
-        apiService.cfx = this.cfx;
-        apiService.eth = this.eth;
+        apiService.cfx = cfx;
+        apiService.eth = eth;
         apiService.logger = logger;
-        this.initModule();
-        await this.initMetrics(apiService);
 
-        let utilContract = await BatchBalanceWatcher.getUtilContractAddr();
+        this.initModule();
+        await this.initMetrics(apiService, config.influxDB);
+
+        const utilContract = await BatchBalanceWatcher.getUtilContractAddr();
         console.log(` util contract ${utilContract}`)
-        new BatchBalanceWatcher(this.cfx, utilContract)
+        new BatchBalanceWatcher(cfx, utilContract)
         await apiService.txnQuery.scheduleCache()
-        config.asyncWrappedToken && (await apiService.tokenQuery.scheduleWrappedCFX());
-        if(config.syncIPFSGateway) {
-            IPFSGatewaySync.fastest = await KV.getString(KEY_FASTEST_IPFS_GATEWAY, '');
-            await apiService.ipfsGatewaySync.schedule(config.syncIPFSGatewayDelay);
-        }
     }
 
     private initModule(){
@@ -162,18 +148,17 @@ export class ApiServer {
         });
     }
 
-    private async initMetrics(apiService: ApiService){
-        apiService.metrics = new Metrics(config);
+    private async initMetrics(apiService: ApiService, influxDB){
+        apiService.metrics = new Metrics(influxDB);
         return apiService.metrics.init();
     }
 }
-async function initBilling(config: StatConfig) {
-    const billingApp = config.billingApp;
+async function initBilling(billingApp: string, etherRpcUrl: string) {
     if (!billingApp) {
         console.log(`billing app not set`)
         return
     }
-    await initWeb3payVipClient(config.ether.url, billingApp,);
+    await initWeb3payVipClient(etherRpcUrl, billingApp,);
     console.log(`using billing app ${billingApp}, now test...`)
     try {
         const result = await getVipInfo(billingApp)
@@ -184,18 +169,19 @@ async function initBilling(config: StatConfig) {
 }
 export function initApiServer() {
     regExitHook();
-    redirectLog({mainPath:'OpenApi'})
+    redirectLog({mainPath: 'OpenApi'})
     const apiServer = new ApiServer();
-    const port = process.env.API_PORT || apiServer.config.apiPort || 9527;
-    apiServer.init().then(()=>{
+    const {apiPort, serverTag, billingApp, ether, influxDB} = apiServer.config;
+    const port = process.env.API_PORT || apiPort || 9527;
+    apiServer.init().then(() => {
         return register(app, apiServer, port)
-    }).then(()=>{
-        return initBilling(apiServer.config)
-    }).then(()=>{
+    }).then(() => {
+        return initBilling(billingApp, ether.url)
+    }).then(() => {
         return checkTest();
-    }).then(()=>{
-        repeatHeartBeat(KEY_OPEN_API+apiServer.config.serverTag+port)
-        scheduleSwaggerReporter(apiServer.config, port, 'OpenApi', 'open/swagger-stats').then();
+    }).then(() => {
+        repeatHeartBeat(KEY_OPEN_API + serverTag + port)
+        scheduleSwaggerReporter(influxDB, port, 'OpenApi', 'open/swagger-stats').then();
         app.listen(port)
         console.log(`/open api server listen at ${port}`)
     })

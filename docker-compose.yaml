@@ -20,14 +20,6 @@ services:
       - ./stat/config/Prod.js:/scan/stat/config/Prod.js
       - ./log:/scan/log
       - ./cache:/scan/cache
-  compiler:
-    image: scan:latest
-    command: npm run compiler
-    restart: unless-stopped
-    network_mode: host
-    volumes:
-      - ./log/compiler:/scan/log
-      - ./cache:/scan/cache
   block:
     image: scan:latest
     command: npm run block

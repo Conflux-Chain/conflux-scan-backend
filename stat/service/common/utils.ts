@@ -5,7 +5,6 @@ import {ConfluxOption} from "../../config/StatConfig";
 import {networkInterfaces} from 'os';
 import {ethers} from "ethers";
 import {ConsortiumConflux} from "./ConsortiumConflux";
-import {KEY_EVM_VERSIONS, KV} from "../../model/KV";
 import {useFastFormat} from "./fastFormatter";
 import {CONST} from "./constant";
 import {keccak256} from "ethers/lib/utils";
@@ -518,18 +517,16 @@ export function checkLibrary(libMap) {
     return libraries;
 }
 
-export async function checkEVMVersion(evmVersion) {
-    if(!evmVersion) {
+export async function checkEVMVersion(version: string, set: string[]) {
+    if(!version) {
         return undefined
     }
 
-    const value = await KV.getString(KEY_EVM_VERSIONS, '')
-    const evmVersions = value.split(',')
-    if(!lodash.includes(evmVersions, evmVersion)) {
-        throw new Error(`EVM version ${evmVersion} not supported`)
+    if(!lodash.includes(set, version)) {
+        throw new Error(`EVM version ${version} not supported`)
     }
 
-    return evmVersion
+    return version
 }
 
 export function checkLicense(licenseType) {

@@ -6,7 +6,7 @@ import {CONST} from "../../stat/service/common/constant"
 const { cfxUrls, ethUrls } = require('./ApiUrl');
 
 export class Metrics {
-    private readonly config: any;
+    private readonly influxDB: any;
     private readonly metricsEnv: string;
     private metricMapping = new Map();
     private reporter: InfluxMetricReporter;
@@ -20,9 +20,11 @@ export class Metrics {
      * @param config
      *      system config
      */
-    constructor(config: any) {
-        this.config = config;
-        this.metricsEnv = config.metricsEnv;
+    constructor(influxDB: any, envTag: string = "") {
+        this.influxDB = influxDB;
+        if(envTag) {
+            this.metricsEnv = envTag;
+        }
     }
 
     public async init(){
@@ -71,11 +73,11 @@ export class Metrics {
     }
 
     private async initReport(){
-        if (!this.config.influxDB) {
+        if (!this.influxDB) {
             console.log(`InfluxDB is not configured, metrics won't work.`)
             return;
         }
-        const {host, database, username, password, disable, protocol, port} = this.config.influxDB;
+        const {host, database, username, password, disable, protocol, port} = this.influxDB;
         if (disable) {
             return;
         }

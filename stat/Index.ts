@@ -1,4 +1,4 @@
-import {redirectLog} from "./config/LoggerConfig";
+import {redirectLog} from "./service/tool/LoggerConfig";
 import {StatApp} from "./StatApp";
 import {loadConfig} from "./config/StatConfig";
 import {register} from "./router/StatRouter";
@@ -9,18 +9,19 @@ import {saveApiLog} from "./monitor/ApiLog";
 import {KEY_STAT, repeatHeartBeat} from "./model/HeartBeat";
 
 const Koa = require('koa');
-const app = new Koa();
 const serve = require('koa-static');
-// __dirname is conflux-scan-statistics/stat/dist
-const public_dir = __dirname + '/../public'; // prefix 'stat' is configured through nginx and koa router.
-app.use(serve(public_dir, {maxage: 1000*10})); // maxage in ms.
 const path = require('path')
-// app.use(serve('.'));
+
+const public_dir = __dirname + '/../public'; // prefix 'stat' is configured through nginx and koa router.
+const app = new Koa();
+app.use(serve(public_dir, {maxage: 1000*10})); // maxage in ms.
 
 export async function init() {
+    console.log(`${new Date().toISOString()}=======start scan stat=======`)
+    console.log(`serve static file at ${path.resolve(public_dir)}`)
+
     redirectLog({mainPath:'stat'})
     app.use(proxyPath)
-// x-response-time
     app.use(async (ctx, next) => {
         const start = Date.now();
         await next();
@@ -29,16 +30,18 @@ export async function init() {
         ctx.set('X-Response-Time', `${ms}ms`);
     });
 
-    console.log(`${new Date().toISOString()}=======start stat app=======`)
-    console.log(`serve static file at ${path.resolve(public_dir)}`)
-
-    const config = loadConfig('Prod')
+    const config = loadConfig('Prod');
     const statApp = new StatApp(config);
     await statApp.init();
-    repeatHeartBeat(`${KEY_STAT}_${config.serverTag}`)
-    register(app, statApp)
-    const server = app.listen(config.port || 8087);
+
+    register(app, statApp);
+    const port = config.port || 8087;
+    const server = app.listen(port);
+
     regProcessHook(server)
+    repeatHeartBeat(`${KEY_STAT}_${config.serverTag}`)
+
+    console.log(`${new Date().toISOString()}=======scan stat listen on port ${port} network ${StatApp.networkId}=======`);
     return statApp;
 }
 
@@ -48,7 +51,7 @@ function exitOnSignal(server: Server) {
         // stop service
         server.close()
         await KV.sequelize.close()
-        console.log(`server shutdown.`)
+        console.log(`${new Date().toISOString()}=======close scan stat=======`);
         process.exit(0)
     }
 }

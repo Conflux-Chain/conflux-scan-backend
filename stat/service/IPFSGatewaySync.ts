@@ -22,7 +22,13 @@ export class IPFSGatewaySync {
   private stuckGateway: StuckChecker;
 
   constructor() {
+    this.init().then();
     this.stuckGateway = new StuckChecker(`detect-ipfs-gateway`, 10);
+  }
+
+  private async init() {
+    IPFSGatewaySync.fastest = await KV.getString(KEY_FASTEST_IPFS_GATEWAY, '');
+    await this.schedule();
   }
 
   public static tmplFromGateway(userGateway) {
@@ -161,7 +167,6 @@ export class IPFSGatewaySync {
     const fastest = data?.gateway;
 
     if(!fastest) {
-      console.log(`no ipfs gateway available!`);
       return;
     }
 
