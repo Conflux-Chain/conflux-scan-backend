@@ -8,7 +8,7 @@ import {init} from "../tool/FixDailyTokenStat";
 import {CfxTransfer} from "../../model/CfxTransfer";
 import {makeIdV} from "../../model/HexMap";
 import {buildMinMaxTimestampFilter, mustBeIntParamIfPresent} from "../common/utils";
-import {paginateCoreStat} from "../../router/ParamChecker";
+import {LIMIT_MAX_STAT, paginateCoreStat} from "../../router/ParamChecker";
 
 const lodash = require('lodash');
 
@@ -138,7 +138,7 @@ export async function fetchDailyStatMix(biz: BIZ, ctx:any, dayCondition:Date = n
 }
 export function limitListOnBody(ctx: any) {
     mustBeIntParamIfPresent(ctx.request.query, 'limit');
-    const {limit} = paginateCoreStat(ctx.request.query);
+    const {limit} = paginateCoreStat(ctx.request.query, {limit: LIMIT_MAX_STAT, limitMax: LIMIT_MAX_STAT});
 
     let list = ctx.body.list;
     ctx.body.list = !list?.length ? list : lodash.orderBy(list, ['day', 'statDay'], ['desc', 'desc']);
