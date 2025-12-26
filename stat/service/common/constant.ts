@@ -403,6 +403,8 @@ export const CONST = {
 
   NETWORKS_USDT0_ENABLED: [1030],
 
+  NETWORKS_CORE_SPACE: [1029, 1, 8888, 6666],
+
   CHAIN_INFO: {
     '1029': {      isEvm: false,      EPOCH_CIP1559: 101900000,
       C_ANNOUNCE: '0x81bbe80b1282387e19d7e1a57476869081c7d965',
@@ -440,6 +442,8 @@ export const CONST = {
     "1030_ALL_OTHER_SPACE": [1029, 1, 71],
     "1": [71],
     "71": [1],
+    "1_ALL_OTHER_SPACE": [71, 1029, 1030],
+    "71_ALL_OTHER_SPACE": [1, 1029, 1030],
     "6666": [6667],
     "6667": [6666],
     "8888": [8889],

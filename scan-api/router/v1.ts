@@ -684,7 +684,7 @@ router_post(router, '/contract/verify',
     tags: ['contract'],
     input: {
       address: { type: 'string', required: true },
-      name: { type: 'string', description: 'name in contract file' },
+      name: { type: 'string', description: 'name in contract file', default: ':' },
       codeFormat: { type: 'string', description: 'contract code format' },
       sourceCode: { type: 'string', description: 'contract source code' },
       compiler: { type: 'string', description: 'compiler version' },
@@ -740,7 +740,7 @@ router_post(router, '/contract/verify/cross-space',
       tags: ['contract'],
       input: {
         address: { type: 'string', required: true },
-        includeTestnet: { type: 'boolean', default: false },
+        includeAllOtherSpace: { type: 'boolean', default: false },
       },
       output: {
         200: {

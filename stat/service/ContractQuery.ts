@@ -287,7 +287,7 @@ export class ContractQuery {
             return local;
         }
 
-        const fields = `?fields=compilation${withDetail ? ',stdJsonInput,abi' : ''}`;
+        const fields = `?fields=compilation${withDetail ? ',stdJsonInput,abi,creationBytecode.transformationValues' : ''}`;
         const resp = await this._getJsonRequest({
             url: `${this.app.config.contractVerificationUrl}/contract/${StatApp.networkId}/${hex}${fields}`
         });
@@ -296,7 +296,7 @@ export class ContractQuery {
         }
 
         const {address, match, abi, compilation, stdJsonInput, licenseType, contractLabel, similarMatchChainId,
-            similarMatchAddress} = resp.data;
+            similarMatchAddress, creationBytecode} = resp.data;
         if (!match) {
             return null;
         }
@@ -345,11 +345,11 @@ export class ContractQuery {
             language: language.toLowerCase(),
             version: compilerVersion,
             evmVersion: compilerSettings?.evmVersion ? compilerSettings.evmVersion : "Default",
-            optimization: language === 'Vyper' ? compilerSettings?.optimize : (compilerSettings?.optimizer?.enabled ? '1' : '0'),
+            optimization: language === 'Vyper' ? (compilerSettings?.optimize || '0') : (compilerSettings?.optimizer?.enabled ? '1' : '0'),
             runs: compilerSettings?.optimizer?.runs,
             libraries: compilerSettings?.libraries,
             license: CONST.CONTRACT_LICENSE[licenseType || 1].code,
-            constructorArgs: '',
+            constructorArgs: similarMatchChainId ? undefined : creationBytecode.transformationValues?.constructorArguments,
             similarMatchChainId,
             similarMatchAddress,
         };
@@ -749,6 +749,7 @@ export class ContractQuery {
                 name: contractName,
                 path: contractPath,
             },
+            constructorArguments,
             creationTransactionHash: trace?.txHash,
             licenseType,
             contractLabel,
@@ -785,6 +786,7 @@ export class ContractQuery {
                 stdJsonInput: input.jsonInput,
                 compilerVersion: input.compilerVersion,
                 contractIdentifier: `${input.compilationTarget.path}:${input.compilationTarget.name}`,
+                constructorArguments: input.constructorArguments,
                 creationTransactionHash: input.creationTransactionHash,
                 licenseType: input.licenseType,
                 contractLabel: input.contractLabel,
@@ -1203,6 +1205,7 @@ export interface VerifyFromJsonInput {
     jsonInput: SolidityJsonInput | VyperJsonInput;
     compilerVersion: string;
     compilationTarget: CompilationTarget;
+    constructorArguments?: string;
     creationTransactionHash?: string;
     licenseType: number;
     contractLabel: string;

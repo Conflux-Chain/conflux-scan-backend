@@ -420,7 +420,7 @@ export const jsonrpc_verifyCrossSpace = jsonrpc.method_('verifyCrossChain',
     serializeByIP(),
     buildFlow((app) => parameter({
         address: { path: '0', type: app.type.address, required: true },
-        includeTestnet: { path: '0', type: type.bool },
+        includeAllOtherSpace: { path: '0', type: type.bool },
     })),
 
     cacheFlow(5 * 1000),

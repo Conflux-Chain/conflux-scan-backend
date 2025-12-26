@@ -4,6 +4,7 @@ import {sleep} from "../../stat/service/tool/ProcessTool";
 import {fmtAddr, StatApp} from "../../stat/StatApp";
 import {CONST} from "../../stat/service/common/constant";
 import {HomepageDashboard} from "../../stat/service/HomepageDashboard";
+import {ethers} from "ethers";
 
 const lodash = require('lodash');
 const {format} = require('js-conflux-sdk');
@@ -39,8 +40,9 @@ export class ContractService {
       verify = lodash.assign(verified, {
         exactMatch: true,
         optimization: parseInt(verified.optimization), // N/A|1|0|gas|codesize|none
+        similarMatchAddress: this.formatSimilarMatchAddress(verified.similarMatchAddress, verified.similarMatchChainId),
         similarMatchNetworkId: verified.similarMatchChainId,
-        crossSpace: StatApp.networkId !== verified.similarMatchChainId,
+        crossSpace: Boolean(verified.similarMatchChainId && StatApp.networkId !== verified.similarMatchChainId),
       });
       delete verify.similarMatchChainId;
       proxy = lodash.pick(verified, ['proxy', 'proxyPattern']);
@@ -93,18 +95,6 @@ export class ContractService {
     return list
   }
 
-  convertZeroAddressToNullStr(sponsor) {
-    if (sponsor && sponsor.sponsorForCollateral
-      && sponsor.sponsorForCollateral.indexOf(':AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA') > 0) {
-      sponsor.sponsorForCollateral = '';
-    }
-    if (sponsor && sponsor.sponsorForGas
-      && sponsor.sponsorForGas.indexOf(':AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA') > 0) {
-      sponsor.sponsorForGas = '';
-    }
-    return sponsor;
-  }
-
   async verifySourcecode(params) {
     const {
       app: {service}
@@ -117,6 +107,10 @@ export class ContractService {
         result[`libraryAddress${i}`] = params[`libraryAddress${i}`];
       }
       return result;
+    }
+
+    if (!params.codeFormat) {
+      params.codeFormat = CONST.CONTRACT_CODE_FORMAT_INFO.SOLIDITY_SINGLE_FILE.code;
     }
 
     console.log(`request verifySourcecode ==\n`, {
@@ -151,17 +145,17 @@ export class ContractService {
     return this.getVerificationResult(params.address, submit.verificationId);
   }
 
-  public async verifyCrossSpace(params) {
+  async verifyCrossSpace(params) {
     const {
       app: {service}
     } = this as ScanCtx;
 
-    const key = params.includeTestnet ? `${StatApp.networkId}_ALL_OTHER_SPACE` : StatApp.networkId;
+    const key = params.includeAllOtherSpace ? `${StatApp.networkId}_ALL_OTHER_SPACE` : StatApp.networkId;
     const linkChainIds = CONST.CHAINS_CROSS_SPACE_VERIFY[key];
 
     console.log(`request verifyCrossSpace ==\n`, {
       address: params.address,
-      includeTestnet: params.includeTestnet,
+      includeAllOtherSpace: params.includeAllOtherSpace,
       linkChainIds,
     });
 
@@ -189,10 +183,10 @@ export class ContractService {
     const result = await service.contractQuery.getVerificationResult(verificationId);
 
     if (result.error?.includes("contract_not_deployed")) {
-      result.error = `Error! Unable to locate Contract Code at ${fmtAddr(address, StatApp.networkId)}\nIs this a valid Contract Address ?`
+      result.error = `contract_not_deployed`
     }
     if (result.error?.includes("no_similar_match_found")) {
-      result.error = `Error! Unable to verify source code\nNo similar match found`
+      result.error = `no_similar_match_found`
     }
 
     return {
@@ -202,7 +196,7 @@ export class ContractService {
     };
   }
 
-  async resolveEIP1167(address) {
+  private async resolveEIP1167(address) {
     const {
       app: {cfx, service}
     } = this
@@ -228,6 +222,34 @@ export class ContractService {
       },
       verified,
     }
+  }
+
+  private convertZeroAddressToNullStr(sponsor) {
+    if (sponsor && sponsor.sponsorForCollateral
+        && sponsor.sponsorForCollateral.indexOf(':AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA') > 0) {
+      sponsor.sponsorForCollateral = '';
+    }
+    if (sponsor && sponsor.sponsorForGas
+        && sponsor.sponsorForGas.indexOf(':AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA') > 0) {
+      sponsor.sponsorForGas = '';
+    }
+    return sponsor;
+  }
+
+  private formatSimilarMatchAddress(hex: string, networkId: number) {
+    if (!hex) {
+      return hex;
+    }
+
+    if (CONST.NETWORKS_CORE_SPACE.includes(networkId)) {
+      return format.address(hex, networkId);
+    }
+
+    if (hex.includes(":")) {
+      hex = format.hexAddress(hex);
+    }
+
+    return ethers.utils.getAddress(hex);
   }
 }
 

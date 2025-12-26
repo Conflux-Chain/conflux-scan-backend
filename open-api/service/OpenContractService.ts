@@ -1,11 +1,12 @@
 import {getApiService} from "../ApiServer";
 import {fixIconUrl} from "./OpenAccountService";
-import {StatApp} from "../../stat/StatApp";
+import {fmtAddr, StatApp} from "../../stat/StatApp";
 import {format} from "js-conflux-sdk";
 import {
     checkPresent,
     mustBeAddressArrayParamIfPresent,
-    mustBeAddressParamIfPresent
+    mustBeAddressParamIfPresent,
+    splitFullyQualifiedName
 } from "../../stat/service/common/utils";
 import {setBody} from "../router/middleware";
 import {FullTransaction} from "../../stat/model/FullBlock";
@@ -120,21 +121,26 @@ export async function getSourceCode(ctx) {
         sourceCode = `{${sourceCode}}`
     }
 
+    const {contractPath, contractName} = splitFullyQualifiedName(contract.name);
+
     const contractItem = lodash.defaults({}, {
         SourceCode: sourceCode,
-        ContractName: contract.name,
+        ContractName: contractName,
         ABI: contract.abi,
         CompilerVersion: contract.version,
         EVMVersion: contract.evmVersion,
         OptimizationUsed: contract.optimization,
         Runs: contract?.runs?.toString(), // return string for openapi
         Library: "",
+        ContractFileName: contractPath,
         LicenseType: contract.license,
         ConstructorArguments: contract.constructorArgs,
         Proxy: contract.proxy ? '1' : '0',
         Implementation: impl,
         SwarmSource: "",
+        SimilarMatch: StatApp.networkId === contract.similarMatchChainId ? fmtAddr(contract.similarMatchAddress, StatApp.networkId) : "",
     });
+
     setBody(ctx, [contractItem])
 }
 
