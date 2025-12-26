@@ -37,7 +37,7 @@ import {limitListOnBody} from "../service/pos/PosStat";
 import {checkRate, getClientIP, loadRateConfig} from "./RateLimiter";
 import {Errors} from "../service/common/LogicError";
 import {RateLimiterMemory} from "rate-limiter-flexible";
-import {paginateCore, paginateCoreStat} from "./ParamChecker";
+import {LIMIT_MAX_STAT, paginateCore, paginateCoreStat} from "./ParamChecker";
 import * as bodyParser from "koa-bodyparser";
 import {NoCoreSpace} from "../config/StatConfig";
 import {AbiInfo, parseAbiStr, saveAbiInfo} from "../model/ContractInfo";
@@ -80,7 +80,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
 
     router.get('/tokens/daily-token-txn', async (ctx)=>{
         mustBeIntParamIfPresent(ctx.request.query, 'limit');
-        const {limit} = paginateCoreStat(ctx.request.query);
+        const {limit} = paginateCoreStat(ctx.request.query, {limit: LIMIT_MAX_STAT, limitMax: LIMIT_MAX_STAT});
 
         const sql = `select day, max(updatedAt) as updatedAt, sum(txnCount) as txnCount,
                 sum(userCount) as userCount
@@ -611,7 +611,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     router.get('/contract/stat/list', async (ctx)=>{
         mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address');
         mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
-        const {skip, limit} = paginateCoreStat(ctx.request.query, {skipMax: undefined});
+        const {skip, limit} = paginateCoreStat(ctx.request.query, {limit: LIMIT_MAX_STAT, limitMax: LIMIT_MAX_STAT, skipMax: undefined});
 
         const {address} = ctx.request.query
         ctx.body = await statApp.statsQuery.listDailyContractTransferStat({address, skip, limit, sort: 'desc'});
