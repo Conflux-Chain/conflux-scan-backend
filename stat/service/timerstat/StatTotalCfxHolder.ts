@@ -1,7 +1,7 @@
-import {Op} from 'sequelize'
+import {QueryTypes} from 'sequelize'
 import {CfxBalance} from "../../model/Balance";
 import {DailyCfxHolder} from "../../model/DailyCfxHolder";
-import {CfxTransfer} from "../../model/CfxTransfer";
+import {EpochHashCfxTransfer} from "../../CfxTransferSync";
 import {StatType, TimerStat} from "./TimerStat";
 
 export class StatTotalCfxHolder extends TimerStat{
@@ -25,12 +25,15 @@ export class StatTotalCfxHolder extends TimerStat{
     }
 
     public async firstEpochAfterRangeEnd(rangeEnd): Promise<number> {
-        return CfxTransfer.findOne({
-            attributes:['epoch'],
-            where: {createdAt: {[Op.gte]: rangeEnd}},
-            order:[['createdAt', 'asc']],
-            limit: 1
-        }).then(item => item?.epoch);
+        return EpochHashCfxTransfer.sequelize.query(
+            "select epoch from epoch_hash_cfx_transfer where createdAt >= ? order by createdAt asc limit 1",
+            {
+                type: QueryTypes.SELECT,
+                replacements: [rangeEnd],
+            }
+        ).then((item: any) => {
+            return item?.length ? item[0].epoch : undefined;
+        });
     }
 
     public async stat(rangeBegin: Date, rangeEnd: Date) {
