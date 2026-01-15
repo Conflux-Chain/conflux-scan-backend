@@ -153,7 +153,7 @@ export const jsonrpc_frontend = jsonrpc.method_('frontend',
             frontedConfig.contracts = contracts.filter(c=>c.key === 'announcement');
         }
       let {from, to} = {from: '.org', to: '.net'};
-      if (refHost?.includes('.org/') || refHost?.endsWith('.org') ) {
+      if (refHost?.includes('.org/') || refHost?.endsWith('.org') || refHost?.startsWith('http://localhost:')) {
         from = '.net'; to = '.org';
       }
       for (const kv of [KEY_OPEN_API_URL, KEY_CORE_OPEN_API_URL, KEY_CONFURA_URL, KEY_CORE_API_URL, EVM_RPC_URL]) {
