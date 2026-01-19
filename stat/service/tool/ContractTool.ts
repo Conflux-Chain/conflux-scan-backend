@@ -27,8 +27,12 @@ StatApp.networkId = Number(args[0])
 const type = Number(args[1])
 let lastId = -1
 let url
+let compiler
 if(type === 2 && args[2] !== undefined) {
     lastId = Number(args[2])
+}
+if(type === 3) {
+    compiler = args[2]
 }
 if(type ===4) {
     // evm space: https://evmapi.confluxscan.net/api?module=contract&action=getabi&
@@ -229,16 +233,28 @@ async function verifyBySourcify() {
     }
 }
 
-const GIT_PATH_COMPILER = 'https://github.com/vyperlang/vyper/releases/download'
+const URL_VYPER_VERSIONS = 'https://github.com/vyperlang/vyper/releases/download';
+const URL_SOLC_VERSIONS = 'https://binaries.soliditylang.org/linux-amd64'; // append /solc-linux-amd64-v0.8.6%2Bcommit.11564f7e
+
 async function fetchCompilers() {
-    const versions = await contractQuery.listVyperVersions()
+    let versions;
+    let commands;
 
-    const commands = Object.keys(versions)
-        .map(ver => `proxychains4 curl -O -L "${GIT_PATH_COMPILER}/v${ver}/vyper.${ver}+commit.${versions[ver].commit}.linux"`)
+    if(compiler === "vyper") {
+        versions = await contractQuery.listVyperVersions();
+        commands = Object.keys(versions)
+            .map(ver => `proxychains4 curl -O -L "${URL_VYPER_VERSIONS}/v${ver}/vyper.${ver}+commit.${versions[ver].commit}.linux"`);
+    } else if(compiler === "solc") {
+        versions = await contractQuery.listSolcVersions();
+        commands = Object.values(versions)
+            .map(ver => `proxychains4 curl -O -L "${URL_SOLC_VERSIONS}/solc-linux-amd64-${ver}"`);
+    } else{
+        throw new Error(`Contract compiler type ${compiler} not supported.`);
+    }
+
     console.log(`Cmd to exec: ${commands.length}`);
-
     const { suc, fai } = executeCommands(commands);
-    console.log('\nExec Summary:\n', {suc, fai})
+    console.log('\nExec Summary:\n', {suc, fai});
 }
 
 function executeCommands(commands) {
