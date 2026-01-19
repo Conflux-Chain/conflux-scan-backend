@@ -1,10 +1,73 @@
-// import {ConfluxOption} from "js-conflux-sdk";
-import {ISingleHostConfig} from "influx";
 import * as os from "os";
+import {ISingleHostConfig} from "influx";
 import {Options} from "sequelize";
 
 const fs = require('fs')
-const templateConf = require('./Template')
+const template = require(('./Template'))
+
+export interface StatConfig {
+    /** api configurations */
+    serverTag: string;
+    port: number;
+    apiPort: number;
+    v1port: number; // scan-api port, for path /v1
+    diffMonitorPort?: number; // -9000 to disable
+
+    /** blockchain rpc configurations */
+    conflux: ConfluxOption; // chain rpc node
+    conflux2?: ConfluxOption; // get cross space info in eSpace, needless in coreSpace
+    ether?: EtherOption;
+    blockSyncRpc?: ConfluxOption; // chain rpc node
+    cfxTransferRpc?: ConfluxOption; // for cfx transfer sync
+    tokenTransferRpc?: ConfluxOption; // for token transfer sync
+    consortiumBridge?: ConsortiumBridgeOption;
+    cfxWsUrl?: string;
+
+    /** persistence configurations */
+    database: Database;
+    influxDB: ISingleHostConfig & { measurement: string, disable?: boolean };
+    oss: OssConf;
+
+    /** sync configurations */
+    firstBlockNo: number;
+    watchCfxBalance: boolean,
+    useGetLogs: boolean;
+    getLogsRange?: number;
+    getLogsJobCount?: number;
+    getLogsDbBatchSize?: number;
+
+    /** 0g configurations */
+    noCoreSpace: boolean;
+    noTopToken: boolean;
+    traceNotAvailable: boolean;
+    pendingTxNotAvailable: boolean;
+    onlyStatActiveContract: boolean;
+    validatorRpc?: string, // evm pos validator information api
+
+    /** log configurations */
+    requestLogger?: RequestLoggerOptions;
+
+    /** billing configurations */
+    billingApp?: string;
+
+    /** alert configurations */
+    dingTalkToken: string;
+    dingDevToken: string;
+    tgToken?: string;
+    tgChatId?: string;
+
+    /** address configurations */
+    // censor
+    censor: CensorOptions;
+
+    /** token configurations */
+    // price
+    quote: QuoteOptions;
+
+    /** contract configurations */
+    // verify
+    verification: VerificationOptions;
+}
 
 export interface ConfluxOption {
     url: string,
@@ -17,25 +80,21 @@ export interface ConfluxOption {
     consortiumMode?: boolean, // true: consortium chain; false: public chain
     keepAlive?: boolean,
 }
+
 export interface EtherOption {
     url: string,
 }
+
 export interface ConsortiumBridgeOption {
     port: number,
     retry: number,
     rpc: ConfluxOption,
 }
-export interface Database{
-    host: string;
-    port: number;
-    user: string;
-    pwd: string;
-    database: string;
-    blockTableRowsLimit: number;
+
+export interface Database extends Options {
+    useMysql: boolean;
+    readonly: boolean;
     syncSchema: boolean;
-    readonly : boolean;
-}
-export interface DatabaseRW extends Options {
     instanceName: string;
 }
 
@@ -46,135 +105,77 @@ export interface OssConf {
     bucket: string
     prefix: string // mainnet testnet dev stress pos
 }
-export interface JSONRpcOption {
-    url: string,
-    proxy: object,
-}
-export interface SyncQuoteOption{
-    open: boolean;
-    interval: {
-        bn: number,
-        cmc: number,
-        moonswap: number,
-        swappi: number,
-        peer: number,
-    },
-}
-export interface StatConfig{
-    useGetLogs: boolean;
-    getLogsRange?: number;
-    getLogsJobCount?: number;
-    getLogsDbBatchSize?: number;
-    influxDB?: ISingleHostConfig & {measurement: string, disable?: boolean}
-    oss: OssConf
-    firstBlockNo: number
-    noCoreSpace: boolean
-    pendingTxNotAvailable: boolean
-    traceNotAvailable: boolean,
-    dingTalkToken: string;
-    dingDevToken: string;
-    tgToken?: string; //telegram
-    tgChatId?: string //telegram
-    port: number;
-    apiPort: number;
-    v1port: number; // scan-api port, for path /v1
-    diffMonitorPort?:number; // -9000 to disable
-    billingApp: string;
-    conflux: ConfluxOption; // chain rpc node
-    blockSyncRpc: ConfluxOption; // chain rpc node
-    conflux2?: ConfluxOption; // get cross space info in eSpace, needless in coreSpace
-    ether: EtherOption;
-    cfxTransferRpc?: ConfluxOption; // for cfx transfer sync
-    tokenTransferRpc?: ConfluxOption; // for token transfer sync
-    consortiumBridge?: ConsortiumBridgeOption;
-    cfxWsUrl: string
-    preload: number,
-    scanApiUrl: string
-    isEvm: boolean,
-    scanJsonRpcUrl: string
-    database: Database;
-    serverTag: string,
-    watchCfxBalance: boolean,
-    recaptchaUrl:string,
-    recaptchaToken:string,
-    reportUrl: string,
-    // evm pos validator information api
-    validatorRpc?: string,
 
-    syncIPFSGateway: boolean,
-    syncIPFSGatewayDelay: number,
-
-    syncQuote: SyncQuoteOption,
-    quoteConvertSymbolArray: Array<string>,
-    marketCapToken: string,
-    binanceToken: string,
-
-    syncTokenSecurityAudit: boolean,
-    noTopToken: boolean,
-    onlyStatActiveContract: boolean,
-    blacklist: boolean,
-
-    databaseRW: DatabaseRW,
-    metricsEnv: string,
-
-    ensEnable: boolean,
-    ens: string,
-    reverseRegistrar: string,
-    baseRegistrar: string,
-    ensChecker: string,
-    reverseRecords: string,
-
-    tldOpenapi: string, // top level domain of open api
-
-    censorAppId: string,
-    censorApiKey: string,
-    censorSecretKey: string,
-
-    asyncWrappedToken: boolean,
-    wrappedUSDT: string,
-    wrappedUSDT0: string,
-    wrappedCFX: string,
-    wrappedBTC: string,
-
-    enableProfile: boolean,
-
-    contractVerificationUrl: string,
-    verifyByAuto: boolean,
+export interface RequestLoggerOptions {
+    enable: boolean;
+    level?: 'trace' | 'info' | 'warn' | 'error' | 'fatal';
+    format?: 'json'| "readable" | "object";
+    request?: {
+        timestamp: boolean,
+        http: boolean,
+        method: boolean,
+        url: boolean,
+        params: boolean,
+        query: boolean,
+        header: boolean,
+        body: boolean,
+    };
+    response?: {
+        duration: boolean,
+        length: boolean,
+        status: boolean,
+        message: boolean,
+        header: boolean,
+        body: boolean,
+    };
 }
 
-export var FirstBlockNo = 0
-// for chains without core space
-export var NoCoreSpace = false
+export interface CensorOptions {
+    enable: boolean;
+    appId?: string;
+    apiKey?: string;
+    secretKey?: string;
+    interval?: number;
+}
 
+export interface QuoteOptions {
+    enable: true;
+    binanceAccessToken: string;
+    coinMarketCapAccessToken: string;
+}
+
+export interface VerificationOptions{
+    enable: boolean;
+    url: string;
+}
+
+export var FirstBlockNo = 0;
+export var NoCoreSpace = false; // for chains without core space
 export var CoreDB = 'conflux_scan';
 export var EvmDB = "evm";
-export var Cfg_is_EVM: boolean = null;
 export var ConfigInstance: StatConfig;
-/**
- *  Priority from low to high: template.js -> local.js -> specified.js
- */
-export function loadConfig(specified:string = undefined): StatConfig {
-    let path = `${__dirname}/Local.js`;
-    let defaultConf = {default:{firstBlockNo: 0, noCoreSpace: false, coreDB: 'conflux_scan', evmDB: 'evm', isEvm: null}}
-    if (fs.existsSync(path)){
-        defaultConf = require('./Local')
-    }
 
-    let specific = specified === undefined ? {default:{}} : require(`./${specified}`)
-    // console.log(`template is 0 `, templateConf.default)
-    // console.log(`specific is `, specific)
-    const conf = {...templateConf.default, ...defaultConf.default, ...specific.default}
-    FirstBlockNo = conf.firstBlockNo
-    NoCoreSpace = conf.noCoreSpace
-    CoreDB = conf.coreDB;
-    EvmDB = conf.evmDB;
-    Cfg_is_EVM = conf.isEvm;
-    if(conf?.consortiumBridge) {
-        console.log(`web port [${conf.consortiumBridge.port}] rpc [`, conf.consortiumBridge.rpc, `]`)
-        return conf;
-    }
-    conf.serverTag = `${conf.serverTag}@${os.hostname()}`
-    console.log(`------ /stat api port [${conf.port}]. --------`)
-    ConfigInstance = conf;
-    return conf;
+/**
+ *  Priority from low to high: Template.js -> Local.js -> Specified.js
+ */
+export function loadConfig(specified: string = undefined): StatConfig {
+    const local = fs.existsSync(`${__dirname}/Local.js`) ? require('./Local') : {
+        default: {
+            coreDB: 'conflux_scan',
+            evmDB: 'evm'
+        }
+    };
+
+    const specific = specified ? require(`./${specified}`) : {};
+
+    const config = {...template.default, ...local.default, ...specific.default};
+    config.serverTag = `${config.serverTag}@${os.hostname()}`;
+
+    FirstBlockNo = config.firstBlockNo
+    NoCoreSpace = config.noCoreSpace
+    CoreDB = config.coreDB;
+    EvmDB = config.evmDB;
+    ConfigInstance = config;
+
+    return config;
 }

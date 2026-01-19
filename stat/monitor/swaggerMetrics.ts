@@ -13,19 +13,19 @@ export async function fetchSwaggerMetrics(port: string|number = 8895, path_ = ''
 	return {name, ip, qps: req_rate, lag};
 }
 const defaultMeasurement = 'scan-api';
-async function report(config: StatConfig, inf: InfluxDB, dataPort: number|string, nameFix: string, path: string) {
+async function report(measurement: string, inf: InfluxDB, dataPort: number|string, nameFix: string, path: string) {
 	const {name, ip, qps, lag} = await fetchSwaggerMetrics(dataPort, path);
 	return inf.writePoints([{
-		measurement: config.influxDB.measurement || defaultMeasurement,
+		measurement: measurement || defaultMeasurement,
 		tags: {name: nameFix ? `${name}_${nameFix}` : name, ip}, fields: {qps, lag}
 	}])
 }
 
-function setup(config: StatConfig) {
-	if (!config.influxDB) {
+function setup(influxDB: any) {
+	if (!influxDB) {
 		return null
 	}
-	const {host, database, username, password, disable, measurement, port, protocol,} = config.influxDB;
+	const {host, database, username, password, disable, measurement, port, protocol,} = influxDB;
 	if (disable) {
 		return null;
 	}
@@ -42,14 +42,14 @@ function setup(config: StatConfig) {
 	});
 }
 
-export async function scheduleSwaggerReporter(config: StatConfig, dataPort: number|string, name = '', path = '') {
-	const inf = setup(config);
+export async function scheduleSwaggerReporter(influxDB: any, dataPort: number|string, name = '', path = '') {
+	const inf = setup(influxDB);
 	if (!inf) {
 		return
 	}
 	setInterval(async ()=>{
 		try {
-			await report(config, inf, dataPort, name, path)
+			await report(influxDB.measurement, inf, dataPort, name, path)
 		} catch (e) {
 			safeAddErrorLog(`swagger-metrics`, `upload-data`, e).then();
 		}
@@ -60,7 +60,7 @@ async function main() {
 	const [,,cmd,arg1] = process.argv;
 	// await fetchSwaggerMetrics();
 	const cfg = loadConfig('Prod');
-	scheduleSwaggerReporter(cfg, cfg.v1port || 8895).then();
+	scheduleSwaggerReporter(cfg.influxDB, cfg.v1port || 8895).then();
 }
 
 if (module == require.main) {

@@ -255,11 +255,6 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = await statApp.tokenQuery.listRecently({owner, type});
     })
 
-    router.get('/tokens/fiat/list', async (ctx)=>{
-        const fiatArray = statApp.config.quoteConvertSymbolArray;
-        ctx.body = { list: fiatArray }
-    })
-
     // token by name
     router.get('/tokens/name', async (ctx)=>{
         const {name} = ctx.request.query;
@@ -870,20 +865,8 @@ function addSwagger(app: Application, router: Router<any, {}>) {
     });
     // @ts-ignore
     ApiDef.paths = pathDef;
-    if (process.env['unified_mod']) {
-        console.log(`do not register swagger-stat on stat-router.`)
-        app.use((ctx,next)=>swStatFn(ctx, next))
-    } else {
-        app.use(e2k(swStats.getMiddleware({
-            swaggerSpec: ApiDef,
-            uriPath: '/stat/api-stat', // ui at /stat/api-stat/
-            hostname: 'stat-api', // Prevent exposure of server ip
-            // basePath: '/', // api definition has a prefix.
-        })));
-    }
-    // router.use((ctx,next)=>{
-    // ctx.set("script-src 'self'", 'sha256-bLIba9y02h2X9/32+3oS/4EmGe/+1HjpiNUBsaTTIGY=')
-    // })
+    console.log(`do not register swagger-stat on stat-router.`)
+    app.use((ctx,next)=>swStatFn(ctx, next))
 }
 
 export function register(app:Koa, statApp: StatApp) {

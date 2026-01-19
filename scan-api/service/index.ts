@@ -8,10 +8,7 @@ import {Conflux} from "js-conflux-sdk";
 import {ContractService} from "./ContractService";
 import {TokenService} from "./TokenService";
 import {EventLogService} from "./EventLogService";
-import {AnnounceService} from "./AnnounceService";
 import {TransferService} from "./TransferService";
-import {RecaptchaService} from "./RecaptchaService";
-import {Desensitizer} from "../../stat/service/Desensitizer";
 import {FullBlockQuery} from "../../stat/service/FullBlockQuery";
 import {CfxTransferQuery} from "../../stat/service/CfxTransferQuery";
 import {Crc20TransferQuery} from "../../stat/service/Crc20TransferQuery";
@@ -23,7 +20,6 @@ import {ContractQuery} from "../../stat/service/ContractQuery";
 import {TokenQuery} from "../../stat/service/TokenQuery";
 import {ENSCheckerQuery} from "../../stat/service/ens/ENSCheckerQuery";
 import {AccountQuery} from "../../stat/service/AccountQuery";
-import {CensorService} from "../../stat/service/censor/CensorService";
 import {TokenTool} from "../../stat/service/tool/TokenTool";
 import {StatConfig} from "../../stat/config/StatConfig";
 import {StatsQuery} from "../../stat/service/StatsQuery";
@@ -33,7 +29,6 @@ export interface ScanCtx {
 }
 export interface ScanApp {
   service?: ScanServices;
-  CONST?: any;
   cfx?: Conflux;
   ttlMap?: any;
   config?: StatConfig;
@@ -58,10 +53,7 @@ export interface ScanServices {
   contract: ContractService;
   token: TokenService;
   eventLog: EventLogService;
-  announce: AnnounceService;
   transfer: TransferService;
-  recaptcha: RecaptchaService;
-  desensitizer: Desensitizer;
   statsQuery: StatsQuery,
   fullBlock: FullBlockQuery;
   cfxTransfer: CfxTransferQuery;
@@ -75,7 +67,6 @@ export interface ScanServices {
   tokenTool?: TokenTool;
   ensCheckerQuery: ENSCheckerQuery;
   accountQuery: AccountQuery;
-  censor: CensorService;
 }
 
 export function serviceLoader(app) {
@@ -89,10 +80,7 @@ export function serviceLoader(app) {
     contract: new ContractService(app),
     token: new TokenService(app),
     eventLog: new EventLogService(app),
-    announce: new AnnounceService(app),
     transfer: new TransferService(app),
-    recaptcha: new RecaptchaService(app),
-    desensitizer: new Desensitizer(),
     statsQuery: new StatsQuery(app),
     fullBlock: new FullBlockQuery(app),
     cfxTransfer: new CfxTransferQuery(app),
@@ -103,8 +91,7 @@ export function serviceLoader(app) {
     traceCreate: new ContractTraceCreateQuery(app),
     contractQuery: new ContractQuery(app),
     tokenQuery: new TokenQuery(app),
-    ensCheckerQuery: new ENSCheckerQuery(app),
+    ensCheckerQuery: new ENSCheckerQuery(app.cfx),
     accountQuery: new AccountQuery(app),
-    censor: new CensorService(app),
   } as ScanServices;
 }

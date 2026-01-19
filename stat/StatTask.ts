@@ -1,4 +1,4 @@
-import {redirectLog} from "./config/LoggerConfig";
+import {redirectLog} from "./service/tool/LoggerConfig";
 import {init} from "./service/tool/FixDailyTokenStat";
 import {getTimeToNextHour, initCfxSdk, MINUTE} from "./service/common/utils";
 import {StatApp} from "./StatApp";
@@ -6,7 +6,6 @@ import {BlockAndMinerSync} from "./service/BlockAndMinerSync";
 import {removeDate1970, scheduleDailyActiveAddress} from "./model/StatAddress";
 import {scheduleDailyTokenStat} from "./service/DailyTokenSync";
 import {calcDailyUniqueAddrSchedule} from "./service/UniqueAddressStat";
-import {ContractTraceCreateQuery} from "./service/ContractTraceCreateQuery";
 import {
     ADDRESS_COUNT_ALL,
     ADDRESS_COUNT_ID,
@@ -41,6 +40,7 @@ import {safeAddErrorLog} from "./monitor/ErrorMonitor";
 import {checkAllTableDataTime} from "./monitor/DataTimeChecker";
 import {StatDailyGas} from "./service/timerstat/StatDailyGas";
 import {ContractQuery} from "./service/ContractQuery";
+import {TokenQuoteSync} from "./service/TokenQuoteSync";
 
 async function runTools() {
     const [,, cmd, arg1] = process.argv;
@@ -76,81 +76,40 @@ async function main() {
     calcDailyUniqueAddrSchedule().then()
     scheduleRollupDailyCfxTxn().then();
     setInterval(countTable, 60_000)
-
-    //
-    const reporter = new Reporter({config, cfx});
-    reporter.start().then();
     runAllPeriodicStat().then();
-    //
-    const statDailyBlockData = new StatDailyBlockData({cfx});
-    statDailyBlockData.schedule(1000 * 60).then();
-    //
-    const statDailyGas = new StatDailyGas({cfx});
-    statDailyGas.schedule(1000 * 60).then();
-    //
-    const statDailyContractAnalysis = new StatDailyContractAnalysis({cfx});
-    statDailyContractAnalysis.schedule().then();
-    //
-    const statDailyContractCreation = new StatDailyContractCreation({cfx})
-    statDailyContractCreation.schedule(1000 * 60).then();
-    //
-    const statDailyContractRegister = new StatDailyContractRegister({cfx});
-    statDailyContractRegister.schedule(1000 * 60).then();
-    //
-    const statDailyTxn = new StatDailyTxn({cfx});
-    statDailyTxn.schedule(1000 * 60).then();
-    //
-    const statDailyNFT = new StatDailyNFT({cfx});
-    statDailyNFT.schedule(1000 * 60).then();
-    //
-    const statTotalNFTHolder = new StatTotalNFTHolder({cfx});
-    statTotalNFTHolder.schedule(1000 * 300).then();
-    //
-    const statTotalCfxHolder = new StatTotalCfxHolder({cfx});
-    statTotalCfxHolder.schedule(1000 * 60).then();
-    //
-    const statDailyPosReward = new StatDailyPosReward({cfx});
-    statDailyPosReward.schedule(1000 * 60 * 10).then();
-    //
-    const statDailyPowReward = new StatDailyPowReward({cfx});
-    statDailyPowReward.schedule(1000 * 60 * 10).then();
-    //
     const blockAndMinerSync = new BlockAndMinerSync();
     blockAndMinerSync.schedule().then();
-    //
+
+    new Reporter({config, cfx});
+    new StatDailyBlockData({cfx});
+    new StatDailyGas({cfx});
+    new StatDailyContractAnalysis({cfx});
+    new StatDailyContractCreation({cfx})
+    new StatDailyContractRegister({cfx});
+    new StatDailyTxn({cfx});
+    new StatDailyNFT({cfx});
+    new StatTotalNFTHolder({cfx});
+    new StatTotalCfxHolder({cfx});
+    new StatDailyPosReward({cfx});
+    new StatDailyPowReward({cfx});
+    new TokenSecurityAuditSync({cfx});
+    new TokenQuoteSync(cfx, config.quote);
+    new CensorService(cfx, config.censor, {tx: 10, token: 10, nft: 10});
+
     const contractQuery = new ContractQuery({cfx, config});
-    contractQuery.scheduleUpdateCompilerVersions().then()
+    contractQuery.scheduleUpdateCompilerVersions().then();
+    contractQuery.scheduleVerifyByAuto().then();
 
-    //
-    if(config.censorApiKey && config.censorSecretKey) {
-        const traceCreateQuery = new ContractTraceCreateQuery({});
-        const censorService = new CensorService({config, cfx, traceCreateQuery}, {tx: 10, token: 10, nft: 10});
-        censorService.schedule(1000 * 300).then();
-    }
-    //
-    if (config.syncTokenSecurityAudit) {
-        const tokenAudit = new TokenSecurityAuditSync({cfx});
-        await tokenAudit.scheduleRecently();
-        await tokenAudit.scheduleOverall();
-    }
-    //
-    if (config.verifyByAuto) {
-        contractQuery.scheduleVerifyByAuto().then();
-    }
-
-    //
-    if(!StatApp.isEVM) {
+    if (!StatApp.isEVM) {
         let fullCfx = cfx;
-        let fullStateRpc = await KV.getString(KEY_FULL_STATE_RPC, "");
+        const fullStateRpc = await KV.getString(KEY_FULL_STATE_RPC, "");
         if (fullStateRpc) {
             fullCfx = await initCfxSdk({url: fullStateRpc});
         }
         const suppressFullStateRpcErr = await KV.getSwitch(KEY_SUPRESS_FULLSTATE_RPC_ERR);
-        const statDailyBurntFee = new StatDailyBurntFee({cfx: fullCfx, suppressFullStateRpcErr});
-        await statDailyBurntFee.schedule(1000 * 60);
+        new StatDailyBurntFee({cfx: fullCfx, suppressFullStateRpcErr});
     }
 
-    //
     repeatHeartBeat(KEY_STAT_TASK+config.serverTag)
     console.log(`----- Stat tasks scheduled. -----`)
 }

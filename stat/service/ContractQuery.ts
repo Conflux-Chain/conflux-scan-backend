@@ -32,12 +32,15 @@ import {sleep} from "./tool/ProcessTool";
 import {
     KEY_AUTO_VERIFY_TRACE_ID,
     KEY_AUTO_VERIFY_VERIFY_ID,
+    KEY_EVM_VERSIONS,
     KEY_SOLC_VERSIONS,
     KEY_VYPER_VERSIONS,
     KV
 } from "../model/KV";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import axios from "axios";
+import {doHeartBeat, HeartBeatBean, KEY_COMPILER} from "../model/HeartBeat";
+import {ConfigInstance} from "../config/StatConfig";
 
 const path = require('path');
 const superagent = require('superagent');
@@ -64,20 +67,32 @@ export function getContractQuery() {
 
 export class ContractQuery {
     public app: ScanApp;
+    private readonly verifyEnable: boolean;
+    private readonly verifyUrl: string;
+
     private readonly cacheTtl: number
     private CACHE_VERIFY_ADDRESS: any // hex => {address, name}
     private CACHE_VERIFY_DETAIL: any  // hex => Contract
     private readonly cacheCompilerTtl: number
     private CACHE_COMPILER_VERSIONS: any  // solc | vyper => {}
 
-
     constructor(app: ScanApp, verifyCacheTTL?: number, compilerCacheTTL?: number) {
+        const {enable, url} = app.config.verification;
+        if(enable && !url) {
+            throw new Error("Contract service configurations (verification.url) should be provided!");
+        }
+
         this.app = app;
+        this.verifyEnable = enable;
+        this.verifyUrl = url;
+
         this.cacheTtl = verifyCacheTTL || DEFAULT_VERIFY_CACHE_TTL
         this.CACHE_VERIFY_ADDRESS = new NodeCache({ maxKeys: 5000,  stdTTL: this.cacheTtl, checkperiod: 60})
         this.CACHE_VERIFY_DETAIL = new NodeCache({ maxKeys: 1000,  stdTTL: this.cacheTtl, checkperiod: 60})
         this.cacheCompilerTtl = compilerCacheTTL || DEFAULT_COMPILER_CACHE_TTL
         this.CACHE_COMPILER_VERSIONS = new NodeCache({maxKeys: 2, stdTTL: this.cacheCompilerTtl, checkperiod: 60})
+
+        this.heartBeat();
         _instance = this;
     }
 
@@ -289,7 +304,7 @@ export class ContractQuery {
 
         const fields = `?fields=compilation${withDetail ? ',stdJsonInput,abi,creationBytecode.transformationValues' : ''}`;
         const resp = await this._getJsonRequest({
-            url: `${this.app.config.contractVerificationUrl}/contract/${StatApp.networkId}/${hex}${fields}`
+            url: `${this.verifyUrl}/contract/${StatApp.networkId}/${hex}${fields}`
         });
         if (!resp) {
             return null;
@@ -369,7 +384,7 @@ export class ContractQuery {
         const addressesParam = addresses.map(item => ethers.utils.getAddress(format.hexAddress(item))).join(',');
 
         const resp = await this._getJsonRequest({
-            url: `${this.app.config.contractVerificationUrl}/contracts/${StatApp.networkId}?addresses=${addressesParam}`,
+            url: `${this.verifyUrl}/contracts/${StatApp.networkId}?addresses=${addressesParam}`,
         });
 
         if(!resp) {
@@ -565,7 +580,7 @@ export class ContractQuery {
         }
 
         repeat().then();
-        console.log(`Schedule update compiler versions with delay: ${delay}`);
+        console.log(`[contract_compiler_version]schedule in ${delay/1000}s interval`);
     }
 
     // shortVersion => fullVersion
@@ -640,6 +655,18 @@ export class ContractQuery {
         return versions;
     }
 
+    async listEVMVersions(): Promise<string[]> {
+        const value = await KV.getString(KEY_EVM_VERSIONS, '');
+
+        if(!value) {
+            await KV.create({key: KEY_EVM_VERSIONS, value: CONST.EVM_VERSION.join(',')})
+            console.log(`EVM versions not set, use default!`)
+            return CONST.EVM_VERSION;
+        }
+
+        return value.split(',');
+    }
+
     public async verify(verifyInput: VerifyInput) {
         let {
             contractAddress, sourceCode, codeFormat, fullQualifiedName,
@@ -695,7 +722,7 @@ export class ContractQuery {
         }
         const libraries = checkLibrary(librariesInfo);
 
-        evmVersion = await checkEVMVersion(evmVersion);
+        evmVersion = await checkEVMVersion(evmVersion, (await this.listEVMVersions()));
 
         licenseType = checkLicense(licenseType);
 
@@ -780,8 +807,8 @@ export class ContractQuery {
     private async verifyFromJsonInput(
         input: VerifyFromJsonInput,
     ): Promise<VerifyResponse | VerifyErrorResponse> {
-        const result = await this.postJsonRequest({
-            url: `${this.app.config.contractVerificationUrl}/verify/${input.chainId}/${input.address}`,
+        const result = await this._postJsonRequest({
+            url: `${this.verifyUrl}/verify/${input.chainId}/${input.address}`,
             body: {
                 stdJsonInput: input.jsonInput,
                 compilerVersion: input.compilerVersion,
@@ -808,8 +835,8 @@ export class ContractQuery {
     private async verifyFromCrossChain(
         input: VerifyFromCrossChain
     ): Promise<VerifyResponse | VerifyErrorResponse> {
-        const result = await this.postJsonRequest({
-            url: `${this.app.config.contractVerificationUrl}/verify/crosschain/${input.chainId}/${input.address}`,
+        const result = await this._postJsonRequest({
+            url: `${this.verifyUrl}/verify/crosschain/${input.chainId}/${input.address}`,
             body: {
                 linkChainIds: input.linkChainIds?.join(","),
             },
@@ -855,7 +882,7 @@ export class ContractQuery {
         verificationId: string
     ): Promise<VerificationJob> {
         const result = await this._getJsonRequest({
-            url: `${this.app.config.contractVerificationUrl}/verify/${verificationId}`,
+            url: `${this.verifyUrl}/verify/${verificationId}`,
         });
 
         if(!result) {
@@ -897,7 +924,7 @@ export class ContractQuery {
         };
     }
 
-    private async postJsonRequest(
+    private async _postJsonRequest(
         {
             url,
             body,
@@ -906,6 +933,10 @@ export class ContractQuery {
             handleError = true,
         }) {
         try {
+            if (!this.verifyEnable) {
+                return null;
+            }
+
             const response = await superagent
                 .post(url)
                 .set({
@@ -936,6 +967,10 @@ export class ContractQuery {
             handleError = true,
         }) {
         try {
+            if (!this.verifyEnable) {
+                return null;
+            }
+
             const response = await superagent
                 .get(url)
                 .set({
@@ -957,7 +992,7 @@ export class ContractQuery {
         }
     }
 
-    async _getJsonRequestByAxios({
+    private async _getJsonRequestByAxios({
         url,
         headers = {},
         timeout = 1000 * 30,
@@ -1050,7 +1085,7 @@ export class ContractQuery {
         }
 
         repeat().then();
-        console.log(`Schedule verify by auto with delay: ${delay}`);
+        console.log(`[auto_verify]schedule in ${delay/1000}s interval`);
     }
 
     private async verifyByTrace() {
@@ -1158,6 +1193,33 @@ export class ContractQuery {
                 await sleep(intervalMs); // retry
             }
         }
+    }
+
+    private heartBeat() {
+        if (!this.verifyEnable) {
+            return;
+        }
+
+        setInterval(async () => {
+            const url = `${this.verifyUrl}/health`;
+            try {
+                await superagent.get(url)
+                    .timeout({response: 3_000, deadline: 3_000})
+                    .then(ack => {
+                            if (ack?.text !== "Alive and kicking!") {
+                                throw new Error("No response!")
+                            }
+                        }
+                    )
+                if (!HeartBeatBean.sequelize) {
+                    console.log(`${__filename} DB has not been initialized`)
+                    return
+                }
+                await doHeartBeat(`${KEY_COMPILER}_${ConfigInstance.serverTag}`);
+            } catch (e) {
+                console.log(`Failed to check verification health ${url}\n ${e.status} ${e.message}`);
+            }
+        }, 10_000);
     }
 }
 

@@ -1,5 +1,5 @@
 import {ConfigInstance, loadConfig} from "../config/StatConfig";
-import {getAppEntryName} from "../config/LoggerConfig";
+import {getAppEntryName} from "../service/tool/LoggerConfig";
 import {StatApp} from "../StatApp";
 
 const superagent = require('superagent');

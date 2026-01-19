@@ -1,4 +1,4 @@
-import {redirectLog} from "../../config/LoggerConfig";
+import {redirectLog} from "../tool/LoggerConfig";
 const lodash = require('lodash');
 import {Conflux, Contract} from "js-conflux-sdk";
 import {buildHexSet, Hex40Map, idHex40Map, makeIdV} from "../../model/HexMap";

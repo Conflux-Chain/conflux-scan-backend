@@ -3,10 +3,8 @@ import {format} from "js-conflux-sdk";
 import {Erc20Transfer, AddressErc20Transfer} from "../model/Erc20Transfer";
 import {patchTokenTxQueryRange, TransferQueryBase} from "./TransferQueryBase";
 import {CONST} from "./common/constant"
-/*const CONST = require('./common/constant');*/
 import {Token} from "../model/Token";
 import {fmtAddr, StatApp} from "../StatApp";
-import {Op} from "sequelize";
 import {getAddrTransferCount} from "../model/TransferCount";
 import {FullTransaction} from "../model/FullBlock";
 import {PruneType} from "../model/PruneInfo";
@@ -72,7 +70,7 @@ export class Crc20TransferQuery extends TransferQueryBase{
     }
     public processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>,
         txMap: Map<string, FullTransaction>): Promise<any>{
-        row['address'] = fmtAddr(`0x${hex40Map.get(row['address'])}`, this.app?.networkId);
+        row['address'] = fmtAddr(`0x${hex40Map.get(row['address'])}`, StatApp.networkId);
         row['transferType'] = CONST.TRANSFER_TYPE.ERC20;
         return row;
     }

@@ -9,9 +9,10 @@ const lodash = require('lodash');
 
 export class StatDailyTxn extends TimerStat{
 
-    constructor(app: any) {
+    constructor(app: any, interval: number = 1000 * 60) {
         super(app);
         this.baseInterval = StatType.TEN_MIN;
+        this.schedule(interval).then();
     }
 
     public bizAlias(): string {

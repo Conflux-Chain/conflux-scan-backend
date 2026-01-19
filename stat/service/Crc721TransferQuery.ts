@@ -8,7 +8,6 @@ import {Token} from "../model/Token";
 import {CONST} from "./common/constant"
 import {FullTransaction} from "../model/FullBlock";
 import {PruneType} from "../model/PruneInfo";
-/*const CONST = require('./common/constant');*/
 
 export class Crc721TransferQuery extends TransferQueryBase{
     constructor(app: any) {
@@ -67,7 +66,7 @@ export class Crc721TransferQuery extends TransferQueryBase{
     }
     public processQueryResult(row, hex40Map: Map<number, string>, hex64Map: Map<number, string>,
         txMap: Map<string, FullTransaction>): Promise<any>{
-        row['address'] = fmtAddr(`0x${hex40Map.get(row['address'])}`, this.app?.networkId);
+        row['address'] = fmtAddr(`0x${hex40Map.get(row['address'])}`, StatApp.networkId);
         row['transferType'] = CONST.TRANSFER_TYPE.ERC721;
         return row;
     }

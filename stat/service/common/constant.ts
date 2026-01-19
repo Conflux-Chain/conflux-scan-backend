@@ -1,4 +1,5 @@
 import {EVM_RPC_URL} from "../../model/KV";
+import {frontendConstant} from "./frontendConstant";
 
 const lodash = require('lodash');
 const { CONST: { EPOCH_NUMBER } } = require('js-conflux-sdk');
@@ -175,6 +176,7 @@ export const CONST = {
     0: 'Legacy',
     1: 'EIP-2930',
     2: 'EIP-1559',
+    4: 'EIP-7702',
   },
 
   TX_STATUS: {
@@ -399,11 +401,34 @@ export const CONST = {
 
   NETWORKS_CIP1559_ENABLED: [1029, 1030, 1, 71, 8888, 8889],
 
-  NETWORKS_USDT_ENABLED: [1029, 1030, 1, 71],
-
-  NETWORKS_USDT0_ENABLED: [1030],
-
   NETWORKS_CORE_SPACE: [1029, 1, 8888, 6666],
+
+  WRAPPED_TOKENS: {
+    1029: {
+      wrappedCFX: "cfx:acg158kvr8zanb1bs048ryb6rtrhr283ma70vz70tx",
+      wrappedBTC: "cfx:acbb225r9wc7a2kt1dz9gw0tuv5v1kgdjuh5akdh3t",
+      wrappedUSDT: "cfx:acf2rcsh8payyxpg6xj7b0ztswwh81ute60tsw35j7",
+
+    },
+    1030:  {
+      wrappedCFX: "0x14b2D3bC65e74DAE1030EAFd8ac30c533c976A9b",
+      wrappedBTC: "0x1F545487c62e5ACfEa45dcAdd9c627361d1616D8",
+      wrappedUSDT: "0xfe97E85d13ABD9c1c33384E796F10B73905637cE",
+      wrappedUSDT0: "0xaf37E8B6C9ED7f6318979f56Fc287d76c30847ff",
+
+    },
+    1:  {
+      wrappedCFX: "cfxtest:achs3nehae0j6ksvy1bhrffsh1rtfrw1f6w1kzv46t",
+      wrappedBTC: 'cfxtest:acb9re0g2ggaywuszwfmjmfb8w45nf1d5ppzc3jndb',
+      wrappedUSDT: "cfxtest:acepe88unk7fvs18436178up33hb4zkuf62a9dk1gv",
+    },
+    71: {
+      wrappedCFX: "0x2ED3dddae5B2F321AF0806181FBFA6D049Be47d8",
+      wrappedBTC: '0x54593e02c39aEFf52B166bd036797D2b1478de8D',
+      wrappedUSDT: "0x7d682e65EFC5C13Bf4E394B8f376C48e6baE0355",
+      wrappedUSDT0: "0x05D714465e24B7639a31eeB57D37396F889Df725",
+    },
+  },
 
   CHAIN_INFO: {
     '1029': {      isEvm: false,      EPOCH_CIP1559: 101900000,
@@ -456,4 +481,17 @@ export const CONST = {
     ERC721: [0x80, 0xac, 0x58, 0xcd],
     ERC1155: [0xd9, 0xb6, 0x7a, 0x26],
   },
+
+  ENS: {
+    1029: {
+      ens: 'cfx:acemru7fu1u8brtyn3hrtae17kbcd4pd9uwbspvnnm',
+      reverseRegistrar: 'cfx:acfarpzehntpre0thg8x7dp0ajw4ms328ps634v1zk',
+      baseRegistrar: 'cfx:acg08bujp0kmsup1zk11c9mad7zd6648eybmv2kbha',
+      ensChecker: 'cfx:acef1ym9m16fc94x29h0800k0ugnaj91sjjbm60hfh',
+      reverseRecords: 'cfx:achsgpgs5dgpmgpj2zd87apj6js33c07pjth6k33mj',
+      ensSubGraphUrl: 'https://thegraph.conflux123.xyz/subgraphs/name/graphprotocol/ens',
+    },
+  },
+
+  FRONTEND_CONFIG: frontendConstant,
 };

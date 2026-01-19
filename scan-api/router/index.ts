@@ -1,14 +1,11 @@
 import * as KoaRouter from "koa-router";
+import {ConfigInstance} from "../../stat/config/StatConfig";
 
 export const router = new KoaRouter();
 
 router.get('/', function () {
-  const {
-    app: { config: { machine } },
-  } = this;
-
   return {
-    info: `scan-api at ${machine}`,
+    info: `scan-api at ${ConfigInstance.serverTag}`,
   };
 });
 

@@ -198,15 +198,13 @@ async function fetchOnce(gateway, rpc, contract, tokenID) {
 
 // ------------------------- gateway command -----------------------------
 async function bestGateway() {
-    await new IPFSGatewaySync()['detectGateways']()
-    console.log(`best gateway ${IPFSGatewaySync.fastest}`)
+    await new IPFSGatewaySync().detectGateways()
 }
 
 // --------------------------- run command -------------------------------
 async function run(gateway) {
     regExitHook();
     await setup(gateway)
-    await syncIPFSGateway()
     await syncNFTMeta()
 }
 
@@ -218,13 +216,10 @@ async function setup(gateway: string = undefined, confluxConfig: any = undefined
     console.log(`networkId ${cfx.networkId}`)
 
     context.cmdGateway = gateway
+    new IPFSGatewaySync()
     console.log(`setup gateway ${gateway}`)
 }
 
-async function syncIPFSGateway() {
-    const ipfsGatewaySync = new IPFSGatewaySync()
-    await ipfsGatewaySync.schedule()
-}
 let stuckMeta: StuckChecker;
 async function syncNFTMeta() {
     if (!stuckMeta) {
@@ -384,8 +379,10 @@ async function fetchNFTMeta(contract: string, tokenId: string, is1155: boolean, 
         }
 
         console.log(`fetch fail, ${logBasic} ${tokenURI}, ${e.message}`)
-        context.debug && console.log(`debug error ${JSON.stringify(e)}---${e}`)
-        context.debug && console.log(`debug error ${JSON.stringify(Object.getOwnPropertyNames(e))}---${e?.code}---${e.message}`)
+        if(context.debug) {
+            console.error(`${JSON.stringify(e)}---${e}`)
+            console.error(`${JSON.stringify(Object.getOwnPropertyNames(e))}---${e?.code}---${e.message}`)
+        }
         return {uri: tokenURI, content: '', name: '', error: `${e.message}`, errorType: ErrorType.OTHERS.code}
     } finally {
         timer && clearTimeout(timer)

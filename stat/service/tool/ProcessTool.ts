@@ -1,5 +1,5 @@
 import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
-import {getAppEntryName} from "../../config/LoggerConfig";
+import {getAppEntryName} from "./LoggerConfig";
 
 const lodash = require('lodash');
 

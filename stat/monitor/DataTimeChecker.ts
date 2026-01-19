@@ -139,7 +139,7 @@ async function main() {
 export async function checkAllTableDataTime() {
 	reset();
 	sequelize = KV.sequelize;
-	const schema = ConfigInstance.databaseRW.instanceName;
+	const schema = ConfigInstance.database.instanceName;
 	try {
 		const tables = await getAllTables(schema);
 		tableCount = tables.length;

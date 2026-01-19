@@ -16,10 +16,8 @@ import {
   jsonrpc_queryTransaction,
   jsonrpc_trend,
   jsonrpc_verifyContract, jsonrpc_verifyCrossSpace,
-  listEVMVersion
 } from "./jsonrpc";
 import {CONST} from "../../stat/service/common/constant";
-const lodash = require('lodash');
 import * as KoaRouter from "koa-router";
 import {getClientIP} from "../../stat/router/RateLimiter";
 import {safeAddErrorLog} from "../../stat/monitor/ErrorMonitor";
@@ -27,16 +25,18 @@ import {getAccountQuery} from "../../stat/service/AccountQuery";
 import {fmtAddr} from "../../stat/StatApp";
 import {Errors} from "../../stat/service/common/LogicError";
 import {HomepageDashboard} from "../../stat/service/HomepageDashboard";
+import {ConfigInstance} from "../../stat/config/StatConfig";
+
+const lodash = require('lodash');
+const moment = require("moment/moment");
 const {router_get, router_post} = require ("../../koaflow/src/koaHelper");
 const {OpenAPI} = require('../../koaflow/lib/OpenAPI');
 const error = require('../../common/error');
 const {StatApp} = require("../../stat/StatApp");
 const { buildCheckAddressRateFn } = require('../../stat/router/RateLimiter')
-const moment = require("moment/moment");
 const {patchFlowError} = require("../../koaflow/lib/flow/JsonRPCFlow");
 
 // ----------------------------------------------------------------------------
-// const router = new Router();
 const router = new KoaRouter();
 router.use(async (ctx, next) => {
   const origin = ctx.headers.origin || ctx.headers.Origin;
@@ -73,8 +73,7 @@ router.use(async (ctx, next) => {
   }
 });
 router_get(router,'/', function (ctx) {
-  const { app: { config: { machine } } } = this;
-  return { message: `scan-api-v1, [${machine}]` };
+  return { message: `scan-api-v1, [${ConfigInstance.serverTag}]` };
 });
 router_get(router,'/echo', function (ctx) {
   return {
@@ -676,7 +675,10 @@ router_get(router,'/contract/evm-version',
       },
     }),
 
-    listEVMVersion,
+    async function () {
+      const {app: {service: {contractQuery}},} = this as ScanCtx;
+      return contractQuery.listEVMVersions();
+    }
 );
 
 router_post(router, '/contract/verify',

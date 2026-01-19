@@ -1,26 +1,74 @@
-// Place a Local.ts if you want change these configuration.
 export default {
+    /** api configurations */
+    serverTag: 'scan-server',
     port: 8087,
-    conflux: { url: 'http://main.confluxrpc.org/v2' },
-    cfxWsUrl: '',
-    dingTalkToken: '',
-    database: {
-        // sqlitePath: './data/database.sqlite',
-        database: '',
-        user: '',
-        pwd: '',
-        host: '',
-        port: 3306,
-        // zero stand for unlimited
-        blockTableRowsLimit: 10_0000,
-        syncSchema: false,
+    apiPort: 9527,
+    v1port: 8895,
+    diffMonitorPort: -1000,
+
+    /** blockchain rpc configurations */
+    conflux: null,
+
+    /** persistence configurations */
+    database: null,
+    influxDB: null,
+    oss: null,
+
+    /** sync configurations */
+    firstBlockNo: 0,
+    watchCfxBalance: true,
+    useGetLogs: false,
+    getLogsRange: 100,
+    getLogsJobCount: 100,
+    getLogsDbBatchSize: 100,
+
+    /** 0g configurations */
+    noCoreSpace: false,
+    noTopToken: false,
+    traceNotAvailable: false,
+    pendingTxNotAvailable: false,
+    onlyStatActiveContract: false,
+    validatorRpc: "",
+
+    /** log configurations */
+    requestLogger: {
+        enable: false,
+        level: 'info',
+        format: 'json',
+        request: { method: true, url: true, query: true, header: true },
+        response: { status: true, message: true, duration: true },
     },
-    scanApiUrl: 'https://testnet-scantest.confluxnetwork.org',
-    scanJsonRpcUrl: 'http://127.0.0.1:8895',
-    // delay ms.
-    syncTxnCountHistory: false,
-    syncCfxHolderCountDaily: false,
-    serverTag: 'scan-stat-1',
-    erc20watchList:[],
-    watchCfxBalance: false,
+
+    /** billing configurations */
+    billingApp: "0x7F55828E334e63065B88055776db3A58734220Ad",
+
+    /** alert configurations */
+    dingTalkToken: null,
+    dingDevToken: null,
+    tgToken: null,
+    tgChatId: null,
+
+    /** address configurations */
+    // censor
+    censor: {
+        enable: true,
+        appId: null,
+        apiKey: null,
+        secretKey: null,
+    },
+
+    /** token configurations */
+    // price
+    quote: {
+        enable: true,
+        binanceAccessToken: null,
+        coinMarketCapAccessToken: null,
+    },
+
+    /** contract configurations */
+    // verify
+    verification: {
+        enable: true,
+        url: null,
+    },
 };

@@ -158,7 +158,7 @@ export class NFTCheckerService {
             list.forEach(row => hex40IdSet.add(Number(row.contractId)));
             const hex40Map = await idHex40Map([...hex40IdSet]);
             list.forEach(row=>{
-                row.contract = fmtAddr(`0x${hex40Map.get(Number(row.contractId))}`, this.app?.networkId);
+                row.contract = fmtAddr(`0x${hex40Map.get(Number(row.contractId))}`, StatApp.networkId);
                 delete row.contractId;
             })
         }

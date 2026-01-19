@@ -1,5 +1,5 @@
 import {ethers} from "ethers";
-import {format} from "js-conflux-sdk";
+import {Conflux, format} from "js-conflux-sdk";
 import {gql, GraphQLClient} from "graphql-request";
 import { AbortController } from "node-abort-controller";
 import { formatsByCoinType } from '@web3identity/address-encoder';
@@ -10,18 +10,14 @@ import {abi as abiReverseRegistrar} from "../abi/ReverseRegistrar";
 import {abi as abiBaseRegistrar} from "../abi/BaseRegistrar";
 import {abi as abiResolver} from "../abi/Resolver";
 import {abi as abiReverseRecords} from "../abi/ReverseRecords";
+import {CONST} from "../common/constant";
+
 const lodash = require('lodash');
 const CFX_COIN_TYPE = 503;
 
 export class ENSCheckerQuery {
     protected cfx;
-    protected ensEnable;
-    protected ensCheckerAddr;
-    protected ensAddr;
-    protected reverseRegistrarAddr;
-    protected baseRegistrarAddr;
-    protected reverseRecordsAddr;
-    protected ensSubGraphUrl;
+    protected config: ENSOptions;
 
     protected ensChecker;
     protected ens;
@@ -30,59 +26,56 @@ export class ENSCheckerQuery {
     protected reverseRecords;
     protected graphql;
 
-    public constructor(app) {
-        this.cfx = app.cfx;
-        this.ensEnable = app.config.ensEnable;
-        this.ensCheckerAddr = app.config.ensChecker;
-        this.ensAddr = app.config.ens;
-        this.reverseRegistrarAddr = app.config.reverseRegistrar;
-        this.baseRegistrarAddr = app.config.baseRegistrar;
-        this.reverseRecordsAddr = app.config.reverseRecords;
-        this.ensSubGraphUrl = app.config.ensSubGraphUrl;
+    public constructor(cfx: Conflux) {
+        const config: ENSOptions | undefined = CONST.ENS[StatApp.networkId];
+        if (!config) {
+            console.log("ENS service disabled!");
+            return;
+        }
 
-        this.ensChecker = this.cfx.Contract({abi: abiENSChecker, address: this.ensCheckerAddr});
-        this.ens = this.cfx.Contract({abi: abiENS, address: this.ensAddr});
-        this.reverseRegistrar = this.cfx.Contract({abi: abiReverseRegistrar, address: this.reverseRegistrarAddr});
-        this.baseRegistrar = this.cfx.Contract({abi: abiBaseRegistrar, address: this.baseRegistrarAddr});
-        this.reverseRecords = this.cfx.Contract({abi: abiReverseRecords, address: this.reverseRecordsAddr});
-        this.graphql = new GraphQLClient(this.ensSubGraphUrl);
-        if (this.ensEnable) {
-            this.repeatCheckHealth().then()
+        if (
+            !config.ensChecker ||
+            !config.ens ||
+            !config.reverseRegistrar ||
+            !config.baseRegistrar ||
+            !config.reverseRecords ||
+            !config.ensSubGraphUrl
+        ) {
+            throw new Error(`
+            ENS service configurations (ensChecker/ens/reverseRegistrar/baseRegistrar/reverseRecords/ensSubGraphUrl) 
+            should be provided!
+            `);
         }
-    }
 
-    private async repeatCheckHealth() {
-        if (StatApp.isEVM) {
-            return
-        }
-        try {
-            await this.cfx.getTransactionReceipt(`0x${"0".repeat(64)}`)
-            this.ensEnable = true;
-        } catch (e) {
-            console.log(`${__filename} It's unhealthy, disable ens query.`, e)
-            this.ensEnable = false
-        }
-        setTimeout(()=>this.repeatCheckHealth(), 60_000)
+        this.cfx = cfx;
+        this.config = config;
+
+        this.ensChecker = this.cfx.Contract({abi: abiENSChecker, address: config.ensChecker});
+        this.ens = this.cfx.Contract({abi: abiENS, address: config.ens});
+        this.reverseRegistrar = this.cfx.Contract({abi: abiReverseRegistrar, address: config.reverseRegistrar});
+        this.baseRegistrar = this.cfx.Contract({abi: abiBaseRegistrar, address: config.baseRegistrar});
+        this.reverseRecords = this.cfx.Contract({abi: abiReverseRecords, address: config.reverseRecords});
+        this.graphql = new GraphQLClient(config.ensSubGraphUrl);
     }
 
     public async addr(name: string) {
-        return this.ensChecker.getAddrOfName(this.ensAddr, this.reverseRegistrarAddr, name);
+        return this.ensChecker.getAddrOfName(this.config.ens, this.config.reverseRegistrar, name);
     }
 
     public async name(addr: string) {
-        return this.ensChecker.getReverseNameByAddress(this.ensAddr, this.reverseRegistrarAddr, addr);
+        return this.ensChecker.getReverseNameByAddress(this.config.ens, this.config.reverseRegistrar, addr);
     }
 
     public async nameBatch(addresses: string[]) {
-        if (!this.ensEnable) {
+        if (!this.config) {
             return {};
         }
 
         const hexes = [...new Set(addresses.filter(item => item?.trim()).map(item => format.hexAddress(item)))];
 
         const names = await this.reverseRecords.getNames(hexes).catch(err => {
-            console.log(`List ENS names error, ens ${this.ensAddr} reverse ${this.reverseRegistrar}`, err);
-            this.ensEnable = false;
+            console.log(`List ENS names error, ens ${this.config.ens} reverse ${this.config.reverseRegistrar}`, err);
+            this.config = undefined;
             return {};
         });
 
@@ -188,8 +181,7 @@ export class ENSCheckerQuery {
                     }
                 }
             }`;
-        const data = await this.requestWithAbort(query, {addr: format.hexAddress(address)});
-        return data;
+        return this.requestWithAbort(query, {addr: format.hexAddress(address)});
     }
 
     public async getResolvedNames(address) {
@@ -202,8 +194,7 @@ export class ENSCheckerQuery {
                     }
                 }
             }`
-        const data = await this.requestWithAbort(query, {addr: format.hexAddress(address)});
-        return data;
+        return this.requestWithAbort(query, {addr: format.hexAddress(address)});
     }
 
     private async requestWithAbort(query, variables) {
@@ -224,4 +215,13 @@ export class ENSCheckerQuery {
         const index = name.lastIndexOf('.');
         return index >= 0 ? name.substr(0, index) : name;
     }
+}
+
+interface ENSOptions {
+    ens: string;
+    reverseRegistrar: string;
+    baseRegistrar: string;
+    ensChecker: string;
+    reverseRecords: string;
+    ensSubGraphUrl: string;
 }

@@ -1,4 +1,4 @@
-import {redirectLog} from "./config/LoggerConfig";
+import {redirectLog} from "./service/tool/LoggerConfig";
 import {getTokenTool, IEpochTask,} from "./service/UniqueAddressStat";
 import {DatabaseError, DataTypes, Model, Op, Sequelize, Transaction, UniqueConstraintError} from "sequelize";
 import {init} from "./service/tool/FixDailyTokenStat";

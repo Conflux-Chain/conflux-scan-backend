@@ -1,6 +1,5 @@
 import {ScanApp, ScanCtx} from "./index";
-import {VerificationJob, VerificationResult, VerifyByLinkInput, VerifyInput} from "../../stat/service/ContractQuery";
-import {sleep} from "../../stat/service/tool/ProcessTool";
+import {VerifyByLinkInput, VerifyInput} from "../../stat/service/ContractQuery";
 import {fmtAddr, StatApp} from "../../stat/StatApp";
 import {CONST} from "../../stat/service/common/constant";
 import {HomepageDashboard} from "../../stat/service/HomepageDashboard";

@@ -113,7 +113,7 @@ export function getSumFunction() : string{
     return isMySQL() ? 'SUM' : 'TOTAL'
 }
 export function isMySQL() : boolean {
-    return conf.USE_MYSQL === true
+    return conf.useMysql === true
 }
 export async function createTable(seq:Sequelize, sql:string) {
     return new Promise(async r=>{
@@ -277,19 +277,6 @@ export async function initModel(sequelize: Sequelize) {
 
 export function createMySql(dbConf) {
     console.log(`create mysql ${dbConf.instanceName}`)
-    // return new Sequelize(dbConf.database,
-    //     dbConf.user,
-    //     dbConf.pwd, {
-    //     host: dbConf.host, port: dbConf.port,
-    //     dialect: 'mysql', /* one of 'mysql' | 'mariadb' | 'postgres' | 'mssql' */
-    //     // logging: console.log,            // default true
-    //         logging: false,
-    //     // timezone: '+08:00', // default UTC
-    //     // dialectOptions: {
-    //     //   useUTC: false,
-    //     // },
-    // });
-
     return new Sequelize(dbConf.instanceName, null, null, dbConf)
 }
 

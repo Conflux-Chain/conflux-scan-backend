@@ -21,6 +21,8 @@ export class TokenSecurityAuditSync{
 
     constructor({cfx}: { cfx: Conflux }) {
         this.cfx = cfx;
+        this.scheduleRecently().then();
+        this.scheduleOverall().then();
     }
 
     async scheduleRecently(interval = 1000 * 5) { // default 5s
@@ -43,7 +45,7 @@ export class TokenSecurityAuditSync{
         }
 
         repeat().then();
-        console.log(`Token security audit schedule in ${interval/1000}s interval`);
+        console.log(`[${TokenSecurityAudit.getTableName()}]schedule in ${interval/1000}s interval`);
     }
 
     private async audit(recently: boolean = false){

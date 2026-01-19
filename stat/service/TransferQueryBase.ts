@@ -6,7 +6,7 @@ import {FailedTx, FullTransaction} from "../model/FullBlock";
 import {PruneInfo} from "../model/PruneInfo";
 import {CONST} from "./common/constant"
 import {TransferCount} from "../model/TransferCount";
-import {fmtAddr} from "../StatApp";
+import {fmtAddr, StatApp} from "../StatApp";
 import {closestEpochByTimeStamp, ClosestType} from "../model/Epoch";
 import {Token} from "../model/Token";
 import {detectFishingAddress} from "./tool/phishingAddress";
@@ -240,8 +240,8 @@ export abstract class TransferQueryBase {
                 row['transactionHash'] = txMap.get(key)?.hash
                     || `0x${row['transactionHash']}`
                     || '';
-                row['from'] = hex40Map.get(row['from']) ? fmtAddr(`0x${hex40Map.get(row['from'])}`, this.app?.networkId) : '';
-                row['to'] = hex40Map.get(row['to']) ? fmtAddr(`0x${hex40Map.get(row['to'])}`, this.app?.networkId) : '';
+                row['from'] = hex40Map.get(row['from']) ? fmtAddr(`0x${hex40Map.get(row['from'])}`, StatApp.networkId) : '';
+                row['to'] = hex40Map.get(row['to']) ? fmtAddr(`0x${hex40Map.get(row['to'])}`, StatApp.networkId) : '';
                 row['timestamp'] = options.txType === CONST.TX_TYPE.CREATE ? row['timestamp']
                     : row['timestamp'].getTime() / 1000;
                 row['syncTimestamp'] = row['timestamp'];

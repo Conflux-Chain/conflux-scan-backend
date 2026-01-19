@@ -1,35 +1,26 @@
-import {redirectLog} from "./config/LoggerConfig";
+import {redirectLog} from "./service/tool/LoggerConfig";
 import {regExitHook} from "./service/tool/ProcessTool";
-import {startSync3525} from "./T3525Sync";
-import {startBalanceTask, startContractUserAnd1155data} from "./service/watcher/BatchBalanceWatcher";
+import {startContractUserAnd1155data} from "./service/watcher/BatchBalanceWatcher";
 import { init } from "./service/tool/FixDailyTokenStat";
 import {startUniqueAddrStat} from "./service/UniqueAddressStat";
 import {initCfxSdk} from "./service/common/utils";
 import {StatApp} from "./StatApp";
 import {IS_EVM2, KV} from "./model/KV";
-import {TokenTool} from "./service/tool/TokenTool";
-import {TokenQuoteSync} from "./service/TokenQuoteSync";
 import {repeatCheckAccount} from "./service/watcher/AccountChecker";
 import {listenPort} from "./monitor/serverApi";
 
 async function main() {
     redirectLog()
     regExitHook()
-    // init firstly
+
     const config = await init()
-    const cfx = await initCfxSdk(config.conflux, 'StatTask');
+    const cfx = await initCfxSdk(config.conflux, 'TokenMisc');
     StatApp.networkId = cfx.networkId;
     StatApp.isEVM = await KV.getSwitch(IS_EVM2);
-    // startSync3525('useConfigRpc', "-1", "10000").then()
+
     startContractUserAnd1155data(cfx, config, 500).then();
     startUniqueAddrStat().then()
     repeatCheckAccount(cfx).then(); // should move it to stat-task
-    // quote service
-    if (config?.syncQuote?.open) {
-        const tokenTool = new TokenTool(cfx);
-        const tokenQuoteSync = new TokenQuoteSync({cfx, config, tokenTool})
-        await tokenQuoteSync.schedule()
-    }
     console.log(`\n${__filename} started.\n`)
 }
 

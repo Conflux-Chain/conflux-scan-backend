@@ -7,11 +7,11 @@ import {
     KEY_OPEN_API_URL
 } from "../../stat/model/KV";
 import {fmtAddr} from "../../stat/StatApp";
-import {ApiApp} from "../app";
 import {NoCoreSpace} from "../../stat/config/StatConfig";
 import {Errors} from "../../stat/service/common/LogicError";
 import {CONST} from "../../stat/service/common/constant";
 import {HomepageDashboard} from "../../stat/service/HomepageDashboard";
+import {ApiApp} from "../app";
 
 const lodash = require('lodash');
 const Big = require('big.js');
@@ -25,7 +25,7 @@ const arrayToCSVFlow = require('../../common/middleware/arrayToCSVFlow');
 const concurrenceControl = require('../../common/middleware/concurrenceControl');
 const buildFlow = require('../../common/middleware/buildFlow');
 const serializeByIP = require('../../common/middleware/serializeByIP');
-const { KV, KEY_EVM_VERSIONS } = require('../../stat/model/KV');
+const { KV } = require('../../stat/model/KV');
 const {StatApp} = require("../../stat/StatApp");
 const {JsonRPCFlow} = require("../../koaflow/lib/flow/JsonRPCFlow");
 export const jsonrpc = new JsonRPCFlow();
@@ -120,14 +120,15 @@ export const jsonrpc_frontend = jsonrpc.method_('frontend',
   cacheFlow(60 * 1000),
   durationAlarmFlow(5 * 1000, { method: 'frontend' }),
   async function ({referer, host}) {
-    const refHost = referer || host;
     const {
-      app: { config, networkId },
+      app: { config },
     } = this as { app: ApiApp };
 
+    const refHost = referer || host;
     let frontedConfig;
     try {
-      const { frontend } = config;
+        const frontend = CONST.FRONTEND_CONFIG;
+        const networkId = StatApp.networkId;
         const productNet = networkId === 1029 || networkId === 1030 || networkId === 1 || networkId === 71;
         let networks = productNet ? frontend.networks.slice(0, 4) : (frontend.devScan[networkId] ?? []);
         try {
@@ -145,7 +146,7 @@ export const jsonrpc_frontend = jsonrpc.method_('frontend',
           if (contract.key === 'announcement' && dbAnnouncement) {
              useAddr = dbAnnouncement;
           }
-          return { key: contract.key, name: contract.name, address: useAddr };
+          return { key: contract.key, address: useAddr };
       });
       frontedConfig = { networkId, networks, contracts, referer, host };
         if (NoCoreSpace) {
@@ -157,7 +158,7 @@ export const jsonrpc_frontend = jsonrpc.method_('frontend',
       }
       for (const kv of [KEY_OPEN_API_URL, KEY_CORE_OPEN_API_URL, KEY_CONFURA_URL, KEY_CORE_API_URL, EVM_RPC_URL]) {
           // use local config prior to shared DB config.
-          frontedConfig[kv] = config[kv] ?? await KV.getString(kv);
+          frontedConfig[kv] = config[kv] ?? (CONST.CHAIN_INFO[StatApp.networkId] || {})[kv] ?? await KV.getString(kv);
           if (refHost && frontedConfig[kv]) {
             frontedConfig[kv] = frontedConfig[kv].replace(from, to);
           }
@@ -362,11 +363,6 @@ export const jsonrpc_listVyperCompilers = jsonrpc.method_('listVyperCompilers',
         return lodash.mapValues(versions, v => v.desc)
     },
 );
-
-export async function listEVMVersion() {
-  const value = await KV.getString(KEY_EVM_VERSIONS, '')
-  return value.split(',')
-}
 
 export const jsonrpc_verifyContract = jsonrpc.method_('verifyContract',
   serializeByIP(),

@@ -4,27 +4,14 @@ import {NoCoreSpace} from "../../stat/config/StatConfig";
 import {getDelegatedAddrAtTx} from "../../stat/model/EIP7702model";
 import {format} from "js-conflux-sdk";
 import {CONST} from "../../stat/service/common/constant";
+import {CensorService} from "../../stat/service/censor/CensorService";
 
 const lodash = require('lodash');
 const limitMap = require('limit-map');
-const {fetchEnsMap} = require("../../stat/service/ens/EnsService");
 const {CENSOR_STATUS} = require("../../stat/service/censor/CensorService");
 const {hexToUtf8, utf8ToHex} = require("../../stat/service/tool/CensorTool");
 const {extractActualGasCost} = require("../../stat/service/common/utils");
 const BigFixed = require('bigfixed');
-
-const RECEIPT_FIELDS = [
-  'gasCoveredBySponsor',
-  'gasFee',
-  'gasUsed',
-  'stateRoot',
-  'storageCollateralized',
-  'storageCoveredBySponsor',
-  'storageReleased',
-  'txExecErrorMsg',
-  'burntGasFee',
-  'effectiveGasPrice',
-];
 
 export class TransactionService {
   app: ScanApp & any;
@@ -65,10 +52,10 @@ export class TransactionService {
     }
 
     let txInputData = transaction.data;
-    const censorResult = await service.censor.getCensorResult(hash);
+    const censorResult = await CensorService.getCensorResult(hash);
     if(censorResult && (censorResult.censorStatus === CENSOR_STATUS.REJECT || censorResult.censorStatus === CENSOR_STATUS.SUSPECT)) {
       const {data} = hexToUtf8(transaction.data.substr(2));
-      const mosaicData = service.censor.mosaicText(data);
+      const mosaicData = CensorService.mosaicText(data);
       txInputData = `0x${utf8ToHex(mosaicData).data}`;
     }
 
@@ -141,7 +128,6 @@ export class TransactionService {
       result = await this._countAndListByBlockHash(options);
     } else {
         result = await service.fullBlock.listTransaction(options);
-        result.ensInfo = await fetchEnsMap(result.list,'from','to')
         return result;
     }
 
@@ -152,7 +138,6 @@ export class TransactionService {
       },
       { limit: 100 },
     );
-    result.ensInfo = await fetchEnsMap(result.list,'from','to')
 
     return result;
   }

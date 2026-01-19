@@ -24,6 +24,7 @@ export class Reporter{
         this.app = app;
         this.initInflux();
         this.registerSampler();
+        this.start().then();
     }
 
     private initInflux() {
@@ -128,6 +129,6 @@ export class Reporter{
         }
 
         repeat().then();
-        console.log(`[alert]scanSyncMonitor report with delay: ${delay}`);
+        console.log(`[scan_sync_monitor]schedule in ${delay/1000}s interval`);
     }
 }

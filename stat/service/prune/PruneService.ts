@@ -23,7 +23,7 @@ import {AddressErc721Transfer, Erc721Transfer} from "../../model/Erc721Transfer"
 import {AddressErc1155Transfer, Erc1155Transfer} from "../../model/Erc1155Transfer"
 import {FullMinerBlock} from "../../model/FullMinerBlock"
 import {loadConfig, StatConfig} from "../../config/StatConfig"
-import {redirectLog} from "../../config/LoggerConfig"
+import {redirectLog} from "../tool/LoggerConfig"
 import {StatApp} from "../../StatApp"
 import {registerProcessHook, sleep} from "../tool/ProcessTool"
 import {createDB, getSlaveStatus, initModel} from "../DBProvider"
@@ -327,7 +327,7 @@ async function start(opts: any) {
     redirectLog({mainPath: 'PruneService'})
 
     StatApp.readonly = config.database.readonly
-    const sequelize = createDB(config.databaseRW)
+    const sequelize = createDB(config.database)
     await initModel(sequelize)
     if (config.database?.syncSchema) {
         console.log(`sync model begin...`)

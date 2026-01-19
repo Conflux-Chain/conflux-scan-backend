@@ -13,13 +13,11 @@ scan-api/router/jsonrpc.js
 scan-api/router/v1.js
 scan-api/scan-api.iml
 scan-api/service/AccountService.js
-scan-api/service/AnnounceService.js
 scan-api/service/BlockService.js
 scan-api/service/ConfluxService.js
 scan-api/service/ContractService.js
 scan-api/service/EpochService.js
 scan-api/service/EventLogService.js
-scan-api/service/RecaptchaService.js
 scan-api/service/StatisticService.js
 scan-api/service/TokenService.js
 scan-api/service/TransactionService.js

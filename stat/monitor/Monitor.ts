@@ -5,7 +5,7 @@ import {CFX_TRANSFER_DELAY, ERC20_TRANSFER_DELAY, KV} from "../model/KV";
 import {init} from "../service/tool/FixDailyTokenStat";
 import {ConfigInstance, loadConfig} from "../config/StatConfig";
 import {StatApp} from "../StatApp";
-import {getAppEntryName} from "../config/LoggerConfig";
+import {getAppEntryName} from "../service/tool/LoggerConfig";
 
 const superagent = require('superagent')
 

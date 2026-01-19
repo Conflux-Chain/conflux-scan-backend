@@ -2,25 +2,13 @@ import {Blacklist} from "../model/Blacklist";
 import {ethers} from "ethers";
 import {format} from "js-conflux-sdk";
 import {StatApp} from "../StatApp";
-import {Token} from "../model/Token";
+import {KEY_BLACKLIST_DISABLE, KV} from "../model/KV";
 
 export class Desensitizer {
     private static BLACKLIST: any = {};
 
-    public async markBlacklist(
-        {
-            address,
-            remark = 'sensitive info',
-        }: {
-            address: string,
-            remark?: string,
-        }): Promise<boolean> {
-        await Blacklist.sequelize.transaction(async (dbTx) => {
-            await Blacklist.upsert({address, remark} as Blacklist, { transaction: dbTx });
-            await Token.update({auditResult: false} as Token, { where: {base32: address}, transaction: dbTx });
-        });
-
-        return true;
+    constructor() {
+        this.scheduleRefreshBlacklist().then();
     }
 
     public async scheduleRefreshBlacklist(delay = 1000 * 10) {
@@ -61,6 +49,12 @@ export class Desensitizer {
     }
 
     private static async refreshBlacklist() {
+        const disable = await KV.getSwitch(KEY_BLACKLIST_DISABLE);
+        if (disable) {
+            Desensitizer.BLACKLIST = {};
+            return;
+        }
+
         const blacklists = await Blacklist.findAll({raw: true});
 
         const blacklistInfo = {};

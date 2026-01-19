@@ -4,17 +4,20 @@ import {Token} from "../../model/Token";
 import {NftMeta} from "../nftchecker/NftMetaStorage";
 import {hexToUtf8} from "../tool/CensorTool";
 import {Contract} from "../../model/Contract";
-import {format} from "js-conflux-sdk";
+import {Conflux, format} from "js-conflux-sdk";
 import {fmtDtUTC} from "../../model/Utils";
-import {KEY_CENSOR_CALL_COUNT, KV, TOTAL_POS_REWARD} from "../../model/KV";
+import {KEY_CENSOR_CALL_COUNT, KV} from "../../model/KV";
 import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
+import {TraceCreateContract} from "../../model/TraceCreateContract";
+import {CensorOptions} from "../../config/StatConfig";
 
 const lodash = require('lodash');
 const AipContentCensorClient = require("baidu-aip-sdk").contentCensor;
 const HttpClient = require("baidu-aip-sdk").HttpClient;
 
 export class CensorService {
-    private app: any;
+    private cfx: any;
+    private opt: CensorOptions;
     private censorClient;
     private initialized = false;
     private itemsPerTime;
@@ -25,19 +28,35 @@ export class CensorService {
     private CENSOR_CACHE = {}; // key: nft name, value: {censorStatus: 1-accept, 2-reject, 3-suspect, 4-fail, latestCensorTime: datetime}
     private CENSOR_CACHE_MAX_SIZE = 10000;
 
-    public constructor(app: any, itemsPerTime: any = {tx: 1, contract: 1, token: 1, nft: 1}) {
-        this.app = app;
+    public constructor(cfx: Conflux, opt: CensorOptions, itemsPerTime: any = {tx: 1, contract: 1, token: 1, nft: 1}) {
+        if(!opt.enable) {
+            console.log("Censor service disabled!");
+            return;
+        }
+        if(!opt.appId || !opt.apiKey || !opt.secretKey) {
+            throw new Error("Censor service configurations (appId/apiKey/secretKey) should be provided!");
+        }
+
+        this.cfx = cfx;
+        this.opt = opt;
         this.itemsPerTime = itemsPerTime;
         this.launchTime = fmtDtUTC(new Date());
+
+        this.schedule(opt.interval || 10000).then();
     }
 
     // ------------------------- query censor result ----------------------------
-    public async getCensorResult(transactionHash) {
+    static async getCensorResult(transactionHash) {
         return CensorItem.findOne({where: {transactionHash}});
     }
 
+    static mosaicText(str: string) {
+        const len = str.length;
+        return len <= 2 ? '***' : `${str.substr(0, 1)}***${str.substr(len - 1, len)}`;
+    }
+
     // ----------------------------- censor items -------------------------------
-    public async schedule(delay = 10000) {
+    public async schedule(delay: number) {
         const that = this;
 
         async function repeat() {
@@ -65,13 +84,10 @@ export class CensorService {
     }
 
     private async init() {
-        const {
-            app: { config },
-        } = this;
-
-        const {censorAppId, censorApiKey, censorSecretKey} = config;
         HttpClient.setRequestOptions({timeout: 3000});
-        this.censorClient = new AipContentCensorClient(censorAppId, censorApiKey, censorSecretKey);
+
+        const {appId, apiKey, secretKey} = this.opt;
+        this.censorClient = new AipContentCensorClient(appId, apiKey, secretKey);
 
         this.callCount =  await KV.getNumber(KEY_CENSOR_CALL_COUNT, 0);
 
@@ -79,10 +95,6 @@ export class CensorService {
     }
 
     private async censorTransactions() {
-        const {
-            app: { cfx, traceCreateQuery },
-        } = this;
-
         const txCensorArray = await CensorItem.findAll({
             where: {censorStatus: {[Op.in]: [CENSOR_STATUS.TO_CENSOR, CENSOR_STATUS.FAIL]}},
             order: [['createdAt', 'asc']],
@@ -94,15 +106,22 @@ export class CensorService {
 
         for (const txCensor of txCensorArray) {
             const {id, transactionHash} = txCensor;
-            const tx = await cfx.getTransactionByHash(transactionHash);
+            const tx = await this.cfx.getTransactionByHash(transactionHash);
             if(!tx || tx.to === null || tx.data === '0x') {
                 await CensorItem.update({censorStatus: CENSOR_STATUS.ACCEPT, updatedAt: new Date()},
                     {where:{id}});
                 continue;
             }
 
-            const traceCreate = traceCreateQuery.query(format.hexAddress(tx.to));
-            if(traceCreate.address && tx.data.length > 10 && (tx.data.length - 10) % 64 === 0) {
+            const trace: any = await TraceCreateContract.sequelize.query(
+                "select * from trace_create_contract where `to` = (select id from hex40 where hex= ? )",
+                {
+                    type: QueryTypes.SELECT,
+                    replacements: [format.hexAddress(tx.to).substr(2)]
+                }).then(traces => {
+                return traces?.length ? traces[0] : undefined
+            });
+            if(trace && tx.data.length > 10 && (tx.data.length - 10) % 64 === 0) {
                 await CensorItem.update({censorStatus: CENSOR_STATUS.ACCEPT, updatedAt: new Date()},
                     {where:{id}});
                 continue;
@@ -144,7 +163,7 @@ export class CensorService {
 
             const updateContract = {censorStatus: result.conclusionType, updatedAt: new Date()} as any;
             if(result.conclusionType === CENSOR_STATUS.REJECT || result.conclusionType === CENSOR_STATUS.SUSPECT){
-                updateContract.name = this.mosaicText(name);
+                updateContract.name = CensorService.mosaicText(name);
             }
             await Contract.update(updateContract, {where:{id}});
         }
@@ -168,8 +187,8 @@ export class CensorService {
 
             const updateToken = {censorStatus: result.conclusionType, updatedAt: new Date()} as any;
             if(result.conclusionType === CENSOR_STATUS.REJECT || result.conclusionType === CENSOR_STATUS.SUSPECT){
-                updateToken.name = this.mosaicText(name);
-                updateToken.symbol = this.mosaicText(symbol);
+                updateToken.name = CensorService.mosaicText(name);
+                updateToken.symbol = CensorService.mosaicText(symbol);
             }
             await Token.update(updateToken, {where:{id}});
         }
@@ -216,7 +235,7 @@ export class CensorService {
 
             const updateNftMetadata = {censorStatus: result.conclusionType, updatedAt: new Date()} as any;
             if(result.conclusionType === CENSOR_STATUS.REJECT || result.conclusionType === CENSOR_STATUS.SUSPECT){
-                metaData.name = this.mosaicText(name);
+                metaData.name = CensorService.mosaicText(name);
                 updateNftMetadata.content = JSON.stringify(metaData);
             }
             await NftMeta.update(updateNftMetadata, {where:{contractId, tokenId}});
@@ -229,11 +248,6 @@ export class CensorService {
             limit: 10,
         });
         this.debug && console.log(`evictCensorItems ---> ${censorItemDel}`);
-    }
-
-    public mosaicText(str: string) {
-        const len = str.length;
-        return len <= 2 ? '***' : `${str.substr(0, 1)}***${str.substr(len - 1, len)}`;
     }
 
     // -------------------------- third party censor ----------------------------
@@ -274,7 +288,7 @@ export class CensorService {
         return result;
     }
 
-    protected evictLru({items, orderKey, cacheMaxSize = this.CENSOR_CACHE_MAX_SIZE}){
+    private evictLru({items, orderKey, cacheMaxSize = this.CENSOR_CACHE_MAX_SIZE}){
         const len = Object.keys(items).length;
         if(len <= cacheMaxSize) return items;
 

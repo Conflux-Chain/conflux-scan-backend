@@ -1,5 +1,5 @@
 import {ethers} from "ethers";
-import {redirectLog} from "./config/LoggerConfig";
+import {redirectLog} from "./service/tool/LoggerConfig";
 import {DataTypes, Model, Sequelize, QueryTypes} from "sequelize";
 import {buildErc20Transfer,} from "./model/Erc20Transfer";
 import {IErc1155Transfer} from "./model/Erc1155Transfer";

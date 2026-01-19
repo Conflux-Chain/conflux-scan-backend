@@ -19,7 +19,7 @@ let methodIdSet: Set<string> = new Set<string>();
 async function init() {
     const config = loadConfig('Prod')
     cfx = await initCfxSdk(config.conflux)
-    let seq = createDB(config.databaseRW)
+    let seq = createDB(config.database)
     await seq.sync({})
     await initModel(seq)
 

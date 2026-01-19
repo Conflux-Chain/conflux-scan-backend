@@ -7,6 +7,7 @@ import {Conflux} from "js-conflux-sdk";
 import {SupplyInfo} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {ConfigInstance} from "../config/StatConfig";
 import {calculateEvmPosSupply} from "./ZGSupply";
+import {StatApp} from "../StatApp";
 
 const lodash = require('lodash');
 
@@ -148,7 +149,7 @@ export class HomepageDashboard {
 }
 
 export async function patchSupplyInfo(supplyInfo: SupplyInfo, balanceOfZero: bigint): Promise<SupplyInfo&any> {
-    if (supplyInfo?.totalCirculating == 0n && ConfigInstance.noCoreSpace && ConfigInstance.isEvm) {
+    if (supplyInfo?.totalCirculating == 0n && ConfigInstance.noCoreSpace) {
         return calculateEvmPosSupply(balanceOfZero);
     } else {
         return supplyInfo;
