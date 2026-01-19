@@ -1,5 +1,5 @@
 // @ts-ignore
-import {format} from "js-conflux-sdk";
+import {Conflux, format} from "js-conflux-sdk";
 import {Hex40Map, idHex40Map, hex40IdMap} from "../model/HexMap";
 import {TraceCreateContract} from "../model/TraceCreateContract";
 import {Op, QueryTypes} from "sequelize";
@@ -10,14 +10,13 @@ import {CONST} from "./common/constant"
 const lodash = require('lodash');
 
 export class ContractTraceCreateQuery{
-    protected app
+    protected cfx: Conflux;
 
-    constructor(app: any) {
-        this.app = app
+    constructor({cfx}: {cfx: Conflux}) {
+        this.cfx = cfx
     }
 
     async query(address: string) {
-        const{cfx} = this.app
         const hex = format.hexAddress(address)
         const addr = await Hex40Map.findOne({where: {hex: hex.substr(2)}})
         if(!addr){
@@ -57,7 +56,7 @@ export class ContractTraceCreateQuery{
             replacements: [transactionHash]
         }).then((list: any[]) => (list?.length ? `0x${list[0].address}` : null))
         if(!contractCreator) {
-            const tx = await cfx.getTransactionByHash(transactionHash)
+            const tx = await this.cfx.getTransactionByHash(transactionHash)
             if (tx) {
                 contractCreator = format.hexAddress(tx.from)
             }

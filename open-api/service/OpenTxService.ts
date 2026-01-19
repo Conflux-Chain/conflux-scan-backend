@@ -7,7 +7,7 @@ import {
     mustBeEnumParamIfPresent,
     mustBeIntParamIfPresent
 } from "../../stat/service/common/utils";
-import {StatApp} from "../../stat/StatApp";
+import {fmtAddr, StatApp} from "../../stat/StatApp";
 import {setBody} from "../router/middleware";
 import {CODE_PARAMETER_ABSENT, CODE_PARAMETER_ABSENT_MSG} from "../common/Def";
 import {getApiService} from "../ApiServer";
@@ -15,7 +15,6 @@ import {polishContract} from "./OpenContractService";
 import {TraceCreateContract} from "../../stat/model/TraceCreateContract";
 import {QueryTypes} from "sequelize";
 import {paginateCore} from "../../stat/router/ParamChecker";
-import {formatAddr} from "../common/RestTool";
 import {decodeTxData} from "../../stat/service/tool/TxTool";
 
 const lodash = require('lodash');
@@ -170,14 +169,14 @@ export async function abiDecodeRaw(ctx){
         try{
             hexAddr = format.hexAddress(toAddr).substr(2);
         } catch (e){
-            lodash.assign(tx, { error: `Address (${formatAddr(toAddr)}) invalid` });
+            lodash.assign(tx, { error: `Address (${fmtAddr(toAddr, StatApp.networkId)}) invalid` });
             continue;
         }
         const sql = `select * from trace_create_contract trace where trace.to = (select id from hex40 where hex = ?)`;
         const trace = await TraceCreateContract.sequelize.query(sql, {type: QueryTypes.SELECT, replacements: [hexAddr]})
             .then(arr=>{ return arr[0]; });
         if(!trace){
-            lodash.assign(tx, { error: `Address (${formatAddr(toAddr)}) not a contract` });
+            lodash.assign(tx, { error: `Address (${fmtAddr(toAddr, StatApp.networkId)}) not a contract` });
             continue;
         }
 
@@ -192,7 +191,7 @@ async function decodeMethod(toAddr, data) {
     const base32 = formatToBase32(toAddr);
     let contract = await getVerifiedContract(base32);
     if(!contract){
-        return  { error: `Contract (${formatAddr(toAddr)}) not verified` };
+        return  { error: `Contract (${fmtAddr(toAddr, StatApp.networkId)}) not verified` };
     }
 
     const result = decodeTxData(contract['abi'], data);
@@ -203,7 +202,7 @@ async function decodeMethod(toAddr, data) {
     const impl = await getApiService().contractQuery.getImpl(base32)
     contract = await getVerifiedContract(impl.implementation);
     if(!contract){
-        return  { error: `The proxy's (${formatAddr(toAddr)}) implementation contract (${formatAddr(impl.implementation)}) not verified` };
+        return  { error: `The proxy's (${fmtAddr(toAddr, StatApp.networkId)}) implementation contract (${fmtAddr(impl.implementation, StatApp.networkId)}) not verified` };
     }
 
     return decodeTxData(contract['abi'], data);

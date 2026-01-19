@@ -118,10 +118,9 @@ export class ApiServer {
         apiService.ensCheckerQuery = new ENSCheckerQuery(cfx);
         const accountQuery = new AccountQuery(apiApp);
         apiService.accountQuery = accountQuery;
-        const tokenTool = new TokenTool(cfx)
-        apiService.tokenTool = tokenTool
+        apiService.tokenTool = new TokenTool(cfx);
         apiService.tokenQuery = new TokenQuery(apiApp)
-        apiService.contractQuery = new ContractQuery({cfx, config, tokenQuery: apiService.tokenQuery, tokenTool})
+        apiService.contractQuery = new ContractQuery({cfx, config: config.verification})
         apiService.txnQuery = new TxnQuery()
         apiService.txnSync = new TxnSync({cfx, accountQuery})
         apiService.traceCreateQuery = new ContractTraceCreateQuery({cfx});

@@ -41,6 +41,7 @@ import {checkAllTableDataTime} from "./monitor/DataTimeChecker";
 import {StatDailyGas} from "./service/timerstat/StatDailyGas";
 import {ContractQuery} from "./service/ContractQuery";
 import {TokenQuoteSync} from "./service/TokenQuoteSync";
+import {ContractDappNameSync} from "./service/ContractDappNameSync";
 
 async function runTools() {
     const [,, cmd, arg1] = process.argv;
@@ -92,11 +93,12 @@ async function main() {
     new StatTotalCfxHolder({cfx});
     new StatDailyPosReward({cfx});
     new StatDailyPowReward({cfx});
+    new ContractDappNameSync({cfx});
     new TokenSecurityAuditSync({cfx});
     new TokenQuoteSync(cfx, config.quote);
     new CensorService(cfx, config.censor, {tx: 10, token: 10, nft: 10});
 
-    const contractQuery = new ContractQuery({cfx, config});
+    const contractQuery = new ContractQuery({cfx, config: config.verification});
     contractQuery.scheduleUpdateCompilerVersions().then();
     contractQuery.scheduleVerifyByAuto().then();
 

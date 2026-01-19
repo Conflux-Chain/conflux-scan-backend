@@ -4,7 +4,6 @@ import {getApiService} from "../ApiServer";
 import {InvalidParamError} from "../../stat/service/common/utils";
 import {StatApp} from "../../stat/StatApp";
 import {saveApiLog} from "../../stat/monitor/ApiLog";
-import {KnownError} from "../common/RestTool";
 import {CODE_PARAMETER_ERROR, CODE_PARAMETER_ERROR_MSG, CODE_RATE_LIMITED} from "../common/Def";
 import {getClientIP} from "../../stat/router/RateLimiter";
 import {safeAddErrorLog} from "../../stat/monitor/ErrorMonitor";
@@ -71,9 +70,6 @@ export async function rateControl(ctx, next) {
 }
 export async function handleException(ctx, next) {
     await next().catch(err => {
-        if (err instanceof KnownError) {
-            return
-        }
         if (err?.message?.includes('path="", not match "hex40"')) {
             setBody(ctx, ctx.request.query, CODE_PARAMETER_ERROR, CODE_PARAMETER_ERROR_MSG)
             return

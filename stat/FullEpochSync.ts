@@ -55,17 +55,18 @@ export class FullEpochSync{
     }
 
     public async run() {
-        this.cfx = await initCfxSdk(this.config.conflux);
-        StatApp.networkId = this.cfx.networkId;
+        const cfx = await initCfxSdk(this.config.conflux);
+        this.cfx = cfx;
+        StatApp.networkId = cfx.networkId;
         await Promise.all([
             this.initDb(),
             initOss(this.config.oss)
         ]);
         await this.initSwitch();
 
-        this.tokenTool = new TokenTool(this.cfx);
+        this.tokenTool = new TokenTool(cfx);
         this.tokenQuery = new TokenQuery(this);
-        this.contractQuery = new ContractQuery(this);
+        this.contractQuery = new ContractQuery({cfx, config: this.config.verification});
         this.zeroAddressId = await makeIdV(CONST.ZERO_ADDRESS);
         this.epochSync = new EpochSync(this);
 

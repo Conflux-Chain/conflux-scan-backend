@@ -19,7 +19,6 @@ import {NFTCheckerService} from "./service/nftchecker/NFTCheckerService";
 import {initCfxSdk, initEthSdk} from "./service/common/utils";
 import {
     IS_EVM2,
-    KEY_FASTEST_IPFS_GATEWAY,
     KEY_FULL_STATE_RPC,
     KV
 } from "./model/KV";
@@ -71,13 +70,14 @@ export class StatApp{
     }
 
     public async init() {
-        this.cfx = await initCfxSdk(this.config.conflux);
+        const cfx = await initCfxSdk(this.config.conflux);
+        this.cfx = cfx;
         this.eth = initEthSdk(this.config.ether?.url);
-        StatApp.networkId = this.cfx.networkId
+        StatApp.networkId = cfx.networkId
         PowSidePosSync.POS_CONTRACT_VERBOSE = format.address(PowSidePosSync.POS_CONTRACT_HEX, StatApp.networkId, true)
         StatApp.readonly = this.config.database.readonly
         console.log(`conflux network id ${StatApp.networkId}, config:`, this.config.conflux)
-        this.tokenTool = new TokenTool(this.cfx);
+        this.tokenTool = new TokenTool(cfx);
         this.sequelize = createDB(this.config.database);
         const {sequelize} = this;
         await Promise.all([
@@ -97,16 +97,16 @@ export class StatApp{
         this.txnSync = new TxnSync(this);
         const utilContract = await BatchBalanceWatcher.getUtilContractAddr();
         if (this.config.watchCfxBalance) {
-            this.cfxWatcher = new CfxWatcher('cfx', this.cfx);
+            this.cfxWatcher = new CfxWatcher('cfx', cfx);
         }
-        this.batchBalanceWatcher = new BatchBalanceWatcher(this.cfx, utilContract)
+        this.batchBalanceWatcher = new BatchBalanceWatcher(cfx, utilContract)
         // @ts-ignore
         this.balanceService = new BalanceService(this, StatApp.networkId)
         new ChainWatcher().watchPivotSwitch({cfxWsUrl: this.config.cfxWsUrl}).then()
-        this.posQuery = new PosQuery(this.cfx);
+        this.posQuery = new PosQuery(cfx);
         this.tokenQuery = new TokenQuery(this);
-        this.traceCreateQuery = new ContractTraceCreateQuery(this);
-        this.contractQuery = new ContractQuery(this);
+        this.traceCreateQuery = new ContractTraceCreateQuery({cfx});
+        this.contractQuery = new ContractQuery({cfx, config: this.config.verification});
         this.statsQuery = new StatsQuery(this);
         this.nftPreviewService = new NFTPreviewService(this);
         this.nftCheckerService = new NFTCheckerService(this);
@@ -114,7 +114,7 @@ export class StatApp{
         this.rankService = new RankService(this)
         this.rankService.repeatUpdateTxnCache(); // scheduleCache
         this.fullBlockQuery = new FullBlockQuery(this);
-        this.ensCheckerQuery = new ENSCheckerQuery(this.cfx);
+        this.ensCheckerQuery = new ENSCheckerQuery(cfx);
         this.accountQuery = new AccountQuery(this);
         this.statOnRealtime = new StatOnRealtime()
         this.homepageDashboard = new HomepageDashboard(this);
@@ -129,7 +129,7 @@ export class StatApp{
             });
         } else {
             console.log(`config not found for ${KEY_FULL_STATE_RPC}`);
-            this.fullStateCfx = this.cfx;
+            this.fullStateCfx = cfx;
         }
     }
 }
