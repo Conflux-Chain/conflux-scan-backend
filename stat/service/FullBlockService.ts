@@ -577,6 +577,7 @@ export class FullBlockService {
                         } ${JSON.stringify(contractBean)}, `, err))
                     }
                     txInfo.epoch = minEpochNumber;
+                    txInfo.tx = txInfo.transactionHash;
                     txInfo.blockPosition = block.position
                     txInfo.txPosition = pos++ // it's not the index in RPC data. it's computed, see desc above.
                     txInfo.createdAt = block.createdAt

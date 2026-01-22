@@ -34,10 +34,6 @@ export interface IFullBlock extends IBaseBlock {
     pivot: boolean;
 }
 const FULL_BLOCK_SQL = `CREATE TABLE if not exists \`full_block\` (
-                              num bigint unsigned NOT NULL,
-                              height bigint unsigned NOT NULL,
-                              baseFee bigint unsigned NOT NULL,
-                              burntFee bigint unsigned NOT NULL,
                               \`epoch\` bigint unsigned NOT NULL,
                               \`position\` smallint NOT NULL DEFAULT '0',
                               \`createdAt\` datetime NOT NULL,
@@ -48,6 +44,10 @@ const FULL_BLOCK_SQL = `CREATE TABLE if not exists \`full_block\` (
                               \`minerId\` bigint unsigned NOT NULL,
                               \`hash\` char(66)  CHARACTER SET ascii DEFAULT '',
                               \`totalReward\` decimal(36,0) NOT NULL DEFAULT '0',
+                              num bigint unsigned NOT NULL,
+                              height bigint unsigned NOT NULL,
+                              baseFee bigint unsigned NOT NULL,
+                              burntFee bigint unsigned NOT NULL,
                               \`txFee\` decimal(36,0) NOT NULL DEFAULT '0',
                               \`avgGasPrice\` decimal(36,0) NOT NULL DEFAULT '0',
                               \`gasLimit\` decimal(36,0) NOT NULL DEFAULT '0',
