@@ -42,6 +42,13 @@ export interface IAddressTransfer {
 
     epoch: number
     blockIndex: number
+
+    tx: string;
+    nonce: bigint;
+    method: string;
+    status: number;
+    gas: bigint;
+
     txIndex: number
     txLogIndex: number
     batchIndex: number
@@ -63,6 +70,13 @@ export class AddressTransfer extends Model<IAddressTransfer> implements IAddress
     epoch: number
     blockIndex: number
     txIndex: number
+
+    tx: string;
+    nonce: bigint;
+    method: string;
+    status: number;
+    gas: bigint;
+
     txLogIndex: number
     batchIndex: number
 
@@ -82,6 +96,11 @@ export class AddressTransfer extends Model<IAddressTransfer> implements IAddress
             epoch: {type: DataTypes.BIGINT, allowNull: false},
             blockIndex: {type: DataTypes.SMALLINT, allowNull: false},
             txIndex: {type: DataTypes.SMALLINT, allowNull: false},
+            nonce: {type: DataTypes.BIGINT, allowNull: false},
+            gas: {type: DataTypes.BIGINT, allowNull: false},
+            status: {type: DataTypes.TINYINT, allowNull: false},
+            method: {type: DataTypes.STRING(10), allowNull: false, charset: 'ascii'} as any,
+            tx: {type: DataTypes.STRING(66), allowNull: false, charset: 'ascii'} as any,
             txLogIndex: {type: DataTypes.SMALLINT, allowNull: false},
             batchIndex: {type: DataTypes.SMALLINT, allowNull: false},
 
