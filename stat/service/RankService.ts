@@ -222,6 +222,6 @@ export class RankService{
             item.name = item.contractInfo?.name || item.tokenInfo?.name;
         });
 
-        return {/*code: 0,*/ total: list.length, list, accountMap: accountBasic};
+        return {total: list.length, list};
     }
 }

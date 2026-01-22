@@ -493,5 +493,10 @@ export const CONST = {
     },
   },
 
+  SWAPPI_FACTORY_LIST: {
+    1030: ["0xE2a6F7c0ce4d5d300F97aA7E125455f5cd3342F5"],
+    71: ["0x36B83E0D41D1dd9C73a006F0c1cbC1F096E69E34"],
+  },
+
   FRONTEND_CONFIG: frontendConstant,
 };

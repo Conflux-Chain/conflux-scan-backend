@@ -7,7 +7,7 @@ import {CONST} from "../common/constant";
 import {ContractQuery, VerificationJob, VerifyInput} from "../ContractQuery";
 import {IS_EVM2, KV} from "../../model/KV";
 import {VerifiedContracts} from "../../model/VerifiedContracts";
-import {format} from "js-conflux-sdk";
+import {Conflux, format} from "js-conflux-sdk";
 import {ethers} from "ethers";
 import {Contract} from "../../model/Contract";
 import {sleep} from "./ProcessTool";
@@ -15,6 +15,7 @@ import {Op} from "sequelize";
 import {execSync} from "child_process";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
 import {keccak256} from "ethers/lib/utils";
+import {ContractDappNameSync} from "../ContractDappNameSync";
 
 const fs = require('fs');
 const path = require('path');
@@ -64,17 +65,20 @@ async function run() {
     if(type === 5){
         await genCodeHash()
     }
-    await close();
+    if(type === 6) {
+        new ContractDappNameSync({cfx});
+    }
+    // await close();
 }
-let cfx
-let contractQuery
+let cfx: Conflux;
+let contractQuery: ContractQuery;
 async function init() {
     const config: StatConfig = await initialize()
 
-    cfx = await initCfxSdk(config.conflux);
-    contractQuery = new ContractQuery({cfx, config});
-
     StatApp.isEVM = await KV.getSwitch(IS_EVM2);
+
+    cfx = await initCfxSdk(config.conflux);
+    contractQuery = new ContractQuery({cfx, config: config.verification});
 }
 async function close(){
     Hex40Map.sequelize.close().then();
@@ -179,13 +183,17 @@ async function verifyBySourcify() {
                     return
                 }
             }
-            const  {verificationId} = await contractQuery.verify(input)
+            const  submitResult: any = await contractQuery.verify(input)
+            if(submitResult.message) {
+                console.log('submit verify request error', submitResult)
+                return
+            }
 
             let alreadyVerified
             let notDeployed
             let errOccurs
             while(true){
-                const job: VerificationJob = await contractQuery.checkVerification(verificationId)
+                const job: VerificationJob = await contractQuery.checkVerification(submitResult.verificationId)
                 // not completed
                 if(!job.isJobCompleted) {
                     await sleep(5000)

@@ -860,7 +860,6 @@ router_get(router,'/contract/:address',
     result.sponsor.sponsorForCollateralENSInfo = accountBasic.map[sponsorForCollateral]?.ens;
     result.sponsor.sponsorForGasNameTagInfo = accountBasic.map[sponsorForGas]?.nameTag;
     result.sponsor.sponsorForCollateralNameTagInfo = accountBasic.map[sponsorForCollateral]?.nameTag;
-    result.accountInfo = accountBasic;
     return result;
   },
 );
@@ -1131,7 +1130,6 @@ router_get(router,'/transfer',
       transfer.transferENSInfo = accountBasic.map[transfer.address]?.ens;
       transfer.transferNameTagInfo = accountBasic.map[transfer.address]?.nameTag;
     });
-    result['addressInfo'] = accountBasic
     return result;
   },
 );

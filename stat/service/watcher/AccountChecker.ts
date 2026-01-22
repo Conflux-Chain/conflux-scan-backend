@@ -2,7 +2,6 @@ import {DataTypes, Model, Op, QueryTypes, Sequelize} from "sequelize";
 import {buildHexSet, getAddrId} from "../../model/HexMap";
 import {Conflux, format} from "js-conflux-sdk";
 import {CfxWatcher} from "./BalanceWatcher";
-import {formatAddr} from "../../../open-api/common/RestTool";
 import {AddressErc20Transfer} from "../../model/Erc20Transfer";
 import {handleTokenTransferWithContract, updateTokenTransferCount} from "../../StreamSync";
 import {BatchBalanceWatcher} from "./BatchBalanceWatcher";
@@ -12,6 +11,7 @@ import {AddressNfts} from "../../model/AddrNft";
 import {Epoch} from "../../model/Epoch";
 import {Erc721Transfer} from "../../model/Erc721Transfer";
 import {fix721addrNftHolder} from "../tool/NftOwnerCheck";
+import {fmtAddr, StatApp} from "../../StatApp";
 
 export interface IReqAccount {
 	hexId: number; hex: string; base32: string;
@@ -64,7 +64,7 @@ export async function addReqAccount(account: string) {
 		await bean.save();
 	} else {
 		await ReqAccount.upsert({
-			hexId: id, hex: format.hexAddress(account), base32: formatAddr(account),
+			hexId: id, hex: format.hexAddress(account), base32: fmtAddr(account, StatApp.networkId),
 			reqTime: new Date(), regTime: new Date(), inQueue: true,
 		}, {});
 	}

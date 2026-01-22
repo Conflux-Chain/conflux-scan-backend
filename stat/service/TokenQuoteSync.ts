@@ -192,7 +192,7 @@ export class TokenQuoteSync {
         const wMOON = 'cfx:achcuvuasx3t8zcumtwuf35y51sksewvca0h0hj71a'; // backward swap via wCFX
         const FC = 'cfx:achc8nxj7r451c223m18w2dwjnmhkd6rxawrvkvsy2';
         const wFOR = 'cfx:acc1uh4ftd4jhser99uk8nk8unkbz8ykmyxt0n27v5'; // forward swap via wETH
-        const wLEND = 'cfx:acff13n54n4t02cy6uc8xfdxrf4enanr5jh6vy761g'; // backward sway via wETH
+        const wLEND = 'cfx:acff13n54n4t02cy6uc8xfdxrf4enanr5jh6vy761g'; // backward swap via wETH
 
         // collect swap map
         const directSwap = {};

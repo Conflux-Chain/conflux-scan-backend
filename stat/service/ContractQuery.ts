@@ -10,7 +10,6 @@ import {ContractDestroy, TraceCreateContract} from "../model/TraceCreateContract
 import {ProxyVerify} from "../model/Contract";
 import {Errors} from "./common/LogicError";
 import {CONST} from "./common/constant"
-import {ScanApp} from "../../scan-api/service/index";
 import {SolidityJsonInput, VyperJsonInput} from "@ethereum-sourcify/compilers-types";
 import {
     checkPresent,
@@ -40,11 +39,11 @@ import {
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import axios from "axios";
 import {doHeartBeat, HeartBeatBean, KEY_COMPILER} from "../model/HeartBeat";
-import {ConfigInstance} from "../config/StatConfig";
+import {ConfigInstance, VerificationOptions} from "../config/StatConfig";
+import {Conflux, format, sign} from "js-conflux-sdk";
 
 const path = require('path');
 const superagent = require('superagent');
-const { format, sign } = require('js-conflux-sdk');
 const lodash = require('lodash');
 const {Contract} = require("../model/Contract");
 const abi = require('./tool/abi');
@@ -66,7 +65,7 @@ export function getContractQuery() {
 }
 
 export class ContractQuery {
-    public app: ScanApp;
+    public cfx: Conflux;
     private readonly verifyEnable: boolean;
     private readonly verifyUrl: string;
 
@@ -76,19 +75,23 @@ export class ContractQuery {
     private readonly cacheCompilerTtl: number
     private CACHE_COMPILER_VERSIONS: any  // solc | vyper => {}
 
-    constructor(app: ScanApp, verifyCacheTTL?: number, compilerCacheTTL?: number) {
-        const {enable, url} = app.config.verification;
-        if(enable && !url) {
+    constructor(
+        {cfx, config}: { cfx: Conflux; config: VerificationOptions; },
+        verifyCacheTTL?: number,
+        compilerCacheTTL?: number
+    ) {
+        const {enable, url} = config;
+        if (enable && !url) {
             throw new Error("Contract service configurations (verification.url) should be provided!");
         }
 
-        this.app = app;
+        this.cfx = cfx;
         this.verifyEnable = enable;
         this.verifyUrl = url;
 
         this.cacheTtl = verifyCacheTTL || DEFAULT_VERIFY_CACHE_TTL
-        this.CACHE_VERIFY_ADDRESS = new NodeCache({ maxKeys: 5000,  stdTTL: this.cacheTtl, checkperiod: 60})
-        this.CACHE_VERIFY_DETAIL = new NodeCache({ maxKeys: 1000,  stdTTL: this.cacheTtl, checkperiod: 60})
+        this.CACHE_VERIFY_ADDRESS = new NodeCache({maxKeys: 5000, stdTTL: this.cacheTtl, checkperiod: 60})
+        this.CACHE_VERIFY_DETAIL = new NodeCache({maxKeys: 1000, stdTTL: this.cacheTtl, checkperiod: 60})
         this.cacheCompilerTtl = compilerCacheTTL || DEFAULT_COMPILER_CACHE_TTL
         this.CACHE_COMPILER_VERSIONS = new NodeCache({maxKeys: 2, stdTTL: this.cacheCompilerTtl, checkperiod: 60})
 
@@ -453,8 +456,6 @@ export class ContractQuery {
     }
 
     private async _getImpl(address: string) {
-        const {cfx} = this.app;
-
         const hex = format.hexAddress(address);
         const validSlotValue = (value: string) => value && value !== CONST.ZERO_VALUE_IN_SLOT;
 
@@ -462,7 +463,7 @@ export class ContractQuery {
             CONST.POSITION_IMPLEMENTATION_SLOT,
             CONST.IMPLEMENTATION_SLOT_OZ,
             CONST.IMPLEMENTATION_SLOT_EIP1822,
-        ].map(slot => cfx.getStorageAt(hex, slot))).then(values => {
+        ].map(slot => this.cfx.getStorageAt(hex, slot))).then(values => {
             const value = values.find(validSlotValue);
             return value ? `0x${value.substr(26)}` : undefined;
         });
@@ -474,7 +475,7 @@ export class ContractQuery {
             };
         }
 
-        const beacon = await cfx.getStorageAt(hex, CONST.POSITION_BEACON_SLOT).then(value => {
+        const beacon = await this.cfx.getStorageAt(hex, CONST.POSITION_BEACON_SLOT).then(value => {
             return validSlotValue(value) ? `0x${value.substr(26)}` : ZERO_LABS_PROXY_BEACON_MAP[hex];
         });
 
@@ -482,7 +483,7 @@ export class ContractQuery {
             return;
         }
 
-        const beaconImpl = await cfx.Contract({abi}).implementation()
+        const beaconImpl = await this.cfx.Contract({abi}).implementation()
             .call({to: beacon}, undefined)
             .then(format.hexAddress)
             .catch(() => undefined);
@@ -499,13 +500,12 @@ export class ContractQuery {
     }
 
     public async queryDestroyInfo(address) {
-        const {cfx, } = this.app;
         const hex = format.hexAddress(address);
 
         if(lodash.includes(CONST.INTERNAL_CONTRACT, hex)){
             return CONST.DEPLOY_STATUS.DEPLOYED;
         }
-        const {codeHash} = await cfx.getAccount(hex);
+        const {codeHash} = await this.cfx.getAccount(hex);
         if(codeHash !== CONST.CODEHASH_NO_BYTECODE){
             return CONST.DEPLOY_STATUS.DEPLOYED;
         }
@@ -1125,7 +1125,7 @@ export class ContractQuery {
             return;
         }
 
-        const {codeHash} = await this.app.cfx.getAccount(verified.address);
+        const {codeHash} = await this.cfx.getAccount(verified.address);
 
         const addresses = await TraceCreateContract.sequelize.query(`
                 select 
@@ -1150,7 +1150,7 @@ export class ContractQuery {
         retry: number = 3,
         intervalMs: number = 5000,
     ) {
-        const {codeHash} = await this.app.cfx.getAccount(address);
+        const {codeHash} = await this.cfx.getAccount(address);
         if (codeHash === CONST.CODEHASH_NO_BYTECODE) {
             const hex = await Hex40Map.findOne({where: {hex: address.substr(2)}});
             TraceCreateContract.update({codeHash}, {where: {to: hex.id}}).then();

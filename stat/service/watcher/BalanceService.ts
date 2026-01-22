@@ -87,7 +87,7 @@ export class BalanceService {
             });
         }
 
-        return {total, list: retList, skip, limit, table: table.getTableName(), holderQuery:elapsed, accountBasic}
+        return {total, list: retList, skip, limit, table: table.getTableName(), holderQuery:elapsed}
     }
 
     zeros = '00000000000000000000000'
