@@ -13,6 +13,7 @@ export interface IAddressCfxTransfer {
     blockIndex: number;
     txIndex: number;
     txLogIndex: number
+    tx: string;
     createdAt: Date
     fromId: number
     toId: number
@@ -28,6 +29,7 @@ create table if not exists ${T_ADDRESS_CFX_TRANSFER}
    \`blockIndex\` int unsigned NOT NULL,
   \`txIndex\` mediumint unsigned NOT NULL,
   \`txLogIndex\` mediumint unsigned NOT NULL,
+ 'tx' char(66) charset 'ascii',
  \`createdAt\` datetime NOT NULL,
  \`fromId\` bigint(20) unsigned NOT NULL,
  \`toId\` bigint(20) unsigned NOT NULL,
@@ -58,6 +60,7 @@ export class AddressCfxTransfer extends Model<IAddressCfxTransfer> implements IA
     blockIndex: number;
     txIndex: number;
     txLogIndex: number
+    tx: string;
     fromId: number
     toId: number
     value: number
@@ -71,6 +74,7 @@ export class AddressCfxTransfer extends Model<IAddressCfxTransfer> implements IA
             blockIndex: {type: DataTypes.SMALLINT, allowNull: false},
             txIndex: {type: DataTypes.INTEGER, allowNull: false},
             txLogIndex: {type: DataTypes.INTEGER, allowNull: false},
+            tx: {type: DataTypes.STRING(66), allowNull: false, charset: 'ascii'} as any,
             fromId: {type: DataTypes.BIGINT, allowNull: false},
             toId: {type: DataTypes.BIGINT, allowNull: false},
             value: {type: DataTypes.DECIMAL(36, 0), allowNull: false},
