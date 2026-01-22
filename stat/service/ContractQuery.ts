@@ -26,7 +26,7 @@ import {
 } from "./common/utils";
 import {VerifiedContracts} from "../model/VerifiedContracts";
 import {ethers} from "ethers";
-import {saveAbiInfo} from "../model/ContractInfo";
+import {AbiInfo, saveAbiInfo} from "../model/ContractInfo";
 import {sleep} from "./tool/ProcessTool";
 import {
     KEY_AUTO_VERIFY_TRACE_ID,
@@ -65,8 +65,8 @@ export function getContractQuery() {
 }
 
 export class ContractQuery {
-    public cfx: Conflux;
-    private readonly verifyEnable: boolean;
+    static verifyEnable: boolean;
+    private cfx: Conflux;
     private readonly verifyUrl: string;
 
     private readonly cacheTtl: number
@@ -86,7 +86,7 @@ export class ContractQuery {
         }
 
         this.cfx = cfx;
-        this.verifyEnable = enable;
+        ContractQuery.verifyEnable = enable;
         this.verifyUrl = url;
 
         this.cacheTtl = verifyCacheTTL || DEFAULT_VERIFY_CACHE_TTL
@@ -306,7 +306,7 @@ export class ContractQuery {
         }
 
         const fields = `?fields=compilation${withDetail ? ',stdJsonInput,abi,creationBytecode.transformationValues' : ''}`;
-        const resp = await this._getJsonRequest({
+        const resp = await ContractQuery._getJsonRequest({
             url: `${this.verifyUrl}/contract/${StatApp.networkId}/${hex}${fields}`
         });
         if (!resp) {
@@ -386,7 +386,7 @@ export class ContractQuery {
     private async listVerifyBySourcify(addresses: string[]) {
         const addressesParam = addresses.map(item => ethers.utils.getAddress(format.hexAddress(item))).join(',');
 
-        const resp = await this._getJsonRequest({
+        const resp = await ContractQuery._getJsonRequest({
             url: `${this.verifyUrl}/contracts/${StatApp.networkId}?addresses=${addressesParam}`,
         });
 
@@ -567,12 +567,12 @@ export class ContractQuery {
 
         async function repeat() {
             await that.updateSolcVersions().catch(e => {
-                safeAddErrorLog('ContractQuery', `updateSolcVersions`, e).then();
+                safeAddErrorLog('ContractQuery', 'updateSolcVersions', e).then();
                 console.log('Schedule update compiler versions fail', e);
             });
 
             await that.updateVyperVersions().catch(e => {
-                safeAddErrorLog('ContractQuery', `updateVyperVersions`, e).then();
+                safeAddErrorLog('ContractQuery', 'updateVyperVersions', e).then();
                 console.log('Schedule update compiler versions fail', e);
             });
 
@@ -585,7 +585,7 @@ export class ContractQuery {
 
     // shortVersion => fullVersion
     private async updateSolcVersions() {
-        const resp = await this._getJsonRequestByAxios({
+        const resp = await ContractQuery._getJsonRequestByAxios({
             url: 'https://binaries.soliditylang.org/bin/list.json',
             handleError: false,
         });
@@ -600,7 +600,7 @@ export class ContractQuery {
         let page = 1;
 
         while (true) {
-            const resp = await this._getJsonRequest({
+            const resp = await ContractQuery._getJsonRequest({
                 url: `https://api.github.com/repos/vyperlang/vyper/tags?page=${page}&per_page=100`,
                 headers: {
                     'User-Agent': 'Vyper-Version-Checker'
@@ -807,7 +807,7 @@ export class ContractQuery {
     private async verifyFromJsonInput(
         input: VerifyFromJsonInput,
     ): Promise<VerifyResponse | VerifyErrorResponse> {
-        const result = await this._postJsonRequest({
+        const result = await ContractQuery._postJsonRequest({
             url: `${this.verifyUrl}/verify/${input.chainId}/${input.address}`,
             body: {
                 stdJsonInput: input.jsonInput,
@@ -835,7 +835,7 @@ export class ContractQuery {
     private async verifyFromCrossChain(
         input: VerifyFromCrossChain
     ): Promise<VerifyResponse | VerifyErrorResponse> {
-        const result = await this._postJsonRequest({
+        const result = await ContractQuery._postJsonRequest({
             url: `${this.verifyUrl}/verify/crosschain/${input.chainId}/${input.address}`,
             body: {
                 linkChainIds: input.linkChainIds?.join(","),
@@ -881,7 +881,7 @@ export class ContractQuery {
     public async checkVerification(
         verificationId: string
     ): Promise<VerificationJob> {
-        const result = await this._getJsonRequest({
+        const result = await ContractQuery._getJsonRequest({
             url: `${this.verifyUrl}/verify/${verificationId}`,
         });
 
@@ -924,7 +924,7 @@ export class ContractQuery {
         };
     }
 
-    private async _postJsonRequest(
+    static async _postJsonRequest(
         {
             url,
             body,
@@ -933,7 +933,7 @@ export class ContractQuery {
             handleError = true,
         }) {
         try {
-            if (!this.verifyEnable) {
+            if (!ContractQuery.verifyEnable) {
                 return null;
             }
 
@@ -955,11 +955,11 @@ export class ContractQuery {
             if (!handleError) {
                 throw error
             }
-            this._handleHttpError(url, error)
+            ContractQuery._handleHttpError(url, error)
         }
     }
 
-    private async _getJsonRequest(
+    static async _getJsonRequest(
         {
             url,
             headers = {},
@@ -967,7 +967,7 @@ export class ContractQuery {
             handleError = true,
         }) {
         try {
-            if (!this.verifyEnable) {
+            if (!ContractQuery.verifyEnable) {
                 return null;
             }
 
@@ -988,11 +988,11 @@ export class ContractQuery {
             if (!handleError) {
                 throw error
             }
-            this._handleHttpError(url, error)
+            ContractQuery._handleHttpError(url, error)
         }
     }
 
-    private async _getJsonRequestByAxios({
+    static async _getJsonRequestByAxios({
         url,
         headers = {},
         timeout = 1000 * 30,
@@ -1020,11 +1020,11 @@ export class ContractQuery {
             if (!handleError) {
                 throw error
             }
-            this._handleHttpError(url, error)
+            ContractQuery._handleHttpError(url, error)
         }
     }
 
-    _handleHttpError(url, error) {
+    static _handleHttpError(url, error) {
         const err = new Error(error.message || 'HTTP request failed')
         err['code'] = error.status
         err['stack'] = error.stack
@@ -1072,12 +1072,12 @@ export class ContractQuery {
 
         async function repeat() {
             await that.verifyByTrace().catch(e => {
-                safeAddErrorLog('ContractQuery', `verifyByTrace`, e).then();
+                safeAddErrorLog('ContractQuery', 'verifyByTrace', e).then();
                 console.log('Schedule verify by auto fail', e);
             });
 
             await that.verifyByVerification().catch(e => {
-                safeAddErrorLog('ContractQuery', `verifyByVerification`, e).then();
+                safeAddErrorLog('ContractQuery', 'verifyByVerification', e).then();
                 console.log('Schedule verify by auto fail', e);
             });
 
@@ -1196,7 +1196,7 @@ export class ContractQuery {
     }
 
     private heartBeat() {
-        if (!this.verifyEnable) {
+        if (!ContractQuery.verifyEnable) {
             return;
         }
 
@@ -1220,6 +1220,34 @@ export class ContractQuery {
                 console.log(`Failed to check verification health ${url}\n ${e.status} ${e.message}`);
             }
         }, 10_000);
+    }
+
+    static async listMethodABIBySourcify(hash: string, timeout: number = 3000) {
+        try {
+            const resp = await ContractQuery._getJsonRequestByAxios({
+                url: `${ConfigInstance.verification.url}/abi/${hash}`,
+                timeout,
+            });
+
+            const {data: {results}} = resp;
+
+            if (results?.length) {
+                const list = results.map((item: any) => ({
+                    hash,
+                    type: "function",
+                    fullName: item.signature,
+                    formatWithArg: item.fullFormat,
+                }));
+                AbiInfo.bulkCreate(list, {
+                    updateOnDuplicate: ['updatedAt']
+                }).then();
+                return list;
+            }
+        } catch (e) {
+            safeAddErrorLog('ContractQuery', 'listMethodABI', e).then();
+        }
+
+        return [];
     }
 }
 
