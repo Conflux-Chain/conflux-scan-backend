@@ -132,6 +132,7 @@ export interface IEvent3525 extends IErc1155Transfer {
 export class Event3525 extends Model<IEvent3525> implements IEvent3525 {
     id?: number;
     epoch: number; createdAt: Date; contractId: number; blockIndex: number; txIndex: number;
+	tx: string;
     txLogIndex: number; fromId: number; toId: number; value: string;
     tokenId:string; event: string; slot:     string; fromTokenId: string; toTokenId:   string;
     fromTokenBalance: string; toTokenBalance: string;
@@ -143,6 +144,7 @@ export class Event3525 extends Model<IEvent3525> implements IEvent3525 {
             createdAt: {type: DataTypes.DATE, allowNull: false},
             blockIndex: {type: DataTypes.SMALLINT, allowNull: false},
             txIndex: {type: DataTypes.INTEGER, allowNull: false},
+            tx: {type: DataTypes.STRING(66), allowNull: false, charset: 'ascii'} as any,
             txLogIndex: {type: DataTypes.INTEGER, allowNull: false},
             contractId: {type: DataTypes.BIGINT, allowNull: false},
             fromId: {type: DataTypes.BIGINT, allowNull: false},
@@ -211,6 +213,7 @@ export class AddrEvent3525 extends Model<IAddrEvent3525> implements IAddrEvent35
     blockIndex: number;
     txIndex: number;
     txLogIndex: number;
+	tx: string;
     epoch: number;
     contractId: number;
     fromId: number;
@@ -227,6 +230,7 @@ export class AddrEvent3525 extends Model<IAddrEvent3525> implements IAddrEvent35
             createdAt: {type: DataTypes.DATE, allowNull: false},
             blockIndex: {type: DataTypes.SMALLINT, allowNull: false},
             txIndex: {type: DataTypes.INTEGER, allowNull: false},
+            tx: {type: DataTypes.STRING(66), allowNull: false, charset: 'ascii'} as any,
             txLogIndex: {type: DataTypes.INTEGER, allowNull: false},
             contractId: {type: DataTypes.BIGINT, allowNull: false},
             fromId: {type: DataTypes.BIGINT, allowNull: false},

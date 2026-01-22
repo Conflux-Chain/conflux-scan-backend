@@ -23,6 +23,7 @@ create table if not exists ${T_ADDRESS_ERC1155_TRANSFER}
   \`txIndex\` mediumint unsigned NOT NULL,
 \`txLogIndex\` mediumint unsigned NOT NULL,
 \`batchIndex\` mediumint unsigned NOT NULL,
+   'tx' char(66)  charset 'ascii',
 \t contractId bigint not null,
 \t fromId bigint not null,
 \t toId bigint not null,
@@ -54,6 +55,7 @@ export class AddressErc1155Transfer extends Model<IAddressErc1155Transfer> imple
     txIndex: number
     txLogIndex: number
     batchIndex: number
+    tx: string
     fromId: number
     toId: number
     value: string
@@ -64,6 +66,7 @@ export class AddressErc1155Transfer extends Model<IAddressErc1155Transfer> imple
             epoch: {type: DataTypes.BIGINT, allowNull: false},
             blockIndex: {type: DataTypes.SMALLINT, allowNull: false},
             txIndex: {type: DataTypes.INTEGER, allowNull: false},
+            tx: {type: DataTypes.STRING(66), allowNull: false, charset: 'ascii'} as any,
             createdAt: {type: DataTypes.DATE, allowNull: false},
             txLogIndex: {type: DataTypes.INTEGER, allowNull: false},
             batchIndex: {type: DataTypes.INTEGER, allowNull: false},
@@ -97,6 +100,7 @@ export class Erc1155Transfer extends Model<IErc1155Transfer> implements IErc1155
     contractId: number
     blockIndex: number
     txIndex: number
+    tx: string;
     txLogIndex: number
     fromId: number
     toId: number
@@ -109,6 +113,7 @@ export class Erc1155Transfer extends Model<IErc1155Transfer> implements IErc1155
             createdAt: {type: DataTypes.DATE, allowNull: false},
             blockIndex: {type: DataTypes.SMALLINT, allowNull: false},
             txIndex: {type: DataTypes.INTEGER, allowNull: false},
+            tx: {type: DataTypes.STRING(66), allowNull: false, charset: 'ascii'} as any,
             txLogIndex: {type: DataTypes.INTEGER, allowNull: false},
             contractId: {type: DataTypes.BIGINT, allowNull: false},
             fromId: {type: DataTypes.BIGINT, allowNull: false},

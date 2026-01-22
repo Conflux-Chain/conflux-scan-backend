@@ -5,20 +5,25 @@ import {DataTypes, Model, Op, Sequelize} from "sequelize";
 import {createTable} from "../service/DBProvider";
 import {StatApp} from "../StatApp";
 
-export interface IFullBlock {
+export interface IBaseBlock {
     epoch: number;
     position: number;
     hash: string;
-    difficulty: number;
     minerId: number;
-    createdAt: Date,
-    totalReward: bigint;
-    txFee: bigint;
+
     avgGasPrice: bigint;
-    gasLimit: number;
-    gasUsed:number;
     txCount:number;
     executedTxnCount:number;
+    gasLimit: number;
+    gasUsed:number;
+    totalReward: bigint;
+
+    createdAt: Date,
+}
+
+export interface IFullBlock extends IBaseBlock {
+    difficulty: number;
+    txFee: bigint;
     pivot: boolean;
 }
 const FULL_BLOCK_SQL = `CREATE TABLE if not exists \`full_block\` (
@@ -30,7 +35,7 @@ const FULL_BLOCK_SQL = `CREATE TABLE if not exists \`full_block\` (
                               \`pivot\` tinyint(1) NOT NULL DEFAULT '0',
                               \`difficulty\` bigint unsigned NOT NULL DEFAULT '0',
                               \`minerId\` bigint unsigned NOT NULL,
-                              \`hash\` char(66) DEFAULT '',
+                              \`hash\` char(66)  CHARACTER SET ascii DEFAULT '',
                               \`totalReward\` decimal(36,0) NOT NULL DEFAULT '0',
                               \`txFee\` decimal(36,0) NOT NULL DEFAULT '0',
                               \`avgGasPrice\` decimal(36,0) NOT NULL DEFAULT '0',
