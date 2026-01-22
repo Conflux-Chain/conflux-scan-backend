@@ -151,7 +151,7 @@ export async function initPartialModel(sequelize) {
         createAddressTxTable(sequelize),
         createAddressTransferTable(sequelize),
         createAddressNftTransferTable(sequelize),
-        createFullBlockExtTable(sequelize),
+        // createFullBlockExtTable(sequelize),
     ])
     ApiLog.register(sequelize)
     ReqAccount.register(sequelize)

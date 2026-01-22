@@ -22,11 +22,22 @@ export interface IBaseBlock {
 }
 
 export interface IFullBlock extends IBaseBlock {
+    // fields from block ext.
+    num: bigint;
+    height: bigint;
+    baseFee: bigint;
+    burntFee: bigint;
+    extra: string;
+
     difficulty: number;
     txFee: bigint;
     pivot: boolean;
 }
 const FULL_BLOCK_SQL = `CREATE TABLE if not exists \`full_block\` (
+                              num bigint unsigned NOT NULL,
+                              height bigint unsigned NOT NULL,
+                              baseFee bigint unsigned NOT NULL,
+                              burntFee bigint unsigned NOT NULL,
                               \`epoch\` bigint unsigned NOT NULL,
                               \`position\` smallint NOT NULL DEFAULT '0',
                               \`createdAt\` datetime NOT NULL,
@@ -41,6 +52,7 @@ const FULL_BLOCK_SQL = `CREATE TABLE if not exists \`full_block\` (
                               \`avgGasPrice\` decimal(36,0) NOT NULL DEFAULT '0',
                               \`gasLimit\` decimal(36,0) NOT NULL DEFAULT '0',
                               \`gasUsed\` decimal(36,0) NOT NULL DEFAULT '0',
+                              extra varchar(256) CHARACTER SET ascii,
                               primary key  (\`epoch\` desc, \`position\` desc),
                               KEY \`idx_block_time\` (\`createdAt\` DESC),
                               KEY \`block_hash\` (\`hash\`(10))
@@ -74,6 +86,12 @@ export async function loadMaxTxEpoch(): Promise<number> {
     return FullTransaction.findOne({order: [["epoch", "desc"]]}).then(res=>res?.epoch || 0)
 }
 export class FullBlock extends Model<IFullBlock> implements IFullBlock {
+    num: bigint;
+    height: bigint;
+    baseFee: bigint;
+    burntFee: bigint;
+    extra: string;
+
     epoch: number;
     createdAt: Date;
     difficulty: number;
@@ -96,7 +114,12 @@ export class FullBlock extends Model<IFullBlock> implements IFullBlock {
         // mysql partition limits that :
         // A primary must include all columns in the table's partitioning location.
         FullBlock.init({
-            // id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true, allowNull: false},
+            num: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
+            height: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
+            baseFee: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
+            burntFee: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
+            extra: {type: DataTypes.STRING(256), allowNull: true,},
+
             epoch: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
             createdAt: {type: DataTypes.DATE, allowNull: false},
             txCount: {type: DataTypes.INTEGER, allowNull: false, defaultValue: 0}, // A 32 bit integer.
@@ -212,25 +235,28 @@ export class FullBlockExt extends Model<IFullBlockExt> implements IFullBlockExt 
         })
     }
 }
-export function buildBlockExt(epoch: number, block: any): FullBlockExt {
-    const extra: any = {
-        burntFee: block.burntGasFee,
-        baseFee: block.baseFee,
-        avgTip: block.avgTip
-    }
+export function buildBlockExt(epoch: number, block: any) : void {
+    // const extra: any = {
+        // burntFee: block.burntGasFee,
+        // baseFee: block.baseFee,
+        // avgTip: block.avgTip
+    // }
     if(block.txsInType.find(v => v > 0)) { // Only store when the block has txs.
-        extra.txsInType = block.txsInType
-    }
-    let coreBlock = -1; // It is a marker for evm space, referring to the core space.
-    if(StatApp.isEVM) { // Only store in evm space.
-        // extra.evmBlocks = evmBlocks
+        // extra.txsInType = block.txsInType
+        block.extra = {txsInType: block.txsInType}
     } else {
-        // blocks that satisfies blk.height % 5 === 0 will be used for evm space.
-        // store the mark in core space, use it in evm space when querying block list.
-        coreBlock = block.height % 5 == 0 ? 0 : 1;
+        block.extra = null;
     }
+    // let coreBlock = -1; // It is a marker for evm space, referring to the core space.
+    // if(StatApp.isEVM) { // Only store in evm space.
+    //     // extra.evmBlocks = evmBlocks
+    // } else {
+    //     // blocks that satisfies blk.height % 5 === 0 will be used for evm space.
+    //     // store the mark in core space, use it in evm space when querying block list.
+    //     coreBlock = block.height % 5 == 0 ? 0 : 1;
+    // }
 
-    return {epoch, position: block.position, coreBlock, extra: JSON.stringify(extra)} as FullBlockExt
+    // return {epoch, position: block.position, coreBlock, extra: JSON.stringify(extra)} as FullBlockExt
 }
 export interface IFailedTx {
     id?:number

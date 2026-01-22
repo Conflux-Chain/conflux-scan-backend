@@ -515,6 +515,7 @@ export class FullBlockService {
                 }
                 block.gasUsed = 0
             }
+            block.num = block.blockNumber;
             block.epoch = minEpochNumber;
             block.pivot = false;
             const reward = minEpochNumber == 0 ? {} : rewardList.find(r => r.blockHash === block.hash) || {}
@@ -631,8 +632,8 @@ export class FullBlockService {
             block.baseFee = BigInt(block?.baseFeePerGas || 0)
             pos && (block.avgTip = sumTip / BigInt(pos))
             block.txsInType = txsInType
-            const blockExt = buildBlockExt(minEpochNumber, block)
-            blockExtArr.push(blockExt)
+            buildBlockExt(minEpochNumber, block);
+            // blockExtArr.push(blockExt)
         }
     }
     async save(minEpochNumber: number, preLoadResult: any, veryBegin: number) : Promise<{code:number, message?:string, blockCount?:number, epoch?:number,executedTxnCount?:number}> {
@@ -668,7 +669,7 @@ export class FullBlockService {
 	            FullMinerBlock.bulkCreate(blockBeanArr, {transaction: dbTx, ignoreDuplicates: true}),
                 FullTransaction.bulkCreate(executedTxArr, {transaction: dbTx}).then(()=>metrics.saveTxTime += Date.now() - start),
                 AddressTransactionIndex.bulkCreate(txByAddressArr, {transaction: dbTx, /*ignoreDuplicates: true*/}).then(()=>metrics.saveAddrTxTime += Date.now() - start),
-                FullBlockExt.bulkCreate(blockExtArr, {transaction: dbTx}),
+                // FullBlockExt.bulkCreate(blockExtArr, {transaction: dbTx}),
                 diffCount(KEY_FULL_BLOCK_COUNT, this.batchBlockTx.fullBlock.length, dbTx).then(()=>metrics.diffBlockCntTime += Date.now() - start),
                 diffCount(KEY_FULL_TX_COUNT, this.batchBlockTx.fullTransaction.length, dbTx).then(()=>metrics.diffTxCntTime += Date.now() - start),
                 PosRegister.bulkCreate(posRegArr, {transaction: dbTx}),
