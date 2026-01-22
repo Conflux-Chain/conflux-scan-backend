@@ -281,6 +281,10 @@ export function createMySql(dbConf) {
 }
 
 async function migDB(seq: Sequelize) {
+
+}
+
+async function migDB_(seq: Sequelize) {
     const qi = seq.getQueryInterface();
     const t = Token.getTableName().toString();
     await addIndexIfNotExistsMySQL(qi, t,'idx_transfer', {fields: ['transfer']});

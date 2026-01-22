@@ -243,9 +243,9 @@ export function buildBlockExt(epoch: number, block: any) : void {
     // }
     if(block.txsInType.find(v => v > 0)) { // Only store when the block has txs.
         // extra.txsInType = block.txsInType
-        block.extra = {txsInType: block.txsInType}
+        block.extra = JSON.stringify({txsInType: block.txsInType})
     } else {
-        block.extra = null;
+        block.extra = '{}';
     }
     // let coreBlock = -1; // It is a marker for evm space, referring to the core space.
     // if(StatApp.isEVM) { // Only store in evm space.

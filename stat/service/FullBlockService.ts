@@ -628,7 +628,7 @@ export class FullBlockService {
             // }
             pos && (block.avgGasPrice = sumGasPrice / BigInt(pos))
 
-            block.burntGasFee = sumBurntGasFee
+            block.burntFee = sumBurntGasFee
             block.baseFee = BigInt(block?.baseFeePerGas || 0)
             pos && (block.avgTip = sumTip / BigInt(pos))
             block.txsInType = txsInType

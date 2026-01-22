@@ -15,7 +15,7 @@ create table if not exists ${T_FULL_MINER_BLOCK}
 \t \`minerId\` bigint(20) unsigned NOT NULL,
 \t \`epoch\` bigint(20) unsigned NOT NULL,
 \t \`position\` smallint(6) NOT NULL DEFAULT '0',
-    'hash' char(66) CHARACTER SET ascii,
+    hash char(66) CHARACTER SET ascii,
    
    \`avgGasPrice\` decimal(36, 0) NOT NULL DEFAULT '0',
    \`txCount\`          int NOT NULL DEFAULT '0',

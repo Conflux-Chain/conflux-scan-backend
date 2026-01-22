@@ -29,7 +29,7 @@ create table if not exists ${T_ADDRESS_CFX_TRANSFER}
    \`blockIndex\` int unsigned NOT NULL,
   \`txIndex\` mediumint unsigned NOT NULL,
   \`txLogIndex\` mediumint unsigned NOT NULL,
- 'tx' char(66) charset 'ascii',
+ tx char(66) character set 'ascii',
  \`createdAt\` datetime NOT NULL,
  \`fromId\` bigint(20) unsigned NOT NULL,
  \`toId\` bigint(20) unsigned NOT NULL,
