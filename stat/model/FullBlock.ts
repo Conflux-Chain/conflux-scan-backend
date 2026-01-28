@@ -235,7 +235,11 @@ export class FullBlockExt extends Model<IFullBlockExt> implements IFullBlockExt 
         })
     }
 }
-export function buildBlockExt(epoch: number, block: any) : void {
+export function buildBlockExt(epoch: number, block: any, crossSpaceTxCount: number) : void {
+    let ext = {}
+    if (crossSpaceTxCount) {
+        ext['crossSpaceTxCount'] = crossSpaceTxCount;
+    }
     // const extra: any = {
         // burntFee: block.burntGasFee,
         // baseFee: block.baseFee,
@@ -243,10 +247,9 @@ export function buildBlockExt(epoch: number, block: any) : void {
     // }
     if(block.txsInType.find(v => v > 0)) { // Only store when the block has txs.
         // extra.txsInType = block.txsInType
-        block.extra = JSON.stringify({txsInType: block.txsInType})
-    } else {
-        block.extra = '{}';
+        ext['txsInType'] = block.txsInType;
     }
+    block.extra = JSON.stringify(ext);
     // let coreBlock = -1; // It is a marker for evm space, referring to the core space.
     // if(StatApp.isEVM) { // Only store in evm space.
     //     // extra.evmBlocks = evmBlocks

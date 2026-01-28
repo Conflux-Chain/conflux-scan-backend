@@ -557,6 +557,7 @@ export class FullBlockService {
             let sumTip = BigInt(0)
             let txsInType = [0, 0, 0]
             let pos = 0
+            let crossSpaceTxCount = 0;
             for (const txInfo of block.transactions) {
                 // status has value, fail (!0) or success (0) or genesis epoch.
                 // status could be: null(not executed/skipped), 0(success), 1(fail);
@@ -586,6 +587,9 @@ export class FullBlockService {
                     txInfo.method = txInfo.data.substr(0, 10)
                     txInfo.gasLimit = txInfo.gas // 20231215 cal gasUsedPerSecond
                     txInfo.gasPrice = txInfo.receipt?.effectiveGasPrice || txInfo.gasPrice
+                    if (txInfo.gasPrice == 0n) {
+                        crossSpaceTxCount++;
+                    }
                     const receiptGasUsed = Number(txInfo.receipt?.gasUsed || 0);
                     const gasCharged = NoCoreSpace ? receiptGasUsed
                         : Math.max(receiptGasUsed, Math.ceil((Number(txInfo.gas) * 3) / 4))
@@ -633,7 +637,7 @@ export class FullBlockService {
             block.baseFee = BigInt(block?.baseFeePerGas || 0)
             pos && (block.avgTip = sumTip / BigInt(pos))
             block.txsInType = txsInType
-            buildBlockExt(minEpochNumber, block);
+            buildBlockExt(minEpochNumber, block, crossSpaceTxCount);
             // blockExtArr.push(blockExt)
         }
     }
