@@ -63,7 +63,7 @@ const ADDRESS_ERC20TRANSFER_SQL = `
   \`blockIndex\` int unsigned NOT NULL,
   \`txIndex\` mediumint unsigned NOT NULL,
   \`txLogIndex\` mediumint unsigned NOT NULL,
-  tx char(66) character set 'ascii',
+  tx char(66) character set 'ascii' not null,
   \`createdAt\` datetime NOT NULL,
   \`fromId\` bigint unsigned NOT NULL,
   \`toId\` bigint unsigned NOT NULL,

@@ -23,7 +23,7 @@ create table if not exists ${T_ADDRESS_ERC1155_TRANSFER}
   \`txIndex\` mediumint unsigned NOT NULL,
 \`txLogIndex\` mediumint unsigned NOT NULL,
 \`batchIndex\` mediumint unsigned NOT NULL,
-   tx char(66)  character set 'ascii',
+   tx char(66)  character set 'ascii' not null,
 \t contractId bigint not null,
 \t fromId bigint not null,
 \t toId bigint not null,

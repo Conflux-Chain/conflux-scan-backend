@@ -19,7 +19,7 @@ const T_ADDRESS_ERC721_TRANSFER_SQL = `
 \`blockIndex\` int unsigned NOT NULL,
   \`txIndex\` mediumint unsigned NOT NULL,
 \`txLogIndex\` mediumint unsigned NOT NULL,
-    tx char(66)  character set 'ascii',
+    tx char(66)  character set 'ascii' not null,
 \tcontractId bigint not null,
 \tfromId bigint not null,
 \ttoId bigint not null,

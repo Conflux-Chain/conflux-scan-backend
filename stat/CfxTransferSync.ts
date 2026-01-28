@@ -274,6 +274,7 @@ export async function getCfxTransferTraces(epoch: number)
                 const fromId = await makeIdV(from)
                 const toId = await makeIdV(to)
                 const bean:ICfxTransfer = {
+                    tx: txBean.hash,
                     epoch, blockIndex: blkIdx, txIndex: txBean.txPosition, txLogIndex: traceIdx,
                     fromId, toId, createdAt:txBean.createdAt, value, type,
                 }
