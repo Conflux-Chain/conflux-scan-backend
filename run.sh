@@ -365,7 +365,7 @@ exports.default = {
   },
   wrappedCFX: '0x2ed3dddae5b2f321af0806181fbfa6d049be47d8', // placeholder
   wrappedBTC: '0x2ed3dddae5b2f321af0806181fbfa6d049be47d8', // placeholder
-  contractVerificationUrl: '',
+  verification: {enable: false},
 }
 	""" > ./stat/config/Prod.js
 	ln -s ./stat/config/Prod.js ./conf.js
