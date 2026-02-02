@@ -38,6 +38,9 @@ export class AccountTransferQuery extends TransferQueryBase{
             ['contractId', 'address'],
             'tokenId',
             'value',
+            'nonce', 'method', 'status',
+            ['gas', 'gasFee'],
+            ['tx', 'transactionHash'],
 
             'type',
             ['createdAt', 'timestamp'],
@@ -68,14 +71,14 @@ export class AccountTransferQuery extends TransferQueryBase{
         row['tokenId'] = !isToken ? undefined : row['tokenId'];
         row['type'] = this.CODE_TYPE_MAP[row['type']].name;
 
-        if(isTx){
-            const tx = txMap.get(`${row['epochNumber']}_${row['blockIndex']}_${row['txIndex']}`);
-            row['chainId'] = StatApp.networkId;
-            row['nonce'] = tx?.nonce;
-            row['method'] = tx?.method;
-            row['status'] = tx?.status;
-            row['gasFee'] = tx?.gas;
-        }
+        // if(isTx){
+        //     const tx = txMap.get(`${row['epochNumber']}_${row['blockIndex']}_${row['txIndex']}`);
+        //     row['chainId'] = StatApp.networkId;
+        //     row['nonce'] = tx?.nonce;
+        //     row['method'] = tx?.method;
+        //     row['status'] = tx?.status;
+        //     row['gasFee'] = tx?.gas;
+        // }
 
         return row;
     }
