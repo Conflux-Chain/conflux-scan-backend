@@ -237,11 +237,8 @@ export class FullBlockQuery {
             ['createdAt', 'timestamp'],
             'status',
             ['contractCreatedId', 'contractCreated'],
+            'method',
         ];
-        if(accountAddressId === undefined){
-            // address tx table doesn't have this field
-            options.attributes.push('method');
-        }
         // where
         const conditionArray = [];
         let txPage:any | TxPage = {}
@@ -391,26 +388,6 @@ export class FullBlockQuery {
                 hex40Map.set(hex40.id, hex40.hex)
             })
 
-            // prepare method map
-            const methodMap = new Map<string,FullTransaction>()
-            if (accountAddressId) {
-                // fetch method, consider save it on table address tx.
-                const methodList = await limitMap(txHashQueryCondition,
-                    async (object) => {
-                        return FullTransaction.findOne({
-                            attributes: ['hash', 'method'],
-                            where: object,
-                        })
-                    },
-                    { limit: 100 },
-                )
-                /*const methodList = await FullTransaction.findAll({where:{hash:{[Op.in]:txHashArray}},
-                    attributes:['hash','method']})*/
-                // const methodList = await FullTransaction.findAll({attributes: ['hash','method'],
-                //     where: {[Op.or]: txHashQueryCondition}});
-                methodList.forEach(row=>methodMap.set(row?.hash, row))
-            }
-
             const toIdArr = [];
             // fields mapping
             list.forEach(row=>{
@@ -422,9 +399,6 @@ export class FullBlockQuery {
                 }
                 if(row['contractCreated'] === 0){
                     row['contractCreated'] = null;
-                }
-                if (accountAddressId) {
-                    row['method'] = methodMap.get(row['hash'])?.method
                 }
                 const timestampInSec =  row['timestamp'].getTime() / 1000;
                 row['timestamp'] = timestampInSec;

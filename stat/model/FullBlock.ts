@@ -357,6 +357,7 @@ CREATE TABLE if not exists \`address_tx\` (
   \`gas\` decimal(36,0) NOT NULL DEFAULT '0',
   \`status\` tinyint NOT NULL DEFAULT '0',
   \`contractCreatedId\` bigint unsigned NOT NULL,
+  method char(10)  CHARACTER SET ascii DEFAULT '',
   primary key  (\`addressId\` desc,\`epoch\` desc, \`blockPosition\` desc, \`txPosition\` desc),
   KEY \`idx_block_time\` (\`createdAt\` DESC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
@@ -469,6 +470,7 @@ export class AddressTransactionIndex extends Model<IAddressTransactionIndex> imp
     gas:number
     status: number
     contractCreatedId:number
+    method: string;
     static register(sequelize) {
         // mysql partition limits that :
         // A primary must include all columns in the table's partitioning location.
@@ -487,6 +489,7 @@ export class AddressTransactionIndex extends Model<IAddressTransactionIndex> imp
             gas: {type: DataTypes.DECIMAL(36,0), allowNull: false, defaultValue: 0}, // sum(gasPrice of tx) / txCount
             status: {type: DataTypes.TINYINT, allowNull: false, defaultValue: 0}, // A 8 bit integer.
             contractCreatedId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: true},
+            method: {type: DataTypes.STRING(10), allowNull: true},
         }, {
             tableName: 'address_tx',
             sequelize,
