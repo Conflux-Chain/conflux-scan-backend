@@ -743,6 +743,14 @@ export class EpochSync extends SyncBase {
             if (transfer.contractCreatedId) {
                 lodash.assign(transfer, {contractId: transfer.contractCreatedId})
             }
+            transfer.tx = transfer.tx ?? transfer.hash; // tx.hash
+            if (!transfer.hash) {
+                // only tx has nonce, token transfer doesn't
+                transfer.nonce = 0;
+                transfer.gas = 0;
+                transfer.method = '';
+                transfer.status = 0;
+            }
             transfers.push({...transfer, addressId: transfer.fromId})
             addressIds.add(transfer.fromId)
 
