@@ -349,9 +349,9 @@ exports.default = {
     preload: 4,
     $_IS_EVM $_NO_CORE_SPACE $traceNotAvailable $CORE_RPC
     influxDB: {disable: true},
-    database: { USE_MYSQL: true, syncSchema: true, },
-  databaseRW: {
-    USE_MYSQL: true,
+    firstBlockNo: 0,
+  database: {
+    useMysql: true,
     instanceName: '$_DB_NAME',
     dialect: 'mysql',
     port: $_DB_PORT,
