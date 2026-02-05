@@ -4,7 +4,7 @@ export default {
     port: 8087,
     apiPort: 9527,
     v1port: 8895,
-    diffMonitorPort: -1000,
+    diffMonitorPort: -9000,
 
     /** blockchain rpc configurations */
     conflux: null,
@@ -40,7 +40,7 @@ export default {
     },
 
     /** billing configurations */
-    billingApp: "0x7F55828E334e63065B88055776db3A58734220Ad",
+    billingApp: '',
 
     /** alert configurations */
     dingTalkToken: null,
