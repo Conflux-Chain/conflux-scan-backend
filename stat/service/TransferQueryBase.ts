@@ -12,6 +12,7 @@ import {Token} from "../model/Token";
 import {detectFishingAddress} from "./tool/phishingAddress";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import {fillMethodInfo} from "./contract/contractTool";
+import {getCfxSdk} from "./common/utils";
 const lodash = require('lodash');
 
 export abstract class TransferQueryBase {
@@ -74,7 +75,7 @@ export abstract class TransferQueryBase {
             conditionArray.push({[Op.or]: [{toId: opponentAddressId}, {fromId: opponentAddressId}]});
         }
         if(txParas) {
-            conditionArray.push({epoch: txParas.epoch, blockIndex: txParas.blockIndex, txIndex: txParas.txIndex});
+            conditionArray.push({epoch: txParas.epoch, tx: txParas.transactionHash});
         }
         if(tokenId !== undefined) {
             // conditionArray.push({tokenId: tokenId.toString()});
@@ -145,13 +146,13 @@ export abstract class TransferQueryBase {
         const opponentAddressId = addressMap[opponentAddress];
         let txParas;
         if(transactionHash){
-            const tx = await FullTransaction.findOne({
-                attributes: ['epoch', ['blockPosition', 'blockIndex'], ['txPosition','txIndex'], 'hash'],
-                where: {hash: transactionHash}, raw: true});
+            const tx = await getCfxSdk().getTransactionReceipt(transactionHash);
             if(!tx) {
                 throw new Error(`Tx ${transactionHash} not found.`);
             }
-            txParas = lodash.pick(tx, ['epoch', 'blockIndex', 'txIndex']);
+            txParas = {
+                epoch: tx.epochNumber, transactionHash,
+            }
         }
         const tokenAddressIdArray = [];
         if(tokenArray?.length){
