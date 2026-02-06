@@ -23,6 +23,8 @@ create table if not exists ${T_FULL_MINER_BLOCK}
    \`gasLimit\`    decimal(36, 0) NOT NULL DEFAULT '0',
    \`totalReward\` decimal(36, 0) NOT NULL DEFAULT '0',
    \`gasUsed\` decimal(36, 0) NOT NULL DEFAULT '0',
+   \`difficulty\` bigint unsigned NOT NULL DEFAULT '0',
+   \`pivot\` tinyint(1) NOT NULL DEFAULT '0',
     
 \t \`createdAt\` datetime NOT NULL,
   PRIMARY KEY (\`minerId\` DESC, \`epoch\` DESC, \`position\` DESC),
@@ -54,6 +56,8 @@ export class FullMinerBlock extends Model<IFullMinerBlock> implements IFullMiner
     executedTxnCount:number;
     gasLimit: number;
     totalReward: bigint;
+    difficulty: number;
+    pivot: boolean;
 
     hash: string;
     createdAt: Date;
@@ -72,6 +76,8 @@ export class FullMinerBlock extends Model<IFullMinerBlock> implements IFullMiner
                 avgGasPrice: {type: DataTypes.DECIMAL(36,0), allowNull: false, defaultValue: 0}, // sum(gasPrice of tx) / txCount
                 gasLimit: {type: DataTypes.DECIMAL(36,0), allowNull: false, defaultValue: 0},
                 gasUsed: {type: DataTypes.DECIMAL(36,0), allowNull: false, defaultValue: 0},
+                difficulty: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, defaultValue: 0},
+                pivot: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: 0},
             }
             , {
                 timestamps: false,

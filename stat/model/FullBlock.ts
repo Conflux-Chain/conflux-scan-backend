@@ -17,6 +17,8 @@ export interface IBaseBlock {
     gasLimit: number;
     gasUsed:number;
     totalReward: bigint;
+    difficulty: number;
+    pivot: boolean;
 
     createdAt: Date,
 }
@@ -29,9 +31,7 @@ export interface IFullBlock extends IBaseBlock {
     burntFee: bigint;
     extra: string;
 
-    difficulty: number;
     txFee: bigint;
-    pivot: boolean;
 }
 const FULL_BLOCK_SQL = `CREATE TABLE if not exists \`full_block\` (
                               \`epoch\` bigint unsigned NOT NULL,
