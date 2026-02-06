@@ -481,7 +481,7 @@ export class FullBlockService {
                         where: {epoch: popEpochCondition, addressId: [...addresses],},
                         transaction: dbTx
                     }),
-                    FullBlockExt.destroy({where: {epoch: popEpochCondition}, transaction: dbTx}),
+                    // FullBlockExt.destroy({where: {epoch: popEpochCondition}, transaction: dbTx}),
                     diffCount(KEY_FULL_BLOCK_COUNT, -popBlockCount, dbTx),
                     diffCount(KEY_FULL_TX_COUNT, -popTx.length, dbTx),
                     PosRegister.destroy({where: {epoch: popEpochCondition}, transaction: dbTx}),
