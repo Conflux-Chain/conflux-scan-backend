@@ -128,6 +128,7 @@ export class FullBlockQuery {
         }else if(minerId){
             const minerOptions = {...options};
             const page = await FullMinerBlock.findAndCountAll(minerOptions);
+            rawList = page.rows;
             count = page.count;
         } else if(minEpochNumber !== undefined &&  maxEpochNumber !== undefined &&  minEpochNumber === maxEpochNumber){
             const page = await FullBlock.findAndCountAll(options);
