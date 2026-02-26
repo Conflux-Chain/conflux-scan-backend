@@ -1034,8 +1034,10 @@ export class ContractQuery {
             return null
         }
 
-        if (err['code'] === 502 ||
+        if (err['code'] === 500 ||
+            err['code'] === 502 ||
             err['code'] === 503 ||
+            err['code'] === 504 ||
             err['code'] === undefined) {
             console.log(`Business is busy, url ${url}`)
             return null
