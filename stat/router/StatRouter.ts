@@ -43,6 +43,7 @@ import {AuthAction, getAuthActionInTx, listAuthAction} from "../model/EIP7702mod
 import {getAccountQuery} from "../service/AccountQuery";
 import {CONST} from "../service/common/constant";
 import axios from "axios";
+import {ContractQuery} from "../service/ContractQuery";
 
 const superagent = require('superagent');
 const NodeCache = require( "node-cache" );
@@ -167,30 +168,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             where: {hash: id, type: 'function', }, raw: true,
             attributes: ['fullName', 'type', 'hash', 'formatWithArg']
         });
-        if (!list.length) {
-            try {
-                const {data: {results}} = await axios.get(
-                    `${ConfigInstance.verification.url}/abi/${id}`,
-                    {
-                        headers: {'Accept': 'application/json'},
-                        timeout: 3000,
-                        family: 4
-                    });
-                if (results?.length) {
-                    list = results.map((item: any) => ({
-                        hash: id,
-                        type: "function",
-                        fullName: item.signature,
-                        formatWithArg: item.fullFormat,
-                    }));
-                    AbiInfo.bulkCreate(list, {
-                        updateOnDuplicate: ['updatedAt']
-                    }).then();
-                }
-            } catch (e) {
-                safeAddErrorLog('Stat', `list-abi-method`, e).then();
-            }
-        }
+        ContractQuery.listMethodABIBySourcify(id).then();
         ctx.body = {list};
     })
     router.get('/list-abi-event', async (ctx)=>{
