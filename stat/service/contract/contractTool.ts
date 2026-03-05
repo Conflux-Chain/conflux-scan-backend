@@ -1,41 +1,29 @@
 import {ContractImpl} from "../../model/ContractImpl";
 import {getContractQuery} from "../ContractQuery";
-import {getAddrId} from "../../model/HexMap";
 import {format} from "js-conflux-sdk";
 import {StatApp} from "../../StatApp";
 import {Op, QueryTypes} from "sequelize";
 import {AbiInfo, ContractABI} from "../../model/ContractInfo";
 
 async function mergeVerifiedImplAbi(ref: IContractImplAbiRef) {
-	const proxyC = await getContractQuery().queryVerify(ref.base32)
+	const proxyC = await getContractQuery().queryVerify(ref.base32);
 	if (!proxyC) {
 		return;
 	}
+
 	const implInfo = await ContractImpl.findOne({
 		where: {cid: ref.contractId}, raw: true,
-	})
-	if (!implInfo) {
-		getContractQuery().getImpl(ref.base32).then(async res=>{
-			const {implementation} = res || {};
-			const implId = await getAddrId(implementation);
-			await ContractImpl.bulkCreate([{
-				cid: ref.contractId, implId: implId, proxyType: '',
-			}], {
-				updateOnDuplicate: ['implId', 'updatedAt'],
-			})
-		}).catch(err=>{
-			console.log(`failed to cache contract implementation, contract ${ref.base32} `, err);
-		})
-		return; //
-	}
-	if (!implInfo.implId || implInfo.implId < 0) {
+	});
+	if (!implInfo || implInfo.implId < 0) {
 		return;
 	}
+
 	const implId = implInfo.implId;
 	const map = await queryContractMethods([implId])
 	ref.implAbiMap = map.get(implId);
 	ref.implId = implId;
 }
+
 interface IContractImplAbiRef {
 	contractId: number;
 	base32?: string;
@@ -43,6 +31,7 @@ interface IContractImplAbiRef {
 	implId?: number;
 	implAbiMap?: Map<string, AbiInfo>;
 }
+
 export async function fillMethodInfo(list:{method?:string, to?:string}[],
                                      toIdArr: number[],
                                      isOpenApi: boolean = false) {

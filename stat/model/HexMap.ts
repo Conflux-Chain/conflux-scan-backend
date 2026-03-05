@@ -345,14 +345,16 @@ export function patchBase32prop(list:any[], fromKey: string, toKey: string, isEv
     }
     return base32arr
 }
+
 export async function getAddrIdArray(addressArray) {
-    if(!lodash.isArray(addressArray)) {
-        addressArray = [addressArray]
+    if (!lodash.isArray(addressArray)) {
+        addressArray = [addressArray];
     }
-    const hexArray = addressArray.map(item => formatToHex(item));
+    const hexArray = addressArray.map(item => formatToHex(item).substr(2));
     const hexIdMap = await hex40IdMap(hexArray);
-    return [...hexIdMap.values()];
+    return hexArray.map(item => hexIdMap.get(item));
 }
+
 export async function getAddrIdBase32Map(list, ...keys) {
     const addressIdSet = new Set();
     list.forEach(item => keys.forEach(key => addressIdSet.add(item[key])));

@@ -1,7 +1,7 @@
 import {
     Hex40Map,
     getAddrId,
-    formatToBase32,
+    formatToBase32, makeId,
 } from "../model/HexMap";
 import {Op, QueryTypes} from "sequelize";
 import {fmtAddr, StatApp} from "../StatApp";
@@ -41,6 +41,7 @@ import axios from "axios";
 import {doHeartBeat, HeartBeatBean, KEY_COMPILER} from "../model/HeartBeat";
 import {ConfigInstance, VerificationOptions} from "../config/StatConfig";
 import {Conflux, format, sign} from "js-conflux-sdk";
+import {ContractImpl} from "../model/ContractImpl";
 
 const path = require('path');
 const superagent = require('superagent');
@@ -434,11 +435,7 @@ export class ContractQuery {
         })
     }
 
-    async getImpl(address: string): Promise<{
-        implementation: string,
-        proxyPattern: string,
-        beacon?: string,
-    } | undefined> {
+    async getImpl(address: string): Promise<ImplInfo | undefined> {
         const impl = await this._getImpl(address);
         if (!impl) {
             return;
@@ -452,17 +449,19 @@ export class ContractQuery {
             return;
         }
 
+        this._updateImpl(address, impl).then();
+
         return impl;
     }
 
-    private async _getImpl(address: string) {
+    private async _getImpl(address: string): Promise<ImplInfo | undefined>{
         const hex = format.hexAddress(address);
         const validSlotValue = (value: string) => value && value !== CONST.ZERO_VALUE_IN_SLOT;
 
         const impl = await Promise.all([
-            CONST.POSITION_IMPLEMENTATION_SLOT,
-            CONST.IMPLEMENTATION_SLOT_OZ,
-            CONST.IMPLEMENTATION_SLOT_EIP1822,
+            CONST.IMPLEMENTATION_SLOT_OZ, // ZeppelinOS Proxy
+            CONST.IMPLEMENTATION_SLOT_EIP1822, // PROXIABLE Proxy (EIP-1822)
+            CONST.POSITION_IMPLEMENTATION_SLOT, // EIP1967 Proxy (EIP-1967)
         ].map(slot => this.cfx.getStorageAt(hex, slot))).then(values => {
             const value = values.find(validSlotValue);
             return value ? `0x${value.substr(26)}` : undefined;
@@ -471,7 +470,7 @@ export class ContractQuery {
         if (impl) {
             return {
                 implementation: fmtAddr(impl, StatApp.networkId),
-                proxyPattern: "OpenZeppelin's Unstructured Storage",
+                proxyPattern: CONST.PROXY_PATTERN.PROXY,
             };
         }
 
@@ -495,8 +494,21 @@ export class ContractQuery {
         return {
             beacon: fmtAddr(beacon, StatApp.networkId),
             implementation: fmtAddr(beaconImpl, StatApp.networkId),
-            proxyPattern: "OpenZeppelin's Unstructured Storage",
+            proxyPattern: CONST.PROXY_PATTERN.BEACON_PROXY,
         };
+    }
+
+    private async _updateImpl(contract: string, impl: ImplInfo) {
+        const {implementation, proxyPattern} = impl || {};
+        if (implementation) {
+            const cid = (await makeId(contract)).id;
+            const implId = (await makeId(implementation)).id;
+            await ContractImpl.bulkCreate([{
+                cid, implId, proxyType: proxyPattern,
+            }], {
+                updateOnDuplicate: ['implId', 'proxyType', 'updatedAt'],
+            });
+        }
     }
 
     public async queryDestroyInfo(address) {
@@ -1345,6 +1357,12 @@ export interface VerifiedContractMinimal {
     address: string;
     verifiedAt?: string;
     matchId?: string;
+}
+
+export interface ImplInfo {
+    implementation: string,
+    proxyPattern: string,
+    beacon?: string,
 }
 
 export type MatchLevel = "match" | "exact_match" | null;

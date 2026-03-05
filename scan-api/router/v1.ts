@@ -1148,7 +1148,7 @@ router_get(router,'/transferTree/:transactionHash',
 
   async function ({transactionHash}) {
     const {app: { service: {accountQuery, conflux} },} = this as ScanCtx;
-    const result = await conflux.getTransactionCFXTransferTree(transactionHash);
+    const result = await conflux.getTransactionTraceTree(transactionHash);
     if (result.addressArray === undefined) {
       return result;
     }
