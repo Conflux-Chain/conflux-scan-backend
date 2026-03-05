@@ -13,9 +13,8 @@ import ApiDef from "./ApiDef";
 import {addDevopsRouter} from "./DevopsRouter";
 import {DailyToken, NftId, NftMint, Token} from "../model/Token";
 import {T_DAILY_TOKEN_TXN} from "../model/Erc20Transfer";
-import {DailyCfxTxn, sumRecentCfxAmount} from "../model/CfxTransfer";
+import {sumRecentCfxAmount} from "../model/CfxTransfer";
 import {Op, QueryTypes} from "sequelize";
-import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
 import {countRecentTokenTransfer} from "../service/DailyTokenSync";
 import {BlockAndMinerSync, countRecentMiner} from "../service/BlockAndMinerSync";
 import {Hex40Map} from "../model/HexMap";
@@ -28,9 +27,8 @@ import {queryCrossSpaceStat} from "../service/CrossSpaceStat";
 import {
     formatBalance,
     formatPercentage,
-    mustBeAddressParamIfPresent, mustBeDateParamIfPresent,
+    mustBeAddressParamIfPresent,
     mustBeEnumParamIfPresent,
-    mustBeHex64ParamIfPresent,
     mustBeIntParamIfPresent,
 } from "../service/common/utils";
 import {limitListOnBody} from "../service/pos/PosStat";
@@ -39,15 +37,15 @@ import {Errors} from "../service/common/LogicError";
 import {RateLimiterMemory} from "rate-limiter-flexible";
 import {LIMIT_MAX_STAT, paginateCore, paginateCoreStat} from "./ParamChecker";
 import * as bodyParser from "koa-bodyparser";
-import {NoCoreSpace} from "../config/StatConfig";
+import {ConfigInstance, NoCoreSpace} from "../config/StatConfig";
 import {AbiInfo, parseAbiStr, saveAbiInfo} from "../model/ContractInfo";
 import {AuthAction, getAuthActionInTx, listAuthAction} from "../model/EIP7702model";
 import {getAccountQuery} from "../service/AccountQuery";
 import {CONST} from "../service/common/constant";
+import axios from "axios";
+import {ContractQuery} from "../service/ContractQuery";
 
 const superagent = require('superagent');
-const e2k = require('express-to-koa');
-const swStats = require('swagger-stats');
 const NodeCache = require( "node-cache" );
 const cors = require('@koa/cors');
 const BigFixed = require('bigfixed');
@@ -166,10 +164,11 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         if (!id || id.length != 10) {
             throw new Errors.ParameterError(`param <id> is invalid`);
         }
-        const list = await AbiInfo.findAll({
+        let list = await AbiInfo.findAll({
             where: {hash: id, type: 'function', }, raw: true,
             attributes: ['fullName', 'type', 'hash', 'formatWithArg']
         });
+        ContractQuery.listMethodABIBySourcify(id).then();
         ctx.body = {list};
     })
     router.get('/list-abi-event', async (ctx)=>{
