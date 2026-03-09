@@ -32,9 +32,12 @@ interface IContractImplAbiRef {
 	implAbiMap?: Map<string, AbiInfo>;
 }
 
-export async function fillMethodInfo(list:{method?:string, to?:string}[],
-                                     toIdArr: number[],
-                                     isOpenApi: boolean = false) {
+export async function fillMethodInfo(
+	list:{method?:string, to?:string}[],
+	toIdArr: number[],
+	isOpenApi: boolean = false,
+	formatWithArg: boolean = false,
+) {
 	const toIdSet = new Set<number>(toIdArr);
 	toIdSet.delete(0); // remove placeholder
 	if (toIdSet.size === 0) {
@@ -95,10 +98,11 @@ export async function fillMethodInfo(list:{method?:string, to?:string}[],
 	})
 	list.forEach((row, index)=>{
 		const toId = toIdArr[index];
-		const verifiedContractAbi = verifiedAbiMap.get(toId)?.get(row.method)?.fullName;
-		const verifiedImplAbi = cImplAbiMap.get(toId)?.implAbiMap?.get(row.method)?.fullName;
+		const fieldName = formatWithArg ? "formatWithArg" : "fullName";
+		const verifiedContractAbi = verifiedAbiMap.get(toId)?.get(row.method)?.[fieldName];
+		const verifiedImplAbi = cImplAbiMap.get(toId)?.implAbiMap?.get(row.method)?.[fieldName];
 		// use verified abi prior to pure abi.
-		const useMethod =  verifiedContractAbi || verifiedImplAbi || poorAbiMap.get(row.method)?.fullName;
+		const useMethod = verifiedContractAbi || verifiedImplAbi || poorAbiMap.get(row.method)?.[fieldName];
 		if(isOpenApi){
 			row['methodId'] = row.method
 			if(useMethod) {

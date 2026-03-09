@@ -565,7 +565,7 @@ export class ConfluxService {
 
         if (methodList?.length) {
           const ids = await getAddrIdArray(methodList.map(item => item.to));
-          await fillMethodInfo(methodList, ids, true);
+          await fillMethodInfo(methodList, ids, true, true);
           methodList.forEach(item => _.assign(traceArray[item.index].action, _.pick(item, ['methodId', 'method'])));
           console.log(`debug trace ===2===`, JSON.stringify(traceArray), JSON.stringify(methodList));
         }
