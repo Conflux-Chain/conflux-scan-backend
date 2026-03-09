@@ -541,7 +541,7 @@ export class ConfluxService {
             trace.action.init = undefined;
           }
           if (input) {
-            trace.action.input = undefined;
+            // trace.action.input = undefined;
             if(input.length >= 10 && to) {
               methodList.push({index, to, method: input.substring(0, 10)});
             }
