@@ -1,7 +1,8 @@
 import {
     Hex40Map,
     getAddrId,
-    formatToBase32, makeId,
+    formatToBase32,
+    makeId,
 } from "../model/HexMap";
 import {Op, QueryTypes} from "sequelize";
 import {fmtAddr, StatApp} from "../StatApp";

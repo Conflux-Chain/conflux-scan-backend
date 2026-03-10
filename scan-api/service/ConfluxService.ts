@@ -522,7 +522,6 @@ export class ConfluxService {
         let traceArray;
         try {
           traceArray = await cfx.traceTransaction(transactionHash);
-          console.log(`debug trace ===1===`, JSON.stringify(traceArray));
         } catch (err) {
           throw new error.ResponseDataParsingError(`Failed to get traceTransaction by sdk: ${err}`);
         }
@@ -563,11 +562,14 @@ export class ConfluxService {
           }
         });
 
+        const methodMap = {};
         if (methodList?.length) {
           const ids = await getAddrIdArray(methodList.map(item => item.to));
           await fillMethodInfo(methodList, ids, true, true);
-          methodList.forEach(item => _.assign(traceArray[item.index].action, _.pick(item, ['methodId', 'method'])));
-          console.log(`debug trace ===2===`, JSON.stringify(traceArray), JSON.stringify(methodList));
+          methodList.forEach(({to, method, methodId}) => {
+            methodMap[methodId] ||= {};
+            methodMap[methodId][fmtAddr(to, cfx.networkId)] = method;
+          });
         }
 
         const proxyMap = {};
@@ -590,7 +592,6 @@ export class ConfluxService {
               proxyMap[fmtAddr(item.hex, cfx.networkId)] =
                 item.proxyType === CONST.PROXY_PATTERN.PROXY ? "Proxy" : "BeaconProxy"
             );
-          console.log(`debug trace ===3===`, JSON.stringify(proxyMap));
         }
 
         let result = {} as any;
@@ -598,6 +599,7 @@ export class ConfluxService {
           result.traceTree = tracesInTree(traceArray);
           result.addressArray = [...addressSet];
           result.proxyMap = proxyMap;
+          result.methodMap = methodMap;
         } catch (err) {
           throw new error.ResponseDataParsingError(`Failed to parse traces by sdk: ${err}`);
         }
