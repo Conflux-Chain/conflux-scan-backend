@@ -27,7 +27,7 @@ create table if not exists ${T_ADDRESS_ERC1155_TRANSFER}
 \t contractId bigint not null,
 \t fromId bigint not null,
 \t toId bigint not null,
-\t \`value\` decimal(36) not null,
+\t \`value\` varchar(78) not null,
 \t tokenId varchar(78) null,
     primary key  (addressId desc,epoch desc,blockIndex desc, 
     txIndex desc, txLogIndex desc, batchIndex desc),
