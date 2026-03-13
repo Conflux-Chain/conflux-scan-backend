@@ -1,12 +1,8 @@
-import {DataTypes, Model, Op, QueryTypes, Sequelize} from "sequelize";
+import {DataTypes, Model, Sequelize} from "sequelize";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
-import {format} from "js-conflux-sdk";
-import {StatApp} from "../StatApp";
-import {getAddrId, } from "./HexMap";
-import {Interface, keccak256} from "ethers/lib/utils";
+import {Interface} from "ethers/lib/utils";
 import {Errors} from "../service/common/LogicError";
-import {ContractImpl} from "./ContractImpl";
-import {getContractQuery} from "../service/ContractQuery";
+import {ethers} from "ethers";
 
 export interface IAbiInfo {
     id?:number
@@ -112,7 +108,7 @@ export async function saveAbiInfo(abiObj:any, contractId?:number, dryRun = false
         let useName = key;
         let sig = '';
         if (field.type === 'event') {
-            sig = keccak256(Buffer.from(key))
+            sig = ethers.keccak256(Buffer.from(key))
         } else {
             sig = iFace.getSighash(field);
         }

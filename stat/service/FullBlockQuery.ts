@@ -1,5 +1,5 @@
 // @ts-ignore
-import {Conflux, CONST as SDK_CONST, format} from "js-conflux-sdk";
+import {CONST as SDK_CONST, format} from "js-conflux-sdk";
 import {Op, QueryTypes} from "sequelize"
 import {
     AddressTransactionIndex,
@@ -7,7 +7,7 @@ import {
     FailedTx,
     FullBlock,
     FullBlockExt,
-    FullTransaction, IFullBlock,
+    FullTransaction,
     pagingFullBlock,
     pagingFullTx,
     TxPage
@@ -21,9 +21,8 @@ import {TransferCount} from "../model/TransferCount";
 import {Epoch} from "../model/Epoch";
 import {BigNumber} from "ethers";
 import {CoreSpaceRpc, fmtAddr, StatApp} from "../StatApp";
-import {extractActualGasCost, initCfxSdk} from "./common/utils";
+import {extractActualGasCost} from "./common/utils";
 import {CoreDB, NoCoreSpace} from "../config/StatConfig";
-import {init} from "./tool/FixDailyTokenStat";
 import {detectFishingAddress} from "./tool/phishingAddress";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import {JsonRpcProvider} from "@ethersproject/providers/src.ts/json-rpc-provider";
