@@ -91,7 +91,7 @@ export class ENSCheckerQuery {
     public async resolveName(name) {
         const nameHash = ethers.namehash(name);
         const label = this.extractLabelFromName(name);
-        const labelHash = ethers.keccak256(ethers.utils.toUtf8Bytes(label));
+        const labelHash = ethers.keccak256(ethers.toUtf8Bytes(label));
         const tokenId = format.bigInt(labelHash);
 
         const [resolverAddr, owner, expiresDate, registrant] = await Promise.all([
@@ -140,7 +140,7 @@ export class ENSCheckerQuery {
             return result;
         }
 
-        const labelHash = ethers.keccak256(ethers.utils.toUtf8Bytes(label));
+        const labelHash = ethers.keccak256(ethers.toUtf8Bytes(label));
         const tokenId = format.bigInt(labelHash);
         const registrant = await this.baseRegistrar.ownerOf(tokenId);
         lodash.assign(result, {reverseRecord, registrant})
