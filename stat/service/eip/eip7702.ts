@@ -256,7 +256,7 @@ function buildSignature(data = authExample) {
 	const signature = ethers.concat([
 		data.r,
 		data.s,
-		ethers.utils.hexZeroPad(v, 1) // 确保 v 是 1 字节 (0x00 或 0x01)
+		ethers.zeroPadValue(v, 1) // 确保 v 是 1 字节 (0x00 或 0x01)
 	]);
 	console.log("Signature:", hexlify(signature));
 	return signature;
