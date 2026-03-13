@@ -10,7 +10,6 @@ import {TraceCreateContract} from "../../model/TraceCreateContract";
 import {getAddrId, makeId, makeIdV} from "../../model/HexMap";
 import {Errors} from "../common/LogicError";
 import {ethers} from "ethers";
-import {RLP} from "ethers/lib/utils";
 
 type AccountType = {
 	isContract: boolean,
@@ -265,7 +264,7 @@ function buildSignature(data = authExample) {
 // 2. 恢复 EIP-7702 的 author
 function recoverEIP7702Author({ chainId, address, nonce, signature }) {
 	// RLP 编码 [chainId, address, nonce]
-	const rlpEncoded = RLP.encode([
+	const rlpEncoded = ethers.encodeRlp([
 		ethers.hexlify(ethers.BigNumber.from(chainId).toHexString()),
 		address,
 		ethers.hexlify(ethers.BigNumber.from(nonce).toHexString()),
