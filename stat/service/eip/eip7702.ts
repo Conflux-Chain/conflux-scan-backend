@@ -251,7 +251,7 @@ const authExample =     {
 // {chainId, address, nonce, yParity, r, s}
 function buildSignature(data = authExample) {
 	// 1. 构造签名 (65 字节: r + s + v)
-	const v = ethers.BigNumber.from(data.yParity).toHexString(); // "0x0" → 需要转成 "0x00"
+	const v = ethers.toBeHex(data.yParity); // "0x0" → 需要转成 "0x00"
 	const signature = ethers.concat([
 		data.r,
 		data.s,
@@ -265,9 +265,9 @@ function buildSignature(data = authExample) {
 function recoverEIP7702Author({ chainId, address, nonce, signature }) {
 	// RLP 编码 [chainId, address, nonce]
 	const rlpEncoded = ethers.encodeRlp([
-		ethers.hexlify(ethers.BigNumber.from(chainId).toHexString()),
+		ethers.hexlify(ethers.toBeHex(chainId)),
 		address,
-		ethers.hexlify(ethers.BigNumber.from(nonce).toHexString()),
+		ethers.hexlify(ethers.toBeHex(nonce)),
 	]);
 
 	// 添加前缀 0x05
