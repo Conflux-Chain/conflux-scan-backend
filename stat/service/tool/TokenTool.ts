@@ -147,7 +147,7 @@ export class TokenTool {
         const { topics = [], data = '0x' } = eventLog;
 
         if (topics[0] === this.contract.Announce.signature && topics.length === 3 && data.length > 2) {
-            const parameters = ethers.utils.defaultAbiCoder.decode(['bytes','bytes'], data);
+            const parameters = ethers.AbiCoder.defaultAbiCoder().decode(['bytes','bytes'], data);
             return {
                 ...eventLog,
                 announcer: `0x${topics[1].slice(-40)}`,
@@ -166,7 +166,7 @@ export class TokenTool {
 
         if (topics[0] === this.contract.NameTagChanged.signature && topics.length === 3) {
             const _abi = abi.find(e=>e.name==='NameTagChanged').inputs.slice(2);
-            const parameters = ethers.utils.defaultAbiCoder.decode(_abi, eventLog.data);
+            const parameters = ethers.AbiCoder.defaultAbiCoder().decode(_abi, eventLog.data);
             return {
                 ...eventLog,
                 auditor: `0x${topics[1].slice(-40)}`,
@@ -188,7 +188,7 @@ export class TokenTool {
         const { topics = [], data = '0x' } = eventLog;
         //event LabelChanged(index_topic_1 address auditor, index_topic_2 address addr, string oldLabel, string newLabel)
         if (topics[0] === this.contract.LabelChanged.signature && topics.length === 3) {
-            const parameters = ethers.utils.defaultAbiCoder.decode(['string','string'], data);
+            const parameters = ethers.AbiCoder.defaultAbiCoder().decode(['string','string'], data);
             return {
                 ...eventLog,
                 auditor: `0x${topics[1].slice(-40)}`,
@@ -207,7 +207,7 @@ export class TokenTool {
         // event Bytes32NameTagChanged(address indexed auditor, bytes32 indexed hex64, Bytes32NameTag oldNameTag, Bytes32NameTag newNameTag)
         if (topics[0] === this.contract.Bytes32NameTagChanged.signature && topics.length === 3) {
             const _abi = abi.find(e=>e.name==='Bytes32NameTagChanged').inputs.slice(2);
-            const parameters = ethers.utils.defaultAbiCoder.decode(_abi, eventLog.data);
+            const parameters = ethers.AbiCoder.defaultAbiCoder().decode(_abi, eventLog.data);
             return {
                 ...eventLog,
                 auditor: `0x${topics[1].slice(-40)}`,
@@ -359,7 +359,7 @@ export class TokenTool {
         const { topics = [], data = '0x' } = eventLog;
 
         if (topics[0] === this.contract.TransferSingle.signature && topics.length === 4 && data.length === 130) {
-            const parameters = ethers.utils.defaultAbiCoder.decode(['uint256','uint256'], data);
+            const parameters = ethers.AbiCoder.defaultAbiCoder().decode(['uint256','uint256'], data);
             return [{
                 ...eventLog,
                 operator: `0x${topics[1].slice(-40)}`,
@@ -375,7 +375,7 @@ export class TokenTool {
             const operator = `0x${topics[1].slice(-40)}`;
             const from = `0x${topics[2].slice(-40)}`;
             const to = `0x${topics[3].slice(-40)}`;
-            const parameters = ethers.utils.defaultAbiCoder.decode(['uint256[]','uint256[]'], data);
+            const parameters = ethers.AbiCoder.defaultAbiCoder().decode(['uint256[]','uint256[]'], data);
             const tokenIdArray = parameters['0'];
             const valueArray = parameters['1'];
             return lodash.zip(tokenIdArray, valueArray)
