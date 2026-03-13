@@ -1,4 +1,4 @@
-import {ethers} from "ethers";
+import {ethers, Interface} from "ethers";
 import {redirectLog} from "./service/tool/LoggerConfig";
 import {DataTypes, Model, Sequelize, QueryTypes} from "sequelize";
 import {buildErc20Transfer,} from "./model/Erc20Transfer";
@@ -253,7 +253,7 @@ export interface IParsedEvent3525 {
 }
 export function build3525interface() {
     const {abi} = require('../common/contracts/build/contracts/IERC3525.json')
-    return new ethers.utils.Interface(abi);
+    return new Interface(abi);
 }
 const bigNumberProps = ["tokenId", "slot", "_oldSlot", "_newSlot", "fromTokenId", "toTokenId", "value"];
 
@@ -294,7 +294,7 @@ function decodeOneLog(parser, log) {
     return null;
 }
 
-export function decode3525logs(logs:any[], parser: ethers.utils.Interface) : IParsedEvent3525[]{
+export function decode3525logs(logs:any[], parser: Interface) : IParsedEvent3525[]{
     const result = []
     for(let log of logs) {
         let parsed = decodeOneLog(parser, log);

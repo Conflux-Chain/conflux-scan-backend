@@ -1,8 +1,6 @@
 import {DataTypes, Model, Sequelize} from "sequelize";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
-import {Interface} from "ethers/lib/utils";
-import {Errors} from "../service/common/LogicError";
-import {ethers} from "ethers";
+import {Interface, keccak256} from "ethers";
 
 export interface IAbiInfo {
     id?:number
@@ -12,6 +10,7 @@ export interface IAbiInfo {
     formatWithArg?: string
     updatedAt?:Date
 }
+export const MaxFullName = 1024;
 export const FormatWithArgMaxLength = 4096;
 export class AbiInfo extends Model<IAbiInfo> implements IAbiInfo {
     id?:number
@@ -70,6 +69,7 @@ export function setFieldsForUpdate(v: (keyof IAbiInfo)[]) {
 // https://docs.soliditylang.org/en/v0.5.3/abi-spec.html#events
 export async function saveAbiInfo(abiObj:any, contractId?:number, dryRun = false) {
     const abi = (typeof abiObj === 'string') ? JSON.parse(abiObj) : abiObj;
+
     let iFace: Interface;
     try {
         iFace = new Interface(abi);
@@ -81,48 +81,40 @@ export async function saveAbiInfo(abiObj:any, contractId?:number, dryRun = false
         return e.message?.includes('can not found matched coder');
     }
 
-    const arr:IAbiInfo[] = [];
-    // each key is a prop of the contract, only care the exact method/event like abc(address,uint)
-    const maxFullName = 1024;
-    const fnAndEvents = [...Object.keys(iFace.events), ...Object.keys(iFace.functions)];
-    for (let key of fnAndEvents) {
-        const field = iFace.events[key] || iFace.functions[key];
-        if (!field) {
+    const arr: IAbiInfo[] = [];
+    const fragments = [...Object.values(iFace.fragments)];
+    for (const fragment of fragments) {
+        const type = fragment.type;
+        if (type !== 'event' && type !== 'function') {
             continue;
         }
-        const fullFormat = field.format('full');
-        if (dryRun) {
-            // check name
-            for (const param of field.inputs) {
-                if (!param.name) {
-                    throw new Errors.ParameterError(`parameter name is empty: ${fullFormat}`);
-                }
-            }
+
+        const signature = fragment.format("sighash");
+        const fullFormat = fragment.format("full");
+        const hash = keccak256(Buffer.from(signature));
+
+        if (signature.length > MaxFullName) {
+            console.log(`skip entry exceeds max length , full name ${signature.length} > ${MaxFullName} \n`, signature);
+            continue;
         }
         if (fullFormat.length > FormatWithArgMaxLength) {
             console.log(`skip entry exceeds max length , full format ${fullFormat.length} > ${FormatWithArgMaxLength} \n`, fullFormat);
             continue;
         }
-        // console.log(`---- ${key} : ${typeof field} `, fullFormat);
-        const type = field.type;
-        let useName = key;
-        let sig = '';
-        if (field.type === 'event') {
-            sig = ethers.keccak256(Buffer.from(key))
-        } else {
-            sig = iFace.getSighash(field);
-        }
-        if (useName.length > maxFullName) {
-            console.log(`skip entry exceeds max length , full name ${useName.length} > ${maxFullName} \n`, useName);
-            continue;
-        }
-        const template = {fullName: useName, hash: sig, type, formatWithArg: fullFormat};
-        arr.push(template)
+
+        arr.push({
+            type,
+            fullName: signature,
+            hash: type === 'function' ? hash.substring(0, 10) : hash,
+            formatWithArg: fullFormat
+        });
     }
+
     if (dryRun) {
         console.log(`abi beans are:`, arr);
         return true;
     }
+
     return AbiInfo.bulkCreate(arr, {
         updateOnDuplicate: UPDATE_FIELDS_FOR_DUPLICATE_ABI,
     }).then(arr=>{
