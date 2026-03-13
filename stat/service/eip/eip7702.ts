@@ -275,7 +275,7 @@ function recoverEIP7702Author({ chainId, address, nonce, signature }) {
 	const prefixedData = ethers.concat(["0x05", rlpEncoded]);
 
 	// 计算 Keccak-256 哈希
-	const hash = ethers.utils.keccak256(prefixedData);
+	const hash = ethers.keccak256(prefixedData);
 
 	// 恢复地址
 	return ethers.utils.recoverAddress(hash, signature);
