@@ -373,7 +373,7 @@ export function initEthSdk(url) {
     if (!url) {
         return null;
     }
-    return new ethers.providers.JsonRpcProvider(url);
+    return new ethers.JsonRpcProvider(url);
 }
 
 export function patchHttpProvider(cfx:Conflux, cfxConf, tag='NotSet') {

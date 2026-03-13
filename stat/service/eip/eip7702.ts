@@ -1,4 +1,3 @@
-import {JsonRpcProvider} from "@ethersproject/providers/src.ts/json-rpc-provider";
 import {AuthAction, AuthBlockStub, listAuthAction} from "../../model/EIP7702model";
 import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
 import {getCfxSdk, initEthSdk, SECOND} from "../common/utils";
@@ -9,7 +8,7 @@ import {init} from "../tool/FixDailyTokenStat";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
 import {getAddrId, makeId, makeIdV} from "../../model/HexMap";
 import {Errors} from "../common/LogicError";
-import {ethers} from "ethers";
+import {ethers, JsonRpcProvider} from "ethers";
 
 type AccountType = {
 	isContract: boolean,
@@ -301,7 +300,7 @@ async function testLoadAuth() {
 	const { ethers } = require("ethers");
 
 // 替换为你的 JSON-RPC 节点 URL
-	const provider = new ethers.providers.JsonRpcProvider(url);
+	const provider = new JsonRpcProvider(url);
 	// '0xa37384c0646a682bd0e206232572af91b75e6735ab30b658854222546f76ffbc'
 	await loadSetAuth(provider, 53098075);
 }

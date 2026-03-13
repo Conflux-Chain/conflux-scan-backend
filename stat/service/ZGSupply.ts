@@ -1,4 +1,3 @@
-import {JsonRpcProvider} from "@ethersproject/providers/src.ts/json-rpc-provider";
 import {getCfxSdk, initEthSdk} from "./common/utils";
 import {
 	BlockWithdrawCreationAttributes,
@@ -16,7 +15,7 @@ import {regExitHook, sleep} from "./tool/ProcessTool";
 import {SupplyInfo} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {ConfigInstance, NoCoreSpace} from "../config/StatConfig";
 import {Conflux} from "js-conflux-sdk";
-import {ethers} from "ethers";
+import {ethers, JsonRpcProvider} from "ethers";
 
 const ctx = {
 	preEntry: null as BlockWithdrawCreationAttributes,
