@@ -10,7 +10,7 @@ import {TraceCreateContract} from "../../model/TraceCreateContract";
 import {getAddrId, makeId, makeIdV} from "../../model/HexMap";
 import {Errors} from "../common/LogicError";
 import {ethers} from "ethers";
-import {hexlify, RLP} from "ethers/lib/utils";
+import {RLP} from "ethers/lib/utils";
 
 type AccountType = {
 	isContract: boolean,
@@ -258,7 +258,7 @@ function buildSignature(data = authExample) {
 		data.s,
 		ethers.zeroPadValue(v, 1) // 确保 v 是 1 字节 (0x00 或 0x01)
 	]);
-	console.log("Signature:", hexlify(signature));
+	console.log("Signature:", ethers.hexlify(signature));
 	return signature;
 }
 
@@ -266,9 +266,9 @@ function buildSignature(data = authExample) {
 function recoverEIP7702Author({ chainId, address, nonce, signature }) {
 	// RLP 编码 [chainId, address, nonce]
 	const rlpEncoded = RLP.encode([
-		ethers.utils.hexlify(ethers.BigNumber.from(chainId).toHexString()),
+		ethers.hexlify(ethers.BigNumber.from(chainId).toHexString()),
 		address,
-		ethers.utils.hexlify(ethers.BigNumber.from(nonce).toHexString()),
+		ethers.hexlify(ethers.BigNumber.from(nonce).toHexString()),
 	]);
 
 	// 添加前缀 0x05
