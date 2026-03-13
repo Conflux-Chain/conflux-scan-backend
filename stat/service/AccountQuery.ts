@@ -59,7 +59,7 @@ export class AccountQuery {
     }) {
         const [addresses1, addresses2] = lodash.partition(
             [...new Set(addresses.filter(item => item?.trim()))],
-            (item: string) => ethers.utils.isHexString(item) && item.length === 66,
+            (item: string) => ethers.isHexString(item) && item.length === 66,
         );
 
         const map = await this._list(addresses2, options);
