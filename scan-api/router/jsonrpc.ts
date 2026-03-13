@@ -536,6 +536,17 @@ export const jsonrpc_countAndListTransfer = jsonrpc.method_('countAndListTransfe
     } = this as ScanCtx;
 
     const result = await service.transfer.countAndList(options);
+    result?.list.forEach(item => {
+        delete item.transactionIndex;
+        delete item.logIndex;
+        delete item.blockIndex;
+        delete item.txIndex;
+        delete item.txLogIndex;
+        delete item.topics;
+        delete item.data;
+        delete item.blockHash;
+        delete item.space;
+    });
     return { ...result, listLimit };
   },
 

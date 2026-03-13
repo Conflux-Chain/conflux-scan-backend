@@ -160,6 +160,21 @@ export class TransferService {
     }
 
     list = reverse ? [...list].reverse() : list;
+
+    if(list.length) {
+      const epochNumber = Number(list[0].epochNumber);
+      const epoch = await service.epoch.query({ epochNumber }) || {};
+      list.forEach(item => {
+        lodash.assign(item, {
+          epochNumber,
+          timestamp: epoch.timestamp,
+          syncTimestamp: epoch.timestamp,
+          transactionLogIndex: Number(item.transactionLogIndex),
+          transferType,
+        });
+      });
+    }
+
     return {
       total: list.length,
       list: list.slice(skip, skip + limit),
