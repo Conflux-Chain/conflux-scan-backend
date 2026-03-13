@@ -248,7 +248,7 @@ export class ContractService {
       hex = format.hexAddress(hex);
     }
 
-    return ethers.utils.getAddress(hex);
+    return ethers.getAddress(hex);
   }
 }
 

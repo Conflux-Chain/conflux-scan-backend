@@ -46,7 +46,7 @@
     "bigfixed": "0.0.2",
     "cbor": "5.1.0",
     "csv-stringify": "5.5.3",
-    "ethers": "^5.6.9",
+    "ethers": "^6.16.0",
     "express-to-koa": "~2.0.0",
     "graphql": "^16.6.0",
     "graphql-request": "^5.0.0",

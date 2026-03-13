@@ -142,7 +142,7 @@ export function fmtAddr(hex: string, netId: number, verbose = false) {
         if (hex.includes(":")) {
             hex = format.hexAddress(hex)
         }
-        return ethers.utils.getAddress(hex);
+        return ethers.getAddress(hex);
     }
     return format.address(hex, netId, verbose)
 }

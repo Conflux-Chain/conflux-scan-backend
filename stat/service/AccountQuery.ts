@@ -186,12 +186,12 @@ export class AccountQuery {
         ]);
 
         const map = Object.fromEntries(Object.values(mapIdToHex).map(hex => [
-            StatApp.isEVM ? ethers.utils.getAddress(hex) : format.address(hex, StatApp.networkId),
+            StatApp.isEVM ? ethers.getAddress(hex) : format.address(hex, StatApp.networkId),
             lodash.omitBy({
                 contract: contracts[hex],
                 token: tokens[hex],
                 verification: verifies[hex],
-                eSpace: evmSpaceInfos[hex] ? {address: ethers.utils.getAddress(hex)} : undefined,
+                eSpace: evmSpaceInfos[hex] ? {address: ethers.getAddress(hex)} : undefined,
                 ens: ensInfos[hex],
                 nameTag: nameTagInfos[hex],
                 implementation: impls[hex],

@@ -94,7 +94,7 @@ export class NFTCheckerService {
 
             const addressMapper = (address) => {
                 return StatApp.isEVM ?
-                    ethers.utils.getAddress(format.hexAddress(address)) :
+                    ethers.getAddress(format.hexAddress(address)) :
                     format.address(address, StatApp.networkId);
             }
 

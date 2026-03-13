@@ -91,7 +91,7 @@ const EPOCH_NUMBER_LABEL_ARRAY = ['latest_mined', 'latest_state', 'latest_finali
 // -----------------------------------biz---------------------------------------
 // 2024.1.24 format as checksum address
 function checksum_hexAddress(addr: string) {
-    return addr ? ethers.utils.getAddress(format.hexAddress(addr)) : addr
+    return addr ? ethers.getAddress(format.hexAddress(addr)) : addr
 }
 async function gateway(ctx) {
     const {E_SPACE_OPENAPI: {ACCOUNT, CONTRACT, TRANSACTION, BLOCK, LOGS, TOKEN, STATS}} = CONST;

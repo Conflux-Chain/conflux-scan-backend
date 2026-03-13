@@ -74,7 +74,7 @@ export async function getDelegatedAddrAtTx(eoa: string, blockNumber:number, txHa
 		order: [['blockNumber', 'desc'], ['transactionPosition', 'desc'], ['authIndex', 'desc']],
 	});
 	if (bean?.address) {
-		bean.address = ethers.utils.getAddress(bean.address);
+		bean.address = ethers.getAddress(bean.address);
 	}
 	return bean;
 }
@@ -96,7 +96,7 @@ export async function getAuthActionInTx(txHash: string) {
 		raw: true,
 	})
 	list.forEach((row) => {
-		row['address'] =  ethers.utils.getAddress(row['address']);
+		row['address'] =  ethers.getAddress(row['address']);
 	});
 	return {list};
 }
@@ -114,8 +114,8 @@ export async function listAuthAction({author, skip = 0, limit = 10}) {
 	})
 	arr.forEach((row) => {
 		row['createdAt'] = row['txTime'];
-		row['txSender'] =  ethers.utils.getAddress(row['txSender']);
-		row['address'] =  ethers.utils.getAddress(row['address']);
+		row['txSender'] =  ethers.getAddress(row['txSender']);
+		row['address'] =  ethers.getAddress(row['address']);
 	});
 	const count = await AuthAction.count({where: {author}});
 	return {total: count, list: arr, listLimit: 1000};
