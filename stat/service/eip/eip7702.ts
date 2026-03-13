@@ -277,7 +277,7 @@ function recoverEIP7702Author({ chainId, address, nonce, signature }) {
 	const hash = ethers.keccak256(prefixedData);
 
 	// 恢复地址
-	return ethers.utils.recoverAddress(hash, signature);
+	return ethers.recoverAddress(hash, signature);
 }
 
 // node stat/service/eip/eip7702.js tx
