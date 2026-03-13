@@ -253,7 +253,7 @@ const authExample =     {
 function buildSignature(data = authExample) {
 	// 1. 构造签名 (65 字节: r + s + v)
 	const v = ethers.BigNumber.from(data.yParity).toHexString(); // "0x0" → 需要转成 "0x00"
-	const signature = ethers.utils.concat([
+	const signature = ethers.concat([
 		data.r,
 		data.s,
 		ethers.utils.hexZeroPad(v, 1) // 确保 v 是 1 字节 (0x00 或 0x01)
@@ -272,7 +272,7 @@ function recoverEIP7702Author({ chainId, address, nonce, signature }) {
 	]);
 
 	// 添加前缀 0x05
-	const prefixedData = ethers.utils.concat(["0x05", rlpEncoded]);
+	const prefixedData = ethers.concat(["0x05", rlpEncoded]);
 
 	// 计算 Keccak-256 哈希
 	const hash = ethers.utils.keccak256(prefixedData);
