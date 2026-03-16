@@ -115,5 +115,10 @@
   "bugs": {
     "url": "https://github.com/Conflux-Dev/conflux-scan-statistics/issues"
   },
-  "homepage": "https://github.com/Conflux-Dev/conflux-scan-statistics#readme"
+  "homepage": "https://github.com/Conflux-Dev/conflux-scan-statistics#readme",
+  "overrides": {
+    "@web3identity/address-encoder": {
+      "ethers": "$ethers"
+    }
+  }
 }
