@@ -4,7 +4,7 @@ import {StatApp} from "../../StatApp";
 import {StatConfig} from "../../config/StatConfig";
 import {initCfxSdk} from "../common/utils";
 import {CONST} from "../common/constant";
-import {ContractQuery} from "../ContractQuery";
+import {ContractQuery, ImplInfo} from "../ContractQuery";
 import {IS_EVM2, KV} from "../../model/KV";
 import {VerifiedContracts} from "../../model/VerifiedContracts";
 import {Conflux, format} from "js-conflux-sdk";
@@ -13,6 +13,7 @@ import {Contract} from "../../model/Contract";
 import {Op} from "sequelize";
 import {execSync} from "child_process";
 import {sleep} from "./ProcessTool";
+import {TraceCreateContract} from "../../model/TraceCreateContract";
 
 const fs = require('fs');
 const path = require('path');
@@ -49,6 +50,9 @@ async function run() {
     }
     if (type === 3) {
         await verifyFromScan()
+    }
+    if (type === 4) {
+        await realtimeProxyImpl()
     }
     await close();
 }
@@ -230,4 +234,27 @@ async function verifyFromScan(submitVerify: boolean = true) {
             lastId = id;
         }
     }
+}
+
+async function realtimeProxyImpl() {
+    const traces = await TraceCreateContract.findAll({attributes: ['to'], raw: true});
+
+    let total = 0;
+    let proxy = 0;
+    let beaconProxy = 0;
+
+    for (const {to} of traces) {
+        total ++;
+        const hex = await Hex40Map.findOne({where: {id: to}, raw: true});
+        const impl: ImplInfo = await contractQuery.getImpl(`0x${hex.hex}`);
+        if (impl) {
+            proxy++;
+            const {beacon} = impl;
+            if (beacon) {
+                beaconProxy++;
+            }
+        }
+    }
+
+    console.log(`done! ${JSON.stringify({total, proxy, beaconProxy})}`);
 }

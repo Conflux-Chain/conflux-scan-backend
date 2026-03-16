@@ -498,5 +498,10 @@ export const CONST = {
     71: ["0x36B83E0D41D1dd9C73a006F0c1cbC1F096E69E34"],
   },
 
+  PROXY_PATTERN: {
+    BEACON_PROXY: "EIP-1967 Transparent Proxy",
+    PROXY: "OpenZeppelin's Unstructured Storage",
+  },
+
   FRONTEND_CONFIG: frontendConstant,
 };

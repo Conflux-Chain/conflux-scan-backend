@@ -21,7 +21,7 @@ export class ContractImpl extends Model<IContractImpl> implements IContractImpl 
 			id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true},
 			cid: {type: DataTypes.BIGINT, allowNull: false, unique: true},
 			implId: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0},
-			proxyType: {type: DataTypes.STRING(32), allowNull: false, defaultValue: ''},
+			proxyType: {type: DataTypes.STRING(64), allowNull: false, defaultValue: ''},
 			createdAt: {type: DataTypes.DATE, },
 			updatedAt: {type: DataTypes.DATE, },
 		}, {
