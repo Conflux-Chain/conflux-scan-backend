@@ -1019,7 +1019,10 @@ export class EpochSync extends SyncBase {
 
             const type = nftTypeMap[contractId];
             const updatedCursor= EpochSync.buildAddrNftCursor(epochNumber, index)
-            addressNftArr.push([addressId, contractId, tokenId, type, Number(value), updatedCursor, epochTimestamp, epochTimestamp])
+            // attention: value should be bigint, and the DB type should be varchar(78), other wise,
+            // either "Out of range value for column 'value' at row 3"
+            // or '1e72' may occur, which is incorrect.
+            addressNftArr.push([addressId, contractId, tokenId, type, value.toString(), updatedCursor, epochTimestamp, epochTimestamp])
             index++
         }
 
