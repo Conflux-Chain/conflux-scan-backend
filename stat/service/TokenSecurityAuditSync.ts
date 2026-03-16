@@ -103,7 +103,13 @@ export class TokenSecurityAuditSync{
         }
 
         const base32 = formatToBase32(address);
-        const account = await this.cfx.getAccount(base32, CONST.EPOCH_NUMBER.LATEST_CONFIRMED);
+        const account = await this.cfx.getAccount(base32).catch(err => {
+            const msg = `${err}`
+            if (msg.includes("Epoch number larger than the current pivot chain tip")) {
+                return null;
+            }
+            throw err;
+        });
 
         const token = await Token.findOne({attributes: ['id', 'hex40id'], where: {base32}});
         if (token) {

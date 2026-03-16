@@ -7,6 +7,7 @@ import {ethers} from "ethers";
 import {ConsortiumConflux} from "./ConsortiumConflux";
 import {useFastFormat} from "./fastFormatter";
 import {CONST} from "./constant";
+import {CallParams} from "../AccountQuery";
 
 const lodash = require('lodash');
 const {isValidCfxAddress, decodeCfxAddress} = require('js-conflux-sdk/src/util/address');
@@ -671,4 +672,102 @@ export function extractActualGasCost(msg) {
     }
 
     return parseInt(msg.substring(start, end))
+}
+
+export async function sendRpc(provider: any, method: string, rpcParams: any[], options?: {
+    timeout?: number;
+    retries?: number;
+    retryDelay?: number;
+}): Promise<any> {
+    const opts = {
+        timeout: options?.timeout || 5000,
+        retries: options?.retries || 3,
+        retryDelay: options?.retryDelay || 1000,
+    };
+
+    let lastError: Error | null = null;
+    for (let i = 0; i < opts.retries; i++) {
+        try {
+            const result = await Promise.race([
+                sendRpcRaw(provider, method, rpcParams),
+                new Promise((_, reject) =>
+                    setTimeout(() => reject(new Errors.RPCError(`Failed to get response by sdk: timeout ${opts.timeout}ms`)), opts.timeout)
+                ),
+            ]);
+
+            return result;
+        } catch (error: any) {
+            lastError = error;
+            if (error.message?.includes('method not found') ||
+                error.message?.includes('unauthorized')) {
+                throw error;
+            }
+
+            if (i < opts.retries - 1) {
+                const delay = opts.retryDelay * Math.pow(2, i);
+                await new Promise(resolve => setTimeout(resolve, delay))
+            }
+        }
+    }
+
+    throw lastError || new Errors.RPCError(`Failed to get response by sdk: retry ${opts.retries} times`);
+}
+
+export async function sendRpcRaw(provider: any, method: string, params: any[]): Promise<any> {
+    let result;
+    try {
+        result = await provider.send(method, params);
+    } catch (error: any) {
+        throw new Errors.RPCError(`Failed to get response by sdk: ${error}`);
+    } finally {
+        console.log("RPC", JSON.stringify({method, params, result}));
+    }
+    return result;
+}
+
+export function formatCallParams(params: CallParams): CallParams {
+    const formatted: CallParams = {};
+
+    if (params.from) formatted.from = params.from;
+    if (params.to) formatted.to = params.to;
+
+    if (params.data) {
+        formatted.data = params.data;
+    } else if (params.input) {
+        formatted.data = params.input;
+    }
+
+    if (params.type !== undefined) {
+        formatted.type = ethers.toQuantity(params.type);
+    }
+
+    if (params.accessList && params.accessList.length > 0) {
+        formatted.accessList = params.accessList;
+    }
+
+    if (params.authorizationList && params.authorizationList.length > 0) {
+        formatted.authorizationList = params.authorizationList.map(auth => ({
+            chainId: ethers.toQuantity(ethers.toBigInt(auth.chainId)),
+            address: auth.address,
+            nonce: ethers.toQuantity(ethers.toBigInt(auth.nonce)),
+            yParity: auth.yParity,
+            r: auth.r,
+            s: auth.s,
+        }));
+    }
+
+    ["value", "gas", "maxPriorityFeePerGas", "maxFeePerGas", "gasPrice", "nonce", "chainId"].forEach(item => {
+        if (params[item] !== undefined) {
+            formatted[item] = ethers.toQuantity(ethers.toBigInt(params[item]));
+        }
+    })
+
+    return formatted;
+}
+
+export function formatBlockNumber(blockNumber: ethers.BlockTag): string {
+    if (typeof blockNumber === 'number' || typeof blockNumber === 'bigint') {
+        return ethers.toQuantity(blockNumber);
+    }
+    return blockNumber;
 }

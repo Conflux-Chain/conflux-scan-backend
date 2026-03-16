@@ -21,6 +21,7 @@ import {AuthAction} from "../model/EIP7702model";
 import {TokenQuery} from "./TokenQuery";
 import {ContractQuery} from "./ContractQuery";
 import {CONST} from "./common/constant";
+import {formatBlockNumber, formatCallParams, sendRpc} from "./common/utils";
 
 const lodash = require('lodash');
 const BigFixed = require('bigfixed');
@@ -392,4 +393,87 @@ export class AccountQuery {
             }
         });
     }
+
+    async debugTraceCall(params: any[], needFormat: boolean = false): Promise<any> {
+        const len = params?.length || 0;
+        if (len < 1) {
+            throw new Error("Provide the first parameter at least.");
+        }
+        if (len > 3) {
+            throw new Error("Accepts maximum 3 parameters: [callParams, blockNumber?, tracerOptions?].");
+        }
+
+        const [callParams, blockNumber, tracerOptions] = params;
+        if (!Object.keys(callParams)?.length) {
+            throw new Error("The first param is an empty object.");
+        }
+
+        const rpcParams: any[] = [needFormat ? formatCallParams(callParams) : callParams];
+        if (blockNumber) {
+            rpcParams.push(needFormat ? formatBlockNumber(blockNumber) : blockNumber)
+        }
+        if (tracerOptions) {
+            rpcParams.push(tracerOptions)
+        }
+
+        return sendRpc(this.app.eth, "debug_traceCall", rpcParams);
+    }
+}
+
+export interface CallParams {
+    /**
+     * basic params
+     */
+    from?: string;
+    to?: string;
+    gas?: bigint | string | number;
+    gasPrice?: bigint | string | number;
+    nonce?: bigint | string | number;
+    value?: bigint | string | number;
+    data?: string;
+    input?: string; // alias of data field
+    chainId?: bigint | string | number;
+
+    /**
+     * tx type
+     * 0 - Legacy
+     * 1 - EIP-2930 (Access List)
+     * 2 - EIP-1559 (Dynamic Fee)
+     * 3 - EIP-4844 (Blob)
+     * 4 - EIP-7702 (Set Code)
+     */
+    type?: number | string;
+
+    /**
+     * EIP-1559 params
+     */
+    maxPriorityFeePerGas?: bigint | string | number;
+    maxFeePerGas?: bigint | string | number;
+
+    /**
+     * EIP-2930 params
+     */
+    accessList?: Array<{
+        address: string;
+        storageKeys: string[];
+    }>;
+
+    /**
+     * EIP-7702 params
+     */
+    authorizationList?: Authorization[];
+}
+
+export interface Authorization {
+    chainId: bigint | string | number;
+    address: string;
+    nonce: bigint | string | number;
+    yParity: number;
+    r: string;
+    s: string;
+}
+
+export interface TracerOptions {
+    tracer?: string; // tracer type: callTracer, prestateTracer, structLogs
+    tracerConfig?: Record<string, any>; // tracer config details
 }

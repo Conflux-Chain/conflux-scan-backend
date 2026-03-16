@@ -35,7 +35,7 @@ export const Errors = {
     ResponseDataParsingError: LogicError.extend({ code: 50202, name: 'Data parsing exception, try again later'}),
 
     // RPC error
-    RPCCallError: LogicError.extend({ code: 50300, name: 'RPC Call Error, try again later, or submit a ticket'}),
+    RPCError: LogicError.extend({ code: 50300, name: 'RPC Error'}),
     SendAnnounceError: LogicError.extend({ code: 50301, name: 'Send Announce Error' }),
     AnnouncementNotExistError: LogicError.extend({ code: 50302, name: 'Announcement Not Exist Error' }),
     AnnounceTooLongError: LogicError.extend({ code: 50303, name: 'Announce Too Long Error' }),

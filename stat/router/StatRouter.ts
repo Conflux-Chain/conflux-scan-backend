@@ -824,6 +824,11 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         }
         ctx.body = result;
     });
+
+    router.post('/rpc/debugTraceCall', async function (ctx) {
+        const {params} = ctx.request.body as any;
+        ctx.body = await statApp.accountQuery.debugTraceCall(params);
+    });
 }
 // swagger stat doesn't support multiple instances,
 // use this hook to bypass.

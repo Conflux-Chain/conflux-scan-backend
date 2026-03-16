@@ -170,7 +170,6 @@ export class TransferService {
           timestamp: epoch.timestamp,
           syncTimestamp: epoch.timestamp,
           transactionLogIndex: Number(item.transactionLogIndex),
-          transferType,
         });
       });
     }
