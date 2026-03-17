@@ -1243,10 +1243,10 @@ export class ContractQuery {
                 timeout,
             });
 
-            const {data: {results}} = resp;
+            const {data} = resp || {};
 
-            if (results?.length) {
-                const list = results.map((item: any) => ({
+            if (data?.results?.length) {
+                const list = data.results.map((item: any) => ({
                     hash,
                     type: "function",
                     fullName: item.signature,
