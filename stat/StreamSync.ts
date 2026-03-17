@@ -118,8 +118,8 @@ async function getPrunedRowsByToken({type, hex40id}) {
 //   XADD ERC20_TRANSFER_Q  * v1 '[{"contractId":16,"fromId":3,"toId":4,"txHashId":0,"value":1,"epoch":0, "createdAt":"2021-01-01 11:22:33", "updatedAt":"2021-01-01 11:22:33"}]'
 let logCount = 0
 
-import LRU from 'lru-cache';
-const CONTRACT_CACHE: LRU<number, number> = new LRU({max: 500});
+const LRU = require('lru-cache');
+const CONTRACT_CACHE = new LRU({max: 500});
 
 async function isErc1155(contractId: number) {
     let tag = CONTRACT_CACHE.get(contractId);
