@@ -352,7 +352,7 @@ export async function getAddrIdArray(addressArray) {
     }
     const hexArray = addressArray.map(item => formatToHex(item).substr(2));
     const hexIdMap = await hex40IdMap(hexArray);
-    return hexArray.map(item => hexIdMap.get(item));
+    return hexArray.map(item => hexIdMap.get(item)).filter(Boolean);
 }
 
 export async function getAddrIdBase32Map(list, ...keys) {

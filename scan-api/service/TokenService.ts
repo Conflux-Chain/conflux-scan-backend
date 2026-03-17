@@ -24,8 +24,7 @@ export class TokenService {
 
     let list = [];
     if (accountAddress !== undefined) {
-      tool.checkExist({addressArray}, { addressArray: false });
-      list = await this.listByAccount(accountAddress);
+      list = await this.listByAccount(accountAddress, addressArray);
       list = this.sortCustomized(list);
     } else if (addressArray !== undefined) {
       list = await this.listByAddressArray(addressArray, fields);
@@ -104,10 +103,11 @@ export class TokenService {
     return this.listByAddressArray(tokens.map(t=>t.base32), fields);
   }
 
-  async listByAccount(accountAddress) {
+  async listByAccount(accountAddress, addressArray) {
     const resp = await TokenQuery.listByAccount({
       owner: accountAddress,
-      withRealtimeBalance: true
+      addresses: addressArray,
+      withRealtimeBalance: true,
     });
 
     return resp.list.map((token: any) =>

@@ -3,7 +3,7 @@ import {format} from 'js-conflux-sdk';
 import {Op, QueryTypes, Sequelize} from 'sequelize';
 import {DailyToken, Token} from "../model/Token";
 import {decodeTokenIcon} from "./tool/TokenTool";
-import {formatToBase32, Hex40Map} from "../model/HexMap";
+import {formatToBase32, getAddrIdArray, Hex40Map} from "../model/HexMap";
 import {Contract} from "../model/Contract";
 import {Erc20Transfer, T_ADDRESS_ERC20TRANSFER} from "../model/Erc20Transfer";
 import {Erc721Transfer, T_ADDRESS_ERC721_TRANSFER} from "../model/Erc721Transfer";
@@ -287,6 +287,7 @@ export class TokenQuery {
             types,
             skip = 0,
             limit = 100,
+            addresses = [],
             maxOfAllType = 10000,
             withRealtimeBalance = false,
         }: {
@@ -294,6 +295,7 @@ export class TokenQuery {
             types?: TokenType[],
             skip?: number,
             limit?: number,
+            addresses?: string[],
             maxOfAllType?: number,
             withRealtimeBalance?: boolean
         }
@@ -326,10 +328,19 @@ export class TokenQuery {
         const fields = `b.balance, t.base32 as contract, t.type, t.name, t.symbol, t.decimals, t.iconUrl, t.webSite, 
             t.price, t.quoteUrl, t.transfer as totalTransfer`
 
+        let contractIds = "";
+        if (addresses?.length) {
+            const ids = await getAddrIdArray(addresses);
+            if (!ids?.length) {
+                return {total: 0, list: []};
+            }
+            contractIds = `and contractId in (${ids.join(",")})`
+        }
+
         const list = await TokenBalance.sequelize.query(`
             select 
             ${fields}
-            from (select * from token_balance where addressId = ? order by updatedAt desc limit ?) b
+            from (select * from token_balance where addressId = ? ${contractIds} order by updatedAt desc limit ?) b
             left join token t on b.contractId = t.hex40id
             ${cond}
             order by b.updatedAt desc
