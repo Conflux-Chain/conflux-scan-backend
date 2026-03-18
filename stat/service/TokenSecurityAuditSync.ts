@@ -103,7 +103,7 @@ export class TokenSecurityAuditSync{
         }
 
         const base32 = formatToBase32(address);
-        const account = await this.cfx.getAccount(base32);
+        const account = await this.cfx.getAccount(base32, CONST.EPOCH_NUMBER.LATEST_CONFIRMED);
 
         const token = await Token.findOne({attributes: ['id', 'hex40id'], where: {base32}});
         if (token) {
