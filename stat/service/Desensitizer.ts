@@ -61,7 +61,7 @@ export class Desensitizer {
         blacklists?.forEach(item => {
             const hex = format.hexAddress(item.address);
             const base32 = format.address(item.address, StatApp.isEVM);
-            const checkSum = ethers.utils.getAddress(hex);
+            const checkSum = ethers.getAddress(hex);
             blacklistInfo[hex] = item['updatedAt'];
             blacklistInfo[base32] = item['updatedAt'];
             blacklistInfo[checkSum] = item['updatedAt'];

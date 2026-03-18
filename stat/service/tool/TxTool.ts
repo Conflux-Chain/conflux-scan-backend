@@ -1,7 +1,7 @@
 import {FullTransaction} from "../../model/FullBlock";
 import {init} from "./FixDailyTokenStat";
 import {initCfxSdk} from "../common/utils";
-import {ethers} from "ethers";
+import {Interface} from "ethers";
 
 async function main() {
     const args = process.argv.slice(2)
@@ -43,7 +43,7 @@ export function decodeTxData(abiString:string, data:string){
 
     try{
         const abiArray = JSON.parse(abiString);
-        const iFace = new ethers.utils.Interface(abiArray)
+        const iFace = new Interface(abiArray)
         const fn = iFace.getFunction(data.substr(0, 10))
         if (fn) {
             abi = fn.format('json')

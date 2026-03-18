@@ -28,10 +28,9 @@ import {Desensitizer} from "./service/Desensitizer";
 import {FullBlockQuery} from "./service/FullBlockQuery";
 import {ENSCheckerQuery} from "./service/ens/ENSCheckerQuery";
 import {AccountQuery} from "./service/AccountQuery";
-import {JsonRpcProvider} from "@ethersproject/providers/src.ts/json-rpc-provider";
 import {StatOnRealtime} from "./service/timerstat/StatOnRealtime"
 import {TxnQuery} from "./service/TxnQuery";
-import {ethers} from "ethers";
+import {ethers, JsonRpcProvider} from "ethers";
 
 export var CoreSpaceRpc: Conflux = null;
 
@@ -142,7 +141,7 @@ export function fmtAddr(hex: string, netId: number, verbose = false) {
         if (hex.includes(":")) {
             hex = format.hexAddress(hex)
         }
-        return ethers.utils.getAddress(hex);
+        return ethers.getAddress(hex);
     }
     return format.address(hex, netId, verbose)
 }

@@ -1,4 +1,3 @@
-import {JsonRpcProvider} from "@ethersproject/providers/src.ts/json-rpc-provider";
 import {getCfxSdk, initEthSdk} from "./common/utils";
 import {
 	BlockWithdrawCreationAttributes,
@@ -13,10 +12,10 @@ import {init} from "./tool/FixDailyTokenStat";
 import {KV} from "../model/KV";
 import {Sequelize} from "sequelize";
 import {regExitHook, sleep} from "./tool/ProcessTool";
-import {formatEther, parseEther} from "ethers/lib/utils";
 import {SupplyInfo} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {ConfigInstance, NoCoreSpace} from "../config/StatConfig";
 import {Conflux} from "js-conflux-sdk";
+import {ethers, JsonRpcProvider} from "ethers";
 
 const ctx = {
 	preEntry: null as BlockWithdrawCreationAttributes,
@@ -58,7 +57,7 @@ async function setupPreBlock() {
 		// no record in DB,
 		console.log(`first block number is `, firstBlk.number);
 	} else {
-		ctx.cumulative = parseEther(ctx.preEntry.cumulativeAmount).toBigInt()
+		ctx.cumulative = ethers.parseEther(ctx.preEntry.cumulativeAmount)
 	}
 }
 
@@ -94,7 +93,7 @@ async function sync(seq?: Sequelize) {
 		} as BlockWithdrawCreationAttributes;
 		// we have decimal in DB
 		const drip = ctx.cumulative + BigInt(withdrawData.totalAmount);
-		newBean.cumulativeAmount = formatEther(drip);
+		newBean.cumulativeAmount = ethers.formatEther(drip);
 
 		await BlockWithdrawModel.create(newBean).then(()=>{
 			ctx.preEntry = newBean;
@@ -110,14 +109,14 @@ async function sync(seq?: Sequelize) {
 	}
 }
 
-const ZGGenesisSupply = BigInt(parseEther(1e9.toString()));
+const ZGGenesisSupply = BigInt(ethers.parseEther(1e9.toString()));
 
 export async function calculateEvmPosSupply(balanceOfZero: bigint): Promise<SupplyInfo & any> {
 	// circulating supply = genesis supply + block withdraw - balance(0x0)
 	let blockWithdraw = BigInt(0);
 	if (NoCoreSpace && BlockWithdrawModel.sequelize) {
 		const bw = await getLatestBlockWithdraw();
-		blockWithdraw = BigInt(parseEther(bw?.cumulativeAmount || "0")) * BigInt(1e9);
+		blockWithdraw = BigInt(ethers.parseEther(bw?.cumulativeAmount || "0")) * BigInt(1e9);
 	}
 	const sumContracts = await sumSpecialContractBalance(getCfxSdk()).catch(e=>{
 		console.log(`failed to sum contract balance:`, e);

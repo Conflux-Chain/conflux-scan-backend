@@ -1,4 +1,3 @@
-import {JsonRpcProvider} from "@ethersproject/providers/src.ts/json-rpc-provider";
 import {AuthAction, AuthBlockStub, listAuthAction} from "../../model/EIP7702model";
 import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
 import {getCfxSdk, initEthSdk, SECOND} from "../common/utils";
@@ -9,8 +8,7 @@ import {init} from "../tool/FixDailyTokenStat";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
 import {getAddrId, makeId, makeIdV} from "../../model/HexMap";
 import {Errors} from "../common/LogicError";
-import {ethers} from "ethers";
-import {hexlify, RLP} from "ethers/lib/utils";
+import {ethers, JsonRpcProvider} from "ethers";
 
 type AccountType = {
 	isContract: boolean,
@@ -252,33 +250,33 @@ const authExample =     {
 // {chainId, address, nonce, yParity, r, s}
 function buildSignature(data = authExample) {
 	// 1. 构造签名 (65 字节: r + s + v)
-	const v = ethers.BigNumber.from(data.yParity).toHexString(); // "0x0" → 需要转成 "0x00"
-	const signature = ethers.utils.concat([
+	const v = ethers.toBeHex(data.yParity); // "0x0" → 需要转成 "0x00"
+	const signature = ethers.concat([
 		data.r,
 		data.s,
-		ethers.utils.hexZeroPad(v, 1) // 确保 v 是 1 字节 (0x00 或 0x01)
+		ethers.zeroPadValue(v, 1) // 确保 v 是 1 字节 (0x00 或 0x01)
 	]);
-	console.log("Signature:", hexlify(signature));
+	console.log("Signature:", ethers.hexlify(signature));
 	return signature;
 }
 
 // 2. 恢复 EIP-7702 的 author
 function recoverEIP7702Author({ chainId, address, nonce, signature }) {
 	// RLP 编码 [chainId, address, nonce]
-	const rlpEncoded = RLP.encode([
-		ethers.utils.hexlify(ethers.BigNumber.from(chainId).toHexString()),
+	const rlpEncoded = ethers.encodeRlp([
+		ethers.hexlify(ethers.toBeHex(chainId)),
 		address,
-		ethers.utils.hexlify(ethers.BigNumber.from(nonce).toHexString()),
+		ethers.hexlify(ethers.toBeHex(nonce)),
 	]);
 
 	// 添加前缀 0x05
-	const prefixedData = ethers.utils.concat(["0x05", rlpEncoded]);
+	const prefixedData = ethers.concat(["0x05", rlpEncoded]);
 
 	// 计算 Keccak-256 哈希
-	const hash = ethers.utils.keccak256(prefixedData);
+	const hash = ethers.keccak256(prefixedData);
 
 	// 恢复地址
-	return ethers.utils.recoverAddress(hash, signature);
+	return ethers.recoverAddress(hash, signature);
 }
 
 // node stat/service/eip/eip7702.js tx
@@ -302,7 +300,7 @@ async function testLoadAuth() {
 	const { ethers } = require("ethers");
 
 // 替换为你的 JSON-RPC 节点 URL
-	const provider = new ethers.providers.JsonRpcProvider(url);
+	const provider = new JsonRpcProvider(url);
 	// '0xa37384c0646a682bd0e206232572af91b75e6735ab30b658854222546f76ffbc'
 	await loadSetAuth(provider, 53098075);
 }

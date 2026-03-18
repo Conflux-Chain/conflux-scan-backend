@@ -81,7 +81,7 @@ export class TxnQuery{
         const sumGas = list.map(row=>BigInt(row['gas'])).reduce((a,b)=>a+b);
         const hexMap = await idHex40Map(list.map(row=>row['addrId']));
         list.forEach(row=>{
-            row['hex'] = ethers.utils.getAddress(`0x${hexMap.get(row['addrId'])}`);
+            row['hex'] = ethers.getAddress(`0x${hexMap.get(row['addrId'])}`);
             !NoCoreSpace && (row['base32'] = TxnQuery.base32(row['hex'], StatApp.networkId));
         })
         return {totalGas: sumGas, list, minTime}

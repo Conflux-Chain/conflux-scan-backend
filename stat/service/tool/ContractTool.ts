@@ -180,7 +180,7 @@ async function verifyFromScan(submitVerify: boolean = true) {
         for (let i = 0; i < size; i++) {
             const {id, address, name} = list[i];
 
-            const contract = ethers.utils.getAddress(format.hexAddress(address));
+            const contract = ethers.getAddress(format.hexAddress(address));
             const queryUrl = `${baseUrl}/contract/${StatApp.networkId}/${contract}`;
             const verifyUrl = `${baseUrl}/verify/confluxscan/${StatApp.networkId}/${contract}`;
 

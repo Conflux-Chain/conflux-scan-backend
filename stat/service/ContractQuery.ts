@@ -294,7 +294,7 @@ export class ContractQuery {
     }
 
     private async getVerifyBySourcify(contractAddress, withDetail = false) {
-        const hex = ethers.utils.getAddress(format.hexAddress(contractAddress));
+        const hex = ethers.getAddress(format.hexAddress(contractAddress));
 
         const hit = this._getCache(hex, withDetail);
         if (hit) {
@@ -386,7 +386,7 @@ export class ContractQuery {
     }
 
     private async listVerifyBySourcify(addresses: string[]) {
-        const addressesParam = addresses.map(item => ethers.utils.getAddress(format.hexAddress(item))).join(',');
+        const addressesParam = addresses.map(item => ethers.getAddress(format.hexAddress(item))).join(',');
 
         const resp = await ContractQuery._getJsonRequest({
             url: `${this.verifyUrl}/contracts/${StatApp.networkId}?addresses=${addressesParam}`,
@@ -1243,10 +1243,10 @@ export class ContractQuery {
                 timeout,
             });
 
-            const {data: {results}} = resp;
+            const {data} = resp || {};
 
-            if (results?.length) {
-                const list = results.map((item: any) => ({
+            if (data?.results?.length) {
+                const list = data.results.map((item: any) => ({
                     hash,
                     type: "function",
                     fullName: item.signature,

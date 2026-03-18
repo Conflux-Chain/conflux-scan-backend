@@ -1,5 +1,5 @@
 // @ts-ignore
-import {Conflux, CONST as SDK_CONST, format} from "js-conflux-sdk";
+import {CONST as SDK_CONST, format} from "js-conflux-sdk";
 import {Op, QueryTypes} from "sequelize"
 import {
     AddressTransactionIndex,
@@ -7,7 +7,7 @@ import {
     FailedTx,
     FullBlock,
     FullBlockExt,
-    FullTransaction, IFullBlock,
+    FullTransaction,
     pagingFullBlock,
     pagingFullTx,
     TxPage
@@ -19,11 +19,9 @@ import {PruneInfo, PruneType} from "../model/PruneInfo";
 import {CONST} from "./common/constant"
 import {TransferCount} from "../model/TransferCount";
 import {Epoch} from "../model/Epoch";
-import {BigNumber} from "ethers";
 import {CoreSpaceRpc, fmtAddr, StatApp} from "../StatApp";
-import {extractActualGasCost, initCfxSdk} from "./common/utils";
+import {extractActualGasCost} from "./common/utils";
 import {CoreDB, NoCoreSpace} from "../config/StatConfig";
-import {init} from "./tool/FixDailyTokenStat";
 import {detectFishingAddress} from "./tool/phishingAddress";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import {JsonRpcProvider} from "@ethersproject/providers/src.ts/json-rpc-provider";
@@ -810,17 +808,17 @@ export class FullBlockQuery {
 
         // insufficient balance
         if(pending?.endsWith('Cash')){
-            const gasFee = BigNumber.from(gasLimit).mul(BigNumber.from(gasPrice));
+            const gasFee = BigFixed(gasLimit).mul(BigFixed(gasPrice));
             const {balance} = await cfx.getAccount(from);
-            const totalCost = BigNumber.from(value).add(BigNumber.from(gasFee));
-            const insufficientBalance = BigNumber.from(balance).lt(BigNumber.from(totalCost));
+            const totalCost = BigFixed(value).add(BigFixed(gasFee));
+            const insufficientBalance = BigFixed(balance).lt(BigFixed(totalCost));
             const pendingDetail = {
                 message: 'The balance is insufficient to pay value + gasLimit * gasPrice',
                 params: {
-                    balance,
-                    value: BigNumber.from(value).toString(),
-                    gasLimit: BigNumber.from(gasLimit).toString(),
-                    gasPrice: BigNumber.from(gasPrice).toString()
+                    balance: BigFixed(balance).toString(),
+                    value: BigFixed(value).toString(),
+                    gasLimit: BigFixed(gasLimit).toString(),
+                    gasPrice: BigFixed(gasPrice).toString()
                 },
             };
 
@@ -934,18 +932,18 @@ export class FullBlockQuery {
 
         // insufficient balance
         {
-            const gasFee = BigNumber.from(gasLimit).mul(BigNumber.from(gasPrice))
+            const gasFee = BigFixed(gasLimit).mul(BigFixed(gasPrice))
             const balance = await sdk.getBalance(from)
-            const totalCost = BigNumber.from(value).add(BigNumber.from(gasFee))
-            const insufficientBalance = BigNumber.from(balance).lt(BigNumber.from(totalCost))
+            const totalCost = BigFixed(value).add(BigFixed(gasFee))
+            const insufficientBalance = BigFixed(balance).lt(BigFixed(totalCost))
             if (insufficientBalance) {
                 const pendingDetail = {
                     message: 'The balance is insufficient to pay value + gasLimit * gasPrice',
                     params: {
-                        balance,
-                        value: BigNumber.from(value).toString(),
-                        gasLimit: BigNumber.from(gasLimit).toString(),
-                        gasPrice: BigNumber.from(gasPrice).toString()
+                        balance: BigFixed(balance).toString(),
+                        value: BigFixed(value).toString(),
+                        gasLimit: BigFixed(gasLimit).toString(),
+                        gasPrice: BigFixed(gasPrice).toString()
                     },
                 }
                 if (to === null) {

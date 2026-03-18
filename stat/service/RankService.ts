@@ -206,7 +206,7 @@ export class RankService{
 
         list.forEach(r=>{
             r.name = r.nameState === ADDR_INFO_STATE_OK ? r.name : null
-            r.hex = r.hex ? ethers.utils.getAddress(r.hex) : `0x${r.hex}`
+            r.hex = r.hex ? ethers.getAddress(r.hex) : `0x${r.hex}`
             r.base32address = format.address(r.hex, networkId)
         })
 

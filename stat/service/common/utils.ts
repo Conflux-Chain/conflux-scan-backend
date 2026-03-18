@@ -7,7 +7,6 @@ import {ethers} from "ethers";
 import {ConsortiumConflux} from "./ConsortiumConflux";
 import {useFastFormat} from "./fastFormatter";
 import {CONST} from "./constant";
-import {keccak256} from "ethers/lib/utils";
 
 const lodash = require('lodash');
 const {isValidCfxAddress, decodeCfxAddress} = require('js-conflux-sdk/src/util/address');
@@ -374,7 +373,7 @@ export function initEthSdk(url) {
     if (!url) {
         return null;
     }
-    return new ethers.providers.JsonRpcProvider(url);
+    return new ethers.JsonRpcProvider(url);
 }
 
 export function patchHttpProvider(cfx:Conflux, cfxConf, tag='NotSet') {
@@ -405,7 +404,7 @@ export function formatTrace(arr: (object | Error)[]) {
 
 export async function getCodeHash(address: string, cfx: Conflux) {
 	const code = await cfx.getCode(address);
-	return keccak256(code);
+	return ethers.keccak256(code);
 }
 
 export function batchTraceBlock(cfx:Conflux, hashes:string[]) {

@@ -158,5 +158,5 @@ export function scientificToBigInt(v: string | number | undefined | null | bigin
     if (!e) {
         return v as unknown as bigint; // cast for ts check
     }
-    return ethers.utils.parseUnits(v0, parseInt(e)).toBigInt()
+    return ethers.parseUnits(v0, parseInt(e))
 }
