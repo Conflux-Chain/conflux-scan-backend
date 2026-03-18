@@ -16,6 +16,7 @@ import {TokenBalance} from "../../model/Balance";
 import {KEY_1155data_EPOCH, KV} from "../../model/KV";
 import {EpochHashTokenTransfer} from "../../TokenTransferSync";
 import {CONFIRM_GAP} from "./Erc1155DataSync";
+import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 
 export interface IReqAccount {
 	hexId: number; hex: string; base32: string;
@@ -94,7 +95,7 @@ export async function checkAccount1155balance(contractId: number, addrId: number
 	}
 
 	let last1155Epoch = await KV.getNumber(KEY_1155data_EPOCH, -1);
-	const tokenTxSync = await EpochHashTokenTransfer.findOne({
+	const tokenTxSync = await Erc1155Transfer.findOne({
 		order: [['epoch', 'DESC']],
 	})
 	if (!tokenTxSync) {
