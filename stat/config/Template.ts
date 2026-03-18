@@ -40,7 +40,7 @@ export default {
     },
 
     /** billing configurations */
-    billingApp: "0x7F55828E334e63065B88055776db3A58734220Ad",
+    billingApp: "",
 
     /** alert configurations */
     dingTalkToken: null,

@@ -157,6 +157,7 @@ async function initBilling(billingApp: string, etherRpcUrl: string) {
         console.log(`billing app not set`)
         return
     }
+    console.log(`billingApp: [${billingApp}] , url [${etherRpcUrl}]`);
     await initWeb3payVipClient(etherRpcUrl, billingApp,);
     console.log(`using billing app ${billingApp}, now test...`)
     try {
