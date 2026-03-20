@@ -323,6 +323,12 @@ paths:
         - 'Accounts'
       parameters:
         - $ref: '#/components/parameters/accountArrayParam'
+        - $ref: '#/components/parameters/withContractInfo'
+        - $ref: '#/components/parameters/withNameTagInfo'
+        - $ref: '#/components/parameters/withByte32NameTagInfo'
+        - $ref: '#/components/parameters/withESpaceInfo'
+        - $ref: '#/components/parameters/withENSInfo'
+        - $ref: '#/components/parameters/withRealtimeProxyImplInfo'
       responses:
         200:
           description: ''
@@ -3252,6 +3258,57 @@ components:
       required: true
       schema:
         type: string
+    withContractInfo:
+      description: "If show contract infos which contain contract name which is set by contract creator,
+      verified contract name if already verified, implementation contract name if already verified,
+      token basic info(name, symbol, decimal, iconUrl, website), the value is true/false."
+      name: withContractInfo
+      in: query
+      required: false
+      schema:
+        type: string
+        default: 'true'
+    withNameTagInfo:
+      description: "If show name tag info which is set by scan's operations specialist, the value is true/false."
+      name: withNameTagInfo
+      in: query
+      required: false
+      schema:
+        type: string
+        default: 'true'
+    withByte32NameTagInfo:
+      description: "If show bytes32 name tag info which is set by scan's operations specialist, the value is true/false."
+      name: withByte32NameTagInfo
+      in: query
+      required: false
+      schema:
+        type: string
+        default: 'true'
+    withESpaceInfo:
+      description: "If show eSpace info which contains corresponding eSpace address if exists, the value is true/false."
+      name: withESpaceInfo
+      in: query
+      required: false
+      schema:
+        type: string
+        default: 'true'
+    withENSInfo:
+      description: "If show ENS info which contains ENS name, the value is true/false."
+      name: withENSInfo
+      in: query
+      required: false
+      schema:
+        type: string
+        default: 'false'
+    withRealtimeProxyImplInfo:
+      description: "If show realtime proxy impl infos which contain implementation contract name if exists, 
+      beacon contract name if exists , proxy pattern, the value is true/false."
+      name: withRealtimeProxyImplInfo
+      in: query
+      required: false
+      schema:
+        type: string
+        default: 'false'
     from:
       name: from
       in: query

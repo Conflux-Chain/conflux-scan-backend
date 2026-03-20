@@ -3,6 +3,7 @@ import {
     checkPresent, formatPrice,
     mustBeAddressArrayParamIfPresent,
     mustBeAddressParamIfPresent,
+    mustBeBooleanParamIfPresent,
     mustBeEnumParamArrayIfPresent,
     mustBeIntParamIfPresent
 } from "../../stat/service/common/utils";
@@ -75,14 +76,32 @@ const MAX_ACCOUNTS = 100;
 
 export async function listAccountInfos(ctx) {
     mustBeAddressArrayParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'accounts');
-    const {accounts} = ctx.request.query;
+    mustBeBooleanParamIfPresent(ctx.request.query, ["withContractInfo", "withNameTagInfo", "withByte32NameTagInfo",
+        "withESpaceInfo", "withENSInfo", "withRealtimeProxyImplInfo"], [true, true, true, true, false, false]);
+
+    const {
+        accounts,
+        withContractInfo,
+        withNameTagInfo,
+        withByte32NameTagInfo,
+        withESpaceInfo,
+        withENSInfo,
+        withRealtimeProxyImplInfo,
+    } = ctx.request.query;
     checkPresent({accounts}, ['accounts']);
     if (accounts.length > MAX_ACCOUNTS) {
         setBody(ctx, null, 1, `The max size of accounts is ${MAX_ACCOUNTS}`);
         return;
     }
 
-    const data = await getApiService().accountQuery.list(accounts);
+    const data = await getApiService().accountQuery.list(accounts, {
+        withContractInfo,
+        withNameTagInfo,
+        withByte32NameTagInfo,
+        withESpaceInfo,
+        withENSInfo,
+        withRealtimeProxyImplInfo,
+    });
 
     setBody(ctx, data);
 }

@@ -272,6 +272,33 @@ export function mustBeDateParamIfPresent(obj, ...keys:string[]) {
     }
 }
 
+export function mustBeBooleanParamIfPresent(obj, keys: string[], defaultValues: boolean[]) {
+    if (keys.length !== defaultValues.length) {
+        throw new Error('keys and defaultValues must have the same length');
+    }
+
+    for (let i = 0; i < keys.length; i++) {
+        const key = keys[i];
+        const value = obj[key];
+        const defaultValue = defaultValues[i];
+
+        if (value === undefined || value === null) {
+            obj[key] = defaultValue;
+            continue;
+        }
+
+        if (value !== 'true' && value !== 'false') {
+            throw new Errors.ParameterError(
+                `Invalid parameter [${key}] with value [${value}]. Should be either 'true' or 'false'`
+            );
+        }
+
+        obj[key] = value === 'true';
+    }
+
+    return obj;
+}
+
 export function checkPresent(options, fieldArray){
     lodash.forEach(options, (value, key) => {
         if(lodash.includes(fieldArray, key)){

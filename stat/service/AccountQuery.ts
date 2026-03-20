@@ -4,7 +4,9 @@ import {fmtAddr, StatApp} from "../StatApp";
 import {TraceCreateContract} from "../model/TraceCreateContract";
 import {
     ESpaceHex40Map,
+    getAddrIdArray,
     Hex40Map,
+    idHex40Map,
     POCKET_ADDRESS_MAP,
 } from "../model/HexMap";
 import {AddressCfxTransfer} from "../model/CfxTransfer";
@@ -22,6 +24,8 @@ import {TokenQuery} from "./TokenQuery";
 import {ContractQuery} from "./ContractQuery";
 import {CONST} from "./common/constant";
 import {formatBlockNumber, formatCallParams, sendRpc} from "./common/utils";
+import {ContractImpl} from "../model/ContractImpl";
+import {fillMethodInfo} from "./contract/contractTool";
 
 const lodash = require('lodash');
 const BigFixed = require('bigfixed');
@@ -47,16 +51,18 @@ export class AccountQuery {
         addresses: string[],
         options: {
             withContractInfo?: boolean,
+            withNameTagInfo?: boolean,
+            withByte32NameTagInfo?: boolean,
             withESpaceInfo?: boolean,
             withENSInfo?: boolean,
-            withNameTagInfo?: boolean
-            withByte32NameTagInfo?: boolean
+            withRealtimeProxyImplInfo?: boolean,
         } = {
             withContractInfo: true,
-            withESpaceInfo: true,
-            withENSInfo: true,
             withNameTagInfo: true,
             withByte32NameTagInfo: true,
+            withESpaceInfo: true,
+            withENSInfo: false,
+            withRealtimeProxyImplInfo: false,
     }) {
         const [addresses1, addresses2] = lodash.partition(
             [...new Set(addresses.filter(item => item?.trim()))],
@@ -150,14 +156,16 @@ export class AccountQuery {
         addresses: string[],
         options: {
             withContractInfo?: boolean,
+            withNameTagInfo?: boolean,
             withESpaceInfo?: boolean,
             withENSInfo?: boolean,
-            withNameTagInfo?: boolean
+            withRealtimeProxyImplInfo?: boolean,
         } = {
             withContractInfo: true,
+            withNameTagInfo: true,
             withESpaceInfo: true,
             withENSInfo: true,
-            withNameTagInfo: true,
+            withRealtimeProxyImplInfo: false,
         }) {
         const hexes: string[] = addresses.map(format.hexAddress);
 
@@ -178,12 +186,12 @@ export class AccountQuery {
             return {};
         }
 
-        const [{contracts, tokens, verifies, impls}, evmSpaceInfos, ensInfos, nameTagInfos] = await Promise.all([
-            options.withContractInfo ? this._listContractInfos(mapIdToHex) :
+        const [{contracts, tokens, verifies, impls}, nameTagInfos, evmSpaceInfos, ensInfos] = await Promise.all([
+            options.withContractInfo ? this._listContractInfos(mapIdToHex, options.withRealtimeProxyImplInfo) :
                 {contracts: {}, tokens: {}, verifies: {}, impls: {}},
+            options.withNameTagInfo ? this._listNameTagInfos(mapIdToHex) : {},
             options.withESpaceInfo ? this._listEVMSpaceInfos(mapIdToHex) : {},
             options.withENSInfo ? this._listENSInfos(mapIdToHex) : {},
-            options.withNameTagInfo ? this._listNameTagInfos(mapIdToHex) : {},
         ]);
 
         const map = Object.fromEntries(Object.values(mapIdToHex).map(hex => [
@@ -205,7 +213,7 @@ export class AccountQuery {
     // contracts:  hex => {name}
     // verifies: hex => {name}
     // tokens: hex => token
-    private async _listContractInfos(mapIdToHex: {[id: number]: string}) {
+    private async _listContractInfos(mapIdToHex: {[id: number]: string}, withRealtimeProxyImplInfo: boolean = false) {
         const {
             app: {tokenQuery, contractQuery, service},
         } = this;
@@ -217,8 +225,12 @@ export class AccountQuery {
         const contractSrv: ContractQuery = contractQuery || service.contractQuery;
         const tokenSrv: TokenQuery = tokenQuery || service.tokenQuery;
 
-        const impls = lodash.zipObject(addresses, await Promise.all(addresses.map(item => contractSrv.getImpl(item))));
-        addresses.push(...Object.values(impls).filter(Boolean).map((item: any) => item.implementation));
+        const impls = withRealtimeProxyImplInfo ?
+            lodash.zipObject(addresses, await Promise.all(addresses.map(item => contractSrv.getImpl(item)))) :
+            await this._getContractImpl(mapIdToHex);
+
+        addresses.push(...(lodash.flatten(Object.values(impls).filter(Boolean)
+            .map((item: any) => [item.implementation, item.beacon].filter(Boolean)))));
 
         const fieldMapper = (item: any) => [format.hexAddress(item.address), {name: item.name}];
 
@@ -253,13 +265,17 @@ export class AccountQuery {
             }
         }
 
-        Object.entries(impls).forEach(([item, impl]: [string, any]) => { // hex => {name, address, proxyPattern}
+        Object.entries(impls).forEach(([item, impl]: [string, any]) => { // hex => {name, beacon, address, proxyPattern}
             const verify = impl && verifies[format.hexAddress(impl.implementation)];
-            impls[item] = verify ? {
-                name: verify.name,
+            const beaconVerify = impl && impl.beacon && verifies[format.hexAddress(impl.beacon)];
+            impls[item] = impl ? {
+                name: verify?.name,
                 address: fmtAddr(impl.implementation, StatApp.networkId),
+                beaconName: beaconVerify?.name,
+                beaconAddress: fmtAddr(impl.beacon, StatApp.networkId),
                 proxyPattern: impl.proxyPattern,
-            } : undefined;
+            } as any : undefined;
+            lodash.omitBy(impls[item], lodash.isEmpty);
         });
 
         return {contracts, tokens, verifies, impls};
@@ -334,18 +350,46 @@ export class AccountQuery {
         }
     }
 
+    private async _getContractImpl(mapIdToHex: { [id: number]: string }) {
+        const impls = await ContractImpl.findAll({
+            where: {cid: {[Op.in]: Object.keys(mapIdToHex)}},
+        });
+        if (!impls?.length) {
+            return {};
+        }
+
+        const ids = new Set();
+        impls.forEach(item => {
+            ids.add(item.implId);
+            if (item.beaconId) {
+                ids.add(item.beaconId);
+            }
+        })
+        const idArray = [...ids];
+        const hexMap = await idHex40Map(idArray, true);
+
+        return Object.fromEntries(impls.filter(item => item.implId > 0).map(item => [
+            mapIdToHex[item.cid],
+            {
+                beacon: hexMap.get(item.beaconId),
+                implementation: hexMap.get(item.implId),
+                proxyPattern: item.proxyType,
+            }
+        ]));
+    }
+
     public async listPatchInfo(
         addresses: string[],
         options: {
             withContractInfo?: boolean,
             withESpaceInfo?: boolean,
+            withNameTagInfo?: boolean,
             withENSInfo?: boolean,
-            withNameTagInfo?: boolean
         } = {
             withContractInfo: true,
             withESpaceInfo: true,
+            withNameTagInfo: true,
             withENSInfo: true,
-            withNameTagInfo: true
         }) {
         const accounts = await this.list(addresses, options);
 
@@ -365,8 +409,8 @@ export class AccountQuery {
                     ...info.token,
                 } : undefined,
                 eSpace: info.eSpace,
-                ens: info.ens,
                 nameTag: info.nameTag,
+                ens: info.ens,
             }, lodash.isNil),
         ]));
 
@@ -397,15 +441,15 @@ export class AccountQuery {
     async debugTraceCall(params: any[], needFormat: boolean = false): Promise<any> {
         const len = params?.length || 0;
         if (len < 1) {
-            throw new Error("Provide the first parameter at least.");
+            throw new Error("Provide the first parameter at least. [callParams, blockNumber?, tracerOptions?].");
         }
         if (len > 3) {
-            throw new Error("Accepts maximum 3 parameters: [callParams, blockNumber?, tracerOptions?].");
+            throw new Error("Accepts maximum 3 parameters. [callParams, blockNumber?, tracerOptions?].");
         }
 
         const [callParams, blockNumber, tracerOptions] = params;
         if (!Object.keys(callParams)?.length) {
-            throw new Error("The first param is an empty object.");
+            throw new Error("The first parameter is an empty object. [callParams, blockNumber?, tracerOptions?].");
         }
 
         const rpcParams: any[] = [needFormat ? formatCallParams(callParams) : callParams];
@@ -416,7 +460,89 @@ export class AccountQuery {
             rpcParams.push(tracerOptions)
         }
 
-        return sendRpc(this.app.eth, "debug_traceCall", rpcParams);
+        const rpcResp = await sendRpc(this.app.eth, "debug_traceCall", rpcParams);
+
+        const {addresses, methods} = this.extractTraceCall(rpcResp);
+        const nameMap = await this.list(addresses, {
+            withContractInfo: true,
+            withNameTagInfo: true,
+            withByte32NameTagInfo: true,
+            withESpaceInfo: true,
+            withENSInfo: true,
+            withRealtimeProxyImplInfo: true,
+        });
+        const methodMap = {};
+        if (methods?.length) {
+            const ids = await getAddrIdArray(methods.map(item => item.to));
+            await fillMethodInfo(methods, ids, true, true);
+            methods.forEach(({to, method, methodId}) => {
+                methodMap[methodId] ||= {};
+                methodMap[methodId][fmtAddr(to, StatApp.networkId)] = method;
+            });
+        }
+        rpcResp.nameMap = nameMap;
+        rpcResp.methodMap = methodMap;
+
+        return rpcResp;
+    }
+
+    private extractTraceCall(traceResponse: any) {
+        const addressSet = new Set<string>();
+        const methodMap = new Map<string, Set<string>>(); // methodId => set(address)
+
+        function traverseCall(call: any): void {
+            if (!call) {
+                return;
+            }
+
+            const {from, to, input} = call;
+            if (from) {
+                addressSet.add(from);
+            }
+            if (to) {
+                addressSet.add(to);
+            }
+            if (input) {
+                if (input.length >= 10 && to) {
+                    const methodId = input.substring(0, 10);
+                    let set = methodMap.get(methodId);
+                    if (!set) {
+                        set = new Set<string>();
+                        methodMap.set(methodId, set);
+                    }
+                    set.add(to);
+                }
+            }
+
+            if (call.calls && Array.isArray(call.calls)) {
+                for (const subCall of call.calls) {
+                    traverseCall(subCall);
+                }
+            }
+        }
+
+        const topCall = traceResponse?.result ? traceResponse.result : traceResponse;
+        const {structLogs, type} = topCall;
+        if (structLogs) { // structLogs
+            return {addresses: [], methods: []};
+        } else if (type) { // callTracer
+            traverseCall(topCall);
+        } else { // prestateTracer
+            Object.keys(topCall).forEach(address => addressSet.add(address));
+        }
+
+        const methods = lodash.flatten(
+            [...methodMap.keys()].map(
+                method => [...methodMap.get(method)].map(
+                    to => ({method, to})
+                )
+            )
+        );
+
+        return {
+            addresses: [...addressSet],
+            methods,
+        };
     }
 }
 
