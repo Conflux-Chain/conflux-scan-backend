@@ -102,6 +102,14 @@ export async function checkAccount1155balance(contractId: number, addrId: number
 		return;
 	}
 
+	let tx1155ofContract = await Erc1155Transfer.findOne({
+		where: {contractId}, raw: true,
+	});
+	if (!tx1155ofContract) {
+		// not erc1155
+		return;
+	}
+
 	if (last1155Epoch < tokenTxSync.epoch - CONFIRM_GAP) {
 		console.log(`1155sync is behind token syc, skip. ${last1155Epoch} < ${tokenTxSync.epoch}`);
 		return
