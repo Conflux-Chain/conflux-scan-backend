@@ -153,6 +153,7 @@ export var FirstBlockNo = 0;
 export var NoCoreSpace = false; // for chains without core space
 export var CoreDB = 'conflux_scan';
 export var EvmDB = "evm";
+export var Cfg_is_EVM: boolean = null;
 export var ConfigInstance: StatConfig;
 
 /**
@@ -176,6 +177,7 @@ export function loadConfig(specified: string = undefined): StatConfig {
     CoreDB = config.coreDB;
     EvmDB = config.evmDB;
     ConfigInstance = config;
+    Cfg_is_EVM = config.isEvm;
 
     return config;
 }

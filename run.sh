@@ -337,54 +337,50 @@ else
 Object.defineProperty(exports, '__esModule', { value: true });
 // eslint-disable-next-line no-unused-vars
 exports.default = {
+    serverTag: 'test-sync',
     port: $STAT_PORT,
     apiPort: $OPEN_PORT,
     v1port: $V1_PORT,
     diffMonitorPort: $diffMonitorPort,
-    serverTag: 'test-sync',
-    conflux:          { url: '$_RPC' ,keepAlive: true, },
+
+    conflux: { url: '$_RPC' ,keepAlive: true, },
+    blockSyncRpc: { url: '$_RPC',keepAlive: true, },
+    cfxTransferRpc: { url: '$_RPC',keepAlive: true, },
     tokenTransferRpc: { url: '$_RPC',keepAlive: true, },
-    cfxTransferRpc: { url: '$_RPC',keepAlive: true,},
-    blockSyncRpc: { url: '$_RPC',keepAlive: true,},
-    preload: 4,
-    $_IS_EVM $_NO_CORE_SPACE $traceNotAvailable $CORE_RPC
-    influxDB: {disable: true},
     firstBlockNo: 0,
-  database: {
-    useMysql: true,
-    instanceName: '$_DB_NAME',
-    dialect: 'mysql',
-    port: $_DB_PORT,
-    replication: {
-      read: [
-        { host: '$_DB_HOST', username: '$_DB_USER', password: '$_DB_PWD' },
-      ],
-      write: { host: '$_DB_HOST', username: '$_DB_USER', password: '$_DB_PWD' },
+    $CORE_RPC
+    $_IS_EVM
+    $_NO_CORE_SPACE
+    $traceNotAvailable
+
+    database: {
+      syncSchema: true,
+      useMysql: true,
+      syncSchema: true,
+      instanceName: '$_DB_NAME',
+      dialect: 'mysql',
+      port: $_DB_PORT,
+      replication: {
+        read: [
+          { host: '$_DB_HOST', username: '$_DB_USER', password: '$_DB_PWD' },
+        ],
+        write: { host: '$_DB_HOST', username: '$_DB_USER', password: '$_DB_PWD' },
+      },
+      logging: false,
     },
-    logging: false,
-  },
-  wrappedCFX: '0x2ed3dddae5b2f321af0806181fbfa6d049be47d8', // placeholder
-  wrappedBTC: '0x2ed3dddae5b2f321af0806181fbfa6d049be47d8', // placeholder
-  verification: {enable: false},
+    influxDB: { disable: true, },
+
+    censor: { enable: false, },
+    quote: { enable: false, },
+    verification: { enable: false, },
+
+    CONFURA_URL: 'http://$PUB_IP/$SPACE/rpc',
+    OPEN_API_URL: 'http://$PUB_IP/$SPACE/open',
+    CORE_API_URL: 'http://$PUB_IP/core',
+    CORE_OPEN_API_URL: 'http://$PUB_IP/core/open',
 }
 	""" > ./stat/config/Prod.js
 	ln -s ./stat/config/Prod.js ./conf.js
-	echo """
-const frontend = require('./frontend');
-module.exports = {
-frontend,
-machine: 'scan-api-server',
-port: $V1_PORT,
-conflux: {
-    url: '$_RPC',
-    keepAlive:true,
-  },
-        "CONFURA_URL": 'http://$PUB_IP/$SPACE/rpc',
-        "OPEN_API_URL": 'http://$PUB_IP/$SPACE/open',
-        "CORE_API_URL": 'http://$PUB_IP/core',
-        "CORE_OPEN_API_URL": 'http://$PUB_IP/core/open',
-}
-	""" > ./scan-api/config/local.js
 fi
 
 npm run compile || exit

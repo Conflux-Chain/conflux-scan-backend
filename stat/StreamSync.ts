@@ -118,6 +118,39 @@ async function getPrunedRowsByToken({type, hex40id}) {
 //   XADD ERC20_TRANSFER_Q  * v1 '[{"contractId":16,"fromId":3,"toId":4,"txHashId":0,"value":1,"epoch":0, "createdAt":"2021-01-01 11:22:33", "updatedAt":"2021-01-01 11:22:33"}]'
 let logCount = 0
 
+const LRU = require('lru-cache');
+const CONTRACT_CACHE = new LRU({max: 500});
+
+async function isErc1155(contractId: number) {
+    let tag = CONTRACT_CACHE.get(contractId);
+    if (tag === 11155 ) {
+        return true;
+    } else if (tag > 0) {
+        /*20,721*/
+        return false;
+    }
+    // when handleTokenTransferWithContract meet a contract id , it must be a token.
+    // if it's not erc1155, it will never be.
+    const tagArr = [20, 721, 1155];
+    const modelArr = [Erc20Transfer, Erc721Transfer, Erc1155Transfer];
+    for (let i = 0; i < modelArr.length; i++){
+        const t = modelArr[i];
+        const tx = await (t as any).findOne({where: {
+                contractId
+            }, raw: true});
+        if (tx) {
+            tag = tagArr[i];
+            CONTRACT_CACHE.set(contractId, tag);
+            break;
+        }
+    }
+    if (tag === null || tag=== undefined) {
+        throw new Error(`contract/token type not found, ${contractId}`);
+    }
+
+    return tag;
+}
+
 /**
  * Automatically generate holder count for token.
  */
@@ -125,6 +158,9 @@ export async function handleTokenTransferWithContract(mapContract2addressSet: Ma
     console.log(` handleTokenTransferWithContract begin, contracts ${mapContract2addressSet.size}`)
     const useLegacyNftMint = await KV.getSwitch(KEY_NFT_FROM_MINT_TABLE)
     for (const contractId of mapContract2addressSet.keys()) {
+        if (await isErc1155(contractId)) {
+            continue;
+        }
         const token = await Token.findOne({attributes: ["type", "name"], where: {hex40id: contractId}})
         console.log(`--- process for contract ${contractId}, name [${token?.name}] ---`)
         if (!useLegacyNftMint) {

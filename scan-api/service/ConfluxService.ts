@@ -3,11 +3,15 @@ import {fmtAddr, StatApp} from "../../stat/StatApp";
 import {safeAddErrorLog} from "../../stat/monitor/ErrorMonitor";
 import {format} from "js-conflux-sdk";
 import {CONST} from "../../stat/service/common/constant";
+import {getAddrIdArray, hex40IdMap} from "../../stat/model/HexMap";
+import {fillMethodInfo} from "../../stat/service/contract/contractTool";
+import {ContractImpl} from "../../stat/model/ContractImpl";
+import {Op, QueryTypes} from "sequelize";
 
 const {noVerboseAddr} = require("../../stat/service/common/utils")
 const {patchPocketAddress} = require("../../stat/model/HexMap")
 
-const lodash = require('lodash');
+const _ = require('lodash');
 const { tracesInTree } = require('js-conflux-sdk/src/util/trace');
 const { withoutCfxTransferType } = require('../../common/utils');
 
@@ -205,7 +209,7 @@ export class ConfluxService {
         }
         return block;
       },
-      { ttl: (block) => this._calculateTTL(lodash.get(block, 'epochNumber')) },
+      { ttl: (block) => this._calculateTTL(_.get(block, 'epochNumber')) },
     );
   }
 
@@ -239,7 +243,7 @@ export class ConfluxService {
         }
         return block;
       },
-      { ttl: (block) => this._calculateTTL(lodash.get(block, 'epochNumber')) },
+      { ttl: (block) => this._calculateTTL(_.get(block, 'epochNumber')) },
     );
   }
 
@@ -292,7 +296,7 @@ export class ConfluxService {
         }
         return transaction;
       },
-      { ttl: (transaction) => this._calculateTTL(lodash.get(transaction, 'epochNumber')) },
+      { ttl: (transaction) => this._calculateTTL(_.get(transaction, 'epochNumber')) },
     );
   }
 
@@ -317,7 +321,7 @@ export class ConfluxService {
         }
         return cfx.getTransactionReceipt(transactionHash);
       },
-      { ttl: (receipt) => this._calculateTTL(lodash.get(receipt, 'epochNumber')) },
+      { ttl: (receipt) => this._calculateTTL(_.get(receipt, 'epochNumber')) },
     );
   }
 
@@ -382,7 +386,7 @@ export class ConfluxService {
     return ttlMap.cache(`ConfluxService.getTransactionERC1155TransferArray(${transactionHash})`,
       async () => {
         const eventLogArray = await this.getLogsByTransactionHash(transactionHash);
-        return lodash.flatten(eventLogArray.map((eventLog) => tokenTool.decodeERC1155TransferArrayPlus(eventLog))).filter(Boolean);
+        return _.flatten(eventLogArray.map((eventLog) => tokenTool.decodeERC1155TransferArrayPlus(eventLog))).filter(Boolean);
       },
       { ttl: 5 * 1000 },
     );
@@ -411,8 +415,8 @@ export class ConfluxService {
     });
 
     const list = [...listERC20, ...listERC777, ...listERC721, ...listERC1155];
-    lodash.forEach(list, item => item.transactionLogIndexDecimal = Number(item.transactionLogIndex));
-    return lodash.orderBy(list, 'transactionLogIndexDecimal');
+    _.forEach(list, item => item.transactionLogIndexDecimal = Number(item.transactionLogIndex));
+    return _.orderBy(list, 'transactionLogIndexDecimal');
   }
 
   // ---------------------------------- trace ---------------------------------
@@ -434,7 +438,7 @@ export class ConfluxService {
         }
 
         const array = [];
-        lodash.zip(block.transactions, blockTrace.transactionTraces)
+        _.zip(block.transactions, blockTrace.transactionTraces)
           .forEach(([transaction, transactionTraces], transactionIndex) => {
             transactionTraces.traces.forEach((trace, transactionTraceIndex) => {
               array.push({
@@ -450,7 +454,7 @@ export class ConfluxService {
           });
         return array;
       },
-      { ttl: (array) => this._calculateTTL(lodash.get(array, [0, 'epochNumber'])) },
+      { ttl: (array) => this._calculateTTL(_.get(array, [0, 'epochNumber'])) },
     );
   }
 
@@ -465,7 +469,7 @@ export class ConfluxService {
     }
 
     const array = await this.getBlockTraceArray(transaction.blockHash);
-    const object = lodash.groupBy(array, 'transactionHash');
+    const object = _.groupBy(array, 'transactionHash');
     const traces = object[transaction.hash] || [];
     return tokenTool.matchTrace(traces, transaction);
   }
@@ -504,13 +508,14 @@ export class ConfluxService {
     return array;
   }
 
-  async getTransactionCFXTransferTree(transactionHash) {
-    if (this.app.config?.traceNotAvailable) {
-      return {}
-    }
+  async getTransactionTraceTree(transactionHash: string) {
     const {
-      app: { cfx, error, ttlMap },
+      app: {cfx, error, ttlMap},
     } = this;
+
+    if (this.app.config?.traceNotAvailable) {
+      return {};
+    }
 
     return ttlMap.cache(`ConfluxService.getTransactionTraceTree(${transactionHash})`,
       async () => {
@@ -518,42 +523,90 @@ export class ConfluxService {
         try {
           traceArray = await cfx.traceTransaction(transactionHash);
         } catch (err) {
-          throw new error.ResponseDataParsingError(`fail to traceTransaction by sdk: ${err}`);
+          throw new error.ResponseDataParsingError(`Failed to get traceTransaction by sdk: ${err}`);
         }
+
         if (!traceArray || traceArray.length === 0) {
           return {};
         }
+
         const addressSet = new Set();
-        traceArray.forEach((trace) => {
-          const {fromPocket, toPocket, from, to} = trace.action;
-          if (trace?.action?.init) trace.action.init = undefined;
-          if (trace?.action?.input) trace.action.input = undefined;
-          if (trace?.action?.from) {
-            trace.action.from = patchPocketAddress(fromPocket, noVerboseAddr(trace.action.from), cfx.networkId)
-            trace.action.from = fmtAddr(trace.action.from, cfx.networkId);
-            addressSet.add(trace.action.from);
+        const toAddressSet = new Set();
+        const methodList: { index: number; to: string; method: string; methodId?: string;}[] = [];
+
+        traceArray.forEach((trace: any, index: number) => {
+          const {fromPocket, toPocket, from, to, init, input, addr} = trace.action;
+          if (init) {
+            trace.action.init = undefined;
           }
-          if (trace?.action?.to) {
-            trace.action.to = patchPocketAddress(toPocket, noVerboseAddr(trace.action.to),  cfx.networkId)
-            trace.action.to = fmtAddr(trace.action.to, cfx.networkId);
-            addressSet.add(trace.action.to);
+          if (input) {
+            // trace.action.input = undefined;
+            if(input.length >= 10 && to) {
+              methodList.push({index, to, method: input.substring(0, 10)});
+            }
           }
-          if (trace?.action?.addr) {
-            trace.action.addr = fmtAddr(trace.action.addr, cfx.networkId);
-            addressSet.add(trace.action.addr);
+          if (from) {
+            const patchedFrom = patchPocketAddress(fromPocket, noVerboseAddr(from), cfx.networkId);
+            trace.action.from = fmtAddr(patchedFrom, cfx.networkId);
+            addressSet.add(from);
+          }
+          if (to) {
+            const patchedTo = patchPocketAddress(toPocket, noVerboseAddr(to), cfx.networkId);
+            trace.action.to = fmtAddr(patchedTo, cfx.networkId);
+            addressSet.add(to);
+            toAddressSet.add(to)
+          }
+          if (addr) {
+            trace.action.addr = fmtAddr(addr, cfx.networkId);
+            addressSet.add(addr);
           }
         });
+
+        const methodMap = {};
+        if (methodList?.length) {
+          const ids = await getAddrIdArray(methodList.map(item => item.to));
+          await fillMethodInfo(methodList, ids, true, true);
+          methodList.forEach(({to, method, methodId}) => {
+            methodMap[methodId] ||= {};
+            methodMap[methodId][fmtAddr(to, cfx.networkId)] = method;
+          });
+        }
+
+        const proxyMap = {};
+        if (toAddressSet.size) {
+          const impls: any[] = await ContractImpl.sequelize.query(`
+            select concat('0x', h.hex) as hex, c.proxyType from 
+            (
+              select id, hex 
+              from hex40 
+              where hex in (${[...toAddressSet].map(() => "?").join(",")})
+            ) h
+            left join contract_impl c on h.id = c.cid
+          `, {
+            type: QueryTypes.SELECT,
+            replacements: [...toAddressSet].map(item => format.hexAddress(item).substr(2))
+          }) || [];
+          impls
+            .filter(item => Boolean(item.proxyType))
+            .forEach(item =>
+              proxyMap[fmtAddr(item.hex, cfx.networkId)] =
+                item.proxyType === CONST.PROXY_PATTERN.PROXY ? "Proxy" : "BeaconProxy"
+            );
+        }
+
         let result = {} as any;
         try {
           result.traceTree = tracesInTree(traceArray);
           result.addressArray = [...addressSet];
+          result.proxyMap = proxyMap;
+          result.methodMap = methodMap;
         } catch (err) {
-          /*return { code: 60002, message: `parse traces fail:${err}` };*/
-          throw new error.ResponseDataParsingError(`fail to parse traces by sdk: ${err}`);
+          throw new error.ResponseDataParsingError(`Failed to parse traces by sdk: ${err}`);
         }
+
         return result || {};
       },
-      { ttl: 5 },
+      {ttl: 5},
     );
   }
 }

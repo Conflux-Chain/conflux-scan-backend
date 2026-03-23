@@ -328,6 +328,11 @@ async function migDB_(seq: Sequelize) {
     await changeColumnIfNecessary(qi, kv, 'value', {
         type: DataTypes.STRING(8192)
     });
+
+    const contractImpl = ContractImpl.getTableName().toString();
+    await changeColumnIfNecessary(qi, contractImpl, 'proxyType', {
+        type: DataTypes.STRING(64), allowNull: false, defaultValue: ''
+    });
 }
 
 async function dropEmptyTables() {

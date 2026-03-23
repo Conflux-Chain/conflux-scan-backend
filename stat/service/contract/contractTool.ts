@@ -1,41 +1,29 @@
 import {ContractImpl} from "../../model/ContractImpl";
 import {getContractQuery} from "../ContractQuery";
-import {getAddrId} from "../../model/HexMap";
 import {format} from "js-conflux-sdk";
 import {StatApp} from "../../StatApp";
 import {Op, QueryTypes} from "sequelize";
 import {AbiInfo, ContractABI} from "../../model/ContractInfo";
 
 async function mergeVerifiedImplAbi(ref: IContractImplAbiRef) {
-	const proxyC = await getContractQuery().queryVerify(ref.base32)
+	const proxyC = await getContractQuery().queryVerify(ref.base32);
 	if (!proxyC) {
 		return;
 	}
+
 	const implInfo = await ContractImpl.findOne({
 		where: {cid: ref.contractId}, raw: true,
-	})
-	if (!implInfo) {
-		getContractQuery().getImpl(ref.base32).then(async res=>{
-			const {implementation} = res || {};
-			const implId = await getAddrId(implementation);
-			await ContractImpl.bulkCreate([{
-				cid: ref.contractId, implId: implId, proxyType: '',
-			}], {
-				updateOnDuplicate: ['implId', 'updatedAt'],
-			})
-		}).catch(err=>{
-			console.log(`failed to cache contract implementation, contract ${ref.base32} `, err);
-		})
-		return; //
-	}
-	if (!implInfo.implId || implInfo.implId < 0) {
+	});
+	if (!implInfo || implInfo.implId < 0) {
 		return;
 	}
+
 	const implId = implInfo.implId;
 	const map = await queryContractMethods([implId])
 	ref.implAbiMap = map.get(implId);
 	ref.implId = implId;
 }
+
 interface IContractImplAbiRef {
 	contractId: number;
 	base32?: string;
@@ -43,9 +31,13 @@ interface IContractImplAbiRef {
 	implId?: number;
 	implAbiMap?: Map<string, AbiInfo>;
 }
-export async function fillMethodInfo(list:{method?:string, to?:string}[],
-                                     toIdArr: number[],
-                                     isOpenApi: boolean = false) {
+
+export async function fillMethodInfo(
+	list:{method?:string, to?:string}[],
+	toIdArr: number[],
+	isOpenApi: boolean = false,
+	formatWithArg: boolean = false,
+) {
 	const toIdSet = new Set<number>(toIdArr);
 	toIdSet.delete(0); // remove placeholder
 	if (toIdSet.size === 0) {
@@ -106,10 +98,11 @@ export async function fillMethodInfo(list:{method?:string, to?:string}[],
 	})
 	list.forEach((row, index)=>{
 		const toId = toIdArr[index];
-		const verifiedContractAbi = verifiedAbiMap.get(toId)?.get(row.method)?.fullName;
-		const verifiedImplAbi = cImplAbiMap.get(toId)?.implAbiMap?.get(row.method)?.fullName;
+		const fieldName = formatWithArg ? "formatWithArg" : "fullName";
+		const verifiedContractAbi = verifiedAbiMap.get(toId)?.get(row.method)?.[fieldName];
+		const verifiedImplAbi = cImplAbiMap.get(toId)?.implAbiMap?.get(row.method)?.[fieldName];
 		// use verified abi prior to pure abi.
-		const useMethod =  verifiedContractAbi || verifiedImplAbi || poorAbiMap.get(row.method)?.fullName;
+		const useMethod = verifiedContractAbi || verifiedImplAbi || poorAbiMap.get(row.method)?.[fieldName];
 		if(isOpenApi){
 			row['methodId'] = row.method
 			if(useMethod) {
