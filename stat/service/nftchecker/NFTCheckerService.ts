@@ -17,6 +17,8 @@ import {AddressNfts} from "../../model/AddrNft";
 import {fmtAddr, StatApp} from "../../StatApp";
 import {ethers} from "ethers";
 import {format} from "js-conflux-sdk";
+import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
+import {checkAccount1155balance} from "../watcher/AccountChecker";
 
 const lodash = require('lodash');
 
@@ -107,6 +109,14 @@ export class NFTCheckerService {
                     type: item.type === CONST.ADDRESS_TRANSFER_TYPE.ERC721.code ? 'CRC721' : 'CRC1155',
                 })
             );
+        }
+
+        if (contractIds.length == 1) {
+            try {
+                checkAccount1155balance(contractIds[0] as number, ownerId as number, total);
+            } catch (e) {
+                safeAddErrorLog('api', 'nft-checker-service', e);
+            }
         }
 
         return {total, list, next: rows?.length ? rows[rows.length - 1][cursorField] : 0};

@@ -354,6 +354,7 @@ exports.default = {
     $traceNotAvailable
 
     database: {
+      syncSchema: true,
       useMysql: true,
       syncSchema: true,
       instanceName: '$_DB_NAME',

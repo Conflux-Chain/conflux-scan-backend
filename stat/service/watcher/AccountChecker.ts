@@ -1,4 +1,4 @@
-import {DataTypes, Model, Op, QueryTypes, Sequelize} from "sequelize";
+import {DataTypes, Model, Op, QueryTypes, Sequelize, where} from "sequelize";
 import {buildHexSet, getAddrId} from "../../model/HexMap";
 import {Conflux, format} from "js-conflux-sdk";
 import {CfxWatcher} from "./BalanceWatcher";
@@ -6,12 +6,17 @@ import {AddressErc20Transfer} from "../../model/Erc20Transfer";
 import {handleTokenTransferWithContract, updateTokenTransferCount} from "../../StreamSync";
 import {BatchBalanceWatcher} from "./BatchBalanceWatcher";
 import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
-import {INftMint, NftMint} from "../../model/Token";
+import {Erc1155Data, INftMint, NftMint} from "../../model/Token";
 import {AddressNfts} from "../../model/AddrNft";
 import {Epoch} from "../../model/Epoch";
 import {Erc721Transfer} from "../../model/Erc721Transfer";
 import {fix721addrNftHolder} from "../tool/NftOwnerCheck";
 import {fmtAddr, StatApp} from "../../StatApp";
+import {TokenBalance} from "../../model/Balance";
+import {KEY_1155data_EPOCH, KV} from "../../model/KV";
+import {EpochHashTokenTransfer} from "../../TokenTransferSync";
+import {CONFIRM_GAP} from "./Erc1155DataSync";
+import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 
 export interface IReqAccount {
 	hexId: number; hex: string; base32: string;
@@ -69,6 +74,69 @@ export async function addReqAccount(account: string) {
 		}, {});
 	}
 }
+
+export async function checkAccount1155balance(contractId: number, addrId: number, total: number) {
+	if (isNaN(total)) {
+		console.log(`${__filename} param 'total' is not a number: [${total}]`);
+		return;
+	}
+
+	const tokenBalance = await TokenBalance.findOne({
+		where: {contractId, addressId: addrId}, raw: true,
+	});
+	if (!tokenBalance) {
+		console.log(`${__filename} balance record not found. cid ${contractId} addr ${addrId}`);
+		return;
+	}
+
+	if (Number(tokenBalance.balance) == Number(total)) {
+		// matches
+		return;
+	}
+
+	let last1155Epoch = await KV.getNumber(KEY_1155data_EPOCH, -1);
+	const tokenTxSync = await Erc1155Transfer.findOne({
+		order: [['epoch', 'DESC']],
+	})
+	if (!tokenTxSync) {
+		return;
+	}
+
+	let tx1155ofContract = await Erc1155Transfer.findOne({
+		where: {contractId}, raw: true,
+	});
+	if (!tx1155ofContract) {
+		// not erc1155
+		return;
+	}
+
+	if (last1155Epoch < tokenTxSync.epoch - CONFIRM_GAP) {
+		console.log(`1155sync is behind token syc, skip. ${last1155Epoch} < ${tokenTxSync.epoch}`);
+		return
+	}
+
+	const message = `${__filename} balance mismatch. cid ${contractId} addr ${addrId
+	} . DB ${tokenBalance.balance} , computed ${total}`;
+	console.log(message)
+	safeAddErrorLog('account-checker', 'token-balance', new Error(message));
+
+	const cnt = await Erc1155Data.count({
+		where: {contractId, addressId: addrId}
+	});
+	if (cnt != Number(tokenBalance.balance)) {
+		console.log(`fix token balance from ${tokenBalance.balance} to ${cnt}`)
+		await TokenBalance.update({
+			balance: BigInt(cnt),
+		}, {
+			where: {contractId, addressId: addrId},
+			logging: console.log,
+		})
+		safeAddErrorLog('account-checker', 'token-balance', new Error(message+"\n FIXED."));
+	} else {
+		console.log(`count form DB , matches balance record, ${cnt}, cid ${contractId} addr ${addrId}`)
+	}
+}
+
 export async function checkAccount721(accId: number) {
 	const sql = `select mint.* from ${NftMint.getTableName()} mint left join ${AddressNfts.getTableName()} a_n
 	 on mint.toId = a_n.addressId and mint.contractId=a_n.contractId and mint.tokenId=a_n.tokenId 
