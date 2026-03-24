@@ -76,6 +76,16 @@ export async function addReqAccount(account: string) {
 }
 
 export async function checkAccount1155balance(contractId: number, addrId: number, total: number) {
+	try {
+		await checkAccount1155balanceUnsafe(contractId, addrId, total);
+	} catch (error) {
+		console.error(`${__filename} failed to check 1155 balance.`, error);
+	}
+}
+export async function checkAccount1155balanceUnsafe(contractId: number, addrId: number, total: number) {
+	if (!addrId || !contractId || !total) {
+		return;
+	}
 	if (isNaN(total)) {
 		console.log(`${__filename} param 'total' is not a number: [${total}]`);
 		return;
