@@ -330,6 +330,9 @@ async function migDB(seq: Sequelize) {
     await changeColumnIfNecessary(qi, contractImpl, 'proxyType', {
         type: DataTypes.STRING(64), allowNull: false, defaultValue: ''
     });
+    await addColumnIfNotExistsV2(qi, contractImpl, 'beaconId', {
+        type: DataTypes.BIGINT, allowNull: false, defaultValue: 0
+    });
 }
 
 async function dropEmptyTables() {

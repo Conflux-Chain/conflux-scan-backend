@@ -500,14 +500,15 @@ export class ContractQuery {
     }
 
     private async _updateImpl(contract: string, impl: ImplInfo) {
-        const {implementation, proxyPattern} = impl || {};
+        const {implementation, proxyPattern, beacon} = impl || {};
         if (implementation) {
             const cid = (await makeId(contract)).id;
             const implId = (await makeId(implementation)).id;
+            const beaconId = beacon ? (await makeId(beacon)).id : 0;
             await ContractImpl.bulkCreate([{
-                cid, implId, proxyType: proxyPattern,
+                cid, implId, beaconId, proxyType: proxyPattern,
             }], {
-                updateOnDuplicate: ['implId', 'proxyType', 'updatedAt'],
+                updateOnDuplicate: ['implId', 'beaconId', 'proxyType', 'updatedAt'],
             });
         }
     }

@@ -223,7 +223,7 @@ export class CensorService {
 
         for (const nftMeta of nftMetaArray as NftMeta[]) {
             const {contractId, tokenId, content} = nftMeta;
-            const metaData = JSON.parse(content);
+            const metaData = JSON.parse(content || "{}");
             const {name} = metaData;
             if(!name) {
                 await NftMeta.update({censorStatus: CENSOR_STATUS.ACCEPT,  updatedAt: new Date()} as any,

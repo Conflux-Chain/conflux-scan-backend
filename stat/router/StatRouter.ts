@@ -667,7 +667,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             owner: userAddr, contract: contractAddr, tokenId: tokenId?.toString(), skip, limit});
 
         const addresses = result.list.map(item => item.owner);
-        const map = await statApp.accountQuery.list(addresses);
+        const map = await statApp.accountQuery.list(addresses, {withContractInfo: true});
         result.list.forEach(row => {
             lodash.defaults(row, {
                 ownerTokenInfo: map[row.owner]?.token,
@@ -830,6 +830,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = await statApp.accountQuery.debugTraceCall(params);
     });
 }
+
 // swagger stat doesn't support multiple instances,
 // use this hook to bypass.
 let swStatFn = function(ctx, next) {
