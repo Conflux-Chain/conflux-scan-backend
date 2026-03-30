@@ -477,8 +477,7 @@ export class ConfluxService {
   async getTransactionCFXTransferArray(transactionHash, zeroValue = false) {
     // this method will call trace block and set tx status to trace status, which is incorrect.
     // even tx is failed, the gas payment should exist.
-    // const traceArray = await this.getTransactionTraceArray(transactionHash);
-    const traceArray = await this.app.cfx.traceTransaction(transactionHash);
+    const traceArray = await this.getTransactionTraceArray(transactionHash);
 
     const array = [];
     for (const trace of traceArray) {
@@ -489,13 +488,13 @@ export class ConfluxService {
         // eslint-disable-next-line no-continue
         continue;
       }
-      if (trace.valid
+      if (trace.status === CONST.TX_STATUS.SUCCESS
           && (zeroValue || trace.action.value)
           && (trace.type === CONST.TRACE_TYPE.CREATE
             || trace.type === CONST.TRACE_TYPE.CALL
             || trace.type === CONST.TRACE_TYPE.INTERNAL_TRANSFER_ACTION
             || trace.type === CONST.TRACE_TYPE.MINER_REWARD
-          )
+          )// FIXME: only for trace without output
       ) {
         array.push({
           epochNumber: trace.epochNumber,
