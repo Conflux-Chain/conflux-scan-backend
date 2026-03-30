@@ -425,7 +425,7 @@ export class ConfluxService {
       app: { cfx, ttlMap },
     } = this;
 
-    return ttlMap.cache(`ConfluxService.getBlockTraceArray(${blockHash})`,
+    return ttlMap.cache(`ConfluxService.get_BlockTraceArray(${blockHash})`,
       async () => {
         const blockTrace = await cfx.traceBlock(blockHash);
         if (!blockTrace) {
@@ -467,7 +467,7 @@ export class ConfluxService {
     if (!transaction || !transaction.blockHash) {
       return [];
     }
-
+    // why do we get the whole trace of the block?
     const array = await this.getBlockTraceArray(transaction.blockHash);
     const object = _.groupBy(array, 'transactionHash');
     const traces = object[transaction.hash] || [];
@@ -475,7 +475,10 @@ export class ConfluxService {
   }
 
   async getTransactionCFXTransferArray(transactionHash, zeroValue = false) {
-    const traceArray = await this.getTransactionTraceArray(transactionHash);
+    // this method will call trace block and set tx status to trace status, which is incorrect.
+    // even tx is failed, the gas payment should exist.
+    // const traceArray = await this.getTransactionTraceArray(transactionHash);
+    const traceArray = await this.app.cfx.traceTransaction(transactionHash);
 
     const array = [];
     for (const trace of traceArray) {
@@ -492,7 +495,7 @@ export class ConfluxService {
             || trace.type === CONST.TRACE_TYPE.CALL
             || trace.type === CONST.TRACE_TYPE.INTERNAL_TRANSFER_ACTION
             || trace.type === CONST.TRACE_TYPE.MINER_REWARD
-          )// FIXME: only for trace without output
+          )
       ) {
         array.push({
           epochNumber: trace.epochNumber,
