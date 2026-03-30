@@ -489,7 +489,7 @@ export class ConfluxService {
         // eslint-disable-next-line no-continue
         continue;
       }
-      if (trace.status === CONST.TX_STATUS.SUCCESS
+      if (trace.valid
           && (zeroValue || trace.action.value)
           && (trace.type === CONST.TRACE_TYPE.CREATE
             || trace.type === CONST.TRACE_TYPE.CALL
