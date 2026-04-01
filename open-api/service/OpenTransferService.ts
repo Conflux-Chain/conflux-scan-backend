@@ -15,6 +15,7 @@ import {TokenQuery} from "../../stat/service/TokenQuery";
 import {paginateCore} from "../../stat/router/ParamChecker";
 import {Op} from "sequelize";
 import {Errors} from "../../stat/service/common/LogicError";
+import {TransferQueryBase} from "../../stat/service/TransferQueryBase";
 const lodash = require('lodash');
 
 export async function listAccountCfxTransfer(ctx) {
@@ -114,7 +115,7 @@ export function polishTransferList(page, withCursor = false) {
     delete page?.accountId
 }
 
-export async function listTransfer(ctx, service, cursor = undefined, cursorField = undefined, withCursor = false) {
+export async function listTransfer(ctx, service: TransferQueryBase, cursor = undefined, cursorField = undefined, withCursor = false) {
     mustBeIntParamIfPresent(ctx.request.query, 'minEpochNumber','maxEpochNumber', 'startBlock', 'endBlock', 'minTimestamp','maxTimestamp')
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'from','to','account', 'contract')
     mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC'])

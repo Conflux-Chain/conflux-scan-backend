@@ -12,6 +12,7 @@ import {Token} from "../model/Token";
 import {detectFishingAddress} from "./tool/phishingAddress";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import {fillMethodInfo} from "./contract/contractTool";
+import {getCfxSdk} from "./common/utils";
 const lodash = require('lodash');
 
 export abstract class TransferQueryBase {
@@ -74,7 +75,7 @@ export abstract class TransferQueryBase {
             conditionArray.push({[Op.or]: [{toId: opponentAddressId}, {fromId: opponentAddressId}]});
         }
         if(txParas) {
-            conditionArray.push({epoch: txParas.epoch, blockIndex: txParas.blockIndex, txIndex: txParas.txIndex});
+            conditionArray.push({epoch: txParas.epoch, tx: txParas.transactionHash});
         }
         if(tokenId !== undefined) {
             // conditionArray.push({tokenId: tokenId.toString()});
@@ -145,13 +146,13 @@ export abstract class TransferQueryBase {
         const opponentAddressId = addressMap[opponentAddress];
         let txParas;
         if(transactionHash){
-            const tx = await FullTransaction.findOne({
-                attributes: ['epoch', ['blockPosition', 'blockIndex'], ['txPosition','txIndex'], 'hash'],
-                where: {hash: transactionHash}, raw: true});
+            const tx = await getCfxSdk().getTransactionReceipt(transactionHash);
             if(!tx) {
                 throw new Error(`Tx ${transactionHash} not found.`);
             }
-            txParas = lodash.pick(tx, ['epoch', 'blockIndex', 'txIndex']);
+            txParas = {
+                epoch: tx.epochNumber, transactionHash,
+            }
         }
         const tokenAddressIdArray = [];
         if(tokenArray?.length){
@@ -198,54 +199,26 @@ export abstract class TransferQueryBase {
         if(page?.rows){
             const hex40IdSet = new Set<number>();
             // const txHashQueryCondition = []
-            const mapTx = new Map<string, FullTransaction>()
-            const txTasks = []
             page.rows.forEach( row => {
                 hex40IdSet.add(row['from']);
                 hex40IdSet.add(row['to']);
                 hex40IdSet.add(row['address']);
-                // txHashQueryCondition.push({[Op.and]:[{epoch: row['epochNumber'],
-                //         blockPosition:row['blockIndex'], txPosition:row['txIndex']
-                //     }]})
-                txTasks.push(
-                    FullTransaction.findOne({
-                        attributes: ['epoch', 'blockPosition', 'txPosition', 'hash', 'nonce', 'method', 'status', 'gas'],
-                        where: {epoch: row['epochNumber'],
-                            blockPosition:row['blockIndex'], txPosition:row['txIndex']
-                        },
-                        raw: true,
-                    }).then(tx=>{
-                        tx && mapTx.set(`${tx.epoch}_${tx.blockPosition}_${tx.txPosition}`, tx)
-                    })
-                )
                 list.push(row);
             });
-            await Promise.all(txTasks)
-            const [hex40Map, txMap] = await Promise.all([
+            const [hex40Map] = await Promise.all([
                 idHex40Map(Array.from(hex40IdSet)),
-                // this query is very slow if there are more than 1K rows
-                // FullTransaction.findAll({attributes: ['epoch','blockPosition','txPosition','hash', 'nonce', 'method', 'status', 'gas'],
-                //     where: {[Op.or]: txHashQueryCondition}}).then(list=>{
-                //     const map = new Map<string, FullTransaction>()
-                //     list.forEach(tx=>map.set(`${tx.epoch}_${tx.blockPosition}_${tx.txPosition}`, tx))
-                //     return map
-                // })
-                Promise.resolve(mapTx)
             ]);
 
             // fields mapping
             list.forEach(row=>{
                 toIdArr.push(row['to'] ?? 0);
                 const key:string = `${row['epochNumber']}_${row['blockIndex']}_${row['txIndex']}`;
-                row['transactionHash'] = txMap.get(key)?.hash
-                    || `0x${row['transactionHash']}`
-                    || '';
                 row['from'] = hex40Map.get(row['from']) ? fmtAddr(`0x${hex40Map.get(row['from'])}`, StatApp.networkId) : '';
                 row['to'] = hex40Map.get(row['to']) ? fmtAddr(`0x${hex40Map.get(row['to'])}`, StatApp.networkId) : '';
                 row['timestamp'] = options.txType === CONST.TX_TYPE.CREATE ? row['timestamp']
                     : row['timestamp'].getTime() / 1000;
                 row['syncTimestamp'] = row['timestamp'];
-                this.processQueryResult(row, hex40Map, undefined, txMap);
+                this.processQueryResult(row, hex40Map, undefined, new Map());
             })
         }
 

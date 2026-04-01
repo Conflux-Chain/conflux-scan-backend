@@ -481,7 +481,7 @@ export class FullBlockService {
                         where: {epoch: popEpochCondition, addressId: [...addresses],},
                         transaction: dbTx
                     }),
-                    FullBlockExt.destroy({where: {epoch: popEpochCondition}, transaction: dbTx}),
+                    // FullBlockExt.destroy({where: {epoch: popEpochCondition}, transaction: dbTx}),
                     diffCount(KEY_FULL_BLOCK_COUNT, -popBlockCount, dbTx),
                     diffCount(KEY_FULL_TX_COUNT, -popTx.length, dbTx),
                     PosRegister.destroy({where: {epoch: popEpochCondition}, transaction: dbTx}),
@@ -515,6 +515,7 @@ export class FullBlockService {
                 }
                 block.gasUsed = 0
             }
+            block.num = block.blockNumber;
             block.epoch = minEpochNumber;
             block.pivot = false;
             const reward = minEpochNumber == 0 ? {} : rewardList.find(r => r.blockHash === block.hash) || {}
@@ -556,6 +557,7 @@ export class FullBlockService {
             let sumTip = BigInt(0)
             let txsInType = [0, 0, 0]
             let pos = 0
+            let crossSpaceTxCount = 0;
             for (const txInfo of block.transactions) {
                 // status has value, fail (!0) or success (0) or genesis epoch.
                 // status could be: null(not executed/skipped), 0(success), 1(fail);
@@ -576,6 +578,7 @@ export class FullBlockService {
                         } ${JSON.stringify(contractBean)}, `, err))
                     }
                     txInfo.epoch = minEpochNumber;
+                    txInfo.tx = txInfo.transactionHash;
                     txInfo.blockPosition = block.position
                     txInfo.txPosition = pos++ // it's not the index in RPC data. it's computed, see desc above.
                     txInfo.createdAt = block.createdAt
@@ -584,6 +587,9 @@ export class FullBlockService {
                     txInfo.method = txInfo.data.substr(0, 10)
                     txInfo.gasLimit = txInfo.gas // 20231215 cal gasUsedPerSecond
                     txInfo.gasPrice = txInfo.receipt?.effectiveGasPrice || txInfo.gasPrice
+                    if (txInfo.gasPrice == 0n) {
+                        crossSpaceTxCount++;
+                    }
                     const receiptGasUsed = Number(txInfo.receipt?.gasUsed || 0);
                     const gasCharged = NoCoreSpace ? receiptGasUsed
                         : Math.max(receiptGasUsed, Math.ceil((Number(txInfo.gas) * 3) / 4))
@@ -627,12 +633,12 @@ export class FullBlockService {
             // }
             pos && (block.avgGasPrice = sumGasPrice / BigInt(pos))
 
-            block.burntGasFee = sumBurntGasFee
+            block.burntFee = sumBurntGasFee
             block.baseFee = BigInt(block?.baseFeePerGas || 0)
             pos && (block.avgTip = sumTip / BigInt(pos))
             block.txsInType = txsInType
-            const blockExt = buildBlockExt(minEpochNumber, block)
-            blockExtArr.push(blockExt)
+            buildBlockExt(minEpochNumber, block, crossSpaceTxCount);
+            // blockExtArr.push(blockExt)
         }
     }
     async save(minEpochNumber: number, preLoadResult: any, veryBegin: number) : Promise<{code:number, message?:string, blockCount?:number, epoch?:number,executedTxnCount?:number}> {
@@ -668,7 +674,7 @@ export class FullBlockService {
 	            FullMinerBlock.bulkCreate(blockBeanArr, {transaction: dbTx, ignoreDuplicates: true}),
                 FullTransaction.bulkCreate(executedTxArr, {transaction: dbTx}).then(()=>metrics.saveTxTime += Date.now() - start),
                 AddressTransactionIndex.bulkCreate(txByAddressArr, {transaction: dbTx, /*ignoreDuplicates: true*/}).then(()=>metrics.saveAddrTxTime += Date.now() - start),
-                FullBlockExt.bulkCreate(blockExtArr, {transaction: dbTx}),
+                // FullBlockExt.bulkCreate(blockExtArr, {transaction: dbTx}),
                 diffCount(KEY_FULL_BLOCK_COUNT, this.batchBlockTx.fullBlock.length, dbTx).then(()=>metrics.diffBlockCntTime += Date.now() - start),
                 diffCount(KEY_FULL_TX_COUNT, this.batchBlockTx.fullTransaction.length, dbTx).then(()=>metrics.diffTxCntTime += Date.now() - start),
                 PosRegister.bulkCreate(posRegArr, {transaction: dbTx}),

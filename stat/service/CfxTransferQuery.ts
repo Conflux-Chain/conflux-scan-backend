@@ -84,6 +84,7 @@ export class CfxTransferQuery extends TransferQueryBase{
             ['toId', 'to'],
             'value',
             ['createdAt', 'timestamp'],
+            ['tx', 'transactionHash'],
         ];
     }
 

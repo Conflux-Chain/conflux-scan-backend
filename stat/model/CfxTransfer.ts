@@ -13,6 +13,7 @@ export interface IAddressCfxTransfer {
     blockIndex: number;
     txIndex: number;
     txLogIndex: number
+    tx: string;
     createdAt: Date
     fromId: number
     toId: number
@@ -28,6 +29,7 @@ create table if not exists ${T_ADDRESS_CFX_TRANSFER}
    \`blockIndex\` int unsigned NOT NULL,
   \`txIndex\` mediumint unsigned NOT NULL,
   \`txLogIndex\` mediumint unsigned NOT NULL,
+ tx char(66) character set 'ascii' not null,
  \`createdAt\` datetime NOT NULL,
  \`fromId\` bigint(20) unsigned NOT NULL,
  \`toId\` bigint(20) unsigned NOT NULL,
@@ -58,6 +60,7 @@ export class AddressCfxTransfer extends Model<IAddressCfxTransfer> implements IA
     blockIndex: number;
     txIndex: number;
     txLogIndex: number
+    tx: string;
     fromId: number
     toId: number
     value: number
@@ -71,6 +74,7 @@ export class AddressCfxTransfer extends Model<IAddressCfxTransfer> implements IA
             blockIndex: {type: DataTypes.SMALLINT, allowNull: false},
             txIndex: {type: DataTypes.INTEGER, allowNull: false},
             txLogIndex: {type: DataTypes.INTEGER, allowNull: false},
+            tx: {type: DataTypes.STRING(66), allowNull: false, charset: 'ascii'} as any,
             fromId: {type: DataTypes.BIGINT, allowNull: false},
             toId: {type: DataTypes.BIGINT, allowNull: false},
             value: {type: DataTypes.DECIMAL(36, 0), allowNull: false},
@@ -282,6 +286,7 @@ export interface ICfxTransfer {
     createdAt: Date
     blockIndex: number;
     txIndex: number;
+    tx: string;
     txLogIndex: number
     fromId: number
     toId: number
@@ -297,6 +302,7 @@ export class CfxTransfer extends Model<ICfxTransfer> implements ICfxTransfer {
     createdAt: Date
     blockIndex: number;
     txIndex: number;
+    tx: string;
     txLogIndex: number
     fromId: number
     toId: number
@@ -309,6 +315,7 @@ export class CfxTransfer extends Model<ICfxTransfer> implements ICfxTransfer {
             createdAt: {type: DataTypes.DATE, allowNull: false},
             blockIndex: {type: DataTypes.SMALLINT, allowNull: false},
             txIndex: {type: DataTypes.INTEGER, allowNull: false},
+            tx: {type: DataTypes.STRING(66), allowNull: false, charset: 'ascii'} as any,
             txLogIndex: {type: DataTypes.INTEGER, allowNull: false},
             fromId: {type: DataTypes.BIGINT, allowNull: false},
             toId: {type: DataTypes.BIGINT, allowNull: false},
@@ -332,29 +339,6 @@ export class CfxTransfer extends Model<ICfxTransfer> implements ICfxTransfer {
     }
 }
 
-function buildCfxTransfer(obj, date) {
-    /*
-    const start = Date.now()
-    const [fromId, toId] = await Promise.all([
-        makeId(obj.from, undefined, {dt:date}).then(res=>{metrics.makeIdMs1 += Date.now() - start; return res;}),
-        makeId(obj.to, undefined, {dt:date}).then(res=>{metrics.makeIdMs2 += Date.now() - start; return res;}),
-        //makeId(obj.transactionHash).then(res=>{metrics.makeIdMs3 += Date.now() - start; return res;}),
-    ])
-
-     */
-    let cfxTransfer:ICfxTransfer = {
-        blockIndex: obj.blockIndex, //
-        txIndex: obj.transactionIndex,
-        fromId: obj.fromId,//fromId.id,
-        toId: obj.toId,//toId.id,
-        value: obj.value || 0,
-        createdAt: date,
-        epoch: obj.epochNumber,
-        txLogIndex: obj.transactionTraceIndex,
-        type: obj.type,
-    };
-    return cfxTransfer
-}
 const metrics = {
     count: 0,
     sumMs: 0,

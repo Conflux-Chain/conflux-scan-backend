@@ -176,7 +176,7 @@ export function initApiServer() {
     apiServer.init().then(() => {
         return register(app, apiServer, port)
     }).then(() => {
-        return initBilling(billingApp, ether.url)
+        return initBilling(billingApp, ether?.url)
     }).then(() => {
         return checkTest();
     }).then(() => {

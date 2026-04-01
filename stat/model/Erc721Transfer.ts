@@ -19,6 +19,7 @@ const T_ADDRESS_ERC721_TRANSFER_SQL = `
 \`blockIndex\` int unsigned NOT NULL,
   \`txIndex\` mediumint unsigned NOT NULL,
 \`txLogIndex\` mediumint unsigned NOT NULL,
+    tx char(66)  character set 'ascii' not null,
 \tcontractId bigint not null,
 \tfromId bigint not null,
 \ttoId bigint not null,
@@ -49,6 +50,7 @@ export class AddressErc721Transfer extends Model<IAddressErc721Transfer> impleme
     blockIndex: number
     txIndex: number
     txLogIndex: number
+    tx: string
     fromId: number
     toId: number
     tokenId:string
@@ -60,6 +62,7 @@ export class AddressErc721Transfer extends Model<IAddressErc721Transfer> impleme
             createdAt: {type: DataTypes.DATE, allowNull: false},
             txIndex: {type: DataTypes.INTEGER, allowNull: false},
             txLogIndex: {type: DataTypes.INTEGER, allowNull: false},
+            tx: {type: DataTypes.STRING(66), allowNull: false, charset: 'ascii'} as any,
             contractId: {type: DataTypes.BIGINT, allowNull: false},
             fromId: {type: DataTypes.BIGINT, allowNull: false},
             toId: {type: DataTypes.BIGINT, allowNull: false},
@@ -89,6 +92,7 @@ export class Erc721Transfer extends Model<IErc721Transfer> implements IErc721Tra
     blockIndex: number
     txIndex: number
     txLogIndex: number
+    tx: string
     fromId: number
     toId: number
     tokenId:string
@@ -100,6 +104,7 @@ export class Erc721Transfer extends Model<IErc721Transfer> implements IErc721Tra
             blockIndex: {type: DataTypes.SMALLINT, allowNull: false},
             txIndex: {type: DataTypes.INTEGER, allowNull: false},
             txLogIndex: {type: DataTypes.INTEGER, allowNull: false},
+            tx: {type: DataTypes.STRING(66), allowNull: false, charset: 'ascii'} as any,
             contractId: {type: DataTypes.BIGINT, allowNull: false},
             fromId: {type: DataTypes.BIGINT, allowNull: false},
             toId: {type: DataTypes.BIGINT, allowNull: false},

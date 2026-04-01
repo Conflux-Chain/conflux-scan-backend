@@ -2,7 +2,7 @@ import {redirectLog} from "./service/tool/LoggerConfig";
 import {DataTypes, Model, Op, Sequelize} from "sequelize";
 import {init} from "./service/tool/FixDailyTokenStat";
 import {Conflux} from "js-conflux-sdk";
-import {batchTraceBlock, getCodeHash, initCfxSdk} from "./service/common/utils";
+import {batchTraceBlock, getCodeHash, initCfxSdk, SECOND} from "./service/common/utils";
 import {Measure} from "./service/common/Measure";
 import {FullBlock, FullTransaction, loadMaxBlockEpoch} from "./model/FullBlock";
 import {
@@ -274,6 +274,7 @@ export async function getCfxTransferTraces(epoch: number)
                 const fromId = await makeIdV(from)
                 const toId = await makeIdV(to)
                 const bean:ICfxTransfer = {
+                    tx: txBean.hash,
                     epoch, blockIndex: blkIdx, txIndex: txBean.txPosition, txLogIndex: traceIdx,
                     fromId, toId, createdAt:txBean.createdAt, value, type,
                 }
@@ -395,7 +396,7 @@ async function runHolder(cfx:Conflux) {
         console.log(` cfx holder error:`, err)
         return sleep(10_000)
     });
-    setTimeout(()=>runHolder(cfx), 0);
+    setTimeout(()=>runHolder(cfx), 10 * SECOND);
 }
 let cfxWatcher:CfxWatcher;
 let lastNoUserLogMinute = -1
