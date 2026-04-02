@@ -3,13 +3,10 @@ import {fmtAddr, StatApp} from "../../stat/StatApp";
 import {safeAddErrorLog} from "../../stat/monitor/ErrorMonitor";
 import {format} from "js-conflux-sdk";
 import {CONST} from "../../stat/service/common/constant";
-import {getAddrIdArray, hex40IdMap} from "../../stat/model/HexMap";
+import {getAddrIdArray} from "../../stat/model/HexMap";
 import {fillMethodInfo} from "../../stat/service/contract/contractTool";
 import {ContractImpl} from "../../stat/model/ContractImpl";
-import {Op, QueryTypes} from "sequelize";
-
-const {noVerboseAddr} = require("../../stat/service/common/utils")
-const {patchPocketAddress} = require("../../stat/model/HexMap")
+import {QueryTypes} from "sequelize";
 
 const _ = require('lodash');
 const { tracesInTree } = require('js-conflux-sdk/src/util/trace');
@@ -392,6 +389,34 @@ export class ConfluxService {
     );
   }
 
+  async getTransactionTokenTransferArray(transactionHash) {
+    const {
+      app: { ttlMap, tokenTool },
+    } = this;
+
+    return ttlMap.cache(`ConfluxService.getTransactionTokenTransferArray(${transactionHash})`,
+      async () => {
+        const logs = await this.getLogsByTransactionHash(transactionHash);
+        const tokenTransfers = [];
+        for (const log of logs) {
+          let transfer;
+          if ((transfer = tokenTool.decodeERC20TransferPlus(log, false))) {
+            tokenTransfers.push(_.assign(transfer, {transferType: CONST.TRANSFER_TYPE.ERC20}))
+          } else if ((transfer = tokenTool.decodeERC721Transfer(log, false))) {
+            tokenTransfers.push(_.assign(transfer, {transferType: CONST.TRANSFER_TYPE.ERC721}));
+          } else if ((transfer = tokenTool.decodeERC1155TransferArrayPlus(log)) && transfer.length) {
+            transfer.forEach(item=>{
+              tokenTransfers.push(_.assign(item, {transferType: CONST.TRANSFER_TYPE.ERC1155}));
+            })
+          }
+        }
+        tokenTransfers.forEach(item => _.assign(item, {transactionLogIndex: Number(item.transactionLogIndex)}));
+        return tokenTransfers;
+      },
+      { ttl: 5 * 1000 },
+    );
+  }
+
   // FIXME: not a good idea
   async getTransactionERCXXXTransferArray(transactionHash) {
     const listERC20 = await this.getTransactionERC20TransferArray(transactionHash);
@@ -508,7 +533,7 @@ export class ConfluxService {
     return array;
   }
 
-  async getTransactionTraceTree(transactionHash: string) {
+  async getTransactionTrace(transactionHash: string, convertTree?: boolean) {
     const {
       app: {cfx, error, ttlMap},
     } = this;
@@ -517,7 +542,7 @@ export class ConfluxService {
       return {};
     }
 
-    return ttlMap.cache(`ConfluxService.getTransactionTraceTree(${transactionHash})`,
+    return ttlMap.cache(`ConfluxService.getTransactionTrace(${transactionHash})`,
       async () => {
         let traceArray;
         try {
@@ -535,24 +560,21 @@ export class ConfluxService {
         const methodList: { index: number; to: string; method: string; methodId?: string;}[] = [];
 
         traceArray.forEach((trace: any, index: number) => {
-          const {fromPocket, toPocket, from, to, init, input, addr} = trace.action;
+          const {from, to, init, input, addr} = trace.action;
           if (init) {
             trace.action.init = undefined;
           }
           if (input) {
-            // trace.action.input = undefined;
             if(input.length >= 10 && to) {
               methodList.push({index, to, method: input.substring(0, 10)});
             }
           }
           if (from) {
-            const patchedFrom = patchPocketAddress(fromPocket, noVerboseAddr(from), cfx.networkId);
-            trace.action.from = fmtAddr(patchedFrom, cfx.networkId);
+            trace.action.from = fmtAddr(from, cfx.networkId);
             addressSet.add(from);
           }
           if (to) {
-            const patchedTo = patchPocketAddress(toPocket, noVerboseAddr(to), cfx.networkId);
-            trace.action.to = fmtAddr(patchedTo, cfx.networkId);
+            trace.action.to = fmtAddr(to, cfx.networkId);
             addressSet.add(to);
             toAddressSet.add(to)
           }
@@ -596,7 +618,11 @@ export class ConfluxService {
 
         let result = {} as any;
         try {
-          result.traceTree = tracesInTree(traceArray);
+          if (convertTree) {
+            result.traceTree = tracesInTree(traceArray);
+          } else {
+            result.traceArray = traceArray;
+          }
           result.addressArray = [...addressSet];
           result.proxyMap = proxyMap;
           result.methodMap = methodMap;

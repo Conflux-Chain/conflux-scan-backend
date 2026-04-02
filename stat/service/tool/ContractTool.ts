@@ -14,6 +14,7 @@ import {Op} from "sequelize";
 import {execSync} from "child_process";
 import {sleep} from "./ProcessTool";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
+import {NameTag} from "../../model/NameTag";
 
 const fs = require('fs');
 const path = require('path');
@@ -53,6 +54,9 @@ async function run() {
     }
     if (type === 4) {
         await realtimeProxyImpl()
+    }
+    if (type === 5) {
+        await updateNametagHexId()
     }
     await close();
 }
@@ -257,4 +261,28 @@ async function realtimeProxyImpl() {
     }
 
     console.log(`done! ${JSON.stringify({total, proxy, beaconProxy})}`);
+}
+
+async function updateNametagHexId() {
+    const list = await NameTag.findAll({
+        attributes: ['id', 'base32'],
+        raw: true,
+    });
+
+    let cntr = 0;
+    for (const item of list) {
+        const {id, base32} = item;
+        if (base32.length !== 64) {
+            const hex = format.hexAddress(base32);
+            const hexObj = await Hex40Map.findOne({where: {hex: hex.substr(2)}, raw: true});
+            if (!hexObj) {
+                console.log(`Failed to find address, ${base32}, ${hex}`);
+            } else {
+                await NameTag.update({hex40id: hexObj.id}, {where: {id}});
+            }
+            cntr++;
+        }
+    }
+
+    console.log(`Done! ${cntr}`);
 }

@@ -1,10 +1,12 @@
 import {ScanApp, ScanCtx} from "./index";
-import {StatApp} from "../../stat/StatApp";
+import {fmtAddr, StatApp} from "../../stat/StatApp";
 import {NoCoreSpace} from "../../stat/config/StatConfig";
 import {getDelegatedAddrAtTx} from "../../stat/model/EIP7702model";
 import {format} from "js-conflux-sdk";
 import {CONST} from "../../stat/service/common/constant";
 import {CensorService} from "../../stat/service/censor/CensorService";
+import {patchPocketAddress} from "../../stat/model/HexMap";
+import {getCfxTransfer} from "../../stat/CfxTransferSync";
 
 const lodash = require('lodash');
 const limitMap = require('limit-map');
@@ -85,6 +87,15 @@ export class TransactionService {
       gasCharged = Number(gasPrice) === 0 ? '0' : BigFixed(actualGasCost).div(BigFixed(gasPrice))
     }
 
+    const [cfxTransfers, tokenTransfers] = await Promise.all([
+      this.getCfxTransfers(transaction.hash),
+      this.getTokenTransfers(transaction.hash),
+    ]);
+    const addressSet = new Set<string>();
+    cfxTransfers.list.forEach(item => {addressSet.add(item.from);addressSet.add(item.to);})
+    tokenTransfers.list.forEach(item => {addressSet.add(item.from);addressSet.add(item.to);addressSet.add(item.address);})
+    const nameMap = await service.accountQuery.list([...addressSet]);
+
     // zg rpc do not return contract address on transaction
     const contractCreated = receipt?.contractCreated ?? transaction.contractCreated
     return lodash.defaults({aggregate, data: txInputData, gasPrice, gasFee: gasFee.toString(),
@@ -96,8 +107,79 @@ export class TransactionService {
           timestamp: epoch.timestamp,
           syncTimestamp: epoch.timestamp,
           eventLogCount: receipt?.logs?.length,
+          cfxTransfers,
+          tokenTransfers,
+          nameMap,
         }
     );
+  }
+
+  private MAX_RECORDS_CFX_TRANSFER = 100;
+
+  async getCfxTransfers(txHash: string) {
+    const {
+      app: {service},
+    } = this as ScanCtx;
+
+    const result = await service.conflux.getTransactionTrace(txHash);
+
+    const traces = result.traceArray;
+    if (!traces) {
+      return {total: 0, list: []};
+    }
+
+    const list = [];
+    for (let traceIdx = 0; traceIdx < traces.length; traceIdx++) {
+      const trace = traces[traceIdx];
+      let {action: {from, to, fromPocket, toPocket}, valid} = trace;
+      if (!valid) {
+        continue;
+      }
+
+      trace.from = patchPocketAddress(fromPocket, from);
+      trace.to = patchPocketAddress(toPocket, to);
+
+      const ts: any = getCfxTransfer(trace);
+      if (!ts) {
+        continue
+      }
+
+      list.push({
+        from: ts.from,
+        to: ts.to,
+        value: ts.value,
+        type: ts.type,
+        transactionTraceIndex: traceIdx,
+      });
+    }
+
+    return {total: list.length, list: list.slice(0, this.MAX_RECORDS_CFX_TRANSFER)};
+  }
+
+  private MAX_RECORDS_TOKEN_TRANSFER = 100;
+
+  async getTokenTransfers(txHash: string) {
+    const {
+      app: {service},
+    } = this as ScanCtx;
+
+    const tokenTransfers = await service.conflux.getTransactionTokenTransferArray(txHash);
+    const list = tokenTransfers.map((item: any) => {
+      delete item.epochNumber;
+      delete item.transactionHash;
+      delete item.data;
+      delete item.topics;
+      delete item.blockHash;
+      delete item.logIndex;
+      delete item.space;
+      delete item.transactionIndex;
+      item.from = fmtAddr(item.from, StatApp.networkId);
+      item.to = fmtAddr(item.to, StatApp.networkId);
+      item.address = fmtAddr(item.address, StatApp.networkId);
+      return item;
+    });
+
+    return {total: list.length, list: list.slice(0, this.MAX_RECORDS_TOKEN_TRANSFER)};
   }
 
   // --------------------------------------------------------------------------

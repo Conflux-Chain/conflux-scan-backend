@@ -161,12 +161,13 @@ export class TokenTool {
     }
 
     decodeNameTagChanged(eventLog) {
-        // see contracts/AddressMetadata.sol
-        const { topics = [], data = '0x' } = eventLog;
+        const {topics = []} = eventLog;
 
-        if (topics[0] === this.contract.NameTagChanged.signature && topics.length === 3) {
-            const _abi = abi.find(e=>e.name==='NameTagChanged').inputs.slice(2);
-            const parameters = ethers.AbiCoder.defaultAbiCoder().decode(_abi, eventLog.data);
+        if (topics.length === 3 && topics[0] === this.contract.NameTagChanged.signature) {
+            const parameters = ethers.AbiCoder.defaultAbiCoder().decode([
+                "tuple(address addr, string name, string website, string desc)",
+                "tuple(address addr, string name, string website, string desc)"
+            ], eventLog.data);
             return {
                 ...eventLog,
                 auditor: `0x${topics[1].slice(-40)}`,
@@ -184,11 +185,10 @@ export class TokenTool {
     }
 
     decodeLabelChanged(eventLog) {
-        // see contracts/AddressMetadata.sol
-        const { topics = [], data = '0x' } = eventLog;
-        //event LabelChanged(index_topic_1 address auditor, index_topic_2 address addr, string oldLabel, string newLabel)
+        const {topics = [], data = '0x'} = eventLog;
+
         if (topics[0] === this.contract.LabelChanged.signature && topics.length === 3) {
-            const parameters = ethers.AbiCoder.defaultAbiCoder().decode(['string','string'], data);
+            const parameters = ethers.AbiCoder.defaultAbiCoder().decode(['string', 'string'], data);
             return {
                 ...eventLog,
                 auditor: `0x${topics[1].slice(-40)}`,
@@ -202,12 +202,13 @@ export class TokenTool {
     }
 
     decodeBytes32NameTagChanged(eventLog) {
-        // see contracts/AddressMetadata.sol
-        const { topics = [], data = '0x' } = eventLog;
-        // event Bytes32NameTagChanged(address indexed auditor, bytes32 indexed hex64, Bytes32NameTag oldNameTag, Bytes32NameTag newNameTag)
-        if (topics[0] === this.contract.Bytes32NameTagChanged.signature && topics.length === 3) {
-            const _abi = abi.find(e=>e.name==='Bytes32NameTagChanged').inputs.slice(2);
-            const parameters = ethers.AbiCoder.defaultAbiCoder().decode(_abi, eventLog.data);
+        const {topics = []} = eventLog;
+
+        if (topics.length === 3 && topics[0] === this.contract.Bytes32NameTagChanged.signature) {
+            const parameters = ethers.AbiCoder.defaultAbiCoder().decode([
+                "tuple(bytes32 key, string name, string website, string desc)",
+                "tuple(bytes32 key, string name, string website, string desc)"
+            ], eventLog.data);
             return {
                 ...eventLog,
                 auditor: `0x${topics[1].slice(-40)}`,

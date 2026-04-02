@@ -77,7 +77,8 @@ const MAX_ACCOUNTS = 100;
 export async function listAccountInfos(ctx) {
     mustBeAddressArrayParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'accounts');
     mustBeBooleanParamIfPresent(ctx.request.query, ["withContractInfo", "withNameTagInfo", "withByte32NameTagInfo",
-        "withESpaceInfo", "withENSInfo", "withRealtimeProxyImplInfo"], [true, true, true, true, false, false]);
+        "withESpaceInfo", "withENSInfo", "withProxyImplInfo", "realtimeProxyImpl"], [true, true, true, true, false,
+        false, false]);
 
     const {
         accounts,
@@ -86,7 +87,8 @@ export async function listAccountInfos(ctx) {
         withByte32NameTagInfo,
         withESpaceInfo,
         withENSInfo,
-        withRealtimeProxyImplInfo,
+        withProxyImplInfo,
+        realtimeProxyImpl,
     } = ctx.request.query;
     checkPresent({accounts}, ['accounts']);
     if (accounts.length > MAX_ACCOUNTS) {
@@ -100,7 +102,8 @@ export async function listAccountInfos(ctx) {
         withByte32NameTagInfo,
         withESpaceInfo,
         withENSInfo,
-        withRealtimeProxyImplInfo,
+        withProxyImplInfo,
+        realtimeProxyImpl,
     });
 
     setBody(ctx, data);
