@@ -2,8 +2,8 @@ const {ethers} = require('ethers')
 const {initCfxSdk} = require('../../stat/service/common/utils');
 
 function buildAbi(methodArr = []) {
-    const iface = new ethers.utils.Interface(methodArr);
-    let data = iface.format(ethers.utils.FormatTypes.json);
+    const iface = new ethers.Interface(methodArr);
+    let data = iface.formatJson();
     return data;
 }
 async function main() {
