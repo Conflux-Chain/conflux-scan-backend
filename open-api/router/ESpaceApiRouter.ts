@@ -83,6 +83,7 @@ import {Errors} from "../../stat/service/common/LogicError";
 import {TokenQuery, TokenType} from "../../stat/service/TokenQuery";
 import {NFTType} from "../../stat/service/nftchecker/NFTCheckerService";
 import {HomepageDashboard} from "../../stat/service/HomepageDashboard";
+import {listGlobalAuthAction} from "../../stat/model/EIP7702model";
 
 const lodash = require('lodash');
 
@@ -1074,6 +1075,9 @@ export function registerRouter(router: Router) {
 
     // token
     router.get('/token/tokeninfos', listTokens);
+
+    //eip7702
+    router.get('/eip7702/auths', listGlobalAuthAction);
 
     registerDataApi(router)
 }

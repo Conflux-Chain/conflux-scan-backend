@@ -4,6 +4,9 @@ import {FullTransaction} from "./FullBlock";
 import {getCfxSdk} from "../service/common/utils";
 import {detectAccountType} from "../service/eip/eip7702";
 import {ethers} from "ethers";
+import {paginateCore} from "../router/ParamChecker";
+import {getAccountQuery} from "../service/AccountQuery";
+import {setBody} from "../../open-api/router/middleware";
 
 export interface IAuthBlockStub {
 	id?: number;
@@ -101,24 +104,37 @@ export async function getAuthActionInTx(txHash: string) {
 	return {list};
 }
 
+export async function listGlobalAuthAction(ctx) {
+	const {skip, limit} = paginateCore(ctx.request.query)
+	const result = await listAuthAction({author:'', skip, limit});
+	await getAccountQuery().patchAddressInfo(result.list, 'txSender', 'address');
+	setBody(ctx, result);
+}
+
 export async function listAuthAction({author, skip = 0, limit = 10}) {
 	const actionT = AuthAction.getTableName();
 	const txT = FullTransaction.getTableName();
 	const hexT = Hex40Map.getTableName();
-	const sql = `select a.*, tx.createdAt as txTime, tx.hash as txHash, concat('0x', hex.hex) as txSender from ${actionT} a join ${txT} tx on a.blockNumber = tx.epoch
+	const select = `select a.*, tx.createdAt as txTime, tx.hash as txHash, concat('0x', hex.hex) as txSender from ${actionT} a join ${txT} tx on a.blockNumber = tx.epoch
 	 and tx.blockPosition = 0 and tx.txPosition = a.transactionPosition
-	 join ${hexT} hex on tx.fromId = hex.id 
-	 where a.author = ? order by a.blockNumber desc, a.transactionPosition desc, a.authIndex desc limit ? , ?`;
+	 join ${hexT} hex on tx.fromId = hex.id `;
+	//no condition if author is not set
+	const where = author ? `where a.author = ?` : '';
+	const orderBy = `order by a.blockNumber desc, a.transactionPosition desc, a.authIndex desc limit ? , ?`;
+	const sql = `${select} ${where} ${orderBy}`;
+
 	const arr = await AuthAction.sequelize.query(sql, {
-		type: QueryTypes.SELECT, replacements: [author, skip, limit],
+		type: QueryTypes.SELECT, replacements: author ? [author, skip, limit] : [skip, limit],
 	})
+
 	arr.forEach((row) => {
 		row['createdAt'] = row['txTime'];
 		row['txSender'] =  ethers.getAddress(row['txSender']);
 		row['address'] =  ethers.getAddress(row['address']);
 	});
-	const count = await AuthAction.count({where: {author}});
-	return {total: count, list: arr, listLimit: 1000};
+	const count = await AuthAction.count(author ? {where: {author}} : {});
+
+	return {total: count, list: arr, listLimit: author ? 1000 : 10_000};
 }
 
 export class AuthAction extends Model<IAuthAction> implements IAuthAction {
