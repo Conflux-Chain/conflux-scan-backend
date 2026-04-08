@@ -78,12 +78,11 @@ import {CONST} from '../../stat/service/common/constant';
 import {ethers} from "ethers";
 import {CIP1559StatType} from "../../stat/service/StatsQuery";
 import {registerDataApi} from "./ApiRouter";
-import {detectAccountType} from "../../stat/service/eip/eip7702";
+import {detectAccountType, listGlobalAuthAction} from "../../stat/service/eip/eip7702";
 import {Errors} from "../../stat/service/common/LogicError";
 import {TokenQuery, TokenType} from "../../stat/service/TokenQuery";
 import {NFTType} from "../../stat/service/nftchecker/NFTCheckerService";
 import {HomepageDashboard} from "../../stat/service/HomepageDashboard";
-import {listGlobalAuthAction} from "../../stat/model/EIP7702model";
 
 const lodash = require('lodash');
 

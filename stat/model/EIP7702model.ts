@@ -7,6 +7,7 @@ import {ethers} from "ethers";
 import {paginateCore} from "../router/ParamChecker";
 import {getAccountQuery} from "../service/AccountQuery";
 import {setBody} from "../../open-api/router/middleware";
+import {sqlLogFn} from "./Utils";
 
 export interface IAuthBlockStub {
 	id?: number;
@@ -104,13 +105,6 @@ export async function getAuthActionInTx(txHash: string) {
 	return {list};
 }
 
-export async function listGlobalAuthAction(ctx) {
-	const {skip, limit} = paginateCore(ctx.request.query)
-	const result = await listAuthAction({author:'', skip, limit});
-	await getAccountQuery().patchAddressInfo(result.list, 'txSender', 'address');
-	setBody(ctx, result);
-}
-
 export async function listAuthAction({author, skip = 0, limit = 10}) {
 	const actionT = AuthAction.getTableName();
 	const txT = FullTransaction.getTableName();
@@ -124,6 +118,8 @@ export async function listAuthAction({author, skip = 0, limit = 10}) {
 	const sql = `${select} ${where} ${orderBy}`;
 
 	const arr = await AuthAction.sequelize.query(sql, {
+		raw: true,
+		logging: sqlLogFn('list auth action'),
 		type: QueryTypes.SELECT, replacements: author ? [author, skip, limit] : [skip, limit],
 	})
 
@@ -132,7 +128,10 @@ export async function listAuthAction({author, skip = 0, limit = 10}) {
 		row['txSender'] =  ethers.getAddress(row['txSender']);
 		row['address'] =  ethers.getAddress(row['address']);
 	});
-	const count = await AuthAction.count(author ? {where: {author}} : {});
+	const count = await AuthAction.count(author ? {where: {author}} : {
+		logging: sqlLogFn('count-auth-action'),
+	});
+	console.log(`count ${count} , list ${arr.length}`);
 
 	return {total: count, list: arr, listLimit: author ? 1000 : 10_000};
 }

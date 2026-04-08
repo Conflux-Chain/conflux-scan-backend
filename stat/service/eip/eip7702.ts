@@ -6,9 +6,13 @@ import {Op} from "sequelize";
 import {sleep} from "../tool/ProcessTool";
 import {init} from "../tool/FixDailyTokenStat";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
-import {getAddrId, makeId, makeIdV} from "../../model/HexMap";
+import {getAddrId, Hex40Map, makeId, makeIdV} from "../../model/HexMap";
 import {Errors} from "../common/LogicError";
 import {ethers, JsonRpcProvider} from "ethers";
+import {FullTransaction} from "../../model/FullBlock";
+import {paginateCore} from "../../router/ParamChecker";
+import {getAccountQuery} from "../AccountQuery";
+import {setBody} from "../../../open-api/router/middleware";
 
 type AccountType = {
 	isContract: boolean,
@@ -303,6 +307,13 @@ async function testLoadAuth() {
 	const provider = new JsonRpcProvider(url);
 	// '0xa37384c0646a682bd0e206232572af91b75e6735ab30b658854222546f76ffbc'
 	await loadSetAuth(provider, 53098075);
+}
+
+export async function listGlobalAuthAction(ctx) {
+	const {skip, limit} = paginateCore(ctx.request.query)
+	const result = await listAuthAction({author:'', skip, limit});
+	await getAccountQuery().patchAddressInfo(result.list, 'txSender', 'address');
+	setBody(ctx, result);
 }
 
 if(module == require.main) {
