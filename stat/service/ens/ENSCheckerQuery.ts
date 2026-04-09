@@ -80,11 +80,8 @@ export class ENSCheckerQuery {
         });
 
         return Object.fromEntries(hexes
-            .filter((_, index) => names[index])
-            .map((hex, index) => [
-                hex,
-                {name: names[index]},
-            ])
+            .map((hex, index) => names[index] ? [hex, {name: names[index]}] : undefined)
+            .filter(Boolean)
         );
     }
 

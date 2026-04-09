@@ -542,7 +542,7 @@ export class ConfluxService {
       return {};
     }
 
-    return ttlMap.cache(`ConfluxService.getTransactionTrace(${transactionHash})`,
+    return ttlMap.cache(`ConfluxService.getTransactionTrace(${transactionHash})_${convertTree ? 1 : 0}`,
       async () => {
         let traceArray;
         try {

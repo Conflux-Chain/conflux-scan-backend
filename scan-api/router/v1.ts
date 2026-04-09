@@ -1239,8 +1239,10 @@ router_get(router,'/ens/reverse/match',
     async function (options) {
       const {app: { service: {accountQuery} },} = this as ScanCtx;
       const accountBasic = await accountQuery.listPatchInfo(toArray(options.address));
-      const map = {};
-      Object.keys(accountBasic.map).forEach(address => (map[address] = accountBasic.map[address]?.ens));
+      const map = lodash.omitBy(Object.fromEntries(Object.keys(accountBasic.map).map(address => [
+        address,
+        accountBasic.map[address]?.ens
+      ])), lodash.isNil);
       return {
         total: Object.keys(map).length,
         map,

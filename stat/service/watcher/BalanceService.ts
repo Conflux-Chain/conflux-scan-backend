@@ -44,7 +44,7 @@ export class BalanceService {
         const start = Date.now()
         const total = await table.count()
         if (total == 0) {
-            return {total: 0, list:[], /*code: 0,*/ table: table.getTableName()}
+            return {total: 0, list:[], table: table.getTableName()}
         }
         const list = await table.findAll({
             // max decimal 65 // https://dev.mysql.com/doc/refman/5.7/en/fixed-point-types.html
