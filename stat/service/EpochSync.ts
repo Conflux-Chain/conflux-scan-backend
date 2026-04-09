@@ -157,7 +157,6 @@ export class EpochSync extends SyncBase {
             cfxTransferArray = null
             tokenTransferArray = null
 
-
             let [addressNfts, transferredNftArray] = await Promise.all([
                 this.getAddressNft(epochNumber, epochTimestamp, addrNftTransferArray),
                 this.getTransferredNftArray(epochNumber, addrTransferArray),
@@ -276,7 +275,7 @@ export class EpochSync extends SyncBase {
                 NftMeta.bulkCreate(modelData.transferredNftArray, { transaction: dbTx,
                     updateOnDuplicate: ["epochNumber"]}),
                 NameTag.bulkCreate([...modelData.nameTagArray, ...modelData.bytes32NameTagArray], {transaction: dbTx,
-                    updateOnDuplicate: ["eoa", "auditor", "epoch", "nameTag", "website", "desc", "labels", "updatedAt"] as any}),
+                    updateOnDuplicate: ["eoa", "hex40id", "auditor", "epoch", "nameTag", "website", "desc", "labels", "updatedAt"] as any}),
                 CensorItem.bulkCreate(modelData.censorItemArray, { transaction: dbTx,
                         updateOnDuplicate: ["epochNumber", "censorType", "censorStatus", "createdAt", "updatedAt"],}),
 

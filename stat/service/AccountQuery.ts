@@ -55,14 +55,16 @@ export class AccountQuery {
             withByte32NameTagInfo?: boolean,
             withESpaceInfo?: boolean,
             withENSInfo?: boolean,
-            withRealtimeProxyImplInfo?: boolean,
+            withProxyImplInfo?: boolean,
+            realtimeProxyImpl?: boolean,
         } = {
             withContractInfo: true,
             withNameTagInfo: true,
             withByte32NameTagInfo: true,
             withESpaceInfo: true,
             withENSInfo: false,
-            withRealtimeProxyImplInfo: false,
+            withProxyImplInfo: false,
+            realtimeProxyImpl: false,
     }) {
         const [addresses1, addresses2] = lodash.partition(
             [...new Set(addresses.filter(item => item?.trim()))],
@@ -159,13 +161,15 @@ export class AccountQuery {
             withNameTagInfo?: boolean,
             withESpaceInfo?: boolean,
             withENSInfo?: boolean,
-            withRealtimeProxyImplInfo?: boolean,
+            withProxyImplInfo?: boolean,
+            realtimeProxyImpl?: boolean,
         } = {
             withContractInfo: true,
             withNameTagInfo: true,
             withESpaceInfo: true,
             withENSInfo: true,
-            withRealtimeProxyImplInfo: false,
+            withProxyImplInfo: false,
+            realtimeProxyImpl: false,
         }) {
         const hexes: string[] = addresses.map(format.hexAddress);
 
@@ -187,8 +191,8 @@ export class AccountQuery {
         }
 
         const [{contracts, tokens, verifies, impls}, nameTagInfos, evmSpaceInfos, ensInfos] = await Promise.all([
-            options.withContractInfo ? this._listContractInfos(mapIdToHex, options.withRealtimeProxyImplInfo) :
-                {contracts: {}, tokens: {}, verifies: {}, impls: {}},
+            options.withContractInfo ? this._listContractInfos(mapIdToHex, options.withProxyImplInfo,
+                options.realtimeProxyImpl) : {contracts: {}, tokens: {}, verifies: {}, impls: {}},
             options.withNameTagInfo ? this._listNameTagInfos(mapIdToHex) : {},
             options.withESpaceInfo ? this._listEVMSpaceInfos(mapIdToHex) : {},
             options.withENSInfo ? this._listENSInfos(mapIdToHex) : {},
@@ -203,7 +207,7 @@ export class AccountQuery {
                 eSpace: evmSpaceInfos[hex] ? {address: ethers.getAddress(hex)} : undefined,
                 ens: ensInfos[hex],
                 nameTag: nameTagInfos[hex],
-                implementation: impls[hex],
+                implementation: impls ? impls[hex] : undefined,
             }, lodash.isNil)
         ]));
 
@@ -213,7 +217,11 @@ export class AccountQuery {
     // contracts:  hex => {name}
     // verifies: hex => {name}
     // tokens: hex => token
-    private async _listContractInfos(mapIdToHex: {[id: number]: string}, withRealtimeProxyImplInfo: boolean = false) {
+    private async _listContractInfos(
+        mapIdToHex: { [id: number]: string },
+        withProxyImplInfo: boolean = false,
+        realtimeProxyImpl: boolean = false
+    ) {
         const {
             app: {tokenQuery, contractQuery, service},
         } = this;
@@ -225,12 +233,14 @@ export class AccountQuery {
         const contractSrv: ContractQuery = contractQuery || service.contractQuery;
         const tokenSrv: TokenQuery = tokenQuery || service.tokenQuery;
 
-        const impls = withRealtimeProxyImplInfo ?
-            lodash.zipObject(addresses, await Promise.all(addresses.map(item => contractSrv.getImpl(item)))) :
-            await this._getContractImpl(mapIdToHex);
-
-        addresses.push(...(lodash.flatten(Object.values(impls).filter(Boolean)
-            .map((item: any) => [item.implementation, item.beacon].filter(Boolean)))));
+        let impls;
+        if (withProxyImplInfo) {
+            impls = realtimeProxyImpl ?
+                lodash.zipObject(addresses, await Promise.all(addresses.map(item => contractSrv.getImpl(item)))) :
+                await this._getContractImpl(mapIdToHex);
+            addresses.push(...(lodash.flatten(Object.values(impls).filter(Boolean)
+                .map((item: any) => [item.implementation, item.beacon].filter(Boolean)))));
+        }
 
         const fieldMapper = (item: any) => [format.hexAddress(item.address), {name: item.name}];
 
@@ -265,18 +275,20 @@ export class AccountQuery {
             }
         }
 
-        Object.entries(impls).forEach(([item, impl]: [string, any]) => { // hex => {name, beacon, address, proxyPattern}
-            const verify = impl && verifies[format.hexAddress(impl.implementation)];
-            const beaconVerify = impl && impl.beacon && verifies[format.hexAddress(impl.beacon)];
-            impls[item] = impl ? {
-                name: verify?.name,
-                address: fmtAddr(impl.implementation, StatApp.networkId),
-                beaconName: beaconVerify?.name,
-                beaconAddress: fmtAddr(impl.beacon, StatApp.networkId),
-                proxyPattern: impl.proxyPattern,
-            } as any : undefined;
-            lodash.omitBy(impls[item], lodash.isEmpty);
-        });
+        if (withProxyImplInfo) {
+            Object.entries(impls).forEach(([item, impl]: [string, any]) => { // hex => {name, beacon, address, proxyPattern}
+                const verify = impl && verifies[format.hexAddress(impl.implementation)];
+                const beaconVerify = impl && impl.beacon && verifies[format.hexAddress(impl.beacon)];
+                impls[item] = impl ? {
+                    name: verify?.name,
+                    address: fmtAddr(impl.implementation, StatApp.networkId),
+                    beaconName: beaconVerify?.name,
+                    beaconAddress: fmtAddr(impl.beacon, StatApp.networkId),
+                    proxyPattern: impl.proxyPattern,
+                } as any : undefined;
+                lodash.omitBy(impls[item], lodash.isEmpty);
+            });
+        }
 
         return {contracts, tokens, verifies, impls};
     }
@@ -469,7 +481,7 @@ export class AccountQuery {
             withByte32NameTagInfo: true,
             withESpaceInfo: true,
             withENSInfo: true,
-            withRealtimeProxyImplInfo: true,
+            realtimeProxyImpl: true,
         });
         const methodMap = {};
         if (methods?.length) {

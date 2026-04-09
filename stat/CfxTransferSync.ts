@@ -229,7 +229,7 @@ export async function getCfxTransferTraces(epoch: number)
                 }
                 await buildCrossAddr(fromSpace, from, dbPivotBlock.createdAt, crossSpaceAddrArr);
                 await buildCrossAddr(toSpace,   to,   dbPivotBlock.createdAt, crossSpaceAddrArr);
-                // doc https://github.com/Conflux-Chain/CIPs/issues/88
+                /*// doc https://github.com/Conflux-Chain/CIPs/issues/88
                 if (!value
                     || callType === 'none'
                     || callType === 'callcode'
@@ -270,12 +270,17 @@ export async function getCfxTransferTraces(epoch: number)
                     console.log(`unknown trace type ${type}, epoch ${epoch} block ${blockHash
                     } tx ${txBean.txPosition}, trace ${traceIdx}, tx hash ${transactionHash}`)
                     process.exit(8)
+                }*/
+                const ts: any = getCfxTransfer(traceArr[traceIdx], {epoch, blockHash, txBean, txIdx,
+                    transactionPosition, transactionHash, traceIdx})
+                if (!ts) {
+                    continue
                 }
-                const fromId = await makeIdV(from)
-                const toId = await makeIdV(to)
+                const fromId = await makeIdV(ts.from)
+                const toId = await makeIdV(ts.to)
                 const bean:ICfxTransfer = {
                     epoch, blockIndex: blkIdx, txIndex: txBean.txPosition, txLogIndex: traceIdx,
-                    fromId, toId, createdAt:txBean.createdAt, value, type,
+                    fromId, toId, createdAt:txBean.createdAt, value: ts.value, type: ts.type,
                 }
                 bean['addressId'] = fromId
                 result.push(bean)
@@ -302,6 +307,62 @@ export async function getCfxTransferTraces(epoch: number)
         buildTime: Date.now() - start, traceRpcMs
     }
 }
+
+export function getCfxTransfer(trace, exitLogParams?: any) {
+    let {action: {from, to, value, callType, fromPocket, toPocket}, type} = trace
+
+    function logOnExit() {
+        if (exitLogParams) {
+            const {epoch, blockHash, txBean, txIdx, transactionPosition, transactionHash, traceIdx} = exitLogParams;
+            console.log(`unknown call type ${callType} type ${type}, epoch ${epoch} block ${blockHash
+            } tx ${txBean.txPosition}, full-tx-idx ${txIdx} tp ${transactionPosition} ${transactionHash},  trace ${traceIdx}`)
+            process.exit(8)
+        }
+    }
+
+    // doc https://github.com/Conflux-Chain/CIPs/issues/88
+    if (!value
+        || callType === 'none'
+        || callType === 'callcode'
+        || callType === 'delegatecall'
+        || callType === 'staticcall'
+        // both side pocket is set , not equal to 'balance', it's sponsor mechanism.
+        || (fromPocket && fromPocket !== 'balance' && toPocket && toPocket !== 'balance')
+        ||
+        (
+            // scan doesn't save gas/storage payment as cfx transfer records.
+            fromPocket === 'gas_payment' || toPocket === 'gas_payment' // save it except gas
+        )
+    ) {
+        return
+    }
+    if (callType !=='call' && type === 'call') {
+        logOnExit()
+    }
+    if (type === 'internal_transfer_action') {
+        if (POCKET_ADDRESS_MAP[fromPocket]) {
+            type = fromPocket
+        } else if (POCKET_ADDRESS_MAP[toPocket]) {
+            type = toPocket
+        }
+    } else if (type === 'create' || type ==='call') {
+    } else if ( type === 'suicide') {
+        // it seems that the bridge handles this type the same as internal_transfer_action.
+        console.log(`suicide `, trace);
+        from = trace.action.address;
+        value = trace.action.balance;
+        to = trace.action.refundAddress;
+    } else if (type === 'create_result' || type ==='call_result') {
+        //value should be zero, won't trigger
+    } else {
+        logOnExit()
+    }
+
+    return {
+        from, to, value, type
+    }
+}
+
 async function setup() {
     const [, , cmd, fromEpoch, ] = process.argv
     const config = await init()

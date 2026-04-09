@@ -1034,7 +1034,8 @@ paths:
         - $ref: '#/components/parameters/withByte32NameTagInfo'
         - $ref: '#/components/parameters/withESpaceInfo'
         - $ref: '#/components/parameters/withENSInfo'
-        - $ref: '#/components/parameters/withRealtimeProxyImplInfo'
+        - $ref: '#/components/parameters/withProxyImplInfo'
+        - $ref: '#/components/parameters/realtimeProxyImpl'
       responses:
         200:
           description: ''
@@ -4368,10 +4369,19 @@ components:
       schema:
         type: string
         default: 'false'
-    withRealtimeProxyImplInfo:
-      description: "If show realtime proxy impl infos which contain implementation contract name if exists, 
+    withProxyImplInfo:
+      description: "If show proxy impl infos which contain implementation contract name if exists, 
       beacon contract name if exists , proxy pattern, the value is true/false."
-      name: withRealtimeProxyImplInfo
+      name: withProxyImplInfo
+      in: query
+      required: false
+      schema:
+        type: string
+        default: 'false'
+    realtimeProxyImpl:
+      description: "Whether to obtain proxy impl information in real time, which can be true or false, 
+      and is only effective when withProxyImplInfo=true."
+      name: realtimeProxyImpl
       in: query
       required: false
       schema:
