@@ -119,7 +119,7 @@ export async function listAuthAction({author, skip = 0, limit = 10}) {
 
 	const arr = await AuthAction.sequelize.query(sql, {
 		raw: true,
-		logging: sqlLogFn('list auth action'),
+		// logging: sqlLogFn('list auth action'),
 		type: QueryTypes.SELECT, replacements: author ? [author, skip, limit] : [skip, limit],
 	})
 
@@ -127,11 +127,14 @@ export async function listAuthAction({author, skip = 0, limit = 10}) {
 		row['createdAt'] = row['txTime'];
 		row['txSender'] =  ethers.getAddress(row['txSender']);
 		row['address'] =  ethers.getAddress(row['address']);
+		delete row['refBlockStubId'];
+		delete row['transactionPosition'];
+		delete row['authIndex'];
 	});
 	const count = await AuthAction.count(author ? {where: {author}} : {
-		logging: sqlLogFn('count-auth-action'),
+		// logging: sqlLogFn('count-auth-action'),
 	});
-	console.log(`count ${count} , list ${arr.length}`);
+	// console.log(`count ${count} , list ${arr.length}`);
 
 	return {total: count, list: arr, listLimit: author ? 1000 : 10_000};
 }
