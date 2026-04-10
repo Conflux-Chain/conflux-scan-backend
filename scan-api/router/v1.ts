@@ -530,14 +530,12 @@ router_get(router,'/transaction',
   async function (result) {
     await getAccountQuery().patchAddressInfo(result.list, 'from', 'to');
 
-    const addresses = new Set<string>([
-      ...result.list.flatMap(item => [item.from, item.to, item.contractCreated])
-    ].filter(Boolean));
-    const nameMap = await getAccountQuery().list([...addresses]);
-    result.nameMap = nameMap;
+    const addresses = new Set<string>(result.list.flatMap(item => [item.from, item.to, item.contractCreated])
+        .filter(Boolean));
+    result.nameMap = await getAccountQuery().list([...addresses]);
 
     result.list.forEach((tx) => {
-      if (!nameMap[tx.to]) {
+      if (!result.nameMap[tx.to]?.contract) {
         tx.method = '0x'
       }
     });

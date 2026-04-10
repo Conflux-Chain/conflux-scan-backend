@@ -212,8 +212,11 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         if (limit > 100) {
             throw new Errors.ParameterError(`param <limit> is invalid: exceeds 100`);
         }
-        const result = await listAuthAction({author, skip, limit});
+        const result: any = await listAuthAction({author, skip, limit});
         await getAccountQuery().patchAddressInfo(result.list, 'txSender', 'address');
+        const addresses = new Set<string>(result.list.flatMap(item => [item.txSender, item.address]).filter(Boolean));
+        result.nameMap = await getAccountQuery().list([...addresses]);
+
         ctx.body = result;
     });
     router.get('/list-auth-action-in-tx', async (ctx)=>{
@@ -221,8 +224,11 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         if (txHash?.length != 66) {
             throw new Errors.ParameterError(`param <txHash> is invalid`);
         }
-        const result = await getAuthActionInTx(txHash);
+        const result: any = await getAuthActionInTx(txHash);
         await getAccountQuery().patchAddressInfo(result.list, '', 'address');
+        const addresses = new Set<string>(result.list.map(item => item.address).filter(Boolean));
+        result.nameMap = await getAccountQuery().list([...addresses]);
+
         ctx.body = result;
     });
 
