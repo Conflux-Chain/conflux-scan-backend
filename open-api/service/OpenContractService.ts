@@ -49,6 +49,7 @@ export async function polishContract(page) {
             row.contractAddress = row.contractAddress ? format.hexAddress(row.contractAddress) : '';
         }
     })
+
     const accountBasic = contract.size ? await getApiService().accountQuery.listPatchInfo([...contract])
         : {map: {}};
     page.addressInfo = accountBasic.map;
@@ -76,6 +77,17 @@ export async function polishContract(page) {
             delete page.addressInfo[k];
         });
     }
+
+    const addresses = new Set<string>(
+        page?.list?.flatMap(item => [
+            item.from,
+            item.to,
+            item.address,
+            item.contract,
+            item.contractAddress
+        ]).filter(Boolean)
+    );
+    page.nameMap = await getApiService().accountQuery.list([...addresses]);
 }
 export function removeEmptyKey(obj, key) {
     if (isEmptyObj(obj[key])) {
