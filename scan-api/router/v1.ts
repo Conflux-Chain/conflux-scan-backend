@@ -491,6 +491,7 @@ router_get(router,'/transaction',
         total: 'integer',
         listLimit: OpenAPI.schema({ type: 'integer', description: 'if exist, require skip+limit <= listLimit' }),
         ensInfo: 'object',
+        nameMap: 'object',
         list: [{
           blockHash: 'string',
           method: 'string',
@@ -528,11 +529,19 @@ router_get(router,'/transaction',
 
   async function (result) {
     await getAccountQuery().patchAddressInfo(result.list, 'from', 'to');
+
+    const addresses = new Set<string>([
+      ...result.list.flatMap(item => [item.from, item.to, item.contractCreated])
+    ].filter(Boolean));
+    const nameMap = await getAccountQuery().list([...addresses]);
+    result.nameMap = nameMap;
+
     result.list.forEach((tx) => {
-      if(!tx?.toContractInfo?.address) { // show method only when to address is contract
+      if (!nameMap[tx.to]) {
         tx.method = '0x'
       }
     });
+
     return result;
   },
 );
