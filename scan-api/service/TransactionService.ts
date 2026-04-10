@@ -71,7 +71,6 @@ export class TransactionService {
     !StatApp.isEVM && (typeDesc = typeDesc?.replace('EIP', 'CIP'))
 
     transaction.status = transaction.status ?? receipt?.outcomeStatus
-    // XXX: transaction.epochNumber come from `service.conflux.getTransactionByHash`
     const epoch = await service.epoch.query({ epochNumber: transaction.epochNumber }) || {};
     const gasPrice = receipt?.effectiveGasPrice || transaction.gasPrice || BigInt(0);
 
@@ -91,10 +90,17 @@ export class TransactionService {
       this.getCfxTransfers(transaction.hash),
       this.getTokenTransfers(transaction.hash),
     ]);
-    const addressSet = new Set<string>();
-    cfxTransfers.list.forEach(item => {addressSet.add(item.from);addressSet.add(item.to);})
-    tokenTransfers.list.forEach(item => {addressSet.add(item.from);addressSet.add(item.to);addressSet.add(item.address);})
-    const nameMap = await service.accountQuery.list([...addressSet]);
+
+    const addresses = new Set<string>([
+      transaction.from,
+      transaction.to,
+      transaction.contractCreated,
+      transaction.effectiveAuth?.author,
+      transaction.effectiveAuth?.address,
+      ...cfxTransfers.list.flatMap(item => [item.from, item.to]),
+      ...tokenTransfers.list.flatMap(item => [item.from, item.to, item.address]),
+    ].filter(Boolean));
+    const nameMap = await service.accountQuery.list([...addresses]);
 
     // zg rpc do not return contract address on transaction
     const contractCreated = receipt?.contractCreated ?? transaction.contractCreated
