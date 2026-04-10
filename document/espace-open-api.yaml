@@ -1742,8 +1742,28 @@ paths:
     get:
       tags:
         - 'EIP'
-      description: "Get EIP7702 authorizations."
+      description: "Retrieves EIP-7702 authorizations. Supports filtering by author, delegated contract address, 
+      and transaction sender. These parameters are combined using AND logic. 
+      The candidate data set comprises all authorization records on the chain."
       parameters:
+        - name: author
+          in: query
+          required: false
+          description: "Address of the authorization signer/author."
+          schema:
+            type: string
+        - name: address
+          in: query
+          required: false
+          description: "Address of the delegated contract."
+          schema:
+            type: string
+        - name: txSender
+          in: query
+          required: false
+          description: "Address of the transaction sender."
+          schema:
+            type: string
         - $ref: '#/components/parameters/skipParam'
         - $ref: '#/components/parameters/limitParam'
       responses:

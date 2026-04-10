@@ -105,7 +105,7 @@ export async function getAuthActionInTx(txHash: string) {
 	return {list};
 }
 
-export async function listAuthAction({author, skip = 0, limit = 10}) {
+export async function listAuthAction({author = '', address = '', txSender = '', skip = 0, limit = 10}) {
 	const actionT = AuthAction.getTableName();
 	const txT = FullTransaction.getTableName();
 	const hexT = Hex40Map.getTableName();
@@ -113,14 +113,31 @@ export async function listAuthAction({author, skip = 0, limit = 10}) {
 	 and tx.blockPosition = 0 and tx.txPosition = a.transactionPosition
 	 join ${hexT} hex on tx.fromId = hex.id `;
 	//no condition if author is not set
-	const where = author ? `where a.author = ?` : '';
+	let where = " where 1=1";
+	const replacements = [];
+	if (author) {
+		where += " and author = ?";
+		replacements.push(author);
+	}
+	if (address) {
+		where += " and address = ?";
+		replacements.push(address);
+	}
+	if (txSender) {
+		const senderId = await getAddrId(txSender, -1);
+		where += " and tx.fromId = ?";
+		replacements.push(senderId ?? -1);
+		console.log(`---???? [${replacements.join(' !! ')}] , sender id ${senderId}`);
+	}
 	const orderBy = `order by a.blockNumber desc, a.transactionPosition desc, a.authIndex desc limit ? , ?`;
 	const sql = `${select} ${where} ${orderBy}`;
+	console.log(`sql: ${sql}`);
+	console.log(`replacements: [${replacements.join(', ')}]`);
 
 	const arr = await AuthAction.sequelize.query(sql, {
 		raw: true,
 		// logging: sqlLogFn('list auth action'),
-		type: QueryTypes.SELECT, replacements: author ? [author, skip, limit] : [skip, limit],
+		type: QueryTypes.SELECT, replacements: [...replacements, skip, limit],
 	})
 
 	arr.forEach((row) => {
@@ -131,8 +148,13 @@ export async function listAuthAction({author, skip = 0, limit = 10}) {
 		delete row['transactionPosition'];
 		delete row['authIndex'];
 	});
-	const count = await AuthAction.count(author ? {where: {author}} : {
+	const countSql = `select count(*) as cnt ` + select.substr(sql.indexOf('from')) + where;
+	console.log(`countSql: ${countSql}`);
+	const count = await AuthAction.sequelize.query( countSql, {
 		// logging: sqlLogFn('count-auth-action'),
+		raw: true, replacements,
+	}).then(res=>{
+		return res[0]['cnt'] ?? 0;
 	});
 	// console.log(`count ${count} , list ${arr.length}`);
 

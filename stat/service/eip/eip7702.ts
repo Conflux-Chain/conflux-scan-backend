@@ -1,6 +1,6 @@
 import {AuthAction, AuthBlockStub, listAuthAction} from "../../model/EIP7702model";
 import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
-import {getCfxSdk, initEthSdk, SECOND} from "../common/utils";
+import {getCfxSdk, initEthSdk, mustBeAddressParamIfPresent, SECOND} from "../common/utils";
 import {ConfigInstance} from "../../config/StatConfig";
 import {Op} from "sequelize";
 import {sleep} from "../tool/ProcessTool";
@@ -13,6 +13,7 @@ import {FullTransaction} from "../../model/FullBlock";
 import {paginateCore} from "../../router/ParamChecker";
 import {getAccountQuery} from "../AccountQuery";
 import {setBody} from "../../../open-api/router/middleware";
+import {StatApp} from "../../StatApp";
 
 type AccountType = {
 	isContract: boolean,
@@ -311,7 +312,9 @@ async function testLoadAuth() {
 
 export async function listGlobalAuthAction(ctx) {
 	const {skip, limit} = paginateCore(ctx.request.query)
-	const result = await listAuthAction({author:'', skip, limit});
+	mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'author', 'address', 'txSender');
+	const {author, address, txSender} = ctx.request.query;
+	const result = await listAuthAction({author, address, txSender, skip, limit});
 	await getAccountQuery().patchAddressInfo(result.list, 'txSender', 'address');
 	setBody(ctx, result);
 }
