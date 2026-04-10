@@ -74,10 +74,9 @@ export class TxnSync {
             item.ensInfo = accountBasic.map[item.base32]?.ens || {};
             item.nameTagInfo = accountBasic.map[item.base32]?.nameTag || {};
         });
+        const nameMap = await accountQuery.list(addressArray);
 
-        let finalRet = {
-            /*code: 0, message: 'ok', */list, sum, //beginTime, endTime, alignToEpoch,
-        };
+        const finalRet = {list, sum, nameMap};
         this.rankCache.set(cacheKey, finalRet)
         return Promise.resolve(finalRet)
     }
