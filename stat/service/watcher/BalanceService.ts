@@ -76,6 +76,7 @@ export class BalanceService {
 
         // add token info
         let accountBasic
+        let nameMap = {};
         if(withTokenInfo) {
             const addressArray = retList.map(item => item.account.address);
             accountBasic = await this.app.accountQuery.listPatchInfo(addressArray);
@@ -85,9 +86,10 @@ export class BalanceService {
                 item['ensInfo'] = accountBasic.map[item.account.address]?.ens;
                 item['nameTagInfo'] = accountBasic.map[item.account.address]?.nameTag;
             });
+            nameMap = await this.app.accountQuery.list(addressArray);
         }
 
-        return {total, list: retList, skip, limit, table: table.getTableName(), holderQuery:elapsed}
+        return {total, list: retList, skip, limit, table: table.getTableName(), holderQuery:elapsed, nameMap}
     }
 
     zeros = '00000000000000000000000'
