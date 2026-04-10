@@ -442,15 +442,14 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         token.totalSupply = scientificToBigInt(token.totalSupply) as unknown as number
 
         const key = `top-token-holder_${limit}_${token.symbol}_${token.hex40id}`;
-        let list = dbCache.get(key);
-        if (!list) {
-            const data = await statApp.balanceService.rankHolder(base32, 0, limit, true)
-            list = data.list;
-            if (!list) {
-                ctx.body = data;
+        let data = dbCache.get(key);
+        if (!data?.list) {
+            data = await statApp.balanceService.rankHolder(base32, 0, limit, true)
+            if (!data?.list) {
+                ctx.body = data?.list;
                 return;
             }
-            dbCache.set(key, list, 60); // 60s
+            dbCache.set(key, data, 60); // 60s
         }
 
         const date = moment(new Date()).format('YYYY.MM.DD')
@@ -466,11 +465,15 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         s.push('\n');
 
         const decimals = token.decimals || 0
-        list.forEach(row=>{
+        const nameMap = data.nameMap;
+        data.list.forEach(row=>{
             const addr = StatApp.isEVM ? format.hexAddress(row?.account?.address) : row?.account?.address
             s.push(addr); s.push(',') // HolderAddress
             const name =  row?.ensInfo?.name || row?.nameTagInfo?.nameTag || row?.contractInfo?.name || row?.tokenInfo?.name;
+            const nameInfo = nameMap[fmtAddr(addr, StatApp.networkId)];
+            const nameNew = nameInfo?.ens?.name || nameInfo?.nameTag?.nameTag || nameInfo?.contract?.name || nameInfo?.token?.name;
             s.push(name); s.push(',') // HolderAddressName
+            s.push(nameNew); s.push(',') // HolderAddressNameNew
             s.push(row?.contractInfo ? "yes" : ""); s.push(',') // IsContract
             const quantity = BigFixed(row?.balance).div(BigFixed(10).pow(decimals))
             s.push(`"${formatBalance(quantity.toString(), 2)}"`); s.push(',') // Quantity
