@@ -4,10 +4,6 @@ import {FullTransaction} from "./FullBlock";
 import {getCfxSdk} from "../service/common/utils";
 import {detectAccountType} from "../service/eip/eip7702";
 import {ethers} from "ethers";
-import {paginateCore} from "../router/ParamChecker";
-import {getAccountQuery} from "../service/AccountQuery";
-import {setBody} from "../../open-api/router/middleware";
-import {sqlLogFn} from "./Utils";
 
 export interface IAuthBlockStub {
 	id?: number;
@@ -153,7 +149,9 @@ export async function listAuthAction({author = '', address = '', txSender = '', 
 	const count = await AuthAction.sequelize.query( countSql, {
 		// logging: sqlLogFn('count-auth-action'),
 		raw: true, replacements,
+		type: QueryTypes.SELECT,
 	}).then(res=>{
+		console.log(`what's it ?`, res);
 		return res[0]['cnt'] ?? 0;
 	});
 	// console.log(`count ${count} , list ${arr.length}`);
