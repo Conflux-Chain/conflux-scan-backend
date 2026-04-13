@@ -215,7 +215,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const result: any = await listAuthAction({author, skip, limit});
         await getAccountQuery().patchAddressInfo(result.list, 'txSender', 'address');
         const addresses = new Set<string>(result.list.flatMap(item => [item.txSender, item.address]).filter(Boolean));
-        result.nameMap = await getAccountQuery().list([...addresses]);
+        result.nameMap = await getAccountQuery().list([...addresses, author]);
 
         ctx.body = result;
     });
@@ -226,7 +226,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         }
         const result: any = await getAuthActionInTx(txHash);
         await getAccountQuery().patchAddressInfo(result.list, '', 'address');
-        const addresses = new Set<string>(result.list.map(item => item.address).filter(Boolean));
+        const addresses = new Set<string>(result.list.flatMap(item => [item.address, item.author]).filter(Boolean));
         result.nameMap = await getAccountQuery().list([...addresses]);
 
         ctx.body = result;
