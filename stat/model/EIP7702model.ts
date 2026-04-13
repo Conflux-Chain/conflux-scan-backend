@@ -123,12 +123,9 @@ export async function listAuthAction({author = '', address = '', txSender = '', 
 		const senderId = await getAddrId(txSender, -1);
 		where += " and tx.fromId = ?";
 		replacements.push(senderId ?? -1);
-		console.log(`---???? [${replacements.join(' !! ')}] , sender id ${senderId}`);
 	}
 	const orderBy = `order by a.blockNumber desc, a.transactionPosition desc, a.authIndex desc limit ? , ?`;
 	const sql = `${select} ${where} ${orderBy}`;
-	console.log(`sql: ${sql}`);
-	console.log(`replacements: [${replacements.join(', ')}]`);
 
 	const arr = await AuthAction.sequelize.query(sql, {
 		raw: true,
@@ -145,16 +142,13 @@ export async function listAuthAction({author = '', address = '', txSender = '', 
 		delete row['authIndex'];
 	});
 	const countSql = `select count(*) as cnt ` + select.substr(sql.indexOf('from')) + where;
-	console.log(`countSql: ${countSql}`);
 	const count = await AuthAction.sequelize.query( countSql, {
 		// logging: sqlLogFn('count-auth-action'),
 		raw: true, replacements,
 		type: QueryTypes.SELECT,
 	}).then(res=>{
-		console.log(`what's it ?`, res);
 		return res[0]['cnt'] ?? 0;
 	});
-	// console.log(`count ${count} , list ${arr.length}`);
 
 	return {total: count, list: arr, listLimit: author ? 1000 : 10_000};
 }
