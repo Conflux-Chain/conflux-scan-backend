@@ -381,18 +381,14 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const name = `${type}`
         const key = `top-cfx-holder_${type}_${size}`;
 
-        let list = dbCache.get(key);
-        if (list) {
-            // console.log(`from cache.`, list)
-        } else {
-            const data = await statApp.rankService.top(type, size, StatApp.networkId);
-            list = data.list;
-            // console.log(` from db.`, data)
-            if (!list) {
-                ctx.body = data;
+        let data = dbCache.get(key);
+        if (!data?.list) {
+            data = await statApp.rankService.top(type, size, StatApp.networkId);
+            if (!data?.list) {
+                ctx.body = data?.list;
                 return;
             }
-            dbCache.set(key, list, 60); // 60s
+            dbCache.set(key, data, 60); // 60s
         }
         ctx.set('Content-disposition', 'attachment; filename=' + name + '.csv')
         ctx.set('Content-type', 'text/csv')
@@ -405,10 +401,13 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
                 : 'rank,address,address name,balance,staking,total,percent,transactionCount')
         }
         s.push('\n');
-        list.forEach(row=>{
+        const nameMap = data.nameMap;
+        data.list.forEach(row=>{
             s.push(row.rank); s.push(',') // rank
             s.push(StatApp.isEVM ? row.hex : row.base32address); s.push(',') // base32
-            s.push(row.contractInfo?.name || row.tokenInfo?.name); s.push(',') // name
+            // s.push(row.contractInfo?.name || row.tokenInfo?.name); s.push(',') // name
+            const nameInfo = nameMap[fmtAddr(row.hex, StatApp.networkId)];
+            s.push(nameInfo?.contract?.name || nameInfo?.token?.name); s.push(',') // name
             s.push(row.value2); s.push(',') // balance
             if (!StatApp.isEVM) {
                 s.push(row.value3);
@@ -472,7 +471,6 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             // const name =  row?.ensInfo?.name || row?.nameTagInfo?.nameTag || row?.contractInfo?.name || row?.tokenInfo?.name;
             const nameInfo = nameMap[fmtAddr(addr, StatApp.networkId)];
             const name = nameInfo?.ens?.name || nameInfo?.nameTag?.nameTag || nameInfo?.contract?.name || nameInfo?.token?.name;
-            // s.push(name); s.push(',') // HolderAddressName
             s.push(name); s.push(',') // HolderAddressName
             s.push(row?.contractInfo ? "yes" : ""); s.push(',') // IsContract
             const quantity = BigFixed(row?.balance).div(BigFixed(10).pow(decimals))
