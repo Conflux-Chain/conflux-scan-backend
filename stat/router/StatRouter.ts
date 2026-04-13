@@ -469,11 +469,11 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         data.list.forEach(row=>{
             const addr = StatApp.isEVM ? format.hexAddress(row?.account?.address) : row?.account?.address
             s.push(addr); s.push(',') // HolderAddress
-            const name =  row?.ensInfo?.name || row?.nameTagInfo?.nameTag || row?.contractInfo?.name || row?.tokenInfo?.name;
+            // const name =  row?.ensInfo?.name || row?.nameTagInfo?.nameTag || row?.contractInfo?.name || row?.tokenInfo?.name;
             const nameInfo = nameMap[fmtAddr(addr, StatApp.networkId)];
-            const nameNew = nameInfo?.ens?.name || nameInfo?.nameTag?.nameTag || nameInfo?.contract?.name || nameInfo?.token?.name;
+            const name = nameInfo?.ens?.name || nameInfo?.nameTag?.nameTag || nameInfo?.contract?.name || nameInfo?.token?.name;
+            // s.push(name); s.push(',') // HolderAddressName
             s.push(name); s.push(',') // HolderAddressName
-            s.push(nameNew); s.push(',') // HolderAddressNameNew
             s.push(row?.contractInfo ? "yes" : ""); s.push(',') // IsContract
             const quantity = BigFixed(row?.balance).div(BigFixed(10).pow(decimals))
             s.push(`"${formatBalance(quantity.toString(), 2)}"`); s.push(',') // Quantity
