@@ -408,7 +408,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         list.forEach(row=>{
             s.push(row.rank); s.push(',') // rank
             s.push(StatApp.isEVM ? row.hex : row.base32address); s.push(',') // base32
-            s.push(row.name); s.push(',') // name
+            s.push(row.contractInfo?.name || row.tokenInfo?.name); s.push(',') // name
             s.push(row.value2); s.push(',') // balance
             if (!StatApp.isEVM) {
                 s.push(row.value3);
