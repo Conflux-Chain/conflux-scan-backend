@@ -24,8 +24,8 @@ export class BundleTx extends Model<IBundleTx> implements IBundleTx {
 	createdAt: Date;
 	static register(sequelize: Sequelize) {
 		BundleTx.init({
-			id: {type: DataTypes.BIGINT, primaryKey: true},
-			hash: {type: DataTypes.STRING(64), allowNull: false},
+			id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true},
+			hash: {type: DataTypes.STRING(66), allowNull: false},
 			epoch: {type: DataTypes.BIGINT, allowNull: false},
 			bundlerId: {type: DataTypes.BIGINT, allowNull: false},
 			entryPointId: {type: DataTypes.BIGINT, allowNull: false},
@@ -69,13 +69,13 @@ export class AATx extends Model<IAATx> implements IAATx {
 
 	static register(sequelize: Sequelize) {
 		AATx.init({
-			id: {type: DataTypes.BIGINT, primaryKey: true},
-			userOpHash: {type: DataTypes.STRING(64), allowNull: false},
+			id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true},
+			userOpHash: {type: DataTypes.STRING(66), allowNull: false},
 			epoch: {type: DataTypes.BIGINT, allowNull: false},
 			senderId: {type: DataTypes.BIGINT, allowNull: false},
 			bundleTxId: {type: DataTypes.BIGINT, allowNull: false},
 			paymasterId: {type: DataTypes.BIGINT, allowNull: false},
-			nonce: {type: DataTypes.BIGINT, allowNull: false},
+			nonce: {type: DataTypes.STRING(78), allowNull: false},
 			success: {type: DataTypes.BOOLEAN, allowNull: false},
 			actualGasCost: {type: DataTypes.DECIMAL(36,18), allowNull: false},
 			actualGasUsed: {type: DataTypes.DECIMAL(36,18), allowNull: false},
