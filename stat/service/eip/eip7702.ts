@@ -315,7 +315,13 @@ export async function listGlobalAuthAction(ctx) {
 	mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'author', 'address', 'txSender');
 	const {author, address, txSender} = ctx.request.query;
 	const result = await listAuthAction({author, address, txSender, skip, limit});
-	await getAccountQuery().patchAddressInfo(result.list, 'txSender', 'address');
+
+	const addresses = new Set(result.list.flatMap((item: any) => [item.txSender, item.address]).filter(Boolean));
+	result['nameMap'] = await getAccountQuery().list(
+		[...addresses],
+		{ withContractInfo: true, withNameTagInfo: true, withENSInfo: true }
+	);
+
 	setBody(ctx, result);
 }
 
