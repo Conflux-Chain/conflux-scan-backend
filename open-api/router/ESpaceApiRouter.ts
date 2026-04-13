@@ -78,7 +78,7 @@ import {CONST} from '../../stat/service/common/constant';
 import {ethers} from "ethers";
 import {CIP1559StatType} from "../../stat/service/StatsQuery";
 import {registerDataApi} from "./ApiRouter";
-import {detectAccountType} from "../../stat/service/eip/eip7702";
+import {detectAccountType, listGlobalAuthAction} from "../../stat/service/eip/eip7702";
 import {Errors} from "../../stat/service/common/LogicError";
 import {TokenQuery, TokenType} from "../../stat/service/TokenQuery";
 import {NFTType} from "../../stat/service/nftchecker/NFTCheckerService";
@@ -1074,6 +1074,9 @@ export function registerRouter(router: Router) {
 
     // token
     router.get('/token/tokeninfos', listTokens);
+
+    //eip7702
+    router.get('/eip7702/auths', listGlobalAuthAction);
 
     registerDataApi(router)
 }

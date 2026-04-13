@@ -101,24 +101,56 @@ export async function getAuthActionInTx(txHash: string) {
 	return {list};
 }
 
-export async function listAuthAction({author, skip = 0, limit = 10}) {
+export async function listAuthAction({author = '', address = '', txSender = '', skip = 0, limit = 10}) {
 	const actionT = AuthAction.getTableName();
 	const txT = FullTransaction.getTableName();
 	const hexT = Hex40Map.getTableName();
-	const sql = `select a.*, tx.createdAt as txTime, tx.hash as txHash, concat('0x', hex.hex) as txSender from ${actionT} a join ${txT} tx on a.blockNumber = tx.epoch
+	const select = `select a.*, tx.createdAt as txTime, tx.hash as txHash, concat('0x', hex.hex) as txSender from ${actionT} a join ${txT} tx on a.blockNumber = tx.epoch
 	 and tx.blockPosition = 0 and tx.txPosition = a.transactionPosition
-	 join ${hexT} hex on tx.fromId = hex.id 
-	 where a.author = ? order by a.blockNumber desc, a.transactionPosition desc, a.authIndex desc limit ? , ?`;
+	 join ${hexT} hex on tx.fromId = hex.id `;
+	//no condition if author is not set
+	let where = " where 1=1";
+	const replacements = [];
+	if (author) {
+		where += " and author = ?";
+		replacements.push(author);
+	}
+	if (address) {
+		where += " and address = ?";
+		replacements.push(address);
+	}
+	if (txSender) {
+		const senderId = await getAddrId(txSender, -1);
+		where += " and tx.fromId = ?";
+		replacements.push(senderId ?? -1);
+	}
+	const orderBy = `order by a.blockNumber desc, a.transactionPosition desc, a.authIndex desc limit ? , ?`;
+	const sql = `${select} ${where} ${orderBy}`;
+
 	const arr = await AuthAction.sequelize.query(sql, {
-		type: QueryTypes.SELECT, replacements: [author, skip, limit],
+		raw: true,
+		// logging: sqlLogFn('list auth action'),
+		type: QueryTypes.SELECT, replacements: [...replacements, skip, limit],
 	})
+
 	arr.forEach((row) => {
 		row['createdAt'] = row['txTime'];
 		row['txSender'] =  ethers.getAddress(row['txSender']);
 		row['address'] =  ethers.getAddress(row['address']);
+		delete row['refBlockStubId'];
+		delete row['transactionPosition'];
+		delete row['authIndex'];
 	});
-	const count = await AuthAction.count({where: {author}});
-	return {total: count, list: arr, listLimit: 1000};
+	const countSql = `select count(*) as cnt ` + select.substr(sql.indexOf('from')) + where;
+	const count = await AuthAction.sequelize.query( countSql, {
+		// logging: sqlLogFn('count-auth-action'),
+		raw: true, replacements,
+		type: QueryTypes.SELECT,
+	}).then(res=>{
+		return res[0]['cnt'] ?? 0;
+	});
+
+	return {total: count, list: arr, listLimit: author ? 1000 : 10_000};
 }
 
 export class AuthAction extends Model<IAuthAction> implements IAuthAction {

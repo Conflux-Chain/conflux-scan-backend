@@ -1739,6 +1739,41 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/TxsByTypeStat"
+  /eip7702/auths:
+    get:
+      tags:
+        - 'EIP'
+      description: "Retrieves EIP-7702 authorizations. Supports filtering by author, delegated contract address, 
+      and transaction sender. These parameters are combined using AND logic. 
+      The candidate data set comprises all authorization records on the chain."
+      parameters:
+        - name: author
+          in: query
+          required: false
+          description: "Address of the authorization signer/author."
+          schema:
+            type: string
+        - name: address
+          in: query
+          required: false
+          description: "Address of the delegated contract."
+          schema:
+            type: string
+        - name: txSender
+          in: query
+          required: false
+          description: "Address of the transaction sender."
+          schema:
+            type: string
+        - $ref: '#/components/parameters/skipParam'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/Auth7702"
   /data/accounts:
     get:
       tags:
@@ -4068,6 +4103,45 @@ components:
                 type: number
               address:
                 type: string
+    Auth7702:
+      type: object
+      properties:
+        status:
+          type: integer
+        message:
+          type: string
+        result:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  txHash:
+                    type: string
+                  blockNumber:
+                    type: number
+                    description: 'Block Number.'
+                  author:
+                    type: string
+                  address:
+                    type: string
+                    description: 'delegated address'
+                  txSender:
+                    type: string
+                  nonce:
+                    type: number
+                  result:
+                    type: string
+                    description: 'the result of this authority action.'
+                    enum:
+                      - 'success'
+                      - 'invalid_nonce'
+                  txTime:
+                    type: string
+                    description: 'transaction time. example: 2025-07-07T03:41:34.000Z'
     TxsByTypeStat:
       type: object
       properties:

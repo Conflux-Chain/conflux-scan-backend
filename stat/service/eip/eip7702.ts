@@ -1,14 +1,19 @@
 import {AuthAction, AuthBlockStub, listAuthAction} from "../../model/EIP7702model";
 import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
-import {getCfxSdk, initEthSdk, SECOND} from "../common/utils";
+import {getCfxSdk, initEthSdk, mustBeAddressParamIfPresent, SECOND} from "../common/utils";
 import {ConfigInstance} from "../../config/StatConfig";
 import {Op} from "sequelize";
 import {sleep} from "../tool/ProcessTool";
 import {init} from "../tool/FixDailyTokenStat";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
-import {getAddrId, makeId, makeIdV} from "../../model/HexMap";
+import {getAddrId, Hex40Map, makeId, makeIdV} from "../../model/HexMap";
 import {Errors} from "../common/LogicError";
 import {ethers, JsonRpcProvider} from "ethers";
+import {FullTransaction} from "../../model/FullBlock";
+import {paginateCore} from "../../router/ParamChecker";
+import {getAccountQuery} from "../AccountQuery";
+import {setBody} from "../../../open-api/router/middleware";
+import {StatApp} from "../../StatApp";
 
 type AccountType = {
 	isContract: boolean,
@@ -303,6 +308,21 @@ async function testLoadAuth() {
 	const provider = new JsonRpcProvider(url);
 	// '0xa37384c0646a682bd0e206232572af91b75e6735ab30b658854222546f76ffbc'
 	await loadSetAuth(provider, 53098075);
+}
+
+export async function listGlobalAuthAction(ctx) {
+	const {skip, limit} = paginateCore(ctx.request.query)
+	mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'author', 'address', 'txSender');
+	const {author, address, txSender} = ctx.request.query;
+	const result = await listAuthAction({author, address, txSender, skip, limit});
+
+	const addresses = new Set(result.list.flatMap((item: any) => [item.txSender, item.address]).filter(Boolean));
+	result['nameMap'] = await getAccountQuery().list(
+		[...addresses],
+		{ withContractInfo: true, withNameTagInfo: true, withENSInfo: true }
+	);
+
+	setBody(ctx, result);
 }
 
 if(module == require.main) {
