@@ -1303,12 +1303,11 @@ router_get(router,'/report/transaction',
       skip: { in: 'query', type: 'integer' },
       reverse: { in: 'query', type: 'boolean' },
       token: { in: 'query', type: 'string' },
-
       blockHash: { in: 'query', type: 'string', description: 'use alone' },
-      transactionHash: { in: 'query', type: 'string', nullable: true }, // new add
-      nonce: { in: 'query', type: 'integer', minimum: 0 }, // new add
-      from: { in: 'query', type: 'string', nullable: true }, // new add
-      to: { in: 'query', type: 'string', nullable: true }, // new add
+      transactionHash: { in: 'query', type: 'string', nullable: true },
+      nonce: { in: 'query', type: 'integer', minimum: 0 },
+      from: { in: 'query', type: 'string', nullable: true },
+      to: { in: 'query', type: 'string', nullable: true },
     },
     output: {
       200: 'string',
