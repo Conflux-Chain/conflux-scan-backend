@@ -221,8 +221,7 @@ export class RankService{
             item.nameTagInfo = accountBasic.map[mapRefKey]?.nameTag;
             item.name = item.contractInfo?.name || item.tokenInfo?.name;
         });
-        const nameMap = await accountService.list(addressArray);
 
-        return {total: list.length, list, nameMap};
+        return {total: list.length, list};
     }
 }

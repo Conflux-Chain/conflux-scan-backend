@@ -215,8 +215,9 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const result: any = await listAuthAction({author, skip, limit});
         await getAccountQuery().patchAddressInfo(result.list, 'txSender', 'address');
         const addresses = new Set<string>(result.list.flatMap(item => [item.txSender, item.address]).filter(Boolean));
-        result.nameMap = await getAccountQuery().list([...addresses, author]);
-
+        result.nameMap = await statApp.accountQuery.list([...addresses, author], {
+            withContractInfo: true, withNameTagInfo: true, withENSInfo: true
+        });
         ctx.body = result;
     });
     router.get('/list-auth-action-in-tx', async (ctx)=>{
@@ -227,8 +228,9 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const result: any = await getAuthActionInTx(txHash);
         await getAccountQuery().patchAddressInfo(result.list, '', 'address');
         const addresses = new Set<string>(result.list.flatMap(item => [item.address, item.author]).filter(Boolean));
-        result.nameMap = await getAccountQuery().list([...addresses]);
-
+        result.nameMap = await statApp.accountQuery.list([...addresses], {
+            withContractInfo: true, withNameTagInfo: true, withENSInfo: true
+        });
         ctx.body = result;
     });
 
@@ -352,7 +354,16 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const {limit} = paginateCore(ctx.request.query);
 
         const {type} = ctx.request.query || {type: 'cfxSend', limit: 10};
-        ctx.body = await statApp.rankService.top(type, limit, StatApp.networkId)
+        const result: any = await statApp.rankService.top(type, limit, StatApp.networkId)
+
+        if (result?.list?.length) {
+            const addresses = result.list.map(item => item.hex);
+            result.nameMap = await statApp.accountQuery.list(addresses, {
+                withContractInfo: true, withNameTagInfo: true, withENSInfo: true
+            });
+        }
+
+        ctx.body = result;
     })
 
     router.get('/top-cfx-holder-csv', async (ctx) => {
@@ -401,7 +412,15 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
                 : 'rank,address,address name,balance,staking,total,percent,transactionCount')
         }
         s.push('\n');
-        const nameMap = data.nameMap;
+
+        let nameMap = {};
+        if (data?.list?.length) {
+            const addresses = data.list.map(item => item.hex);
+            nameMap = await statApp.accountQuery.list(addresses, {
+                withContractInfo: true, withNameTagInfo: true, withENSInfo: true
+            });
+        }
+
         data.list.forEach(row=>{
             s.push(row.rank); s.push(',') // rank
             s.push(StatApp.isEVM ? row.hex : row.base32address); s.push(',') // base32
