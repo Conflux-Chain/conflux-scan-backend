@@ -87,3 +87,70 @@ export class AATx extends Model<IAATx> implements IAATx {
 	}
 }
 
+export interface IAccountDeployed {
+	id: bigint;
+	epoch: bigint;
+	userOpHash: string;
+	sender: string;
+	factory: string;
+	paymaster: string;
+	createdAt: Date;
+}
+
+export class AccountDeployed extends Model<IAccountDeployed> implements IAccountDeployed {
+	id: bigint;
+	userOpHash: string;
+	epoch: bigint;
+	sender: string;
+	factory: string;
+	paymaster: string;
+	createdAt: Date;
+	static register(sequelize: Sequelize) {
+		AccountDeployed.init({
+			id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true},
+			epoch: {type: DataTypes.BIGINT, allowNull: false},
+			userOpHash: {type: DataTypes.STRING(66), allowNull: false},
+			sender: {type: DataTypes.STRING(42), allowNull: false},
+			factory: {type: DataTypes.STRING(42), allowNull: false},
+			paymaster: {type: DataTypes.STRING(42), allowNull: false},
+			createdAt: {type: DataTypes.DATE, allowNull: false},
+		}, {
+			sequelize,
+			tableName: 'account_deployed',
+		})
+	}
+}
+
+export interface IUserOperationRevertReason {
+	id: bigint;
+	epoch: bigint;
+	userOpHash: string;
+	sender: string;
+	nonce: string;
+	revertReason: string;
+	createdAt: Date;
+}
+
+export class UserOperationRevertReason extends Model<IUserOperationRevertReason> implements IUserOperationRevertReason {
+	id: bigint;
+	userOpHash: string;
+	epoch: bigint;
+	sender: string;
+	nonce: string;
+	revertReason: string;
+	createdAt: Date;
+	static register(sequelize: Sequelize) {
+		UserOperationRevertReason.init({
+			id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true},
+			epoch: {type: DataTypes.BIGINT, allowNull: false},
+			userOpHash: {type: DataTypes.STRING(66), allowNull: false},
+			sender: {type: DataTypes.STRING(42), allowNull: false},
+			nonce: {type: DataTypes.STRING(78), allowNull: false},
+			revertReason: {type: DataTypes.TEXT("medium"), allowNull: false},
+			createdAt: {type: DataTypes.DATE, allowNull: false},
+		}, {
+			sequelize,
+			tableName: 'revert_reason',
+		})
+	}
+}

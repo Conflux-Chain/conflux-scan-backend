@@ -1,5 +1,18 @@
-import {IUserOperationEvent, parseUserOperationEvent} from "./eip4337abi";
-import {AATx, BundleTx, IAATx, IBundleTx} from "../../model/eip4337model";
+import {
+	IUserOperationEvent,
+	parseAccountDeployed,
+	parseUserOperationEvent,
+	parseUserOperationRevertReason
+} from "./eip4337abi";
+import {
+	AATx, AccountDeployed,
+	BundleTx,
+	IAATx,
+	IAccountDeployed,
+	IBundleTx,
+	IUserOperationRevertReason,
+	UserOperationRevertReason
+} from "../../model/eip4337model";
 import {formatEther} from "ethers";
 import {makeIdV} from "../../model/HexMap";
 import {Transaction} from "sequelize";
@@ -11,15 +24,13 @@ export interface IBundleData {
 	bundlerTx: IBundleTx;
 	bundlerTxId: bigint;
 	aaTxArr: IAATx[];
+	accountDeployedArr: IAccountDeployed[];
+	revertReasonArr: IUserOperationRevertReason[];
+	hasData: boolean;
 }
 
-export async function buildDBModel(ops: IUserOperationEvent[], blockTime: Date) : Promise<IAATx[]> {
-	const aaTxArr: IAATx[] = [];
-
-	for (let i = 0; i < ops.length; i++){
-		const op = ops[i];
-
-		const aaTx: IAATx = {
+export async function buildAATxDBModel(op: IUserOperationEvent, blockTime: Date) : Promise<IAATx> {
+	return {
 			actualGasCost: formatEther(op.actualGasCost),
 			actualGasUsed: op.actualGasUsed.toString(),
 			bundleTxId: 0n,
@@ -31,11 +42,7 @@ export async function buildDBModel(ops: IUserOperationEvent[], blockTime: Date) 
 			senderId: await makeIdV(op.sender),
 			success: op.success,
 			userOpHash: op.userOpHash,
-		}
-		aaTxArr.push(aaTx);
-	}
-
-	return aaTxArr;
+		};
 }
 
 export async function saveBundleArr(data: IBundleData[], dbTx: Transaction) : Promise<void> {
@@ -53,13 +60,29 @@ export async function saveBundleData(data: IBundleData, dbTx: Transaction) : Pro
 		return;
 	}
 	console.log(` aa tx count ${data.aaTxArr.length}`);
+
 	for (let i = 0; i < data.aaTxArr.length; i++) {
 		data.aaTxArr[i].bundleTxId = data.bundlerTxId;
 		data.aaTxArr[i].epoch = data.bundlerTx.epoch;
 	}
+
+	for (let i = 0; i < data.accountDeployedArr.length; i++) {
+		data.accountDeployedArr[i].epoch = data.bundlerTx.epoch;
+	}
+
+	for (let i = 0; i < data.revertReasonArr.length; i++) {
+		data.revertReasonArr[i].epoch = data.bundlerTx.epoch;
+	}
+
 	await AATx.bulkCreate(data.aaTxArr, {
 		transaction: dbTx,
-	})
+	});
+	await UserOperationRevertReason.bulkCreate(data.revertReasonArr, {
+		transaction: dbTx,
+	});
+	await AccountDeployed.bulkCreate(data.accountDeployedArr, {
+		transaction: dbTx,
+	});
 }
 
 export async function syncEpoch(cfx: Conflux, ep: number, blockTime: Date) : Promise<void> {
@@ -77,36 +100,72 @@ export async function syncEpoch(cfx: Conflux, ep: number, blockTime: Date) : Pro
 	for (const rcptOfBlock of r) {
 		console.log(`block rcpts ${rcptOfBlock.length}`);
 		for (const rcpt of rcptOfBlock) {
-			const events = []
 			console.log(`event count [${rcpt.logs?.length || rcpt}]`);
+
+			const bundler:IBundleData = {
+				bundlerTxId: BigInt(0),
+				bundlerTx: null,
+				aaTxArr: [],
+				accountDeployedArr: [],
+				revertReasonArr: [],
+				hasData: false,
+			} as IBundleData;
+
 			for (const log of rcpt.logs) {
 				const event = parseUserOperationEvent(log);
-				if (!event) {
+				if (event) {
+					console.log(`it's user op`);
+					const userOp = await buildAATxDBModel(event, blockTime);
+					bundler.hasData = true;
+					bundler.aaTxArr.push(userOp);
 					continue;
 				}
-				console.log(`got event `, event)
-				events.push(event);
+
+				const accDeployed = parseAccountDeployed(log);
+				if (accDeployed) {
+					console.log(`it's user account deployed`);
+					bundler.accountDeployedArr.push({
+						createdAt: blockTime, epoch: 0n,
+						factory: accDeployed.factory, id: 0n,
+						paymaster: accDeployed.paymaster,
+						sender: accDeployed.sender,
+						userOpHash: accDeployed.userOpHash,
+					})
+					bundler.hasData = true;
+					continue;
+				}
+
+				const revertReason = parseUserOperationRevertReason(log);
+				if (revertReason) {
+					console.log(`it's revert reason`);
+					bundler.revertReasonArr.push({
+						createdAt: blockTime, epoch: 0n,
+						id: 0n, nonce: revertReason.nonce.toString(),
+						revertReason: revertReason.revertReason,
+						sender: revertReason.sender,
+						userOpHash: revertReason.userOpHash,
+					})
+
+					bundler.hasData = true;
+				} else {
+					console.log(`what's it ?`, log);
+				}
 			}
-			if (events.length > 0) {
+			if (bundler.aaTxArr.length > 0) {
 				const rawTx = await cfx.getTransactionByHash(rcpt.transactionHash);
 
-				const bundleTx = {
+				bundler.bundlerTx = {
 					hash: rcpt.transactionHash,
 					epoch: BigInt(rcpt.epochNumber),
-					bundlerId: await makeIdV(rcpt.from, null, {dt: blockTime}).then(res=>BigInt(res ?? 0)),
-					entryPointId: await makeIdV(rcpt.to, null, {dt: blockTime}).then(res=>BigInt(res ?? 0)),
-					txCount: events.length,
+					bundlerId: await makeIdV(rcpt.from, null, {dt: blockTime}).then(res => BigInt(res ?? 0)),
+					entryPointId: await makeIdV(rcpt.to, null, {dt: blockTime}).then(res => BigInt(res ?? 0)),
+					txCount: bundler.aaTxArr.length,
 					value: formatEther(rawTx?.value ?? 0),
 					txnFee: formatEther(rcpt.gasFee),
 					createdAt: blockTime,
 				} as IBundleTx;
 
-				const beanArr = await buildDBModel(events, blockTime);
-				bundleArr.push({
-					bundlerTxId: BigInt(0),
-					bundlerTx: bundleTx,
-					aaTxArr: beanArr,
-				} as IBundleData);
+				bundleArr.push(bundler);
 			}
 		}
 	}
