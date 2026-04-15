@@ -31,24 +31,28 @@ export interface IBundleData {
 
 export async function buildAATxDBModel(op: IUserOperationEvent, blockTime: Date) : Promise<IAATx> {
 	return {
-			actualGasCost: formatEther(op.actualGasCost),
-			actualGasUsed: op.actualGasUsed.toString(),
-			bundleTxId: 0n,
-			createdAt: blockTime,
-			epoch: 0n,
-			id: 0n,
-			nonce: op.nonce,
-			paymasterId: await makeIdV(op.paymaster),
-			senderId: await makeIdV(op.sender),
-			success: op.success,
-			userOpHash: op.userOpHash,
-		};
+		actualGasCost: formatEther(op.actualGasCost),
+		actualGasUsed: op.actualGasUsed.toString(),
+		bundleTxId: 0n,
+		createdAt: blockTime,
+		epoch: 0n,
+		id: 0n,
+		nonce: op.nonce,
+		paymasterId: await makeIdV(op.paymaster),
+		senderId: await makeIdV(op.sender),
+		bundlerId: 0n,
+		entryPointId: 0n,
+		success: op.success,
+		userOpHash: op.userOpHash,
+	};
 }
 
 export async function saveBundleArr(data: IBundleData[], dbTx: Transaction) : Promise<void> {
 	for (let i = 0; i < data.length; i++) {
 		const bundle = data[i];
-		const created = await BundleTx.create(bundle.bundlerTx);
+		const created = await BundleTx.create(bundle.bundlerTx, {
+			transaction: dbTx,
+		});
 		bundle.bundlerTxId = created.id;
 		await saveBundleData(bundle, dbTx);
 	}
@@ -62,16 +66,21 @@ export async function saveBundleData(data: IBundleData, dbTx: Transaction) : Pro
 	console.log(` aa tx count ${data.aaTxArr.length}`);
 
 	for (let i = 0; i < data.aaTxArr.length; i++) {
-		data.aaTxArr[i].bundleTxId = data.bundlerTxId;
-		data.aaTxArr[i].epoch = data.bundlerTx.epoch;
+		const iaaTx = data.aaTxArr[i];
+		iaaTx.bundleTxId = data.bundlerTxId;
+		iaaTx.epoch = data.bundlerTx.epoch;
+		iaaTx.bundlerId = data.bundlerTx.bundlerId;
+		iaaTx.entryPointId = data.bundlerTx.entryPointId;
 	}
 
 	for (let i = 0; i < data.accountDeployedArr.length; i++) {
 		data.accountDeployedArr[i].epoch = data.bundlerTx.epoch;
+		data.accountDeployedArr[i].bundleTxId = data.bundlerTxId;
 	}
 
 	for (let i = 0; i < data.revertReasonArr.length; i++) {
 		data.revertReasonArr[i].epoch = data.bundlerTx.epoch;
+		data.revertReasonArr[i].bundleTxId = data.bundlerTxId;
 	}
 
 	await AATx.bulkCreate(data.aaTxArr, {
@@ -125,6 +134,7 @@ export async function syncEpoch(cfx: Conflux, ep: number, blockTime: Date) : Pro
 				if (accDeployed) {
 					console.log(`it's user account deployed`);
 					bundler.accountDeployedArr.push({
+						bundleTxId: 0n,
 						createdAt: blockTime, epoch: 0n,
 						factory: accDeployed.factory, id: 0n,
 						paymaster: accDeployed.paymaster,
@@ -139,6 +149,7 @@ export async function syncEpoch(cfx: Conflux, ep: number, blockTime: Date) : Pro
 				if (revertReason) {
 					console.log(`it's revert reason`);
 					bundler.revertReasonArr.push({
+						bundleTxId: 0n,
 						createdAt: blockTime, epoch: 0n,
 						id: 0n, nonce: revertReason.nonce.toString(),
 						revertReason: revertReason.revertReason,
@@ -151,7 +162,7 @@ export async function syncEpoch(cfx: Conflux, ep: number, blockTime: Date) : Pro
 					console.log(`what's it ?`, log);
 				}
 			}
-			if (bundler.aaTxArr.length > 0) {
+			if (bundler.hasData) {
 				const rawTx = await cfx.getTransactionByHash(rcpt.transactionHash);
 
 				bundler.bundlerTx = {
@@ -187,6 +198,12 @@ async function main() {
 
 	await AATx.sequelize?.close();
 }
+/*
+ drop table bundleTx;
+ drop table aaTx;
+ drop table account_deployed;
+ drop table revert_reason;
+ */
 
 if (require.main == module) {
 	main().then();

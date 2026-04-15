@@ -36,6 +36,11 @@ export class BundleTx extends Model<IBundleTx> implements IBundleTx {
 		}, {
 			sequelize,
 			tableName: 'bundleTx',
+			indexes: [
+				{name: 'idx_epoch', fields: ['epoch']},
+				{name: 'idx_bundlerId_entryPointId', fields: ['bundlerId', 'entryPointId']},
+				{name: 'idx_entryPointId', fields: ['entryPointId']},
+			]
 		})
 	}
 }
@@ -45,6 +50,8 @@ export interface IAATx {
 	userOpHash: string;
 	epoch: bigint;
 	senderId: number;
+	bundlerId: bigint;
+	entryPointId: bigint;
 	bundleTxId: bigint;
 	paymasterId: number;
 	nonce: bigint;
@@ -59,6 +66,8 @@ export class AATx extends Model<IAATx> implements IAATx {
 	userOpHash: string;
 	epoch: bigint;
 	senderId: number;
+	bundlerId: bigint;
+	entryPointId: bigint;
 	bundleTxId: bigint;
 	paymasterId: number;
 	nonce: bigint;
@@ -73,6 +82,8 @@ export class AATx extends Model<IAATx> implements IAATx {
 			userOpHash: {type: DataTypes.STRING(66), allowNull: false},
 			epoch: {type: DataTypes.BIGINT, allowNull: false},
 			senderId: {type: DataTypes.BIGINT, allowNull: false},
+			bundlerId: {type: DataTypes.BIGINT, allowNull: false},
+			entryPointId: {type: DataTypes.BIGINT, allowNull: false},
 			bundleTxId: {type: DataTypes.BIGINT, allowNull: false},
 			paymasterId: {type: DataTypes.BIGINT, allowNull: false},
 			nonce: {type: DataTypes.STRING(78), allowNull: false},
@@ -83,12 +94,20 @@ export class AATx extends Model<IAATx> implements IAATx {
 		}, {
 			sequelize,
 			tableName: 'aaTx',
+			indexes: [
+				{name: 'idx_epoch', fields: ['epoch']},
+				{name: 'idx_senderId_bundlerId_entryPointId', fields: ['senderId', 'bundlerId', 'entryPointId']},
+				{name: 'idx_senderId_entryPointId', fields: ['senderId', 'entryPointId']},
+				{name: 'idx_bundlerId_entryPointId', fields: ['bundlerId', 'entryPointId']},
+				{name: 'idx_entryPointId', fields: ['entryPointId']},
+			]
 		})
 	}
 }
 
 export interface IAccountDeployed {
 	id: bigint;
+	bundleTxId: bigint;
 	epoch: bigint;
 	userOpHash: string;
 	sender: string;
@@ -99,6 +118,7 @@ export interface IAccountDeployed {
 
 export class AccountDeployed extends Model<IAccountDeployed> implements IAccountDeployed {
 	id: bigint;
+	bundleTxId: bigint;
 	userOpHash: string;
 	epoch: bigint;
 	sender: string;
@@ -108,6 +128,7 @@ export class AccountDeployed extends Model<IAccountDeployed> implements IAccount
 	static register(sequelize: Sequelize) {
 		AccountDeployed.init({
 			id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true},
+			bundleTxId: {type: DataTypes.BIGINT, allowNull: false},
 			epoch: {type: DataTypes.BIGINT, allowNull: false},
 			userOpHash: {type: DataTypes.STRING(66), allowNull: false},
 			sender: {type: DataTypes.STRING(42), allowNull: false},
@@ -117,12 +138,16 @@ export class AccountDeployed extends Model<IAccountDeployed> implements IAccount
 		}, {
 			sequelize,
 			tableName: 'account_deployed',
+			indexes: [
+				{name: 'idx_epoch', fields: ['epoch']},
+			]
 		})
 	}
 }
 
 export interface IUserOperationRevertReason {
 	id: bigint;
+	bundleTxId: bigint;
 	epoch: bigint;
 	userOpHash: string;
 	sender: string;
@@ -133,6 +158,7 @@ export interface IUserOperationRevertReason {
 
 export class UserOperationRevertReason extends Model<IUserOperationRevertReason> implements IUserOperationRevertReason {
 	id: bigint;
+	bundleTxId: bigint;
 	userOpHash: string;
 	epoch: bigint;
 	sender: string;
@@ -142,6 +168,7 @@ export class UserOperationRevertReason extends Model<IUserOperationRevertReason>
 	static register(sequelize: Sequelize) {
 		UserOperationRevertReason.init({
 			id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true},
+			bundleTxId: {type: DataTypes.BIGINT, allowNull: false},
 			epoch: {type: DataTypes.BIGINT, allowNull: false},
 			userOpHash: {type: DataTypes.STRING(66), allowNull: false},
 			sender: {type: DataTypes.STRING(42), allowNull: false},
@@ -151,6 +178,10 @@ export class UserOperationRevertReason extends Model<IUserOperationRevertReason>
 		}, {
 			sequelize,
 			tableName: 'revert_reason',
+			indexes: [
+				{name: 'idx_epoch', fields: ['epoch']},
+				{name: 'idx_userOpHash', fields: ['userOpHash']},
+			]
 		})
 	}
 }
