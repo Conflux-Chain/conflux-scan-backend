@@ -498,6 +498,11 @@ export const CONST = {
     71: ["0x36B83E0D41D1dd9C73a006F0c1cbC1F096E69E34"],
   },
 
+  SWAPPI_NFT_POSITION_LIST: {
+    1030: ["0xaaeA97033dFe8AEBDD9d4aE9D5856678B8F7e127"],
+    71: ["0xdba7475F00deb72Bc80B16e8d742c86760c342fe"],
+  },
+
   PROXY_PATTERN: {
     BEACON_PROXY: "EIP-1967 Transparent Proxy",
     PROXY: "OpenZeppelin's Unstructured Storage",
