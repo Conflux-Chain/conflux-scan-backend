@@ -8,7 +8,7 @@ import {Erc721Transfer} from "../../model/Erc721Transfer";
 import {Errors} from "../common/LogicError";
 import {CONST} from "../common/constant"
 import {IPFSGatewaySync} from "../IPFSGatewaySync";
-import {StatApp} from "../../StatApp";
+import {fmtAddr, StatApp} from "../../StatApp";
 import {TokenQuery} from "../TokenQuery";
 import {MetaStatus, NftMeta} from "./NftMetaStorage";
 
@@ -448,6 +448,7 @@ export class NFTPreviewService {
                     JSON.stringify(lodash.assign(err, {message: `parse metadata of NFT occurs ${e.message}`}))
                 );
             }
+            this.replaceMetaAttributes(address, rawMeta);
             meta = {...rawMeta};
 
             // build resp
@@ -501,6 +502,22 @@ export class NFTPreviewService {
         }
 
         return uri;
+    }
+
+    private replaceMetaAttributes(address, meta) {
+        const addr = fmtAddr(address, StatApp.networkId);
+
+        const nfts = CONST.SWAPPI_NFT_POSITION_LIST[StatApp.networkId];
+        if (!nfts?.length || !nfts.includes(addr)) {
+            return;
+        }
+
+        if (meta?.name) {
+            meta.name = meta.name.replace(/vSwap/g, "WallFreeX");
+        }
+        if (meta?.description) {
+            meta.description = meta.description.replace(/vSwap/g, "WallFreeX");
+        }
     }
 
     private buildNFTPreview({imageUri, imageName, imageDesc, imageHeight = undefined,

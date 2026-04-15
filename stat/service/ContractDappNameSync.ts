@@ -6,10 +6,12 @@ import {fmtAddr, StatApp} from "../StatApp";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import {TokenTool} from "./tool/TokenTool";
 import {Token} from "../model/Token";
+import {Op} from "sequelize";
 
 export class ContractDappNameSync {
     private cfx: Conflux;
     private tokenTool: TokenTool;
+    private updateNFTPositionAlready: boolean;
 
     constructor({cfx}: { cfx: Conflux }) {
         this.cfx = cfx;
@@ -24,7 +26,11 @@ export class ContractDappNameSync {
             await that.updateLpNames().catch(err => {
                 safeAddErrorLog('dapp-name-task', 'lp-name', err).then();
                 console.log("[dapp name]schedule error", err);
-            })
+            });
+            await that.updateNFTPositionNames().catch(err => {
+                safeAddErrorLog('dapp-name-task', 'nft-position-name', err).then();
+                console.log("[dapp name]schedule error", err);
+            });
             setTimeout(repeat, interval);
         }
 
@@ -66,6 +72,46 @@ export class ContractDappNameSync {
             const name = `${lpToken.name} ${token0.symbol}/${token1.symbol}`;
             await Token.update({name}, {where: {base32: format.address(address, StatApp.networkId)}});
             console.log(`Swappi lp ${fmtAddr(address, StatApp.networkId)} ${name}`);
+        }
+    }
+
+    private async updateNFTPositionNames() {
+        if (this.updateNFTPositionAlready) {
+            return;
+        }
+
+        const addresses = CONST.SWAPPI_NFT_POSITION_LIST[StatApp.networkId];
+        if (!addresses?.length) {
+            this.updateNFTPositionAlready = true;
+            return;
+        }
+
+        const tokens = await Token.findAll({
+            attributes: {exclude: ['icon']},
+            where: {base32: {[Op.in]: addresses.map(item => format.address(item, StatApp.networkId))}},
+            raw: true,
+        });
+        if (!tokens?.length) {
+            return;
+        }
+
+        const toUpdateTokens = tokens.filter(
+            item => item?.name?.includes("vSwap") || item?.symbol?.includes("vSwap")
+        ).map(item => {
+            if (item.name) {
+                item.name = item.name.replace(/vSwap/g, "WallFreeX");
+            }
+            if (item.symbol) {
+                item.symbol = item.symbol.replace(/vSwap/g, "WallFreeX");
+            }
+            return item;
+        });
+        if (toUpdateTokens?.length) {
+            await Token.bulkCreate(toUpdateTokens, {updateOnDuplicate: ["name", "symbol"]});
+        }
+
+        if (addresses.length === tokens.length) {
+            this.updateNFTPositionAlready = true;
         }
     }
 }
