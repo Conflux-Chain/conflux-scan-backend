@@ -1,6 +1,7 @@
 // Query result interfaces with joined data
 import {AATx, BundleTx, IAATx, IBundleTx} from "../../model/eip4337model";
 import {Hex40Map} from "../../model/HexMap";
+import {IPageParam} from "../../router/ParamChecker";
 
 export interface BundleTxQueryResult extends IBundleTx {
     bundlerHex: string;      // hex address from Hex40Map
@@ -14,12 +15,12 @@ export interface AATxQueryResult extends IAATx {
 }
 
 // Query parameters interfaces
-export interface BundleTxQueryParams {
+export interface BundleTxQueryParams extends IPageParam {
     bundlerId?: bigint;
     entryPointId?: bigint;
 }
 
-export interface AATxQueryParams {
+export interface AATxQueryParams extends IPageParam{
     senderId?: number;
     bundlerId?: bigint;
     entryPointId?: bigint;
@@ -30,7 +31,7 @@ export interface AATxQueryParams {
  * @param params - Query parameters with optional bundlerId and entryPointId
  * @returns Array of BundleTx with resolved hex addresses for bundler and entryPoint
  */
-export async function queryBundleTx(params: BundleTxQueryParams): Promise<BundleTxQueryResult[]> {
+export async function queryBundleTx(params: BundleTxQueryParams): Promise<{ total: number, list:BundleTxQueryResult[] }> {
     const whereClause: any = {};
 
     if (params.bundlerId !== undefined) {
@@ -40,7 +41,7 @@ export async function queryBundleTx(params: BundleTxQueryParams): Promise<Bundle
         whereClause.entryPointId = params.entryPointId;
     }
 
-    const results = await BundleTx.findAll({
+    const {rows: results, count} = await BundleTx.findAndCountAll({
         where: whereClause,
         include: [
             {
@@ -56,16 +57,28 @@ export async function queryBundleTx(params: BundleTxQueryParams): Promise<Bundle
                 required: false,
             }
         ],
+        order: [['epoch', 'DESC'], ['id', 'DESC']],
+        offset: params.skip, limit: params.limit,
         raw: false,
     });
 
-    return results.map(bundle => ({
-        ...bundle.toJSON(),
-        // @ts-ignore
-        bundlerHex: bundle.get('bundler')?.hex || '',
-        // @ts-ignore
-        entryPointHex: bundle.get('entryPoint')?.hex || '',
-    }));
+    const list = results.map(bundle => {
+        const row = {
+            ...bundle.toJSON(),
+            // @ts-ignore
+            bundlerHex: '0x' + bundle.get('bundler')?.hex || '',
+            // @ts-ignore
+            entryPointHex: '0x' + bundle.get('entryPoint')?.hex || '',
+        };
+        delete row.entryPointId;
+        delete row.bundlerId;
+        delete row['bundler'];
+        delete row['entryPoint'];
+        delete row['updatedAt'];
+        return row;
+    });
+
+    return {total: count, list};
 }
 
 /**
@@ -73,7 +86,7 @@ export async function queryBundleTx(params: BundleTxQueryParams): Promise<Bundle
  * @param params - Query parameters with optional senderId, bundlerId, entryPointId
  * @returns Array of AATx with resolved hex addresses for sender, bundler and entryPoint
  */
-export async function queryAATx(params: AATxQueryParams): Promise<AATxQueryResult[]> {
+export async function queryAATx(params: AATxQueryParams): Promise<{ list: AATxQueryResult[], total: number }> {
     const whereClause: any = {};
 
     if (params.senderId !== undefined) {
@@ -86,7 +99,7 @@ export async function queryAATx(params: AATxQueryParams): Promise<AATxQueryResul
         whereClause.entryPointId = params.entryPointId;
     }
 
-    const results = await AATx.findAll({
+    const {rows: results, count} = await AATx.findAndCountAll({
         where: whereClause,
         include: [
             {
@@ -108,16 +121,31 @@ export async function queryAATx(params: AATxQueryParams): Promise<AATxQueryResul
                 required: false,
             }
         ],
+        order: [['epoch', 'DESC'], ['id', 'DESC']],
+        offset: params.skip, limit: params.limit,
         raw: false,
     });
 
-    return results.map(aaTx => ({
-        ...aaTx.toJSON(),
-        // @ts-ignore
-        senderHex: aaTx.get('sender')?.hex || '',
-        // @ts-ignore
-        bundlerHex: aaTx.get('bundler')?.hex || '',
-        // @ts-ignore
-        entryPointHex: aaTx.get('entryPoint')?.hex || '',
-    }));
+    const list = results.map(aaTx => {
+        const row = {
+            ...aaTx.toJSON(),
+            // @ts-ignore
+            senderHex: '0x' + aaTx.get('sender')?.hex || '',
+            // @ts-ignore
+            bundlerHex: '0x' + aaTx.get('bundler')?.hex || '',
+            // @ts-ignore
+            entryPointHex: '0x' + aaTx.get('entryPoint')?.hex || '',
+        };
+        delete row.entryPointId;
+        delete row.bundlerId;
+        delete row.bundleTxId;
+        delete row.paymasterId;
+        delete row['bundler'];
+        delete row['entryPoint'];
+        delete row['updatedAt'];
+        delete row['senderId'];
+        delete row['sender'];
+        return row;
+    });
+    return {list, total: count};
 }

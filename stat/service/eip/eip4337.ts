@@ -188,21 +188,27 @@ export async function syncEpoch(cfx: Conflux, ep: number, blockTime: Date) : Pro
 
 async function testQuery() {
 	// Query BundleTx with both filters
+	const page = {skip: 0, limit: 10};
 	const bundles = await queryBundleTx({
-		bundlerId: BigInt(123),
-		entryPointId: BigInt(456)
+		// bundlerId: BigInt(123),
+		// entryPointId: BigInt(456),
+		...page,
 	});
+	// console.log(`bundles `, JSON.stringify(bundles, null , 4));
 
 	// Query AATx with sender filter only
 	const aaTxs = await queryAATx({
-		senderId: 789
+		// senderId: 789,
+		...page,
 	});
+	console.log(`aa TX:\n`, JSON.stringify(aaTxs, null, 4));
 
 	// Query AATx with all three filters
 	const filteredTxs = await queryAATx({
 		senderId: 789,
 		bundlerId: BigInt(123),
-		entryPointId: BigInt(456)
+		entryPointId: BigInt(456),
+		...page,
 	});
 }
 
