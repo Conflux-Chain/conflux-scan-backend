@@ -212,8 +212,12 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         if (limit > 100) {
             throw new Errors.ParameterError(`param <limit> is invalid: exceeds 100`);
         }
-        const result = await listAuthAction({author, skip, limit});
+        const result: any = await listAuthAction({author, skip, limit});
         await getAccountQuery().patchAddressInfo(result.list, 'txSender', 'address');
+        const addresses = new Set<string>(result.list.flatMap(item => [item.txSender, item.address]).filter(Boolean));
+        result.nameMap = await statApp.accountQuery.list([...addresses, author], {
+            withContractInfo: true, withNameTagInfo: true, withENSInfo: true
+        });
         ctx.body = result;
     });
     router.get('/list-auth-action-in-tx', async (ctx)=>{
@@ -221,8 +225,12 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         if (txHash?.length != 66) {
             throw new Errors.ParameterError(`param <txHash> is invalid`);
         }
-        const result = await getAuthActionInTx(txHash);
+        const result: any = await getAuthActionInTx(txHash);
         await getAccountQuery().patchAddressInfo(result.list, '', 'address');
+        const addresses = new Set<string>(result.list.flatMap(item => [item.address, item.author]).filter(Boolean));
+        result.nameMap = await statApp.accountQuery.list([...addresses], {
+            withContractInfo: true, withNameTagInfo: true, withENSInfo: true
+        });
         ctx.body = result;
     });
 
@@ -346,7 +354,16 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const {limit} = paginateCore(ctx.request.query);
 
         const {type} = ctx.request.query || {type: 'cfxSend', limit: 10};
-        ctx.body = await statApp.rankService.top(type, limit, StatApp.networkId)
+        const result: any = await statApp.rankService.top(type, limit, StatApp.networkId)
+
+        if (result?.list?.length) {
+            const addresses = result.list.map(item => item.hex);
+            result.nameMap = await statApp.accountQuery.list(addresses, {
+                withContractInfo: true, withNameTagInfo: true, withENSInfo: true
+            });
+        }
+
+        ctx.body = result;
     })
 
     router.get('/top-cfx-holder-csv', async (ctx) => {
@@ -375,18 +392,14 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const name = `${type}`
         const key = `top-cfx-holder_${type}_${size}`;
 
-        let list = dbCache.get(key);
-        if (list) {
-            // console.log(`from cache.`, list)
-        } else {
-            const data = await statApp.rankService.top(type, size, StatApp.networkId);
-            list = data.list;
-            // console.log(` from db.`, data)
-            if (!list) {
-                ctx.body = data;
+        let data = dbCache.get(key);
+        if (!data?.list) {
+            data = await statApp.rankService.top(type, size, StatApp.networkId);
+            if (!data?.list) {
+                ctx.body = data?.list;
                 return;
             }
-            dbCache.set(key, list, 60); // 60s
+            dbCache.set(key, data, 60); // 60s
         }
         ctx.set('Content-disposition', 'attachment; filename=' + name + '.csv')
         ctx.set('Content-type', 'text/csv')
@@ -399,10 +412,21 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
                 : 'rank,address,address name,balance,staking,total,percent,transactionCount')
         }
         s.push('\n');
-        list.forEach(row=>{
+
+        let nameMap = {};
+        if (data?.list?.length) {
+            const addresses = data.list.map(item => item.hex);
+            nameMap = await statApp.accountQuery.list(addresses, {
+                withContractInfo: true, withNameTagInfo: true, withENSInfo: true
+            });
+        }
+
+        data.list.forEach(row=>{
             s.push(row.rank); s.push(',') // rank
             s.push(StatApp.isEVM ? row.hex : row.base32address); s.push(',') // base32
-            s.push(row.name); s.push(',') // name
+            // s.push(row.contractInfo?.name || row.tokenInfo?.name); s.push(',') // name
+            const nameInfo = nameMap[fmtAddr(row.hex, StatApp.networkId)];
+            s.push(nameInfo?.contract?.name || nameInfo?.token?.name); s.push(',') // name
             s.push(row.value2); s.push(',') // balance
             if (!StatApp.isEVM) {
                 s.push(row.value3);
@@ -436,15 +460,14 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         token.totalSupply = scientificToBigInt(token.totalSupply) as unknown as number
 
         const key = `top-token-holder_${limit}_${token.symbol}_${token.hex40id}`;
-        let list = dbCache.get(key);
-        if (!list) {
-            const data = await statApp.balanceService.rankHolder(base32, 0, limit, true)
-            list = data.list;
-            if (!list) {
-                ctx.body = data;
+        let data = dbCache.get(key);
+        if (!data?.list) {
+            data = await statApp.balanceService.rankHolder(base32, 0, limit, true)
+            if (!data?.list) {
+                ctx.body = data?.list;
                 return;
             }
-            dbCache.set(key, list, 60); // 60s
+            dbCache.set(key, data, 60); // 60s
         }
 
         const date = moment(new Date()).format('YYYY.MM.DD')
@@ -460,10 +483,13 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         s.push('\n');
 
         const decimals = token.decimals || 0
-        list.forEach(row=>{
+        const nameMap = data.nameMap;
+        data.list.forEach(row=>{
             const addr = StatApp.isEVM ? format.hexAddress(row?.account?.address) : row?.account?.address
             s.push(addr); s.push(',') // HolderAddress
-            const name =  row?.ensInfo?.name || row?.nameTagInfo?.nameTag || row?.contractInfo?.name || row?.tokenInfo?.name;
+            // const name =  row?.ensInfo?.name || row?.nameTagInfo?.nameTag || row?.contractInfo?.name || row?.tokenInfo?.name;
+            const nameInfo = nameMap[fmtAddr(addr, StatApp.networkId)];
+            const name = nameInfo?.ens?.name || nameInfo?.nameTag?.nameTag || nameInfo?.contract?.name || nameInfo?.token?.name;
             s.push(name); s.push(',') // HolderAddressName
             s.push(row?.contractInfo ? "yes" : ""); s.push(',') // IsContract
             const quantity = BigFixed(row?.balance).div(BigFixed(10).pow(decimals))

@@ -44,7 +44,7 @@ export class BalanceService {
         const start = Date.now()
         const total = await table.count()
         if (total == 0) {
-            return {total: 0, list:[], /*code: 0,*/ table: table.getTableName()}
+            return {total: 0, list:[], table: table.getTableName()}
         }
         const list = await table.findAll({
             // max decimal 65 // https://dev.mysql.com/doc/refman/5.7/en/fixed-point-types.html
@@ -76,6 +76,7 @@ export class BalanceService {
 
         // add token info
         let accountBasic
+        let nameMap = {};
         if(withTokenInfo) {
             const addressArray = retList.map(item => item.account.address);
             accountBasic = await this.app.accountQuery.listPatchInfo(addressArray);
@@ -85,9 +86,10 @@ export class BalanceService {
                 item['ensInfo'] = accountBasic.map[item.account.address]?.ens;
                 item['nameTagInfo'] = accountBasic.map[item.account.address]?.nameTag;
             });
+            nameMap = await this.app.accountQuery.list(addressArray);
         }
 
-        return {total, list: retList, skip, limit, table: table.getTableName(), holderQuery:elapsed}
+        return {total, list: retList, skip, limit, table: table.getTableName(), holderQuery:elapsed, nameMap}
     }
 
     zeros = '00000000000000000000000'

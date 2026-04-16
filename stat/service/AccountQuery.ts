@@ -62,7 +62,7 @@ export class AccountQuery {
             withNameTagInfo: true,
             withByte32NameTagInfo: true,
             withESpaceInfo: true,
-            withENSInfo: false,
+            withENSInfo: true,
             withProxyImplInfo: false,
             realtimeProxyImpl: false,
     }) {

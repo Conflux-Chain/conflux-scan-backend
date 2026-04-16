@@ -614,10 +614,13 @@ export const jsonrpc_exportTransaction = jsonrpc.method_('exportTransaction',
       addressSet.add(each.to);
     });
 
-    const accountBasic = await service.accountQuery.listPatchInfo([...addressSet] as string[]);
+    /*const accountBasic = await service.accountQuery.listPatchInfo([...addressSet] as string[]);*/
+    const nameMap = await service.accountQuery.list([...addressSet] as string[], {withContractInfo: true});
     list.forEach((each) => {
-      each['From_AddressName'] = accountBasic.map[each.from]?.contract?.name || accountBasic.map[each.from]?.token?.name || '';
-      each['To_AddressName'] = accountBasic.map[each.to]?.contract?.name || accountBasic.map[each.to]?.token?.name || '';
+      /*each['From_AddressName'] = accountBasic.map[each.from]?.contract?.name || accountBasic.map[each.from]?.token?.name || '';
+      each['To_AddressName'] = accountBasic.map[each.to]?.contract?.name || accountBasic.map[each.to]?.token?.name || '';*/
+      each['From_AddressName'] = nameMap[each.from]?.contract?.name || nameMap[each.from]?.token?.name || '';
+      each['To_AddressName'] = nameMap[each.to]?.contract?.name || nameMap[each.to]?.token?.name || '';
     });
 
     const exportFields = [
@@ -692,12 +695,15 @@ export const jsonrpc_exportTransfer = jsonrpc.method_('exportTransfer',
       ? this.app.type.simpleAddress(options.address) : undefined;
     const { list } = await service.transfer.countAndList({ ...options, transferType });
 
-    const addressSet = new Set();
+    const addresses = new Set(list.flatMap(item => [item.from, item.to, item.address]).filter(Boolean));
+    const nameMap = await service.accountQuery.list([...addresses] as string[], {withContractInfo: true});
+
+    /*const addressSet = new Set();*/
     for (const each of list) {
       if (transferType === CONST.TRANSFER_TYPE.CFX) {
         each.decimals = 18;
       } else {
-        const token = await tokenTool.getToken(each.address, undefined, true);
+        const token = nameMap[each.address]?.token;
         each.name = token?.name;
         each.symbol = token?.symbol;
         each.decimals = token?.decimals || 0;
@@ -717,19 +723,24 @@ export const jsonrpc_exportTransfer = jsonrpc.method_('exportTransfer',
       each['Type'] = transferType;
       each['DateTime'] = tool.timestampToString(each.timestamp * 1000);
       each['TokenId'] = each['tokenId'] ? `\t${each['tokenId']}` : each['tokenId'];
-      addressSet.add(each.from);
+      each['From_AddressName'] = nameMap[each.from]?.contract?.name || nameMap[each.from]?.token?.name || '';
+      each['To_AddressName'] = nameMap[each.to]?.contract?.name || nameMap[each.to]?.token?.name || '';
+      if(each.address) {
+        each['ContractName'] = nameMap[each.address]?.contract?.name || '';
+      }
+      /*addressSet.add(each.from);
       addressSet.add(each.to);
-      each.address && addressSet.add(each.address);
+      each.address && addressSet.add(each.address);*/
     }
 
-    const accountBasic = await service.accountQuery.listPatchInfo([...addressSet] as string[], {withContractInfo: true});
+    /*const accountBasic = await service.accountQuery.listPatchInfo([...addressSet] as string[], {withContractInfo: true});
     list.forEach((each) => {
       each['From_AddressName'] = accountBasic.map[each.from]?.contract?.name || accountBasic.map[each.from]?.token?.name || '';
       each['To_AddressName'] = accountBasic.map[each.to]?.contract?.name || accountBasic.map[each.to]?.token?.name || '';
       if(each.address) {
           each['ContractName'] = accountBasic.map[each.address]?.contract?.name || '';
       }
-    });
+    });*/
 
     const exportFields = [
           ['timestamp', 'UnixTimestamp'],

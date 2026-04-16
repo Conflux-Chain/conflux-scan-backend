@@ -201,12 +201,13 @@ router_get(router,'/frontend',
 
   async function (result) {
     const {app: { service: {accountQuery} },} = this as ScanCtx;
-    const addressArray = result.contracts.filter(item => item.address).map(item => item.address);
-    const accountBasic = await accountQuery.listPatchInfo(addressArray)
+    const addresses = result.contracts.map(item => item.address).filter(Boolean);
+    const accountBasic = await accountQuery.listPatchInfo(addresses)
     result.contracts.forEach((item) => {
       item.ensInfo = accountBasic.map[item.address]?.ens;
       item.nameTagInfo = accountBasic.map[item.address]?.nameTag;
     });
+    result.nameMap = await accountQuery.list(addresses, {withENSInfo: true, withNameTagInfo: true});
     return result;
   },
 );
@@ -324,16 +325,18 @@ router_get(router,'/block',
 
   async function (result) {
     const {app: { service: {accountQuery} },} = this as ScanCtx;
-    let addressArray = [];
-    result.list.forEach((block) => {
-      addressArray.push(block.miner.toString());
-    });
-    const accountBasic = await accountQuery.listPatchInfo(addressArray)
+    const addresses = result.list.map(item => item.miner).filter(Boolean);
+    const accountBasic = await accountQuery.listPatchInfo(addresses)
     result.list.forEach((block) => {
       block.minerContractInfo = accountBasic.map[block.miner]?.contract;
       block.minerTokenInfo = accountBasic.map[block.miner]?.token;
       block.minerENSInfo = accountBasic.map[block.miner]?.ens;
       block.minerNameTagInfo = accountBasic.map[block.miner]?.nameTag;
+    });
+    result.nameMap = await accountQuery.list(addresses, {
+      withContractInfo: true,
+      withENSInfo: true,
+      withNameTagInfo: true
     });
     return result;
   },
@@ -420,40 +423,8 @@ router_get(router,'/transaction/:hash',
         transaction.txExecErrorInfo = transaction.txExecErrorMsg
           ? tool.parseTransactionMessage(transaction.txExecErrorMsg)
           : undefined;
-        // aggregate log info
       } catch (e) {
-        console.log(`${__filename} aggregate event_log for transaction`, e);
-      }
-
-      if (transaction.aggregate) {
-        try {
-          // aggregate transfer info
-          const tokenTransfer = await service.transfer.countAndList({ transactionHash: transaction.hash, limit: 100, reverse: true /* casFilter: false */ });
-          this.app.formatAddrInArray(tokenTransfer.list, ['address', 'from', 'to', 'operator'])
-          transaction.tokenTransfer = tokenTransfer || [];
-          // aggregate contract and token info
-          const addressArray = [];
-          tokenTransfer.list.forEach((transfer) => {
-            addressArray.push(transfer.from.toString());
-            addressArray.push(transfer.to.toString());
-            if (transfer.address !== undefined) addressArray.push(transfer.address.toString());
-          });
-          const {app: { service: {accountQuery} },} = this as ScanCtx;
-          const accountBasic = await accountQuery.listPatchInfo(addressArray);
-          const contractAddressArray = Object.keys(accountBasic.map);
-          transaction.tokenTransferContractInfo = {};
-          transaction.tokenTransferTokenInfo = {};
-          transaction.tokenTransferENSInfo = {};
-          transaction.tokenTransferNameTagInfo = {};
-          contractAddressArray.forEach((address) => {
-            transaction.tokenTransferContractInfo[address] = accountBasic.map[address]?.contract;
-            transaction.tokenTransferTokenInfo[address] = accountBasic.map[address]?.token;
-            transaction.tokenTransferENSInfo[address] = accountBasic.map[address]?.ens;
-            transaction.tokenTransferNameTagInfo[address] = accountBasic.map[address]?.nameTag;
-          });
-        } catch (e) {
-          console.log(`${__filename} aggregate contract and token for transaction`, e);
-        }
+        console.error("Failed to get confirmed epoch number", e);
       }
     }
     return transaction;
@@ -491,6 +462,7 @@ router_get(router,'/transaction',
         total: 'integer',
         listLimit: OpenAPI.schema({ type: 'integer', description: 'if exist, require skip+limit <= listLimit' }),
         ensInfo: 'object',
+        nameMap: 'object',
         list: [{
           blockHash: 'string',
           method: 'string',
@@ -528,11 +500,17 @@ router_get(router,'/transaction',
 
   async function (result) {
     await getAccountQuery().patchAddressInfo(result.list, 'from', 'to');
+
+    const addresses = new Set<string>(result.list.flatMap(item => [item.from, item.to, item.contractCreated])
+        .filter(Boolean));
+    result.nameMap = await getAccountQuery().list([...addresses]);
+
     result.list.forEach((tx) => {
-      if(!tx?.toContractInfo?.address) { // show method only when to address is contract
+      if (!result.nameMap[tx.to]?.contract) {
         tx.method = '0x'
       }
     });
+
     return result;
   },
 );
@@ -839,27 +817,27 @@ router_get(router,'/contract/:address',
   toArray, jsonrpc_queryContract,
 
   async function (result) {
-    const {
-      app: { type },
-    } = this;
-
-    if (result.sponsor === undefined) return result;
+    if (result.sponsor === undefined) {
+      return result;
+    }
 
     const { sponsor } = result;
-    const sponsorForGas = sponsor?.sponsorForGas ? type.simpleAddress(sponsor?.sponsorForGas) : '';
-    const sponsorForCollateral = sponsor?.sponsorForCollateral ? type.simpleAddress(sponsor?.sponsorForCollateral) : '';
-    let addressArray = [];
-    addressArray.push(sponsorForGas);
-    addressArray.push(sponsorForCollateral);
-    addressArray = addressArray.filter((item) => item !== '');
+    const sponsorForGas = fmtAddr(sponsor?.sponsorForGas, StatApp.networkId);
+    const sponsorForCollateral = fmtAddr(sponsor?.sponsorForCollateral, StatApp.networkId);
+    const addresses = [sponsorForGas, sponsorForCollateral].filter(Boolean);
     const {app: { service: {accountQuery} },} = this as ScanCtx;
-    const accountBasic = await accountQuery.listPatchInfo(addressArray);
+    const accountBasic = await accountQuery.listPatchInfo(addresses);
     result.sponsor.sponsorForGasContractInfo = accountBasic.map[sponsorForGas]?.contract;
     result.sponsor.sponsorForCollateralContractInfo = accountBasic.map[sponsorForCollateral]?.contract;
     result.sponsor.sponsorForGasENSInfo = accountBasic.map[sponsorForGas]?.ens;
     result.sponsor.sponsorForCollateralENSInfo = accountBasic.map[sponsorForCollateral]?.ens;
     result.sponsor.sponsorForGasNameTagInfo = accountBasic.map[sponsorForGas]?.nameTag;
     result.sponsor.sponsorForCollateralNameTagInfo = accountBasic.map[sponsorForCollateral]?.nameTag;
+    result.nameMap = await accountQuery.list(addresses, {
+      withContractInfo: true,
+      withENSInfo: true,
+      withNameTagInfo: true
+    });
     return result;
   },
 );
@@ -1015,13 +993,18 @@ router_get(router,'/token',
   toArray, jsonrpc_countAndListToken,
 
   async function (result) {
-    const addressArray = result.list.map(token => token.address);
+    const addresses = result.list.map(token => token.address).filter(Boolean);
     const {app: { service: {accountQuery} },} = this as ScanCtx;
-    const accountBasic = await accountQuery.listPatchInfo(addressArray);
+    const accountBasic = await accountQuery.listPatchInfo(addresses);
     result.list.forEach((token) => {
       token.contractName = accountBasic.map[token.address]?.contract?.name;
       token.ensInfo = accountBasic.map[token.address]?.ens;
       token.nameTagInfo = accountBasic.map[token.address]?.nameTag;
+    });
+    result.nameMap = await accountQuery.list(addresses, {
+      withContractInfo: true,
+      withENSInfo: true,
+      withNameTagInfo: true
     });
     return result;
   },
@@ -1106,14 +1089,9 @@ router_get(router,'/transfer',
       app: { service: {accountQuery} },
     } = this as ScanCtx;
 
-    let addressArray = [];
-    result.list.forEach((transfer) => {
-      addressArray.push(transfer.from.toString());
-      addressArray.push(transfer.to.toString());
-      if (transfer.address !== undefined) addressArray.push(transfer.address.toString());
-    });
-    addressArray = addressArray.filter((e) => e?.length > 40); // filter 0xundefined.
-    const accountBasic = await accountQuery.listPatchInfo(addressArray)
+    const addresses = result.list.flatMap(item => [item.from, item.to, item.address])
+        .filter(item => item && item.length > 40);
+    const accountBasic = await accountQuery.listPatchInfo(addresses)
     result.list.forEach((transfer) => {
       transfer.fromContractInfo = accountBasic.map[transfer.from]?.contract;
       transfer.fromTokenInfo = accountBasic.map[transfer.from]?.token;
@@ -1129,6 +1107,12 @@ router_get(router,'/transfer',
       transfer.transferContractInfo = accountBasic.map[transfer.address]?.contract;
       transfer.transferENSInfo = accountBasic.map[transfer.address]?.ens;
       transfer.transferNameTagInfo = accountBasic.map[transfer.address]?.nameTag;
+    });
+    result.nameMap = await accountQuery.list(addresses, {
+      withContractInfo: true,
+      withNameTagInfo: true,
+      withESpaceInfo: true,
+      withENSInfo: true
     });
     return result;
   },
@@ -1153,11 +1137,8 @@ router_get(router,'/transferTree/:transactionHash',
       return result;
     }
 
-    const addressArray = [];
-    result.addressArray.forEach((address) => {
-      addressArray.push(address.toString());
-    });
-    const accountBasic = await accountQuery.listPatchInfo(addressArray);
+    const addresses = result.addressArray;
+    const accountBasic = await accountQuery.listPatchInfo(addresses);
     const contractAddressArray = Object.keys(accountBasic.map);
     result.contractMap = {};
     result.tokenMap = {};
@@ -1168,6 +1149,11 @@ router_get(router,'/transferTree/:transactionHash',
       result.tokenMap[address] = accountBasic.map[address]?.token;
       result.ensMap[address] = accountBasic.map[address]?.ens;
       result.nameTagMap[address] = accountBasic.map[address]?.nameTag;
+    });
+    result.nameMap = await accountQuery.list(addresses, {
+      withContractInfo: true,
+      withENSInfo: true,
+      withNameTagInfo: true
     });
     return result;
   },
@@ -1205,16 +1191,17 @@ router_get(router,'/eventLog',
   async function (options) {
     options.aggregate = options.aggregate === 'true';
     options.transactionHash = this.app.parseParam(()=>this.app.type.hex64(options.transactionHash))
-    const {app: { type, service: {eventLog} },} = this as ScanCtx;
-    const result = await eventLog.queryByTransactionHash(options)
+    const {app: { service: {eventLog} } } = this as ScanCtx;
+    const result: any = await eventLog.queryByTransactionHash(options)
 
-    const addressArray = result.list.map(item => item.address);
     const {app: { service: {accountQuery} },} = this as ScanCtx;
-    const accountBasic = await accountQuery.listPatchInfo(addressArray);
+    const addresses = result.list.map(item => item.address);
+    const accountBasic = await accountQuery.listPatchInfo(addresses);
     result.list.forEach(item => {
       item.ensInfo = accountBasic.map[item.address]?.ens;
       item.nameTagInfo = accountBasic.map[item.address]?.nameTag;
     });
+    result.nameMap = await accountQuery.list(addresses, {withNameTagInfo: true, withENSInfo: true});
 
     return result;
   },
@@ -1239,11 +1226,21 @@ router_get(router,'/ens/reverse/match',
     async function (options) {
       const {app: { service: {accountQuery} },} = this as ScanCtx;
       const accountBasic = await accountQuery.listPatchInfo(toArray(options.address));
-      const map = {};
-      Object.keys(accountBasic.map).forEach(address => (map[address] = accountBasic.map[address]?.ens));
+      const map = lodash.omitBy(Object.fromEntries(Object.keys(accountBasic.map).map(address => [
+        address,
+        accountBasic.map[address]?.ens
+      ])), lodash.isNil);
+
+      const nameMap = await accountQuery.list(toArray(options.address), {withENSInfo: true});
+      const ensMap = lodash.omitBy(Object.fromEntries(Object.keys(nameMap).map(address => [
+        address,
+        nameMap[address]?.ens
+      ])), lodash.isNil);
+
       return {
         total: Object.keys(map).length,
         map,
+        ensMap
       };
     },
 );
@@ -1294,12 +1291,11 @@ router_get(router,'/report/transaction',
       skip: { in: 'query', type: 'integer' },
       reverse: { in: 'query', type: 'boolean' },
       token: { in: 'query', type: 'string' },
-
       blockHash: { in: 'query', type: 'string', description: 'use alone' },
-      transactionHash: { in: 'query', type: 'string', nullable: true }, // new add
-      nonce: { in: 'query', type: 'integer', minimum: 0 }, // new add
-      from: { in: 'query', type: 'string', nullable: true }, // new add
-      to: { in: 'query', type: 'string', nullable: true }, // new add
+      transactionHash: { in: 'query', type: 'string', nullable: true },
+      nonce: { in: 'query', type: 'integer', minimum: 0 },
+      from: { in: 'query', type: 'string', nullable: true },
+      to: { in: 'query', type: 'string', nullable: true },
     },
     output: {
       200: 'string',
