@@ -95,14 +95,19 @@ export class ContractDappNameSync {
             return;
         }
 
-        const toUpdateTokens = tokens.filter(
-            item => item?.name?.includes("vSwap") || item?.symbol?.includes("vSwap")
+        const searches = Object.keys(CONST.SWAPPI_NFT_POSITION_NAME_REPLACES);
+        const toUpdateTokens = tokens.filter(item =>
+            searches.some(key => item?.name?.includes(key)) || searches.some(key => item?.symbol?.includes(key))
         ).map(item => {
-            if (item.name) {
-                item.name = item.name.replace(/vSwap/g, "WallFreeX");
-            }
-            if (item.symbol) {
-                item.symbol = item.symbol.replace(/vSwap/g, "WallFreeX");
+            for (const search of searches) {
+                const regex = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+                const replace = CONST.SWAPPI_NFT_POSITION_NAME_REPLACES[search];
+                if (item.name) {
+                    item.name = item.name.replace(regex, replace);
+                }
+                if (item.symbol) {
+                    item.symbol = item.symbol.replace(regex, replace);
+                }
             }
             return item;
         });

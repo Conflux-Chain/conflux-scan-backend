@@ -512,11 +512,14 @@ export class NFTPreviewService {
             return;
         }
 
-        if (meta?.name) {
-            meta.name = meta.name.replace(/vSwap/g, "WallFreeX");
-        }
-        if (meta?.description) {
-            meta.description = meta.description.replace(/vSwap/g, "WallFreeX");
+        for (const [search, replace] of Object.entries(CONST.SWAPPI_NFT_POSITION_NAME_REPLACES)) {
+            const regex = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+            if (meta?.name) {
+                meta.name = meta.name.replace(regex, replace);
+            }
+            if (meta?.description) {
+                meta.description = meta.description.replace(regex, replace);
+            }
         }
     }
 

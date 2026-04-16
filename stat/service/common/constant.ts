@@ -503,6 +503,10 @@ export const CONST = {
     71: ["0xdba7475F00deb72Bc80B16e8d742c86760c342fe"],
   },
 
+  SWAPPI_NFT_POSITION_NAME_REPLACES: {
+    vSwap: "WallFreeX",
+  },
+
   PROXY_PATTERN: {
     BEACON_PROXY: "EIP-1967 Transparent Proxy",
     PROXY: "OpenZeppelin's Unstructured Storage",
