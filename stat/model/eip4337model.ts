@@ -1,4 +1,5 @@
 import {DataTypes, Model, Sequelize} from "sequelize";
+import {Hex40Map} from "./HexMap";
 
 export interface IBundleTx {
 	id: bigint;
@@ -101,9 +102,23 @@ export class AATx extends Model<IAATx> implements IAATx {
 				{name: 'idx_bundlerId_entryPointId', fields: ['bundlerId', 'entryPointId']},
 				{name: 'idx_entryPointId', fields: ['entryPointId']},
 			]
-		})
+		});
 	}
 }
+
+
+export function bindBundleTxModels() {
+	// In BundleTx model definition, add:
+	BundleTx.belongsTo(Hex40Map, { as: 'bundler', foreignKey: 'bundlerId' });
+	BundleTx.belongsTo(Hex40Map, { as: 'entryPoint', foreignKey: 'entryPointId' });
+
+	// In AATx model definition, add:
+	AATx.belongsTo(Hex40Map, { as: 'sender', foreignKey: 'senderId' });
+	AATx.belongsTo(Hex40Map, { as: 'bundler', foreignKey: 'bundlerId' });
+	AATx.belongsTo(Hex40Map, { as: 'entryPoint', foreignKey: 'entryPointId' });
+
+}
+
 
 export interface IAccountDeployed {
 	id: bigint;
@@ -182,6 +197,6 @@ export class UserOperationRevertReason extends Model<IUserOperationRevertReason>
 				{name: 'idx_epoch', fields: ['epoch']},
 				{name: 'idx_userOpHash', fields: ['userOpHash']},
 			]
-		})
+		});
 	}
 }

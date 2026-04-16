@@ -19,6 +19,7 @@ import {Transaction} from "sequelize";
 import {Conflux} from "js-conflux-sdk";
 import {init} from "../tool/FixDailyTokenStat";
 import {initCfxSdk} from "../common/utils";
+import {queryAATx, queryBundleTx} from "./eip4337query";
 
 export interface IBundleData {
 	bundlerTx: IBundleTx;
@@ -185,13 +186,35 @@ export async function syncEpoch(cfx: Conflux, ep: number, blockTime: Date) : Pro
 	});
 }
 
+async function testQuery() {
+	// Query BundleTx with both filters
+	const bundles = await queryBundleTx({
+		bundlerId: BigInt(123),
+		entryPointId: BigInt(456)
+	});
+
+	// Query AATx with sender filter only
+	const aaTxs = await queryAATx({
+		senderId: 789
+	});
+
+	// Query AATx with all three filters
+	const filteredTxs = await queryAATx({
+		senderId: 789,
+		bundlerId: BigInt(123),
+		entryPointId: BigInt(456)
+	});
+}
+
 async function main() {
 	const [,,cmd,arg1] = process.argv;
 	if (cmd === 'syncEpoch') {
 		const cfg = await init();
 		const cfx = await initCfxSdk(cfg.conflux);
 		await syncEpoch(cfx, parseInt(arg1), null);
-
+	} else if (cmd === 'testQuery') {
+		await init();
+		await testQuery();
 	} else {
 		console.log(`unknown cmd: ${cmd}`);
 	}
