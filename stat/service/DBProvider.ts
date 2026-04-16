@@ -300,6 +300,9 @@ async function migDB(seq: Sequelize) {
     await addColumnIfNotExistsV2(qi, verifiedContracts, 'similarMatchAddress', {
         type: DataTypes.CHAR(64),
     });
+    await changeColumnIfNecessary(qi, verifiedContracts, 'libraries', {
+        type: DataTypes.STRING(2048),
+    });
 
     const dailyNFTStat = DailyNFTStat.getTableName().toString();
     await changeColumnIfNecessary(qi, dailyNFTStat, 'statType', {
