@@ -4232,13 +4232,6 @@ components:
           description: Array of account abstraction transaction records
           items:
             $ref: '#/components/schemas/AATxItem'
-        nameMap:
-          type: object
-          description: Mapping of IDs to human-readable names (reserved for future use)
-          additionalProperties:
-            type: string
-          example: {}
-
     # Individual AATx item schema
     AATxItem:
       type: object
@@ -4325,13 +4318,6 @@ components:
           description: Array of bundle transaction records
           items:
             $ref: '#/components/schemas/BundleTxItem'
-        nameMap:
-          type: object
-          description: Mapping of IDs to human-readable names (reserved for future use)
-          additionalProperties:
-            type: string
-          example: {}
-
     # Individual BundleTx item schema
     BundleTxItem:
       type: object

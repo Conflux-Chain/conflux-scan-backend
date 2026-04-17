@@ -26,12 +26,6 @@ export async function listBundledTx(ctx) {
         skip, limit,
     });
 
-    const addresses = new Set(result.list.flatMap((item: any) => [item.bundlerHex, item.entryPointHex]).filter(Boolean));
-    result['nameMap'] = await getAccountQuery().list(
-        [...addresses],
-        { withContractInfo: true, withNameTagInfo: true, withENSInfo: true }
-    );
-
     setBody(ctx, result);
 }
 
@@ -46,12 +40,6 @@ export async function list4337Tx(ctx) {
         senderId: sender ? (await getAddrId(sender, undefined) ?? -1) : undefined,
         skip, limit,
     });
-
-    const addresses = new Set(result.list.flatMap((item: any) => [item.bundlerHex, item.entryPointHex]).filter(Boolean));
-    result['nameMap'] = await getAccountQuery().list(
-        [...addresses],
-        { withContractInfo: true, withNameTagInfo: true, withENSInfo: true }
-    );
 
     setBody(ctx, result);
 }
