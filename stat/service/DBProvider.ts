@@ -83,6 +83,7 @@ import {ContractImpl} from "../model/ContractImpl";
 import {VerifiedContracts} from "../model/VerifiedContracts";
 import {initBlockWithdrawModel} from "../model/ZG";
 import {DailyGasStat} from "../model/DailyGasStat";
+import {AATx, AccountDeployed, bindBundleTxModels, BundleTx, UserOperationRevertReason} from "../model/eip4337model";
 
 let conf
 export function createDB(config) {
@@ -241,6 +242,10 @@ export async function initModel(sequelize: Sequelize) {
     ResultCache.register(sequelize);
     AuthBlockStub.register(sequelize);
     AuthAction.register(sequelize);
+    AATx.register(sequelize);
+    BundleTx.register(sequelize);
+    AccountDeployed.register(sequelize);
+    UserOperationRevertReason.register(sequelize);
     EpochHashCfxTransfer.register(sequelize);
     UniqueAddress.register(sequelize);
     UniqueAddressHourly.register(sequelize);
@@ -273,6 +278,7 @@ export async function initModel(sequelize: Sequelize) {
     console.log(`init models ok`);
     await dropEmptyTables();
     await migDB(sequelize);
+    bindBundleTxModels();
 }
 
 export function createMySql(dbConf) {

@@ -1774,6 +1774,68 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/Auth7702"
+  /eip4337/bundledTxs:
+    get:
+      tags:
+        - 'EIP'
+      description: 'Query BundleTx with optional filters for bundler and entryPoint (AND relationship).
+      The candidate data set comprises all authorization records on the chain.'
+      parameters:
+        - name: bundler
+          in: query
+          required: false
+          description: "Address of the bundler."
+          schema:
+            type: string
+        - name: entryPoint
+          in: query
+          required: false
+          description: "Address of the entry point."
+          schema:
+            type: string
+        - $ref: '#/components/parameters/skipParam'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/BundleTxResponse"
+  /eip4337/aaTxs:
+    get:
+      tags:
+        - 'EIP'
+      description: 'Query AATx with optional filters for sender/signer, bundler, entryPoint (AND relationship).
+      The candidate data set comprises all authorization records on the chain.'
+      parameters:
+        - name: sender
+          in: query
+          required: false
+          description: "Address of the abstract account transaction signer."
+          schema:
+            type: string
+        - name: bundler
+          in: query
+          required: false
+          description: "Address of the bundler."
+          schema:
+            type: string
+        - name: entryPoint
+          in: query
+          required: false
+          description: "Address of the entry point."
+          schema:
+            type: string
+        - $ref: '#/components/parameters/skipParam'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/AATxResponse"
   /data/accounts:
     get:
       tags:
@@ -4142,6 +4204,184 @@ components:
                   txTime:
                     type: string
                     description: 'transaction time. example: 2025-07-07T03:41:34.000Z'
+    AATxResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          description: Response status code (1 for success, 0 for error)
+          example: "1"
+        message:
+          type: string
+          description: Response message
+          example: "OK"
+        result:
+          $ref: '#/components/schemas/AATxQueryResult'
+    # Main result schema
+    AATxQueryResult:
+      type: object
+      properties:
+        total:
+          type: integer
+          format: int64
+          description: Total number of records matching the query
+          minimum: 0
+          example: 5
+        list:
+          type: array
+          description: Array of account abstraction transaction records
+          items:
+            $ref: '#/components/schemas/AATxItem'
+        nameMap:
+          type: object
+          description: Mapping of IDs to human-readable names (reserved for future use)
+          additionalProperties:
+            type: string
+          example: {}
+
+    # Individual AATx item schema
+    AATxItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique identifier for the AA transaction
+          example: 5
+        userOpHash:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{64}$'
+          description: User operation hash (64 hex characters with 0x prefix)
+          example: "0xabcfa8a60f7cc55ce51b321ada3135b9e79fd0a3b74b782f79bb818d10b08c9a"
+        epoch:
+          type: integer
+          format: int64
+          description: Block epoch number when the transaction was created
+          example: 249033515
+        nonce:
+          type: string
+          pattern: '^\d+$'
+          description: Anti-replay counter (big integer as string)
+          example: "56621881160224303014452052690345518318535648048051400767399579939072347664222"
+        success:
+          type: boolean
+          description: Whether the transaction executed successfully
+          example: false
+        actualGasCost:
+          type: string
+          pattern: '^\d+\.\d+$'
+          description: Actual gas cost in ETH (decimal string)
+          example: "0.000000000000100000"
+        actualGasUsed:
+          type: string
+          pattern: '^\d+\.\d+$'
+          description: Actual gas used (decimal string)
+          example: "21000.000000000000000000"
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the transaction was created
+          example: "2026-04-15T03:20:36.000Z"
+        senderHex:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{40}$'
+          description: Ethereum address (hex format) of the transaction sender
+          example: "0xAbd527c17826FE0Ac1F7651511913Ba230B5dDfe"
+        bundlerHex:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{40}$'
+          description: Ethereum address (hex format) of the bundler who included this transaction
+          example: "0x487f1d870c7da2a5790c16ab6ee02279e0401c95"
+        entryPointHex:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{40}$'
+          description: Ethereum address (hex format) of the entry point contract
+          example: "0xbcb648b716206fdf1ede2715bf20a90e6b746a7e"
+    BundleTxResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          description: Response status code (1 for success, 0 for error)
+          example: "1"
+        message:
+          type: string
+          description: Response message
+          example: "OK"
+        result:
+          $ref: '#/components/schemas/BundleTxQueryResult'
+
+    # Main result schema
+    BundleTxQueryResult:
+      type: object
+      properties:
+        total:
+          type: integer
+          format: int64
+          description: Total number of records matching the query
+          example: 1
+        list:
+          type: array
+          description: Array of bundle transaction records
+          items:
+            $ref: '#/components/schemas/BundleTxItem'
+        nameMap:
+          type: object
+          description: Mapping of IDs to human-readable names (reserved for future use)
+          additionalProperties:
+            type: string
+          example: {}
+
+    # Individual BundleTx item schema
+    BundleTxItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique identifier for the bundle transaction
+          example: 1
+        hash:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{64}$'
+          description: Transaction hash of the bundle (64 hex characters with 0x prefix)
+          example: "0x756ecbdef50dc356372e061a334e72eff499b4a1ee2ef44cb13b026c8d6c5c3a"
+        epoch:
+          type: integer
+          format: int64
+          description: Block epoch number when the bundle was created
+          example: 249033515
+        txCount:
+          type: integer
+          format: int32
+          description: Number of transactions included in this bundle
+          minimum: 0
+          example: 5
+        value:
+          type: string
+          pattern: '^\d+\.\d+$'
+          description: Total value of the bundle in ETH (decimal string)
+          example: "1.230000000000000000"
+        txnFee:
+          type: string
+          pattern: '^\d+\.\d+$'
+          description: Transaction fee paid for this bundle in ETH (decimal string)
+          example: "0.023988577700662400"
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the bundle was created
+          example: "2026-04-15T03:20:36.000Z"
+        bundlerHex:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{40}$'
+          description: Ethereum address (hex format) of the bundler who submitted this bundle
+          example: "0x487f1d870c7da2a5790c16ab6ee02279e0401c95"
+        entryPointHex:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{40}$'
+          description: Ethereum address (hex format) of the entry point contract
+          example: "0xbcb648b716206fdf1ede2715bf20a90e6b746a7e"
     TxsByTypeStat:
       type: object
       properties:
