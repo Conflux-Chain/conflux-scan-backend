@@ -10,7 +10,7 @@ import {
     KEY_FILL_BLOCK_PROPS_EPOCH,
     KV
 } from "./model/KV";
-import {getEth0IP, initCfxSdk} from "./service/common/utils";
+import {getEth0IP, initCfxSdk, SECOND} from "./service/common/utils";
 import {PowSidePosSync} from "./service/pos/PowSidePosSync";
 import {regExitHook} from "./service/tool/ProcessTool";
 import {StatApp} from "./StatApp";
@@ -112,7 +112,10 @@ async function syncFullBlock(fullBlockService:FullBlockService) {
             }
         }).catch(err=>{
             safeAddErrorLog('block-sync',`runner`, err);
-            console.log(`error test full block:`, err)
+            console.log(`error sync full block:`, err)
+            setTimeout(()=>{
+                process.exit(9)
+            }, SECOND * 5)
         })
 }
 const args = process.argv.slice(2)

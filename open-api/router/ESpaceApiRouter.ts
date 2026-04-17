@@ -83,6 +83,7 @@ import {Errors} from "../../stat/service/common/LogicError";
 import {TokenQuery, TokenType} from "../../stat/service/TokenQuery";
 import {NFTType} from "../../stat/service/nftchecker/NFTCheckerService";
 import {HomepageDashboard} from "../../stat/service/HomepageDashboard";
+import {TransferQueryBase} from "../../stat/service/TransferQueryBase";
 import {listGlobalAuthAction} from "../service/OpenEIPService";
 
 const lodash = require('lodash');
@@ -441,7 +442,7 @@ async function listTransfer1155(ctx) {
     );
 }
 
-async function listAddressTransfer(ctx, queryFunc, converterFunc) {
+async function listAddressTransfer(ctx, queryFunc:TransferQueryBase, converterFunc) {
     const {contractaddress, address, startblock, endblock, sort, page, offset} = parseListTransferParam(ctx);
     if(contractaddress === undefined && address === undefined){
         throw new Error(`The contractaddress and/or address parameters are required.`);

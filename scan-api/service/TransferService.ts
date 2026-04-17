@@ -1,5 +1,6 @@
 import {ScanApp, ScanCtx} from "./index";
 import {CONST} from "../../stat/service/common/constant";
+import {TransferQueryBase} from "../../stat/service/TransferQueryBase";
 
 const lodash = require('lodash');
 const limitMap = require('limit-map');
@@ -181,7 +182,7 @@ export class TransferService {
   }
 
   // --------------------------------------------------------------------------
-  _getTransferService(transferType) {
+  _getTransferService(transferType) : TransferQueryBase {
     const {
       app: { error, service },
     } = this as ScanCtx;

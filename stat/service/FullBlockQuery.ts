@@ -6,7 +6,6 @@ import {
     BlockPage,
     FailedTx,
     FullBlock,
-    FullBlockExt,
     FullTransaction,
     pagingFullBlock,
     pagingFullTx,
@@ -120,36 +119,14 @@ export class FullBlockQuery {
         options.order = [['epoch', 'DESC'], ['position', 'DESC']];
         // query
         let rawList: any[];
-        let count;
-        let useEpochRangeForBlockExt = true;
+        let count = 0;
         if(blockHash){
             rawList = await FullBlock.findAll(options);
             count = rawList?.length;
         }else if(minerId){
-            useEpochRangeForBlockExt = false;
             const minerOptions = {...options};
-            minerOptions.attributes = ['minerId', 'epoch', 'position', 'createdAt'];
             const page = await FullMinerBlock.findAndCountAll(minerOptions);
-            const epochSet = new Set();
-            const positionSet = new Set();
-            page?.rows?.forEach(row => {
-                epochSet.add(row['epoch']);
-                positionSet.add(row['position']);
-            })
-            const fullBlockMap = {};
-            if(epochSet.size > 0 && positionSet.size > 0){
-                const blockOptions = {...options};
-                blockOptions.where = {epoch: {[Op.in]: Array.from(epochSet)}};
-                blockOptions.offset = undefined;
-                blockOptions.limit = undefined;
-                const fullBlockList = await FullBlock.findAll(blockOptions);
-                fullBlockList?.forEach(item => {
-                    fullBlockMap[`${item['epochNumber']}-${item['blockIndex']}`] = item;
-                });
-            }
-            rawList = page?.rows?.map(row => {
-                return fullBlockMap[`${row['epoch']}-${row['position']}`];
-            }).filter(Boolean);
+            rawList = page.rows;
             count = page.count;
         } else if(minEpochNumber !== undefined &&  maxEpochNumber !== undefined &&  minEpochNumber === maxEpochNumber){
             const page = await FullBlock.findAndCountAll(options);
@@ -162,48 +139,6 @@ export class FullBlockQuery {
                 count = await KV.getNumber(KEY_FULL_BLOCK_COUNT);
             }
         }
-        // cross space tx
-        const epochCrossSpaceTxMap = {}
-        let epochHasEvmBlockMap = {}
-        const epochBlockExtMap = {}
-        let shouldRefToCore = false;
-        if(rawList?.length) {
-            let blockExts: FullBlockExt[];
-            if (useEpochRangeForBlockExt) {
-                blockExts = await FullBlockExt.sequelize.query(
-                  `select * from full_block_ext where epoch>=? and epoch<=?`,
-                  {type: QueryTypes.SELECT, replacements: [rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber]});
-            } else {
-                // blocks of a miner may cross too large epoch gap
-                blockExts = []
-                await Promise.all(
-                  rawList.map(b=>
-                    FullBlockExt.findOne({where: {epoch: b["epochNumber"], position: b["blockIndex"]}})
-                        .then(ext=>ext && blockExts.push(ext))
-                  )
-                );
-            }
-            for (const blockExt of blockExts) {
-                // epochHasEvmBlockMap[blockExt['epoch']] = blockExt['coreBlock']
-                if (!blockExt || !blockExt.extra) {
-                    continue
-                }
-                // if(blockExt?.extra) // cpu bursts 100% here, amazing.
-                epochBlockExtMap[`${blockExt.epoch}-${blockExt.position}`] = JSON.parse(blockExt.extra);
-            }
-            if(StatApp.isEVM && !NoCoreSpace) {
-                const txCounts = await FullTransaction.sequelize.query(
-                  `select epoch, count(*) as cntr from full_tx where epoch>=? and epoch<=? and gasPrice=0 group by epoch`,
-                  { type: QueryTypes.SELECT, replacements: [rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber]})
-                txCounts.forEach(txCount => epochCrossSpaceTxMap[txCount['epoch']] = txCount['cntr'])
-                shouldRefToCore = blockExts.filter(ext=>ext.coreBlock == -1).length == rawList.length;
-                if (shouldRefToCore) {
-                    epochHasEvmBlockMap = await queryEvmBlockCountInEachEpoch(rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber);
-                } else {
-                    epochHasEvmBlockMap = await queryBlockByEpochRangeRpc(rawList[rawList.length - 1].epochNumber, rawList[0].epochNumber);
-                }
-            }
-        }
         // fields mapping
         const list = [];
         if(rawList){
@@ -214,6 +149,7 @@ export class FullBlockQuery {
             });
             const hex40Map = await idHex40Map(Array.from(hex40IdSet));
             list.forEach(row=>{
+                const extInfo = JSON.parse(row['extra'] || '{}');
                 const minerId = row['miner'];
                 if(minerId && hex40Map.get(minerId)){
                     row['miner'] = fmtAddr(`0x${hex40Map.get(minerId)}`, StatApp.networkId);
@@ -225,15 +161,15 @@ export class FullBlockQuery {
                 if(row['totalReward'] === '0'){
                     row['totalReward'] = undefined;
                 }
-                row['burntGasFee'] = epochBlockExtMap[`${row['epochNumber']}-${row['blockIndex']}`]?.burntFee
+                row['burntGasFee'] = row.burntFee
                 if(StatApp.isEVM) {
-                    row['crossSpaceTransactionCount'] = epochCrossSpaceTxMap[row['epochNumber']] || 0
+                    row['crossSpaceTransactionCount'] = extInfo['crossSpaceTxCount'] || 0
                     row['transactionCount'] = row['transactionCount']
                     row['executedTransactionCount'] = row['executedTransactionCount']
                     if (NoCoreSpace) {
                         row['coreBlock'] = 0;
                     } else {
-                        const evmBlockCnt = epochHasEvmBlockMap[row['epochNumber']];
+                        const evmBlockCnt = row.height % 5 == 0 ? 1 : 0;
                         row['coreBlock'] = evmBlockCnt ? 0 : 1;
                         if (evmBlockCnt) {
                         } else {
@@ -252,7 +188,7 @@ export class FullBlockQuery {
             prunedCntr = pruneInfo !== null ? pruneInfo.pruned : 0;
         }
 
-        const result = {total: (count ? count : 0) + prunedCntr, list, paging, useEpochRangeForBlockExt};
+        const result = {total: (count ? count : 0) + prunedCntr, list, paging, useEpochRangeForBlockExt: false};
         return result;
     }
     public async listTransaction({minEpochNumber = undefined, maxEpochNumber = undefined, blockHash = undefined, transactionHash = undefined,
@@ -300,11 +236,8 @@ export class FullBlockQuery {
             ['createdAt', 'timestamp'],
             'status',
             ['contractCreatedId', 'contractCreated'],
+            'method',
         ];
-        if(accountAddressId === undefined){
-            // address tx table doesn't have this field
-            options.attributes.push('method');
-        }
         // where
         const conditionArray = [];
         let txPage:any | TxPage = {}
@@ -454,26 +387,6 @@ export class FullBlockQuery {
                 hex40Map.set(hex40.id, hex40.hex)
             })
 
-            // prepare method map
-            const methodMap = new Map<string,FullTransaction>()
-            if (accountAddressId) {
-                // fetch method, consider save it on table address tx.
-                const methodList = await limitMap(txHashQueryCondition,
-                    async (object) => {
-                        return FullTransaction.findOne({
-                            attributes: ['hash', 'method'],
-                            where: object,
-                        })
-                    },
-                    { limit: 100 },
-                )
-                /*const methodList = await FullTransaction.findAll({where:{hash:{[Op.in]:txHashArray}},
-                    attributes:['hash','method']})*/
-                // const methodList = await FullTransaction.findAll({attributes: ['hash','method'],
-                //     where: {[Op.or]: txHashQueryCondition}});
-                methodList.forEach(row=>methodMap.set(row?.hash, row))
-            }
-
             const toIdArr = [];
             // fields mapping
             list.forEach(row=>{
@@ -485,9 +398,6 @@ export class FullBlockQuery {
                 }
                 if(row['contractCreated'] === 0){
                     row['contractCreated'] = null;
-                }
-                if (accountAddressId) {
-                    row['method'] = methodMap.get(row['hash'])?.method
                 }
                 const timestampInSec =  row['timestamp'].getTime() / 1000;
                 row['timestamp'] = timestampInSec;
@@ -973,49 +883,4 @@ class AccountPendingInfo {
     constructor(public pendingTransactions: any[] = [], public firstTxStatus: any = null, public pendingDetail: any = undefined) {
         this.pendingCount = pendingTransactions.length
     }
-}
-
-export async function queryEvmBlockCountInEachEpoch(epochMin: number, epochMax: number) {
-    const sql = `select epoch, count(*) as blockCount, sum(coreBlock) as coreCount 
-        from ${CoreDB}.${FullBlockExt.getTableName()}
-        where epoch between ${epochMin} and ${epochMax}
-        group by epoch`;
-    const arr = await FullBlockExt.sequelize.query(sql, {type: QueryTypes.SELECT, raw: true});
-    // core space data may be absent, then query from chain rpc.
-    if (arr.length != epochMax - epochMin + 1) {
-        return queryBlockByEpochRangeRpc(epochMin, epochMax);
-    }
-    const ret = {}
-    arr.forEach(row=>{
-        ret[row['epoch']] = row['blockCount'] - row['coreCount'];
-    })
-    return ret;
-}
-
-async function queryBlockByEpochRangeRpc(epochMin: number, epochMax: number) {
-    const rpc = CoreSpaceRpc;
-    if (!rpc) {
-        return {}
-    }
-    let ret = {}
-    const tasks = []
-	  function fetch(epoch: number) {
-        const task = rpc.getBlocksByEpochNumber(epoch).then(blocks=>{
-            return Promise.all(blocks.map(hash=>{
-                return rpc.getBlockByHash(hash, false)
-            })).then(blockArr=>{
-                ret[epoch] = blockArr.filter(b => b.height % 5 == 0).length;
-            })
-        }).catch(e=>{
-            console.log(`failed to get block info, epoch ${epoch} . `, e)
-        });
-        tasks.push(task);
-    }
-    let cursor = epochMin;
-    while(cursor <= epochMax) {
-        fetch(cursor);
-        cursor ++;
-    }
-    await Promise.all(tasks);
-    return ret;
 }
