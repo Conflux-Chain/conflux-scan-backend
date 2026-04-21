@@ -44,8 +44,10 @@ export abstract class TimerStat {
             let hit = false;
             do {
                 hit = await that.doStat().catch(e => {
-                    safeAddErrorLog('stat-task', `timer-stat-${that.bizAlias()}`, e).then();
-                    console.log(`[${that.bizAlias()}]stat error: `, e);
+                    if (!e.message?.includes('block_number is missing for best_hash')) {
+                        safeAddErrorLog('stat-task', `timer-stat-${that.bizAlias()}`, e).then();
+                        console.log(`[${that.bizAlias()}]stat error: `, e);
+                    }
                     return false;
                 });
             } while(hit)
