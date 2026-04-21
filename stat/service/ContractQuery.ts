@@ -374,10 +374,9 @@ export class ContractQuery {
             similarMatchAddress,
         };
 
-        VerifiedContracts.create({
-            ...verified,
-            libraries: JSON.stringify(verified.libraries)
-        }).catch(err => safeAddErrorLog("contract-query", "get-verify-by-sourcify", err));
+        VerifiedContracts.upsert(
+            {...verified, libraries: JSON.stringify(verified.libraries)}
+        ).catch(err => safeAddErrorLog("contract-query", "get-verify-by-sourcify", err));
         this._addCache(hex, verified);
 
         this.saveABI(address, abi).then();

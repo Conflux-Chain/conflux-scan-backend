@@ -77,17 +77,6 @@ export async function polishContract(page) {
             delete page.addressInfo[k];
         });
     }
-
-    const addresses = new Set<string>(
-        page?.list?.flatMap(item => [
-            item.from,
-            item.to,
-            item.address,
-            item.contract,
-            item.contractAddress
-        ]).filter(Boolean)
-    );
-    page.nameMap = await getApiService().accountQuery.list([...addresses]);
 }
 export function removeEmptyKey(obj, key) {
     if (isEmptyObj(obj[key])) {
