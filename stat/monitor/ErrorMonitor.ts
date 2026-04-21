@@ -67,6 +67,7 @@ export function isKnownError(e) {
 		|| e.message?.includes('timeout')
 		|| e.message?.includes('connection')
 		|| (e.data instanceof String && e.data?.includes('is not executed, the latest state epoch is'))
+		|| e.message?.includes('block_number is missing for best_hash')
 		;
 }
 
