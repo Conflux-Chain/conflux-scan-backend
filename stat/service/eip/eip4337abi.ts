@@ -35,7 +35,7 @@ export interface IUserOperationEvent {
 export function parseUserOperationEvent(log: any): IUserOperationEvent {
     // 验证是否是 UserOperationEvent
     if (log.topics && log.topics[0] !== USER_OPERATION_EVENT_SIGNATURE) {
-        console.log(`topics 0 mismatch ${(log.topics||[])[0]} vs ${USER_OPERATION_EVENT_SIGNATURE}`)
+        // console.log(`topics 0 mismatch ${(log.topics||[])[0]} vs ${USER_OPERATION_EVENT_SIGNATURE}`)
         return null;
     }
 

@@ -38,12 +38,13 @@ import {ConfigInstance, FirstBlockNo, NoCoreSpace} from "../config/StatConfig";
 import {cfxSafeEpochReceipts} from "../TokenTransferSync";
 import {Block} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {incDailyAddressCount} from "../model/StatAddress";
-import {BatchBlockTx} from "./BatchDBTx";
+import {BatchBlockTx, IDBAction} from "./BatchDBTx";
 import {SyncBlockSchema, SyncReporter} from "../monitor/InfluxWorker";
 import {FullMinerBlock} from "../model/FullMinerBlock";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import {StuckChecker} from "../monitor/Monitor";
 import {saveAuthBlockStub} from "./eip/eip7702";
+import {ISync4337txParam, pop4337data, sync4337txOfEpoch} from "./eip/eip4337";
 
 // Do not care the value
 const CODE_REWIND = 20201029
@@ -370,13 +371,24 @@ export class FullBlockService {
                 }
             }
         }
-        const preLoadResult = {code, message, blockList, rewardList, latest_state: this.latestStateEpoch, receipts, blockHashes: hashes, rpcTime, procTime: Date.now()-start,
-            buildTime: 0, hasAuthTx};
+        const preLoadResult = {
+            code, message, blockList, rewardList,
+            latest_state: this.latestStateEpoch,
+            receipts, blockHashes: hashes, rpcTime,
+            dbActionArr: [],
+            procTime: Date.now()-start,
+            buildTime: 0, hasAuthTx,
+        };
         if (code != 0) {
             return preLoadResult;
         }
         start = Date.now();
         await this.buildBlockByEpoch(minEpochNumber, preLoadResult)
+        preLoadResult.dbActionArr.push(
+            await sync4337txOfEpoch({
+                receipts, blocks: blockList, blockTime: preLoadResult['blockTime'], txFn: null
+            } as unknown as ISync4337txParam)
+        );
         preLoadResult.buildTime = Date.now() - start;
         return preLoadResult;
     }
@@ -485,6 +497,7 @@ export class FullBlockService {
                     diffCount(KEY_FULL_BLOCK_COUNT, -popBlockCount, dbTx),
                     diffCount(KEY_FULL_TX_COUNT, -popTx.length, dbTx),
                     PosRegister.destroy({where: {epoch: popEpochCondition}, transaction: dbTx}),
+                    pop4337data(popEpochCondition, dbTx),
                 ])
             })
             const message = `pivot hash not match, current epoch ${minEpochNumber
@@ -502,6 +515,7 @@ export class FullBlockService {
         let pivotBlock = blockList[blockList.length - 1];
 
         let blockTime = new Date(pivotBlock.timestamp * 1000);
+        preLoadResult.blockTime = blockTime;
         // build block template out of the transaction below.
         for (const [blockIdx, block] of blockList.entries()) {
             if (block.epochNumber !== minEpochNumber) {
@@ -641,12 +655,14 @@ export class FullBlockService {
         let {
             fullBlock: blockBeanArr, fullTransaction: executedTxArr, addressTransactionIndex: txByAddressArr,
             failedTX: failedTxArr, fullBlockExt: blockExtArr, posRegArr, hasAuthTx,
+            dbActionArr,
         } = preLoadResult;
         if (hasAuthTx) {
             saveAuthBlockStub(minEpochNumber, blockBeanArr[0].hash);
         }
         const blockList = blockBeanArr;
-        this.batchBlockTx.enqueue(failedTxArr, blockBeanArr, executedTxArr, txByAddressArr, blockExtArr, posRegArr)
+        this.batchBlockTx.enqueue(failedTxArr, blockBeanArr, executedTxArr, txByAddressArr,
+            blockExtArr, posRegArr, dbActionArr)
         //
         let skip = false;
         const pivotBlock = blockList[blockList.length - 1];
@@ -657,7 +673,7 @@ export class FullBlockService {
         } else {
             ( {
                 fullBlock: blockBeanArr, fullTransaction: executedTxArr, addressTransactionIndex: txByAddressArr,
-                failedTX: failedTxArr, fullBlockExt: blockExtArr, posRegArr
+                failedTX: failedTxArr, fullBlockExt: blockExtArr, posRegArr, dbActionArr,
             } = this.batchBlockTx );
         }
         //
@@ -672,6 +688,7 @@ export class FullBlockService {
                 diffCount(KEY_FULL_BLOCK_COUNT, this.batchBlockTx.fullBlock.length, dbTx).then(()=>metrics.diffBlockCntTime += Date.now() - start),
                 diffCount(KEY_FULL_TX_COUNT, this.batchBlockTx.fullTransaction.length, dbTx).then(()=>metrics.diffTxCntTime += Date.now() - start),
                 PosRegister.bulkCreate(posRegArr, {transaction: dbTx}),
+                Promise.all(dbActionArr.map(a=>(a as IDBAction).save(dbTx))),
             ])
             this.batchBlockTx.reset();
         })).then(async ()=>{

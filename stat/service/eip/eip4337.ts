@@ -20,6 +20,8 @@ import {Conflux} from "js-conflux-sdk";
 import {init} from "../tool/FixDailyTokenStat";
 import {initCfxSdk} from "../common/utils";
 import {queryAATx, queryBundleTx} from "./eip4337query";
+import {Block, TransactionReceipt, Transaction as SdkTx} from "js-conflux-sdk/dist/types/rpc/types/formatter";
+import {IDBAction} from "../BatchDBTx";
 
 export interface IBundleData {
 	bundlerTx: IBundleTx;
@@ -46,6 +48,15 @@ export async function buildAATxDBModel(op: IUserOperationEvent, blockTime: Date)
 		success: op.success,
 		userOpHash: op.userOpHash,
 	};
+}
+
+export async function pop4337data(epoch: number|any, dbTx: Transaction) {
+	const options = {where: {epoch} , transaction: dbTx};
+
+	await BundleTx.destroy(options);
+	await AATx.destroy(options);
+	await UserOperationRevertReason.destroy(options);
+	await AccountDeployed.destroy(options);
 }
 
 export async function saveBundleArr(data: IBundleData[], dbTx: Transaction) : Promise<void> {
@@ -95,7 +106,7 @@ export async function saveBundleData(data: IBundleData, dbTx: Transaction) : Pro
 	});
 }
 
-export async function syncEpoch(cfx: Conflux, ep: number, blockTime: Date) : Promise<void> {
+async function syncEpoch(cfx: Conflux, ep: number, blockTime: Date) : Promise<void> {
 	if (!blockTime) {
 		const blockHashArr = await cfx.getBlocksByEpochNumber(ep);
 		const block = await cfx.getBlockByHash(blockHashArr.pop());
@@ -105,12 +116,32 @@ export async function syncEpoch(cfx: Conflux, ep: number, blockTime: Date) : Pro
 
 	const r = await cfx.getEpochReceipts(ep);
 	console.log(`epoch receipts ${r.length}`);
+	const txFn = (hash: string)=>{
+		return cfx.getTransactionByHash(hash);
+	}
+	const dbAction = await sync4337txOfEpoch({receipts: r, blocks:null, blockTime, txFn});
+	await AATx.sequelize.transaction(async tx => {
+		return dbAction.save(tx);
+	});
+}
 
+export interface ISync4337txParam {
+	receipts: TransactionReceipt[][];
+	blocks: Block[];
+	blockTime:Date;
+	txFn?: (hash: string) => Promise<SdkTx>;
+}
+
+export async function sync4337txOfEpoch({receipts, blocks, blockTime, txFn}:ISync4337txParam): Promise<IDBAction> {
 	const bundleArr: IBundleData[] = [];
-	for (const rcptOfBlock of r) {
-		console.log(`block rcpts ${rcptOfBlock.length}`);
+	let blockIdx = -1;
+	for (const rcptOfBlock of receipts) {
+		blockIdx ++;
+		let txIdx = -1;
+		// console.log(`block rcpts ${rcptOfBlock.length}`);
 		for (const rcpt of rcptOfBlock) {
-			console.log(`event count [${rcpt.logs?.length || rcpt}]`);
+			txIdx ++;
+			// console.log(`event count [${rcpt.logs?.length ?? rcpt}]`);
 
 			const bundler:IBundleData = {
 				bundlerTxId: BigInt(0),
@@ -160,11 +191,11 @@ export async function syncEpoch(cfx: Conflux, ep: number, blockTime: Date) : Pro
 
 					bundler.hasData = true;
 				} else {
-					console.log(`what's it ?`, log);
+					// console.log(`what's it ?`, log);
 				}
 			}
 			if (bundler.hasData) {
-				const rawTx = await cfx.getTransactionByHash(rcpt.transactionHash);
+				const rawTx = blocks ? (blocks[blockIdx].transactions[txIdx]) as SdkTx : await txFn(rcpt.transactionHash);
 
 				bundler.bundlerTx = {
 					hash: rcpt.transactionHash,
@@ -181,9 +212,9 @@ export async function syncEpoch(cfx: Conflux, ep: number, blockTime: Date) : Pro
 			}
 		}
 	}
-	await AATx.sequelize.transaction(async tx => {
-		return saveBundleArr(bundleArr, tx);
-	});
+	return {
+		save: dbTx => saveBundleArr(bundleArr, dbTx)
+	} as IDBAction
 }
 
 async function testQuery() {

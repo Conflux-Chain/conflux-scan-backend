@@ -137,6 +137,10 @@ export function initAuthRpc() {
 	}
 }
 
+/**
+ * Save the block hash here and let another thread process these blocks one by one.
+ * In case of a chain reorg, it will track all blocks that appear.
+ */
 export function saveAuthBlockStub(blockNumber: number, blockHash: string) {
 	function failed(e) {
 		safeAddErrorLog(`eip7702`, `saveStub`, e);

@@ -10,6 +10,11 @@ import {IAddressCfxTransfer, ICfxTransfer} from "../model/CfxTransfer";
 import {IEpochHashCfxTransfer} from "../CfxTransferSync";
 import {ITraceCreateContract} from "../model/TraceCreateContract";
 import {ESpaceHexMapAttributes} from "../model/HexMap";
+import {Transaction} from "sequelize";
+
+export interface IDBAction {
+	save(dbTx: Transaction): Promise<void>;
+}
 
 export class BatchDataBase {
 	batchSize: number
@@ -144,6 +149,7 @@ export class BatchBlockTx extends BatchDataBase{
 	addressTransactionIndex: AddressTransactionIndex[]
 	fullBlockExt: FullBlockExt[]
 	posRegArr: IPosRegister[]
+	dbActionArr: IDBAction[]
 
 	constructor() {
 		super();
@@ -157,6 +163,7 @@ export class BatchBlockTx extends BatchDataBase{
 		addressTransactionIndex: AddressTransactionIndex[],
 		fullBlockExt: FullBlockExt[],
 		posRegArr: IPosRegister[],
+		dbActionArr: IDBAction[]
 	) {
 		this.failedTX.push(...failedTX)
 		this.fullBlock.push(...fullBlock)
@@ -164,6 +171,7 @@ export class BatchBlockTx extends BatchDataBase{
 		this.addressTransactionIndex.push(...addressTransactionIndex)
 		this.fullBlockExt.push(...fullBlockExt)
 		this.posRegArr.push(...posRegArr)
+		this.dbActionArr.push(...dbActionArr)
 
 		this.batchSize++
 	}
@@ -177,6 +185,7 @@ export class BatchBlockTx extends BatchDataBase{
 		this.addressTransactionIndex = []
 		this.fullBlockExt = []
 		this.posRegArr = []
+		this.dbActionArr = []
 
 		this.batchSize = 0
 	}
