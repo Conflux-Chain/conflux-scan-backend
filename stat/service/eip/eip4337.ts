@@ -37,10 +37,11 @@ export async function buildAATxDBModel(op: IUserOperationEvent, blockTime: Date)
 		actualGasCost: formatEther(op.actualGasCost),
 		actualGasUsed: op.actualGasUsed.toString(),
 		bundleTxId: 0n,
+		eventContractId: BigInt(await makeIdV(op.address)),
 		createdAt: blockTime,
 		epoch: 0n,
 		id: 0n,
-		nonce: op.nonce,
+		nonce: op.nonce.toString(),
 		paymasterId: await makeIdV(op.paymaster),
 		senderId: await makeIdV(op.sender),
 		bundlerId: 0n,
@@ -71,12 +72,6 @@ export async function saveBundleArr(data: IBundleData[], dbTx: Transaction) : Pr
 }
 
 export async function saveBundleData(data: IBundleData, dbTx: Transaction) : Promise<void> {
-	if (data.aaTxArr.length == 0) {
-		console.log(`bundlerTxArr is empty`);
-		return;
-	}
-	console.log(` aa tx count ${data.aaTxArr.length}`);
-
 	for (let i = 0; i < data.aaTxArr.length; i++) {
 		const iaaTx = data.aaTxArr[i];
 		iaaTx.bundleTxId = data.bundlerTxId;
@@ -155,7 +150,7 @@ export async function sync4337txOfEpoch({receipts, blocks, blockTime, txFn}:ISyn
 			for (const log of rcpt.logs) {
 				const event = parseUserOperationEvent(log);
 				if (event) {
-					console.log(`it's user op`);
+					// console.log(`it's user op`);
 					const userOp = await buildAATxDBModel(event, blockTime);
 					bundler.hasData = true;
 					bundler.aaTxArr.push(userOp);
@@ -167,6 +162,7 @@ export async function sync4337txOfEpoch({receipts, blocks, blockTime, txFn}:ISyn
 					console.log(`it's user account deployed`);
 					bundler.accountDeployedArr.push({
 						bundleTxId: 0n,
+						eventContractId: BigInt(await makeIdV(accDeployed.address)),
 						createdAt: blockTime, epoch: 0n,
 						factory: accDeployed.factory, id: 0n,
 						paymaster: accDeployed.paymaster,
@@ -182,6 +178,7 @@ export async function sync4337txOfEpoch({receipts, blocks, blockTime, txFn}:ISyn
 					console.log(`it's revert reason`);
 					bundler.revertReasonArr.push({
 						bundleTxId: 0n,
+						eventContractId: BigInt(await makeIdV(revertReason.address)),
 						createdAt: blockTime, epoch: 0n,
 						id: 0n, nonce: revertReason.nonce.toString(),
 						revertReason: revertReason.revertReason,

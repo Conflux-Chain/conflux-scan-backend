@@ -1779,7 +1779,7 @@ paths:
       tags:
         - 'EIP'
       description: 'Query BundleTx with optional filters for bundler and entryPoint (AND relationship).
-      The candidate data set comprises all authorization records on the chain.'
+      The candidate data set comprises all bundled transactions on the chain.'
       parameters:
         - name: bundler
           in: query
@@ -1807,7 +1807,7 @@ paths:
       tags:
         - 'EIP'
       description: 'Query AATx with optional filters for sender/signer, bundler, entryPoint (AND relationship).
-      The candidate data set comprises all authorization records on the chain.'
+      The candidate data set comprises all account abstraction (UserOperation) transactions on the chain.'
       parameters:
         - name: sender
           in: query

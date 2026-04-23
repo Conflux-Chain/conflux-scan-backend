@@ -81,6 +81,7 @@ export function parseUserOperationEvent(log: any): IUserOperationEvent {
     const actualGasUsed = ethers.toBigInt('0x'+log.data.slice(194, 258));   // 第四个 32 字节
 
     return {
+        address: log.address,
         userOpHash,
         sender,
         paymaster,
@@ -102,24 +103,11 @@ const reasonInterface = new ethers.Interface([
 ]);
 
 export interface IAccountDeployedEvent {
+    address: string; // the contract from which the event emit
     userOpHash: string;
     sender: string;
     factory: string;
     paymaster: string;
-}
-
-export class AccountDeployedEvent implements IAccountDeployedEvent {
-    userOpHash: string;
-    sender: string;
-    factory: string;
-    paymaster: string;
-
-    constructor(data: IAccountDeployedEvent) {
-        this.userOpHash = data.userOpHash;
-        this.sender = data.sender;
-        this.factory = data.factory;
-        this.paymaster = data.paymaster;
-    }
 }
 
 /**
@@ -128,7 +116,7 @@ export class AccountDeployedEvent implements IAccountDeployedEvent {
  * @returns 解析后的 AccountDeployed 对象
  * @throws 如果解析失败或 data 长度不匹配
  */
-export function parseAccountDeployed(log: any): AccountDeployedEvent {
+export function parseAccountDeployed(log: any): IAccountDeployedEvent {
     try {
         // 验证是否是 AccountDeployed 事件
         if (!log.topics || log.topics.length < 3) {
@@ -172,12 +160,13 @@ export function parseAccountDeployed(log: any): AccountDeployedEvent {
 
         const args = parsedLog.args as any;
 
-        return new AccountDeployedEvent({
+        return {
+            address: log.address,
             userOpHash: args.userOpHash,
             sender: args.sender,
             factory: args.factory,
             paymaster: args.paymaster
-        });
+        } as IAccountDeployedEvent;
     } catch (error: any) {
         // throw new Error(`Failed to parse AccountDeployed: ${error.message}`);
         console.error(__filename, ' ', error);
@@ -191,7 +180,7 @@ export function parseAccountDeployed(log: any): AccountDeployedEvent {
  * @returns 解析后的 AccountDeployed 对象
  * @throws 如果 data 长度不匹配
  */
-export function parseAccountDeployedManual(log: any): AccountDeployedEvent {
+export function parseAccountDeployedManual(log: any): IAccountDeployedEvent {
     // 验证事件签名
     if (log.topics && log.topics[0] !== ACCOUNT_DEPLOYED_EVENT_SIGNATURE) {
         throw new Error(`Invalid event signature: expected AccountDeployed, got ${log.topics?.[0]}`);
@@ -231,12 +220,13 @@ export function parseAccountDeployedManual(log: any): AccountDeployedEvent {
     const factory = ethers.getAddress('0x' + factoryBytes.slice(-40));
     const paymaster = ethers.getAddress('0x' + paymasterBytes.slice(-40));
 
-    return new AccountDeployedEvent({
+    return {
+        address: log.address,
         userOpHash,
         sender,
         factory,
         paymaster
-    });
+    };
 }
 
 // ------
@@ -250,24 +240,11 @@ const eventInterface = new ethers.Interface([
 ]);
 
 export interface IUserOperationRevertReason {
+    address: string; // the contract from which the event emit
     userOpHash: string;
     sender: string;
     nonce: bigint;
     revertReason: string;
-}
-
-export class UserOperationRevertReason implements IUserOperationRevertReason {
-    userOpHash: string;
-    sender: string;
-    nonce: bigint;
-    revertReason: string;
-
-    constructor(data: IUserOperationRevertReason) {
-        this.userOpHash = data.userOpHash;
-        this.sender = data.sender;
-        this.nonce = data.nonce;
-        this.revertReason = data.revertReason;
-    }
 }
 
 /**
@@ -276,7 +253,7 @@ export class UserOperationRevertReason implements IUserOperationRevertReason {
  * @returns 解析后的 UserOperationRevertReason 对象
  * @throws 如果解析失败或 data 长度不匹配
  */
-export function parseUserOperationRevertReason(log: any): UserOperationRevertReason {
+export function parseUserOperationRevertReason(log: any): IUserOperationRevertReason {
     try {
         // 验证是否是 UserOperationRevertReason 事件
         if (!log.topics || log.topics.length < 3) {
@@ -328,12 +305,13 @@ export function parseUserOperationRevertReason(log: any): UserOperationRevertRea
             revertReasonStr = args.revertReason;
         }
 
-        return new UserOperationRevertReason({
+        return {
+            address: log.address,
             userOpHash: args.userOpHash,
             sender: args.sender,
             nonce: args.nonce,
             revertReason: revertReasonStr
-        });
+        };
     } catch (error: any) {
         // throw new Error(`Failed to parse UserOperationRevertReason: ${error.message}`);
         console.error(__filename, ' ', error);
@@ -347,7 +325,7 @@ export function parseUserOperationRevertReason(log: any): UserOperationRevertRea
  * @returns 解析后的 UserOperationRevertReason 对象
  * @throws 如果 data 长度不匹配
  */
-export function parseUserOperationRevertReasonManual(log: any): UserOperationRevertReason {
+export function parseUserOperationRevertReasonManual(log: any): IUserOperationRevertReason {
     // 验证事件签名
     if (log.topics && log.topics[0] !== USER_OP_REVERT_REASON_EVENT_SIGNATURE) {
         throw new Error(`Invalid event signature: expected UserOperationRevertReason, got ${log.topics?.[0]}`);
@@ -406,12 +384,13 @@ export function parseUserOperationRevertReasonManual(log: any): UserOperationRev
         revertReasonStr = ethers.hexlify(actualData);
     }
 
-    return new UserOperationRevertReason({
+    return {
+        address: log.address,
         userOpHash,
         sender,
         nonce,
         revertReason: revertReasonStr
-    });
+    };
 }
 
 /**

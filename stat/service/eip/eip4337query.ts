@@ -65,10 +65,8 @@ export async function queryBundleTx(params: BundleTxQueryParams): Promise<{ tota
     const list = results.map(bundle => {
         const row = {
             ...bundle.toJSON(),
-            // @ts-ignore
-            bundlerHex: '0x' + bundle.get('bundler')?.hex || '',
-            // @ts-ignore
-            entryPointHex: '0x' + bundle.get('entryPoint')?.hex || '',
+            bundlerHex: pickAddr('bundler', bundle),
+            entryPointHex: pickAddr('entryPoint', bundle),
         };
         delete row.entryPointId;
         delete row.bundlerId;
@@ -129,12 +127,9 @@ export async function queryAATx(params: AATxQueryParams): Promise<{ list: AATxQu
     const list = results.map(aaTx => {
         const row = {
             ...aaTx.toJSON(),
-            // @ts-ignore
-            senderHex: '0x' + aaTx.get('sender')?.hex || '',
-            // @ts-ignore
-            bundlerHex: '0x' + aaTx.get('bundler')?.hex || '',
-            // @ts-ignore
-            entryPointHex: '0x' + aaTx.get('entryPoint')?.hex || '',
+            senderHex: pickAddr('sender', aaTx),
+            bundlerHex: pickAddr('bundler', aaTx),
+            entryPointHex: pickAddr('entryPoint', aaTx),
         };
         delete row.entryPointId;
         delete row.bundlerId;
@@ -148,4 +143,11 @@ export async function queryAATx(params: AATxQueryParams): Promise<{ list: AATxQu
         return row;
     });
     return {list, total: count};
+}
+
+
+const pickAddr = (key: string, bundle: BundleTx|AATx) => {
+    // @ts-ignore
+    const v = bundle.get(key)?.hex;
+    return v ? '0x' + v : '';
 }

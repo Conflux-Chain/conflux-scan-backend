@@ -52,10 +52,11 @@ export interface IAATx {
 	epoch: bigint;
 	senderId: number;
 	bundlerId: bigint;
+	eventContractId: bigint;
 	entryPointId: bigint;
 	bundleTxId: bigint;
 	paymasterId: number;
-	nonce: bigint;
+	nonce: string;
 	success: boolean;
 	actualGasCost: string;
 	actualGasUsed: string;
@@ -68,10 +69,11 @@ export class AATx extends Model<IAATx> implements IAATx {
 	epoch: bigint;
 	senderId: number;
 	bundlerId: bigint;
+	eventContractId: bigint;
 	entryPointId: bigint;
 	bundleTxId: bigint;
 	paymasterId: number;
-	nonce: bigint;
+	nonce: string;
 	success: boolean;
 	actualGasCost: string;
 	actualGasUsed: string;
@@ -84,6 +86,7 @@ export class AATx extends Model<IAATx> implements IAATx {
 			epoch: {type: DataTypes.BIGINT, allowNull: false},
 			senderId: {type: DataTypes.BIGINT, allowNull: false},
 			bundlerId: {type: DataTypes.BIGINT, allowNull: false},
+			eventContractId: {type: DataTypes.BIGINT, allowNull: false},
 			entryPointId: {type: DataTypes.BIGINT, allowNull: false},
 			bundleTxId: {type: DataTypes.BIGINT, allowNull: false},
 			paymasterId: {type: DataTypes.BIGINT, allowNull: false},
@@ -123,6 +126,7 @@ export function bindBundleTxModels() {
 export interface IAccountDeployed {
 	id: bigint;
 	bundleTxId: bigint;
+	eventContractId: bigint;
 	epoch: bigint;
 	userOpHash: string;
 	sender: string;
@@ -134,6 +138,7 @@ export interface IAccountDeployed {
 export class AccountDeployed extends Model<IAccountDeployed> implements IAccountDeployed {
 	id: bigint;
 	bundleTxId: bigint;
+	eventContractId: bigint;
 	userOpHash: string;
 	epoch: bigint;
 	sender: string;
@@ -144,6 +149,7 @@ export class AccountDeployed extends Model<IAccountDeployed> implements IAccount
 		AccountDeployed.init({
 			id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true},
 			bundleTxId: {type: DataTypes.BIGINT, allowNull: false},
+			eventContractId: {type: DataTypes.BIGINT, allowNull: false},
 			epoch: {type: DataTypes.BIGINT, allowNull: false},
 			userOpHash: {type: DataTypes.STRING(66), allowNull: false},
 			sender: {type: DataTypes.STRING(42), allowNull: false},
@@ -163,6 +169,7 @@ export class AccountDeployed extends Model<IAccountDeployed> implements IAccount
 export interface IUserOperationRevertReason {
 	id: bigint;
 	bundleTxId: bigint;
+	eventContractId: bigint;
 	epoch: bigint;
 	userOpHash: string;
 	sender: string;
@@ -174,6 +181,7 @@ export interface IUserOperationRevertReason {
 export class UserOperationRevertReason extends Model<IUserOperationRevertReason> implements IUserOperationRevertReason {
 	id: bigint;
 	bundleTxId: bigint;
+	eventContractId: bigint;
 	userOpHash: string;
 	epoch: bigint;
 	sender: string;
@@ -184,6 +192,7 @@ export class UserOperationRevertReason extends Model<IUserOperationRevertReason>
 		UserOperationRevertReason.init({
 			id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true},
 			bundleTxId: {type: DataTypes.BIGINT, allowNull: false},
+			eventContractId: {type: DataTypes.BIGINT, allowNull: false},
 			epoch: {type: DataTypes.BIGINT, allowNull: false},
 			userOpHash: {type: DataTypes.STRING(66), allowNull: false},
 			sender: {type: DataTypes.STRING(42), allowNull: false},
