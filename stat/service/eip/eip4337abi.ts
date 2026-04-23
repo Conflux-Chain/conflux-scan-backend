@@ -33,8 +33,13 @@ export interface IUserOperationEvent {
  * @throws 如果 log 不是 UserOperationEvent 或 data 长度不匹配
  */
 export function parseUserOperationEvent(log: any): IUserOperationEvent {
+    // 检查 topics 字段是否存在且包含完整的 indexed 参数
+    if (!log.topics || log.topics.length < 4) {
+        return null;
+    }
+
     // 验证是否是 UserOperationEvent
-    if (log.topics && log.topics[0] !== USER_OPERATION_EVENT_SIGNATURE) {
+    if (log.topics[0] !== USER_OPERATION_EVENT_SIGNATURE) {
         // console.log(`topics 0 mismatch ${(log.topics||[])[0]} vs ${USER_OPERATION_EVENT_SIGNATURE}`)
         return null;
     }
