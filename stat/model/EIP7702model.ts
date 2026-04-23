@@ -137,6 +137,7 @@ export async function listAuthAction({author = '', address = '', txSender = '', 
 		row['createdAt'] = row['txTime'];
 		row['txSender'] =  ethers.getAddress(row['txSender']);
 		row['address'] =  ethers.getAddress(row['address']);
+		row['author'] =  row['author'] ? ethers.getAddress(row['author']) : '';
 		delete row['refBlockStubId'];
 		delete row['transactionPosition'];
 		delete row['authIndex'];
