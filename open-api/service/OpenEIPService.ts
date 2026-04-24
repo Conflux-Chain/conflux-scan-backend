@@ -21,8 +21,8 @@ export async function listBundledTx(ctx) {
     const {bundler, entryPoint} = ctx.request.query;
 
     const result = await queryBundleTx({
-        bundlerId: bundler ? BigInt((await getAddrId(bundler)) ?? -1) : undefined,
-        entryPointId: entryPoint ? BigInt((await getAddrId(entryPoint)) ?? -1) : undefined,
+        bundlerId: bundler ? ((await getAddrId(bundler)) ?? -1) : undefined,
+        entryPointId: entryPoint ? ((await getAddrId(entryPoint)) ?? -1) : undefined,
         skip, limit,
     });
 
@@ -35,8 +35,8 @@ export async function list4337Tx(ctx) {
     const {bundler, entryPoint, sender} = ctx.request.query;
 
     const result = await queryAATx({
-        bundlerId: bundler ? BigInt((await getAddrId(bundler)) ?? -1) : undefined,
-        entryPointId: entryPoint ? BigInt((await getAddrId(entryPoint)) ?? -1) : undefined,
+        bundlerId: bundler ? (await getAddrId(bundler) ?? -1) : undefined,
+        entryPointId: entryPoint ? (await getAddrId(entryPoint) ?? -1) : undefined,
         senderId: sender ? (await getAddrId(sender, undefined) ?? -1) : undefined,
         skip, limit,
     });

@@ -5,8 +5,8 @@ export interface IBundleTx {
 	id: bigint;
 	hash: string;
 	epoch: bigint;
-	bundlerId: bigint;
-	entryPointId: bigint;
+	bundlerId: number;
+	entryPointId: number;
 	txCount: number;
 	value: string;
 	txnFee: string;
@@ -17,8 +17,8 @@ export class BundleTx extends Model<IBundleTx> implements IBundleTx {
 	id: bigint;
 	hash: string;
 	epoch: bigint;
-	bundlerId: bigint;
-	entryPointId: bigint;
+	bundlerId: number;
+	entryPointId: number;
 	txCount: number;
 	value: string;
 	txnFee: string;
@@ -51,9 +51,9 @@ export interface IAATx {
 	userOpHash: string;
 	epoch: bigint;
 	senderId: number;
-	bundlerId: bigint;
-	eventContractId: bigint;
-	entryPointId: bigint;
+	bundlerId: number;
+	eventContractId: number;
+	entryPointId: number;
 	bundleTxId: bigint;
 	paymasterId: number;
 	nonce: string;
@@ -68,9 +68,9 @@ export class AATx extends Model<IAATx> implements IAATx {
 	userOpHash: string;
 	epoch: bigint;
 	senderId: number;
-	bundlerId: bigint;
-	eventContractId: bigint;
-	entryPointId: bigint;
+	bundlerId: number;
+	eventContractId: number;
+	entryPointId: number;
 	bundleTxId: bigint;
 	paymasterId: number;
 	nonce: string;

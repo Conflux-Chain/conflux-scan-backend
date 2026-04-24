@@ -44,8 +44,8 @@ export async function buildAATxDBModel(op: IUserOperationEvent, blockTime: Date)
 		nonce: op.nonce.toString(),
 		paymasterId: await makeIdV(op.paymaster),
 		senderId: await makeIdV(op.sender),
-		bundlerId: 0n,
-		entryPointId: 0n,
+		bundlerId: 0,
+		entryPointId: 0,
 		success: op.success,
 		userOpHash: op.userOpHash,
 	};
@@ -159,7 +159,6 @@ export async function sync4337txOfEpoch({receipts, blocks, blockTime, txFn}:ISyn
 
 				const accDeployed = parseAccountDeployed(log);
 				if (accDeployed) {
-					console.log(`it's user account deployed`);
 					bundler.accountDeployedArr.push({
 						bundleTxId: 0n,
 						eventContractId: BigInt(await makeIdV(accDeployed.address)),
@@ -175,7 +174,6 @@ export async function sync4337txOfEpoch({receipts, blocks, blockTime, txFn}:ISyn
 
 				const revertReason = parseUserOperationRevertReason(log);
 				if (revertReason) {
-					console.log(`it's revert reason`);
 					bundler.revertReasonArr.push({
 						bundleTxId: 0n,
 						eventContractId: BigInt(await makeIdV(revertReason.address)),
@@ -234,8 +232,8 @@ async function testQuery() {
 	// Query AATx with all three filters
 	const filteredTxs = await queryAATx({
 		senderId: 789,
-		bundlerId: BigInt(123),
-		entryPointId: BigInt(456),
+		bundlerId: (123),
+		entryPointId: (456),
 		...page,
 	});
 }
