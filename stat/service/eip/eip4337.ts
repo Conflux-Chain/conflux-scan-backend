@@ -37,7 +37,7 @@ export async function buildAATxDBModel(op: IUserOperationEvent, blockTime: Date)
 		actualGasCost: formatEther(op.actualGasCost),
 		actualGasUsed: op.actualGasUsed.toString(),
 		bundleTxId: 0n,
-		eventContractId: BigInt(await makeIdV(op.address)),
+		eventContractId: await makeIdV(op.address),
 		createdAt: blockTime,
 		epoch: 0n,
 		id: 0n,
