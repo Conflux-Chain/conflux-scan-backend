@@ -16,14 +16,14 @@ export interface AATxQueryResult extends IAATx {
 
 // Query parameters interfaces
 export interface BundleTxQueryParams extends IPageParam {
-    bundlerId?: bigint;
-    entryPointId?: bigint;
+    bundlerId?: number;
+    entryPointId?: number;
 }
 
 export interface AATxQueryParams extends IPageParam{
     senderId?: number;
-    bundlerId?: bigint;
-    entryPointId?: bigint;
+    bundlerId?: number;
+    entryPointId?: number;
 }
 
 /**
