@@ -23,7 +23,7 @@ import {AuthAction} from "../model/EIP7702model";
 import {TokenQuery} from "./TokenQuery";
 import {ContractQuery} from "./ContractQuery";
 import {CONST} from "./common/constant";
-import {formatBlockNumber, formatCallParams, sendRpc} from "./common/utils";
+import {formatBlockNumber, formatCallParams, sendRpc, splitFullyQualifiedName} from "./common/utils";
 import {ContractImpl} from "../model/ContractImpl";
 import {fillMethodInfo} from "./contract/contractTool";
 
@@ -252,7 +252,17 @@ export class AccountQuery {
                 }
             ),
             contractSrv.listVerifyInBatch(addresses).then( // hex => {name}
-                list => Object.fromEntries(list.map(fieldMapper))
+                list => {
+                    const map = Object.fromEntries(list.map(fieldMapper));
+                    Object.keys(map).forEach((key) => {
+                        const name = map[key]?.name;
+                        if (typeof name === "string" && name.length) {
+                            const fqn = splitFullyQualifiedName(name);
+                            map[key].name = fqn.contractName;
+                        }
+                    });
+                    return map;
+                }
             ),
             tokenSrv.list({addresses}).then( // hex => token
                 page => Object.fromEntries(page.list.map(item => [
