@@ -570,8 +570,8 @@ export class ConfluxService {
               methodList.push({index, to, method: input.substring(0, 10)});
             }
           }
-          if (type === "create_result") {
-            if (outcome === "success") {
+          if (type === CONST.TRACE_TYPE.CREATE_RESULT) {
+            if (outcome === 'success') {
               if (returnData) {
                 trace.action.returnData = undefined;
               }
