@@ -255,8 +255,11 @@ export class AccountQuery {
                 list => {
                     const map = Object.fromEntries(list.map(fieldMapper));
                     Object.keys(map).forEach((key) => {
-                        const fqn = splitFullyQualifiedName(map[key].name);
-                        map[key].name = fqn.contractName;
+                        const name = map[key]?.name;
+                        if (typeof name === "string" && name.length) {
+                            const fqn = splitFullyQualifiedName(name);
+                            map[key].name = fqn.contractName;
+                        }
                     });
                     return map;
                 }
