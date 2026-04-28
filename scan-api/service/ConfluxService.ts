@@ -560,13 +560,21 @@ export class ConfluxService {
         const methodList: { index: number; to: string; method: string; methodId?: string;}[] = [];
 
         traceArray.forEach((trace: any, index: number) => {
-          const {from, to, init, input, addr} = trace.action;
+          const type = trace.type;
+          const {from, to, init, input, addr, outcome, returnData} = trace.action;
           if (init) {
             trace.action.init = undefined;
           }
           if (input) {
             if(input.length >= 10 && to) {
               methodList.push({index, to, method: input.substring(0, 10)});
+            }
+          }
+          if (type === "create_result") {
+            if (outcome === "success") {
+              if (returnData) {
+                trace.action.returnData = undefined;
+              }
             }
           }
           if (from) {
