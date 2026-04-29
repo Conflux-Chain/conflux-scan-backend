@@ -464,25 +464,20 @@ router_get(router,'/transaction',
         ensInfo: 'object',
         nameMap: 'object',
         list: [{
-          blockHash: 'string',
           method: 'string',
           transactionIndex: 'integer',
-          epochHeight: 'integer',
           nonce: 'string',
           hash: 'string',
           from: 'string',
           to: OpenAPI.schema({ type: 'string', nullable: true }),
           value: 'string',
           gasPrice: 'string',
-          gas: 'string',
           contractCreated: OpenAPI.schema({ type: 'string', nullable: true }),
           status: 'integer',
           timestamp: 'integer',
           epochNumber: 'integer',
           syncTimestamp: 'integer',
-          risk: 'number',
           gasFee: 'string',
-          gasUsed: 'string',
           fromENSInfo: 'object',
           fromNameTagInfo: 'object',
           toContractInfo: 'object',
@@ -506,7 +501,7 @@ router_get(router,'/transaction',
     result.nameMap = await getAccountQuery().list([...addresses]);
 
     result.list.forEach((tx) => {
-      if (!result.nameMap[tx.to]?.contract) {
+      if (tx.method && !result.nameMap[tx.to]?.contract) {
         tx.method = '0x'
       }
     });
