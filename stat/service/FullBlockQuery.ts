@@ -287,7 +287,6 @@ export class FullBlockQuery {
         const options: any = {offset: skip, limit, raw: true};
         options.attributes = [
             ['epoch', 'epochNumber'],
-            ['blockPosition', 'blockHash'],
             'blockPosition',
             ['txPosition', 'transactionIndex'],
             'nonce',
@@ -492,7 +491,6 @@ export class FullBlockQuery {
                 const timestampInSec =  row['timestamp'].getTime() / 1000;
                 row['timestamp'] = timestampInSec;
                 row['syncTimestamp'] = timestampInSec;
-                row['blockHash'] = row['blockHash'].toString();
                 row['nonce'] = row['nonce'].toString();
             })
 
