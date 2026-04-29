@@ -700,6 +700,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
                 ownerContractInfo: map[row.owner]?.contract
             });
         });
+        result["nameMap"] = map;
 
         result["listLimit"] = 10_000;
         ctx.body = result;
