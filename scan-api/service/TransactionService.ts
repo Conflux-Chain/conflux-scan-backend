@@ -214,7 +214,7 @@ export class TransactionService {
             return lodash.pick(lodash.defaults({}, rcpt, tx), [
               "epochNumber", "blockPosition", "transactionIndex", "hash",
               "from", "to", "nonce", "method", "gasFee", "gasPrice",
-              "value", "contractCreated", "status", "syncTimestamp", "timestamp"
+              "value", "contractCreated", "status", "txExecErrorMsg", "syncTimestamp", "timestamp"
             ]);
           },
           { limit: 100 },
