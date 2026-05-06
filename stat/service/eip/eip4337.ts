@@ -22,6 +22,8 @@ import {initCfxSdk} from "../common/utils";
 import {queryAATx, queryBundleTx} from "./eip4337query";
 import {Block, TransactionReceipt, Transaction as SdkTx} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {IDBAction} from "../BatchDBTx";
+import {testParse4337Func} from "./eip4337decoder";
+import {loadConfig} from "../../config/StatConfig";
 
 export interface IBundleData {
 	bundlerTx: IBundleTx;
@@ -241,6 +243,7 @@ async function testQuery() {
 /*
 node stat/service/eip/eip4337.js syncEpoch 250261540
 node stat/service/eip/eip4337.js testQuery
+node stat/service/eip/eip4337.js testParseFunc
  */
 async function main() {
 	const [,,cmd,arg1] = process.argv;
@@ -251,6 +254,13 @@ async function main() {
 	} else if (cmd === 'testQuery') {
 		await init();
 		await testQuery();
+	} else if (cmd === 'testParseFunc') {
+		const cfg = loadConfig('Prod');
+		const cfx = await initCfxSdk(cfg.conflux);
+		//net 71
+		let hash = '0x7cdb4307680f46e75b4280d5424eb1002b3e3feadaa70543b4f11791c2006332'
+		const tx = await cfx.getTransactionByHash(hash);
+		testParse4337Func(tx.data);
 	} else {
 		console.log(`unknown cmd: ${cmd}`);
 	}
