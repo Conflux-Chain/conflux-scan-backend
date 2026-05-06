@@ -238,6 +238,10 @@ async function testQuery() {
 	});
 }
 
+/*
+node stat/service/eip/eip4337.js syncEpoch 250261540
+node stat/service/eip/eip4337.js testQuery
+ */
 async function main() {
 	const [,,cmd,arg1] = process.argv;
 	if (cmd === 'syncEpoch') {

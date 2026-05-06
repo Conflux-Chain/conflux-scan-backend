@@ -2,6 +2,7 @@
 import {AATx, BundleTx, IAATx, IBundleTx} from "../../model/eip4337model";
 import {Hex40Map} from "../../model/HexMap";
 import {IPageParam} from "../../router/ParamChecker";
+import {ethers} from "ethers";
 
 export interface BundleTxQueryResult extends IBundleTx {
     bundlerHex: string;      // hex address from Hex40Map
@@ -149,5 +150,5 @@ export async function queryAATx(params: AATxQueryParams): Promise<{ list: AATxQu
 const pickAddr = (key: string, bundle: BundleTx|AATx) => {
     // @ts-ignore
     const v = bundle.get(key)?.hex;
-    return v ? '0x' + v : '';
+    return v ? ethers.getAddress('0x' + v) : '';
 }
