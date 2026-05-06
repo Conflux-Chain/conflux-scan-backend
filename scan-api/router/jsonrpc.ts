@@ -619,8 +619,8 @@ export const jsonrpc_exportTransaction = jsonrpc.method_('exportTransaction',
     list.forEach((each) => {
       /*each['From_AddressName'] = accountBasic.map[each.from]?.contract?.name || accountBasic.map[each.from]?.token?.name || '';
       each['To_AddressName'] = accountBasic.map[each.to]?.contract?.name || accountBasic.map[each.to]?.token?.name || '';*/
-      each['From_AddressName'] = nameMap[each.from]?.contract?.name || nameMap[each.from]?.token?.name || '';
-      each['To_AddressName'] = nameMap[each.to]?.contract?.name || nameMap[each.to]?.token?.name || '';
+      each['From_AddressName'] = nameMap[each.from]?.token?.name || nameMap[each.from]?.contract?.name || '';
+      each['To_AddressName'] = nameMap[each.to]?.token?.name || nameMap[each.to]?.contract?.name || '';
     });
 
     const exportFields = [
@@ -723,8 +723,8 @@ export const jsonrpc_exportTransfer = jsonrpc.method_('exportTransfer',
       each['Type'] = transferType;
       each['DateTime'] = tool.timestampToString(each.timestamp * 1000);
       each['TokenId'] = each['tokenId'] ? `\t${each['tokenId']}` : each['tokenId'];
-      each['From_AddressName'] = nameMap[each.from]?.contract?.name || nameMap[each.from]?.token?.name || '';
-      each['To_AddressName'] = nameMap[each.to]?.contract?.name || nameMap[each.to]?.token?.name || '';
+      each['From_AddressName'] = nameMap[each.from]?.token?.name || nameMap[each.from]?.contract?.name || '';
+      each['To_AddressName'] = nameMap[each.to]?.token?.name || nameMap[each.to]?.contract?.name || '';
       if(each.address) {
         each['ContractName'] = nameMap[each.address]?.contract?.name || '';
       }

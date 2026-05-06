@@ -70,21 +70,9 @@ export class TransactionService {
     let typeDesc = CONST.TX_EIP_TYPE[transaction.type]
     !StatApp.isEVM && (typeDesc = typeDesc?.replace('EIP', 'CIP'))
 
-    transaction.status = transaction.status ?? receipt?.outcomeStatus
     const epoch = await service.epoch.query({ epochNumber: transaction.epochNumber }) || {};
-    const gasPrice = receipt?.effectiveGasPrice || transaction.gasPrice || BigInt(0);
 
-    // using actualGasCost as gasFee when NotEnoughCash error occurs
-    // e.g. "txExecErrorMsg": "NotEnoughCash { required: 10000000000000000000, got: 0, actual_gas_cost: 0, max_storage_limit_cost: 0 }"
-    const receiptGasUsed = Number(receipt?.gasUsed || 0);
-    let gasCharged = NoCoreSpace ? receiptGasUsed
-        : Math.max(receiptGasUsed, Math.ceil((Number(transaction.gas) * 3) / 4))
-    let gasFee = receipt?.gasFee || Number(gasPrice) * gasCharged
-    const actualGasCost = extractActualGasCost(receipt?.txExecErrorMsg)
-    if(lodash.isNumber(actualGasCost)) {
-      gasFee = BigFixed(actualGasCost)
-      gasCharged = Number(gasPrice) === 0 ? '0' : BigFixed(actualGasCost).div(BigFixed(gasPrice))
-    }
+    const receiptBasic = await this.getRcptBasic(transaction, receipt);
 
     const [cfxTransfers, tokenTransfers] = await Promise.all([
       this.getCfxTransfers(transaction.hash),
@@ -102,11 +90,8 @@ export class TransactionService {
     ].filter(Boolean));
     const nameMap = await service.accountQuery.list([...addresses]);
 
-    // zg rpc do not return contract address on transaction
-    const contractCreated = receipt?.contractCreated ?? transaction.contractCreated
-    return lodash.defaults({aggregate, data: txInputData, gasPrice, gasFee: gasFee.toString(),
-          gasCharged: gasCharged.toString(), contractCreated},
-        transaction, receipt, {
+    return lodash.defaults({aggregate, data: txInputData}, receiptBasic, transaction, receipt,
+        {
           risk,
           typeDesc,
           baseFeePerGas,
@@ -201,33 +186,82 @@ export class TransactionService {
     return total;
   }
 
-  async countAndList({ fields, ...options } = {} as any) {
+  async countAndList(options = {} as any) {
     const {
       app: { service, tool },
     } = this;
 
-    let result;
-    if (options.blockHash !== undefined) {
-      tool.checkExist(options, {
-        blockHash: true, accountAddress: false, txType: false, status: false,
-        minEpochNumber: false, maxEpochNumber: false, minTimestamp: false, maxTimestamp: false,
-      });
-
-      result = await this._countAndListByBlockHash(options);
-    } else {
-        result = await service.fullBlock.listTransaction(options);
-        return result;
+    if (options.blockHash === undefined) {
+      return service.fullBlock.listTransaction(options);
     }
 
-    result.list = await limitMap(result.list,
-      async (object) => {
-        const transaction = await this.query({ hash: object.hash, fields });
-        return lodash.defaults({}, transaction, object);
-      },
-      { limit: 100 },
-    );
+    tool.checkExist(options, {
+      blockHash: true, accountAddress: false, txType: false, status: false,
+      minEpochNumber: false, maxEpochNumber: false, minTimestamp: false, maxTimestamp: false,
+    });
+
+    const result = await this._countAndListByBlockHash(options);
+
+    if (result?.list?.length) {
+      const epoch = await service.epoch.query({epochNumber: result.list[0].epochNumber}) || {};
+      result.list = await limitMap(result.list,
+          async (tx) => {
+            tx.timestamp = epoch.timestamp;
+            tx.syncTimestamp = epoch.timestamp;
+            tx.from = fmtAddr(tx.from, StatApp.networkId);
+            tx.to = fmtAddr(tx.to, StatApp.networkId);
+            const rcpt = await this.getRcptBasic(tx);
+            return lodash.pick(lodash.defaults({}, rcpt, tx), [
+              "epochNumber", "blockPosition", "transactionIndex", "hash",
+              "from", "to", "nonce", "method", "gasFee", "gasPrice",
+              "value", "contractCreated", "status", "txExecErrorMsg", "syncTimestamp", "timestamp"
+            ]);
+          },
+          { limit: 100 },
+      );
+    }
 
     return result;
+  }
+
+  async getRcptBasic(tx, receipt?) {
+    const {
+      app: {service},
+    } = this as ScanCtx;
+
+    const {hash, status: txStatus, gasPrice: txGasPrice, gas: txGas, contractCreated: txContractCreated} = tx;
+
+    if (!receipt) {
+      receipt = await service.conflux.getTransactionReceipt(hash).catch(() => undefined) || {};
+    }
+
+    const status = txStatus ?? receipt?.outcomeStatus;
+    const txExecErrorMsg = receipt?.txExecErrorMsg;
+
+    const gasPrice = receipt?.effectiveGasPrice || txGasPrice || BigInt(0);
+
+    const receiptGasUsed = Number(receipt?.gasUsed || 0);
+    let gasCharged = NoCoreSpace ? receiptGasUsed : Math.max(receiptGasUsed, Math.ceil((Number(txGas) * 3) / 4));
+    let gasFee = receipt?.gasFee || Number(gasPrice) * gasCharged;
+    // using actualGasCost as gasFee when NotEnoughCash error occurs
+    // e.g. "txExecErrorMsg": "NotEnoughCash { required: 10000000000000000000, got: 0, actual_gas_cost: 0, max_storage_limit_cost: 0 }"
+    const actualGasCost = extractActualGasCost(txExecErrorMsg);
+    if (lodash.isNumber(actualGasCost)) {
+      gasFee = BigFixed(actualGasCost);
+      gasCharged = Number(gasPrice) === 0 ? '0' : BigFixed(actualGasCost).div(BigFixed(gasPrice));
+    }
+
+    // zg rpc do not return contract address on transaction
+    const contractCreated = fmtAddr(receipt?.contractCreated ?? txContractCreated, StatApp.networkId);
+
+    return {
+      status,
+      txExecErrorMsg,
+      gasPrice,
+      gasFee: gasFee.toString(),
+      gasCharged: gasCharged.toString(),
+      contractCreated,
+    };
   }
 
   async _countAndListByBlockHash({

@@ -426,7 +426,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             s.push(StatApp.isEVM ? row.hex : row.base32address); s.push(',') // base32
             // s.push(row.contractInfo?.name || row.tokenInfo?.name); s.push(',') // name
             const nameInfo = nameMap[fmtAddr(row.hex, StatApp.networkId)];
-            s.push(nameInfo?.contract?.name || nameInfo?.token?.name); s.push(',') // name
+            s.push(nameInfo?.token?.name || nameInfo?.contract?.name); s.push(',') // name
             s.push(row.value2); s.push(',') // balance
             if (!StatApp.isEVM) {
                 s.push(row.value3);
@@ -489,7 +489,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             s.push(addr); s.push(',') // HolderAddress
             // const name =  row?.ensInfo?.name || row?.nameTagInfo?.nameTag || row?.contractInfo?.name || row?.tokenInfo?.name;
             const nameInfo = nameMap[fmtAddr(addr, StatApp.networkId)];
-            const name = nameInfo?.ens?.name || nameInfo?.nameTag?.nameTag || nameInfo?.contract?.name || nameInfo?.token?.name;
+            const name = nameInfo?.nameTag?.nameTag || nameInfo?.token?.name || nameInfo?.contract?.name || nameInfo?.ens?.name;
             s.push(name); s.push(',') // HolderAddressName
             s.push(row?.contractInfo ? "yes" : ""); s.push(',') // IsContract
             const quantity = BigFixed(row?.balance).div(BigFixed(10).pow(decimals))
@@ -700,6 +700,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
                 ownerContractInfo: map[row.owner]?.contract
             });
         });
+        result["nameMap"] = map;
 
         result["listLimit"] = 10_000;
         ctx.body = result;
