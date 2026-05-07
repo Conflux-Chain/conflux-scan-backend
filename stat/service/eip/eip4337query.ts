@@ -106,17 +106,19 @@ export async function queryAATx(params: AATxQueryParams): Promise<{ list: AATxQu
                 as: 'sender',
                 attributes: ['hex'],
                 required: false, // LEFT JOIN to include records even if hex mapping missing
-            },
-            {
+            }, {
                 model: Hex40Map,
                 as: 'bundler',
                 attributes: ['hex'],
                 required: false,
-            },
-            {
+            }, {
                 model: Hex40Map,
                 as: 'entryPoint',
                 attributes: ['hex'],
+                required: false,
+            }, {
+                model: BundleTx,
+                as: 'bundleTx', attributes: ['hash'],
                 required: false,
             }
         ],
@@ -131,6 +133,8 @@ export async function queryAATx(params: AATxQueryParams): Promise<{ list: AATxQu
             senderHex: pickAddr('sender', aaTx),
             bundlerHex: pickAddr('bundler', aaTx),
             entryPointHex: pickAddr('entryPoint', aaTx),
+            // @ts-ignore
+            txHash: aaTx.get("bundleTx")?.hash,
         };
         delete row.entryPointId;
         delete row.bundlerId;
@@ -141,6 +145,7 @@ export async function queryAATx(params: AATxQueryParams): Promise<{ list: AATxQu
         delete row['updatedAt'];
         delete row['senderId'];
         delete row['sender'];
+        delete row['bundleTx'];
         return row;
     });
     return {list, total: count};

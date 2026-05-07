@@ -120,6 +120,8 @@ export function bindBundleTxModels() {
 	AATx.belongsTo(Hex40Map, { as: 'bundler', foreignKey: 'bundlerId' });
 	AATx.belongsTo(Hex40Map, { as: 'entryPoint', foreignKey: 'entryPointId' });
 
+	AATx.belongsTo(BundleTx, { as: 'bundleTx', foreignKey: 'bundleTxId' });
+
 }
 
 
