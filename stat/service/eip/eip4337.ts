@@ -22,10 +22,11 @@ import {initCfxSdk} from "../common/utils";
 import {queryAATx, queryBundleTx} from "./eip4337query";
 import {Block, TransactionReceipt, Transaction as SdkTx} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {IDBAction} from "../BatchDBTx";
-import {testParse4337Func} from "./eip4337decoder";
+import {IFuncOfOp, parseAATxMethods, testParse4337Func} from "./eip4337decoder";
 import {loadConfig} from "../../config/StatConfig";
 
 export interface IBundleData {
+	funcOfOpArr :IFuncOfOp[],
 	bundlerTx: IBundleTx;
 	bundlerTxId: bigint;
 	aaTxArr: IAATx[];
@@ -50,6 +51,7 @@ export async function buildAATxDBModel(op: IUserOperationEvent, blockTime: Date)
 		entryPointId: 0,
 		success: op.success,
 		userOpHash: op.userOpHash,
+		methods: '',
 	};
 }
 
@@ -73,6 +75,14 @@ export async function saveBundleArr(data: IBundleData[], dbTx: Transaction) : Pr
 	}
 }
 
+function matchMethodIds(data: IBundleData, opIndex: number) : string {
+	if (!data.funcOfOpArr?.length) {
+		return '';
+	}
+	const op = data.funcOfOpArr[opIndex];
+	return op?.methodIds ?? '';
+}
+
 export async function saveBundleData(data: IBundleData, dbTx: Transaction) : Promise<void> {
 	for (let i = 0; i < data.aaTxArr.length; i++) {
 		const iaaTx = data.aaTxArr[i];
@@ -80,6 +90,7 @@ export async function saveBundleData(data: IBundleData, dbTx: Transaction) : Pro
 		iaaTx.epoch = data.bundlerTx.epoch;
 		iaaTx.bundlerId = data.bundlerTx.bundlerId;
 		iaaTx.entryPointId = data.bundlerTx.entryPointId;
+		iaaTx.methods = matchMethodIds(data, i);
 	}
 
 	for (let i = 0; i < data.accountDeployedArr.length; i++) {
@@ -193,7 +204,9 @@ export async function sync4337txOfEpoch({receipts, blocks, blockTime, txFn}:ISyn
 			}
 			if (bundler.hasData) {
 				const rawTx = blocks ? (blocks[blockIdx].transactions[txIdx]) as SdkTx : await txFn(rcpt.transactionHash);
-
+				if (rawTx) {
+					bundler.funcOfOpArr = await parseAATxMethods(rawTx.data, blockTime);
+				}
 				bundler.bundlerTx = {
 					hash: rcpt.transactionHash,
 					epoch: BigInt(rcpt.epochNumber),

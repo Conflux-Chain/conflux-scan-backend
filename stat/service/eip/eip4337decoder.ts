@@ -1,5 +1,7 @@
 import {ethers, formatEther, parseEther} from "ethers";
 import {entryPointV8} from "./entryPointV8.json";
+import {COUNT_AA_TX_METHODS} from "../../model/eip4337model";
+import {makeIdV} from "../../model/HexMap";
 
 const iface = new ethers.Interface(entryPointV8);
 
@@ -70,6 +72,48 @@ function parse7702execute(callData: string): ExecuteParams[] {
 		const [dest, value, func] = decode.args;
 		return [{dest, value, func}] as ExecuteParams[];
 	}
+}
+
+export interface IFuncInfo {
+	dest: string;
+	destId: number;
+	func: string;
+}
+
+export interface IFuncOfOp {
+	funcArr: IFuncInfo[];
+	methodIds: string;
+}
+
+export async function parseAATxMethods(hex: string, blockTime: Date): Promise<IFuncOfOp[]> {
+	const arr = parseHandleOps(hex);
+	if (!arr.length) {
+		return [];
+	}
+
+	const ret: IFuncOfOp[] = []
+
+	for (let i = 0; i < arr.length; i++) {
+		const {callData} = arr[i];
+		const exec7702arr = parse7702execute(callData);
+		if (!exec7702arr) {
+			ret.push({funcArr: [], methodIds: ''})
+			continue;
+		}
+		const fnArr: IFuncInfo[] = [];
+		for (const exec7702 of exec7702arr) {
+			const {dest, value, func} = exec7702;
+			const destId = await makeIdV(dest, null, {dt: blockTime});
+			fnArr.length < COUNT_AA_TX_METHODS && fnArr.push({
+				dest, func: func.substring(0, 10), destId,
+
+			});
+		}
+		const methodIds = fnArr.map(fn=>`${fn.destId}:${fn.func}`).join(',');
+		ret.push({funcArr: fnArr, methodIds});
+	}
+
+	return ret;
 }
 
 export function testParse4337Func(hex: string) {

@@ -146,6 +146,7 @@ export async function queryAATx(params: AATxQueryParams): Promise<{ list: AATxQu
         delete row['senderId'];
         delete row['sender'];
         delete row['bundleTx'];
+        delete row['eventContractId'];
         return row;
     });
     return {list, total: count};

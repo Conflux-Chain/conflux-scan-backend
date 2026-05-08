@@ -60,8 +60,13 @@ export interface IAATx {
 	success: boolean;
 	actualGasCost: string;
 	actualGasUsed: string;
+	methods: string;
 	createdAt: Date;
 }
+
+export const LEN_AA_TX_METHODS = 1024;
+// method id has 10 characters, and append a ',', it's 11 chars.
+export const COUNT_AA_TX_METHODS = Math.floor(LEN_AA_TX_METHODS / 11);
 
 export class AATx extends Model<IAATx> implements IAATx {
 	id: bigint;
@@ -77,6 +82,7 @@ export class AATx extends Model<IAATx> implements IAATx {
 	success: boolean;
 	actualGasCost: string;
 	actualGasUsed: string;
+	methods: string;
 	createdAt: Date;
 
 	static register(sequelize: Sequelize) {
@@ -94,6 +100,8 @@ export class AATx extends Model<IAATx> implements IAATx {
 			success: {type: DataTypes.BOOLEAN, allowNull: false},
 			actualGasCost: {type: DataTypes.DECIMAL(36,18), allowNull: false},
 			actualGasUsed: {type: DataTypes.DECIMAL(36,18), allowNull: false},
+			methods: {type: DataTypes.STRING(LEN_AA_TX_METHODS),
+				allowNull: true, defaultValue: '', },
 			createdAt: {type: DataTypes.DATE, allowNull: false},
 		}, {
 			sequelize,
