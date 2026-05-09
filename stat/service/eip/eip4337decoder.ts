@@ -1,11 +1,18 @@
-import {ethers, formatEther} from "ethers";
+import {BigNumberish, ethers, formatEther} from "ethers";
 import {entryPointV8} from "./entryPointV8.json";
 import {makeIdV} from "../../model/HexMap";
 import {LEN_AA_TX_METHODS} from "../../model/eip4337model";
+import {getCfxSdk} from "../common/utils";
+import {Conflux, Contract, format} from "js-conflux-sdk";
 
 const iface = new ethers.Interface(entryPointV8);
 
 export interface IUserOpParam {
+	rawData: any;
+
+	sender: string;
+	nonce: BigNumberish;
+	paymasterAndData: string;
 	callData: string;
 	accountGasLimits: string;
 
@@ -74,9 +81,11 @@ export function parseHandleOps(callData: string): I4337call {
 	const [ops, beneficiary] = decoded.args;
 	const userOpArr: IUserOpParam[] = [];
 	for (const op of ops) {
-		const {callData, accountGasLimits,} = op;
+		const {callData, nonce, paymasterAndData, sender, accountGasLimits,} = op;
 		userOpArr.push({
-			callData, accountGasLimits,
+			rawData: op,
+			sender, nonce,
+			callData, accountGasLimits, paymasterAndData,
 			parsedUserOp: parse7702execute(callData)
 		});
 	}
@@ -160,7 +169,8 @@ export function parseAATxMethods(hex4337data: string): I4337call {
 	return i4337call;
 }
 
-export function testParse4337Func(hex: string) {
+export async function testParse4337Func(hex: string, to: string) {
+	const hexTo = format.hexAddress(to);
 	// printInterfaceMethods(entryPointV8);
 	// printInterfaceMethods(iface7702.format());
 	const {abi: abi20} = require('../../service/watcher/contract/miniERC20.json');
@@ -173,14 +183,17 @@ export function testParse4337Func(hex: string) {
 	}
 	console.log(`call 4337 ${i4337call.method}`);
 	for (let i = 0; i < arr.length; i++) {
-		const {callData, parsedUserOp} = arr[i];
+		const {callData, parsedUserOp, rawData} = arr[i];
+		// console.log('raw op data', JSON.stringify(rawData));
+		console.log(`entrypoint `, hexTo)
+		const opHash = await readOpHash(getCfxSdk(), hexTo, rawData)
 		const indent = "\t";
 		const exec7702arr = parsedUserOp.rawParamArr;
 		if (!exec7702arr) {
 			console.log(`${indent} no exec7702 found with callData: ${callData}`);
 			continue;
 		}
-		console.log(`${indent} call 7702 ${parsedUserOp.method}`);
+		console.log(`${indent} call 7702 ${parsedUserOp.method} with user op hash ${opHash}`);
 		for (const exec7702 of exec7702arr) {
 			const {dest, value, func} = exec7702;
 			let fn = func;
@@ -191,4 +204,17 @@ export function testParse4337Func(hex: string) {
 			console.log(`${indent} ${indent} dest ${dest} value: ${formatEther(value)} func: ${fn}`);
 		}
 	}
+}
+
+const contractMap = new Map<string, Contract>();
+
+export async function readOpHash(cfx: Conflux, entryPoint: string, op: any): Promise<string> {
+	let contract = contractMap.get(entryPoint);
+	if (!contract) {
+		contract = new Contract({abi: entryPointV8, address: entryPoint}, cfx);
+		contractMap.set(entryPoint, contract);
+	}
+	return contract['getUserOpHash'](op).then(res=>{
+		return ethers.hexlify(res);
+	});
 }

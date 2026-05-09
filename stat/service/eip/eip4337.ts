@@ -1,4 +1,5 @@
 import {
+	IAccountDeployedEvent,
 	IUserOperationEvent,
 	parseAccountDeployed,
 	parseUserOperationEvent,
@@ -16,13 +17,13 @@ import {
 import {formatEther} from "ethers";
 import {makeIdV} from "../../model/HexMap";
 import {Transaction} from "sequelize";
-import {Conflux} from "js-conflux-sdk";
+import {Conflux, format} from "js-conflux-sdk";
 import {init} from "../tool/FixDailyTokenStat";
-import {initCfxSdk} from "../common/utils";
+import {getCfxSdk, initCfxSdk} from "../common/utils";
 import {queryAATx, queryBundleTx} from "./eip4337query";
 import {Block, TransactionReceipt, Transaction as SdkTx} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {IDBAction} from "../BatchDBTx";
-import {build7702methodIds, I4337call, parseAATxMethods, testParse4337Func} from "./eip4337decoder";
+import {build7702methodIds, I4337call, parseAATxMethods, readOpHash, testParse4337Func} from "./eip4337decoder";
 import {loadConfig} from "../../config/StatConfig";
 
 export interface IBundleData {
@@ -132,6 +133,48 @@ export interface ISync4337txParam {
 	txFn?: (hash: string) => Promise<SdkTx>;
 }
 
+async function buildRevertReason(log, bundler: IBundleData, blockTime: Date) {
+	const revertReason = parseUserOperationRevertReason(log);
+	if (revertReason) {
+		bundler.revertReasonArr.push({
+			bundleTxId: 0n,
+			eventContractId: BigInt(await makeIdV(revertReason.address)),
+			createdAt: blockTime, epoch: 0n,
+			id: 0n, nonce: revertReason.nonce.toString(),
+			revertReason: revertReason.revertReason,
+			sender: revertReason.sender,
+			userOpHash: revertReason.userOpHash,
+		})
+
+		bundler.hasData = true;
+	} else {
+		// console.log(`what's it ?`, log);
+	}
+}
+
+async function buildAATx(event: IUserOperationEvent, blockTime: Date, parsed4337call: I4337call, bundler: IBundleData) {
+	const userOp = await buildAATxDBModel(event, blockTime);
+	const parsed7702call = parsed4337call?.userOps?.[bundler.aaTxArr.length]?.parsedUserOp;
+	userOp.method7702 = parsed7702call?.method;
+	userOp.methods = await build7702methodIds(parsed7702call, blockTime);
+	// userOp.methods =
+	bundler.hasData = true;
+	bundler.aaTxArr.push(userOp);
+}
+
+async function buildAccountDeployed(bundler: IBundleData, accDeployed: IAccountDeployedEvent, blockTime: Date) {
+	bundler.accountDeployedArr.push({
+		bundleTxId: 0n,
+		eventContractId: BigInt(await makeIdV(accDeployed.address)),
+		createdAt: blockTime, epoch: 0n,
+		factory: accDeployed.factory, id: 0n,
+		paymaster: accDeployed.paymaster,
+		sender: accDeployed.sender,
+		userOpHash: accDeployed.userOpHash,
+	})
+	bundler.hasData = true;
+}
+
 export async function sync4337txOfEpoch({receipts, blocks, blockTime, txFn}:ISync4337txParam): Promise<IDBAction> {
 	const bundleArr: IBundleData[] = [];
 	let blockIdx = -1;
@@ -142,7 +185,8 @@ export async function sync4337txOfEpoch({receipts, blocks, blockTime, txFn}:ISyn
 		for (const rcpt of rcptOfBlock) {
 			txIdx ++;
 			// console.log(`event count [${rcpt.logs?.length ?? rcpt}]`);
-			const isTxToEntrypoint = entrypointAddrIdSet.has(await makeIdV(rcpt.to, null, {dt: blockTime}));
+			const rawTxToId = await makeIdV(rcpt.to, null, {dt: blockTime});
+			const isTxToEntrypoint = entrypointAddrIdSet.has(rawTxToId);
 			if (!isTxToEntrypoint) {
 				continue;
 			}
@@ -162,52 +206,55 @@ export async function sync4337txOfEpoch({receipts, blocks, blockTime, txFn}:ISyn
 				const event = parseUserOperationEvent(log);
 				if (event) {
 					// console.log(`it's user op`);
-					const userOp = await buildAATxDBModel(event, blockTime);
-					const parsed7702call = parsed4337call?.userOps?.[bundler.aaTxArr.length]?.parsedUserOp;
-					userOp.method7702 = parsed7702call?.method;
-					userOp.methods = await build7702methodIds(parsed7702call, blockTime);
-						// userOp.methods =
-					bundler.hasData = true;
-					bundler.aaTxArr.push(userOp);
+					await buildAATx(event, blockTime, parsed4337call, bundler);
 					continue;
 				}
 
 				const accDeployed = parseAccountDeployed(log);
 				if (accDeployed) {
-					bundler.accountDeployedArr.push({
-						bundleTxId: 0n,
-						eventContractId: BigInt(await makeIdV(accDeployed.address)),
-						createdAt: blockTime, epoch: 0n,
-						factory: accDeployed.factory, id: 0n,
-						paymaster: accDeployed.paymaster,
-						sender: accDeployed.sender,
-						userOpHash: accDeployed.userOpHash,
-					})
-					bundler.hasData = true;
+					await buildAccountDeployed(bundler, accDeployed, blockTime);
 					continue;
 				}
 
-				const revertReason = parseUserOperationRevertReason(log);
-				if (revertReason) {
-					bundler.revertReasonArr.push({
-						bundleTxId: 0n,
-						eventContractId: BigInt(await makeIdV(revertReason.address)),
-						createdAt: blockTime, epoch: 0n,
-						id: 0n, nonce: revertReason.nonce.toString(),
-						revertReason: revertReason.revertReason,
-						sender: revertReason.sender,
-						userOpHash: revertReason.userOpHash,
-					})
+				await buildRevertReason(log, bundler, blockTime);
+			}
 
-					bundler.hasData = true;
-				} else {
-					// console.log(`what's it ?`, log);
+			let failedTxCount = bundler.revertReasonArr.length;
+			if (rcpt.outcomeStatus == 1 && parsed4337call?.userOps.length) {
+				//build from tx data since there is no event for failed tx.
+				for (let i = 0; i < parsed4337call.userOps.length; i++) {
+					const op = parsed4337call.userOps[i];
+					const aaTx: IAATx = {
+						actualGasCost: "0",
+						actualGasUsed: "0",
+						bundleTxId: 0n,
+						bundlerId: 0,
+						createdAt: undefined,
+						entryPointId: rawTxToId,
+						epoch: BigInt(rcpt.epochNumber),
+						eventContractId: 0,
+						id: 0n,
+						method7702: op.parsedUserOp?.method,
+						methods: await build7702methodIds(op.parsedUserOp, blockTime),
+						nonce: op.nonce.toString(),
+						paymasterId: 0,
+						senderId: await makeIdV(op.sender, null, {dt: blockTime}),
+						success: false,
+						userOpHash: await readOpHash(
+							getCfxSdk(),
+							rcpt.to,
+							op.rawData,
+						),
+					}
+					bundler.aaTxArr.push(aaTx);
 				}
+				// all failed
+				failedTxCount = bundler.aaTxArr.length;
 			}
 			if (bundler.hasData) {
 				bundler.bundlerTx = {
 					method: parsed4337call?.method || '',
-					failedTxCount: bundler.revertReasonArr.length,
+					failedTxCount: failedTxCount,
 					status: rcpt.outcomeStatus,
 					hash: rcpt.transactionHash,
 					epoch: BigInt(rcpt.epochNumber),
@@ -256,8 +303,9 @@ async function testQuery() {
 
 /*
 npx tsc && node stat/service/eip/eip4337.js syncEpoch 250759985
+npx tsc && node stat/service/eip/eip4337.js syncEpoch 250247030 // failed tx
 node stat/service/eip/eip4337.js testQuery
-node stat/service/eip/eip4337.js testParseFunc
+npx tsc && node stat/service/eip/eip4337.js testParseFunc
  */
 async function main() {
 	const [,,cmd,arg1] = process.argv;
@@ -272,11 +320,12 @@ async function main() {
 		const cfg = loadConfig('Prod');
 		const cfx = await initCfxSdk(cfg.conflux);
 		//net 71, example of [send eth, approve, transfer].
-		let hash = '0x7cdb4307680f46e75b4280d5424eb1002b3e3feadaa70543b4f11791c2006332'
+		// let hash = '0x7cdb4307680f46e75b4280d5424eb1002b3e3feadaa70543b4f11791c2006332'
 		// net 71, failed example
-		// let hash = '0x8b57795528ebd9fc3828890a15db6631db8169dd58f62bd2b98b84c468bded1e'
+		let hash = '0x8b57795528ebd9fc3828890a15db6631db8169dd58f62bd2b98b84c468bded1e'
 		const tx = await cfx.getTransactionByHash(hash);
-		testParse4337Func(tx.data);
+		console.log('tx:', hash, ' net ', cfx.networkId);
+		await testParse4337Func(tx.data, tx.to);
 	} else {
 		console.log(`unknown cmd: ${cmd}`);
 	}
@@ -288,6 +337,9 @@ async function main() {
  drop table aaTx;
  drop table account_deployed;
  drop table revert_reason;
+
+ failed AA:
+ https://etherscan.io/tx/0x7a354f5cdad936218e06c83bf0737732f9cdbd4a52b51991ee35daf3f7d00285#eventlog
  */
 
 if (require.main == module) {
