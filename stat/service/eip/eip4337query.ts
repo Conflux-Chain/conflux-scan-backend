@@ -1,8 +1,11 @@
 // Query result interfaces with joined data
-import {AATx, BundleTx, IAATx, IBundleTx} from "../../model/eip4337model";
+import {AATx, BundleTx, IAATx, IBundleTx, UserOperationRevertReason} from "../../model/eip4337model";
 import {Hex40Map} from "../../model/HexMap";
 import {IPageParam} from "../../router/ParamChecker";
 import {ethers} from "ethers";
+import {Sequelize} from "sequelize";
+import {FailedTx, FullTransaction} from "../../model/FullBlock";
+import {Literal} from "sequelize/lib/utils";
 
 export interface BundleTxQueryResult extends IBundleTx {
     bundlerHex: string;      // hex address from Hex40Map
@@ -25,6 +28,31 @@ export interface AATxQueryParams extends IPageParam{
     senderId?: number;
     bundlerId?: number;
     entryPointId?: number;
+}
+
+let cacheLiter: Literal = null;
+function buildErrMsgSql(): string {
+    if (cacheLiter) {
+        return cacheLiter;
+    }
+    const txT = FullTransaction.getTableName().toString();
+    const errMsgT = FailedTx.getTableName().toString();
+
+    cacheLiter = Sequelize.literal(`(
+                    SELECT CASE 
+                        WHEN status = 1 THEN (
+                            SELECT txExecErrorMsg 
+                            FROM ${errMsgT} ft
+                            INNER JOIN ${txT} ftt ON ftt.epoch = ft.epoch 
+                                AND ftt.blockPosition = ft.blockPosition 
+                                AND ftt.txPosition = ft.txPosition
+                            WHERE ftt.hash = BundleTx.hash
+                            LIMIT 1
+                        )
+                        ELSE NULL
+                    END
+                )`);
+    return cacheLiter;
 }
 
 /**
@@ -58,6 +86,14 @@ export async function queryBundleTx(params: BundleTxQueryParams): Promise<{ tota
                 required: false,
             }
         ],
+        attributes: {
+            include: [
+                [
+                    buildErrMsgSql(),
+                    'errMsg'
+                ]
+            ]
+        },
         order: [['epoch', 'DESC'], ['id', 'DESC']],
         offset: params.skip, limit: params.limit,
         raw: false,
@@ -118,7 +154,7 @@ export async function queryAATx(params: AATxQueryParams): Promise<{ list: AATxQu
                 required: false,
             }, {
                 model: BundleTx,
-                as: 'bundleTx', attributes: ['hash'],
+                as: 'bundleTx', attributes: ['hash', 'status'],
                 required: false,
             }
         ],
@@ -127,7 +163,8 @@ export async function queryAATx(params: AATxQueryParams): Promise<{ list: AATxQu
         raw: false,
     });
 
-    const list = results.map(aaTx => {
+    const list = [];
+    for (const aaTx of results) {
         const row = {
             ...aaTx.toJSON(),
             senderHex: pickAddr('sender', aaTx),
@@ -135,23 +172,44 @@ export async function queryAATx(params: AATxQueryParams): Promise<{ list: AATxQu
             entryPointHex: pickAddr('entryPoint', aaTx),
             // @ts-ignore
             txHash: aaTx.get("bundleTx")?.hash,
+            failedReason: await fillRevertReason(aaTx),
         };
         delete row.entryPointId;
         delete row.bundlerId;
         delete row.bundleTxId;
         delete row.paymasterId;
-        delete row['bundler'];
         delete row['entryPoint'];
         delete row['updatedAt'];
         delete row['senderId'];
         delete row['sender'];
         delete row['bundleTx'];
         delete row['eventContractId'];
-        return row;
-    });
+        delete row['bundler'];
+
+        list.push(row);
+    }
     return {list, total: count};
 }
 
+async function fillRevertReason(row: IAATx & any) : Promise<string> {
+    if (row.success) {
+        return '';
+    }
+    const bundleTx = row.get('bundleTx') as BundleTx;
+    if (!bundleTx) {
+        return 'BundleTx not found';
+    }
+    let failedReason = ''
+    if (bundleTx.status === 1) {
+        failedReason = 'Bundle TX failed'
+    } else {
+        const revertReason = await UserOperationRevertReason.findOne({
+            where: {userOpHash: row.userOpHash, epoch: row.epoch}, raw: true,
+        })
+        failedReason = revertReason?.revertReason || 'unknown';
+    }
+    return failedReason;
+}
 
 const pickAddr = (key: string, bundle: BundleTx|AATx) => {
     // @ts-ignore

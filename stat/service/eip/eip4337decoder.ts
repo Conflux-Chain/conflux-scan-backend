@@ -218,3 +218,74 @@ export async function readOpHash(cfx: Conflux, entryPoint: string, op: any): Pro
 		return ethers.hexlify(res);
 	});
 }
+
+/**
+ * Check if paymasterAndData includes a paymaster (not empty)
+ *
+ * @param paymasterAndData - The paymasterAndData hex string
+ * @returns True if paymaster is present
+ */
+function hasPaymaster(paymasterAndData: string): boolean {
+	return paymasterAndData && paymasterAndData !== '0x' && paymasterAndData.length >= 42;
+}
+
+/**
+ * Get paymaster address from paymasterAndData
+ *
+ * @param paymasterAndData - The paymasterAndData hex string
+ * @returns Paymaster address or null if not present
+ */
+export function getPaymasterAddress(paymasterAndData: string): string | null {
+	if (!hasPaymaster(paymasterAndData)) {
+		return null;
+	}
+
+	let hex = paymasterAndData;
+	if (hex.startsWith('0x')) {
+		hex = hex.slice(2);
+	}
+
+	const paymasterHex = hex.slice(0, 40);
+	return '0x' + paymasterHex;
+}
+
+/**
+ * Parsed result from accountGasLimits
+ */
+interface ParsedAccountGasLimits {
+	verificationGasLimit: bigint;  // Gas limit for validation (high 128 bits)
+	callGasLimit: bigint;          // Gas limit for execution (low 128 bits)
+}
+
+/**
+ * Parse accountGasLimits bytes32 field
+ * The bytes32 contains two uint128 values packed together:
+ * - High 128 bits: verificationGasLimit
+ * - Low 128 bits: callGasLimit
+ *
+ * @param accountGasLimits - The bytes32 hex string (e.g., "0x0000000000000000000000000001573d00000000000000000000000000014140")
+ * @returns Object containing verificationGasLimit and callGasLimit
+ */
+function parseAccountGasLimits(accountGasLimits: string): ParsedAccountGasLimits {
+	// Remove '0x' prefix if present
+	let hex = accountGasLimits;
+	if (hex.startsWith('0x')) {
+		hex = hex.slice(2);
+	}
+
+	// Ensure it's 64 characters (32 bytes)
+	hex = hex.padStart(64, '0');
+
+	if (hex.length !== 64) {
+		throw new Error(`Invalid accountGasLimits length: expected 64 hex chars, got ${hex.length}`);
+	}
+
+	// Split into two 32-character halves (16 bytes each / 128 bits each)
+	const verificationGasHex = hex.slice(0, 32);   // High 128 bits
+	const callGasLimitHex = hex.slice(32, 64);     // Low 128 bits
+
+	return {
+		verificationGasLimit: BigInt('0x' + verificationGasHex),
+		callGasLimit: BigInt('0x' + callGasLimitHex)
+	};
+}

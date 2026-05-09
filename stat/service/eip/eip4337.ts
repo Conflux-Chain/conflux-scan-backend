@@ -23,7 +23,14 @@ import {getCfxSdk, initCfxSdk} from "../common/utils";
 import {queryAATx, queryBundleTx} from "./eip4337query";
 import {Block, TransactionReceipt, Transaction as SdkTx} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {IDBAction} from "../BatchDBTx";
-import {build7702methodIds, I4337call, parseAATxMethods, readOpHash, testParse4337Func} from "./eip4337decoder";
+import {
+	build7702methodIds,
+	getPaymasterAddress,
+	I4337call,
+	parseAATxMethods,
+	readOpHash,
+	testParse4337Func
+} from "./eip4337decoder";
 import {loadConfig} from "../../config/StatConfig";
 
 export interface IBundleData {
@@ -237,7 +244,7 @@ export async function sync4337txOfEpoch({receipts, blocks, blockTime, txFn}:ISyn
 						method7702: op.parsedUserOp?.method,
 						methods: await build7702methodIds(op.parsedUserOp, blockTime),
 						nonce: op.nonce.toString(),
-						paymasterId: 0,
+						paymasterId: await makeIdV(getPaymasterAddress(op.paymasterAndData), null, {dt: blockTime}),
 						senderId: await makeIdV(op.sender, null, {dt: blockTime}),
 						success: false,
 						userOpHash: await readOpHash(
@@ -283,14 +290,14 @@ async function testQuery() {
 		// entryPointId: BigInt(456),
 		...page,
 	});
-	// console.log(`bundles `, JSON.stringify(bundles, null , 4));
+	console.log(`bundles `, JSON.stringify(bundles, null , 4));
 
 	// Query AATx with sender filter only
 	const aaTxs = await queryAATx({
 		// senderId: 789,
 		...page,
 	});
-	console.log(`aa TX:\n`, JSON.stringify(aaTxs, null, 4));
+	// console.log(`aa TX:\n`, JSON.stringify(aaTxs, null, 4));
 
 	// Query AATx with all three filters
 	const filteredTxs = await queryAATx({
@@ -304,7 +311,7 @@ async function testQuery() {
 /*
 npx tsc && node stat/service/eip/eip4337.js syncEpoch 250759985
 npx tsc && node stat/service/eip/eip4337.js syncEpoch 250247030 // failed tx
-node stat/service/eip/eip4337.js testQuery
+npx tsc && node stat/service/eip/eip4337.js testQuery
 npx tsc && node stat/service/eip/eip4337.js testParseFunc
  */
 async function main() {
