@@ -22,7 +22,7 @@ import {initCfxSdk} from "../common/utils";
 import {queryAATx, queryBundleTx} from "./eip4337query";
 import {Block, TransactionReceipt, Transaction as SdkTx} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {IDBAction} from "../BatchDBTx";
-import {I4337call, parseAATxMethods, testParse4337Func} from "./eip4337decoder";
+import {build7702methodIds, I4337call, parseAATxMethods, testParse4337Func} from "./eip4337decoder";
 import {loadConfig} from "../../config/StatConfig";
 
 export interface IBundleData {
@@ -165,17 +165,8 @@ export async function sync4337txOfEpoch({receipts, blocks, blockTime, txFn}:ISyn
 					const userOp = await buildAATxDBModel(event, blockTime);
 					const parsed7702call = parsed4337call?.userOps?.[bundler.aaTxArr.length]?.parsedUserOp;
 					userOp.method7702 = parsed7702call?.method;
-					if (parsed7702call) {
-						for (const aaInterTx of parsed7702call.callArr) {
-							aaInterTx.destId = await makeIdV(aaInterTx.dest, null, {dt: blockTime});
-							console.log(`make id `, aaInterTx.destId);
-						}
-						userOp.methods = parsed7702call.callArr
-							.map(call=>`${call.destId}:${call.func}`)
-							.join(',');
-						console.log(`methods `, userOp.methods);
-					}
-					// userOp.methods =
+					userOp.methods = await build7702methodIds(parsed7702call, blockTime);
+						// userOp.methods =
 					bundler.hasData = true;
 					bundler.aaTxArr.push(userOp);
 					continue;

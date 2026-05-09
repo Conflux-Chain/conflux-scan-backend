@@ -1,6 +1,7 @@
 import {ethers, formatEther} from "ethers";
 import {entryPointV8} from "./entryPointV8.json";
 import {makeIdV} from "../../model/HexMap";
+import {LEN_AA_TX_METHODS} from "../../model/eip4337model";
 
 const iface = new ethers.Interface(entryPointV8);
 
@@ -20,6 +21,23 @@ export interface IParsed7702Param {
 export interface I4337call {
 	method: string;
 	userOps: IUserOpParam[];
+}
+
+export async function build7702methodIds(parsed7702call: IParsed7702Param, blockTime: Date) : Promise<string> {
+	if (parsed7702call) {
+		for (const aaInterTx of parsed7702call.callArr) {
+			aaInterTx.destId = await makeIdV(aaInterTx.dest, null, {dt: blockTime});
+		}
+		let method = parsed7702call.callArr
+		.map(call=>`${call.destId}:${call.func}`)
+		.join(',');
+		while (method.length >= LEN_AA_TX_METHODS) {
+			const lastPos = method.lastIndexOf(',');
+			method = method.substring(0, lastPos);
+		}
+		return method;
+	}
+	return ''
 }
 
 function printInterfaceMethods(abi: any): void {
