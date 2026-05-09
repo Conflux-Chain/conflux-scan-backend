@@ -8,11 +8,13 @@ export interface IBundleTx {
 	bundlerId: number;
 	entryPointId: number;
 	txCount: number;
+	failedTxCount: number;
+	status: number
+	method: string;
 	value: string;
 	txnFee: string;
 	createdAt: Date;
 }
-
 export class BundleTx extends Model<IBundleTx> implements IBundleTx {
 	id: bigint;
 	hash: string;
@@ -20,6 +22,9 @@ export class BundleTx extends Model<IBundleTx> implements IBundleTx {
 	bundlerId: number;
 	entryPointId: number;
 	txCount: number;
+	failedTxCount: number;
+	status: number
+	method: string;
 	value: string;
 	txnFee: string;
 	createdAt: Date;
@@ -31,6 +36,9 @@ export class BundleTx extends Model<IBundleTx> implements IBundleTx {
 			bundlerId: {type: DataTypes.BIGINT, allowNull: false},
 			entryPointId: {type: DataTypes.BIGINT, allowNull: false},
 			txCount: {type: DataTypes.INTEGER, allowNull: false},
+			failedTxCount: {type: DataTypes.INTEGER, allowNull: false, defaultValue: 0},
+			status: {type: DataTypes.MEDIUMINT, allowNull: false, defaultValue: 0},
+			method: {type: DataTypes.STRING(32), allowNull: false, defaultValue: ''},
 			value: {type: DataTypes.DECIMAL(36,18), allowNull: false},
 			txnFee: {type: DataTypes.DECIMAL(36,18), allowNull: false},
 			createdAt: {type: DataTypes.DATE, allowNull: false},
@@ -61,6 +69,7 @@ export interface IAATx {
 	actualGasCost: string;
 	actualGasUsed: string;
 	methods: string;
+	method7702: string;
 	createdAt: Date;
 }
 
@@ -83,6 +92,7 @@ export class AATx extends Model<IAATx> implements IAATx {
 	actualGasCost: string;
 	actualGasUsed: string;
 	methods: string;
+	method7702: string;
 	createdAt: Date;
 
 	static register(sequelize: Sequelize) {
@@ -102,6 +112,7 @@ export class AATx extends Model<IAATx> implements IAATx {
 			actualGasUsed: {type: DataTypes.DECIMAL(36,18), allowNull: false},
 			methods: {type: DataTypes.STRING(LEN_AA_TX_METHODS),
 				allowNull: true, defaultValue: '', },
+			method7702: {type: DataTypes.STRING(32), allowNull: false, defaultValue: '', },
 			createdAt: {type: DataTypes.DATE, allowNull: false},
 		}, {
 			sequelize,
@@ -229,3 +240,9 @@ export class UserOperationRevertReason extends Model<IUserOperationRevertReason>
 		});
 	}
 }
+/*
+alter table bundleTx add column status int default 0;
+alter table bundleTx add column failedTxCount int default 0;
+alter table bundleTx add column method varchar(32) default '';
+alter table aaTx add column method7702 varchar(32) default '';
+ */

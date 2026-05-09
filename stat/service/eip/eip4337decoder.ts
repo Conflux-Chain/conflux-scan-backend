@@ -15,7 +15,6 @@ export interface IParsed7702Param {
 	method: string;
 	rawParamArr: ExecuteParams[];
 	callArr: IAAInternalTxCall[];
-	methodIds: string;
 }
 
 export interface I4337call {
@@ -128,7 +127,6 @@ export function parseAATxMethods(hex4337data: string): I4337call {
 		const raw7702ParamArr = parsedUserOp.rawParamArr;
 		parsedUserOp.callArr = [];
 		if (!raw7702ParamArr) {
-			parsedUserOp.methodIds = '';
 			continue;
 		}
 		for (const param of raw7702ParamArr) {

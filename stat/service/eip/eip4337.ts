@@ -52,16 +52,17 @@ export async function buildAATxDBModel(op: IUserOperationEvent, blockTime: Date)
 		success: op.success,
 		userOpHash: op.userOpHash,
 		methods: '',
+		method7702: '',
 	};
 }
 
 export async function pop4337data(epoch: number|any, dbTx: Transaction) {
 	const options = {where: {epoch} , transaction: dbTx};
 
-	await BundleTx.destroy(options);
 	await AATx.destroy(options);
 	await UserOperationRevertReason.destroy(options);
 	await AccountDeployed.destroy(options);
+	await BundleTx.destroy(options);
 }
 
 export async function saveBundleArr(data: IBundleData[], dbTx: Transaction) : Promise<void> {
@@ -75,14 +76,6 @@ export async function saveBundleArr(data: IBundleData[], dbTx: Transaction) : Pr
 	}
 }
 
-function matchMethodIds(data: IBundleData, opIndex: number) : string {
-	if (!data.parsed4337call?.userOps?.length) {
-		return '';
-	}
-	const op = data.parsed4337call?.userOps[opIndex];
-	return op?.parsedUserOp?.methodIds ?? '';
-}
-
 export async function saveBundleData(data: IBundleData, dbTx: Transaction) : Promise<void> {
 	for (let i = 0; i < data.aaTxArr.length; i++) {
 		const iaaTx = data.aaTxArr[i];
@@ -90,7 +83,6 @@ export async function saveBundleData(data: IBundleData, dbTx: Transaction) : Pro
 		iaaTx.epoch = data.bundlerTx.epoch;
 		iaaTx.bundlerId = data.bundlerTx.bundlerId;
 		iaaTx.entryPointId = data.bundlerTx.entryPointId;
-		iaaTx.methods = matchMethodIds(data, i);
 	}
 
 	for (let i = 0; i < data.accountDeployedArr.length; i++) {
@@ -151,6 +143,11 @@ export async function sync4337txOfEpoch({receipts, blocks, blockTime, txFn}:ISyn
 			txIdx ++;
 			// console.log(`event count [${rcpt.logs?.length ?? rcpt}]`);
 			const isTxToEntrypoint = entrypointAddrIdSet.has(await makeIdV(rcpt.to, null, {dt: blockTime}));
+			if (!isTxToEntrypoint) {
+				continue;
+			}
+			const rawTx = blocks ? (blocks[blockIdx].transactions[txIdx]) as SdkTx : await txFn(rcpt.transactionHash);
+			const parsed4337call = parseAATxMethods(rawTx?.data || '0x');
 			const bundler:IBundleData = {
 				bundlerTxId: BigInt(0),
 				bundlerTx: null,
@@ -158,6 +155,7 @@ export async function sync4337txOfEpoch({receipts, blocks, blockTime, txFn}:ISyn
 				accountDeployedArr: [],
 				revertReasonArr: [],
 				hasData: isTxToEntrypoint,
+				parsed4337call,
 			} as IBundleData;
 
 			for (const log of rcpt.logs) {
@@ -165,6 +163,19 @@ export async function sync4337txOfEpoch({receipts, blocks, blockTime, txFn}:ISyn
 				if (event) {
 					// console.log(`it's user op`);
 					const userOp = await buildAATxDBModel(event, blockTime);
+					const parsed7702call = parsed4337call?.userOps?.[bundler.aaTxArr.length]?.parsedUserOp;
+					userOp.method7702 = parsed7702call?.method;
+					if (parsed7702call) {
+						for (const aaInterTx of parsed7702call.callArr) {
+							aaInterTx.destId = await makeIdV(aaInterTx.dest, null, {dt: blockTime});
+							console.log(`make id `, aaInterTx.destId);
+						}
+						userOp.methods = parsed7702call.callArr
+							.map(call=>`${call.destId}:${call.func}`)
+							.join(',');
+						console.log(`methods `, userOp.methods);
+					}
+					// userOp.methods =
 					bundler.hasData = true;
 					bundler.aaTxArr.push(userOp);
 					continue;
@@ -203,11 +214,10 @@ export async function sync4337txOfEpoch({receipts, blocks, blockTime, txFn}:ISyn
 				}
 			}
 			if (bundler.hasData) {
-				const rawTx = blocks ? (blocks[blockIdx].transactions[txIdx]) as SdkTx : await txFn(rcpt.transactionHash);
-				if (rawTx) {
-					bundler.parsed4337call = parseAATxMethods(rawTx.data);
-				}
 				bundler.bundlerTx = {
+					method: parsed4337call?.method || '',
+					failedTxCount: bundler.revertReasonArr.length,
+					status: rcpt.outcomeStatus,
 					hash: rcpt.transactionHash,
 					epoch: BigInt(rcpt.epochNumber),
 					bundlerId: await makeIdV(rcpt.from, null, {dt: blockTime}).then(res => BigInt(res ?? 0)),
@@ -254,7 +264,7 @@ async function testQuery() {
 }
 
 /*
-node stat/service/eip/eip4337.js syncEpoch 250759985
+npx tsc && node stat/service/eip/eip4337.js syncEpoch 250759985
 node stat/service/eip/eip4337.js testQuery
 node stat/service/eip/eip4337.js testParseFunc
  */
@@ -270,9 +280,9 @@ async function main() {
 	} else if (cmd === 'testParseFunc') {
 		const cfg = loadConfig('Prod');
 		const cfx = await initCfxSdk(cfg.conflux);
-		//net 71
+		//net 71, example of [send eth, approve, transfer].
 		let hash = '0x7cdb4307680f46e75b4280d5424eb1002b3e3feadaa70543b4f11791c2006332'
-		// failed example
+		// net 71, failed example
 		// let hash = '0x8b57795528ebd9fc3828890a15db6631db8169dd58f62bd2b98b84c468bded1e'
 		const tx = await cfx.getTransactionByHash(hash);
 		testParse4337Func(tx.data);
