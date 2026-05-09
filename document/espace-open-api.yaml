@@ -1774,7 +1774,7 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/Auth7702"
-  /eip4337/bundledTxs:
+  /eip4337/bundle-txs:
     get:
       tags:
         - 'EIP'
@@ -1802,7 +1802,7 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/BundleTxResponse"
-  /eip4337/aaTxs:
+  /eip4337/aa-txs:
     get:
       tags:
         - 'EIP'

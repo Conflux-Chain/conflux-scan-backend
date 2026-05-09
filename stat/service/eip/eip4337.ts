@@ -6,7 +6,7 @@ import {
 } from "./eip4337abi";
 import {
 	AATx, AccountDeployed,
-	BundleTx,
+	BundleTx, entrypointAddrIdSet,
 	IAATx,
 	IAccountDeployed,
 	IBundleTx,
@@ -22,11 +22,11 @@ import {initCfxSdk} from "../common/utils";
 import {queryAATx, queryBundleTx} from "./eip4337query";
 import {Block, TransactionReceipt, Transaction as SdkTx} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {IDBAction} from "../BatchDBTx";
-import {IFuncOfOp, parseAATxMethods, testParse4337Func} from "./eip4337decoder";
+import {I4337call, parseAATxMethods, testParse4337Func} from "./eip4337decoder";
 import {loadConfig} from "../../config/StatConfig";
 
 export interface IBundleData {
-	funcOfOpArr :IFuncOfOp[],
+	parsed4337call: I4337call,
 	bundlerTx: IBundleTx;
 	bundlerTxId: bigint;
 	aaTxArr: IAATx[];
@@ -76,11 +76,11 @@ export async function saveBundleArr(data: IBundleData[], dbTx: Transaction) : Pr
 }
 
 function matchMethodIds(data: IBundleData, opIndex: number) : string {
-	if (!data.funcOfOpArr?.length) {
+	if (!data.parsed4337call?.userOps?.length) {
 		return '';
 	}
-	const op = data.funcOfOpArr[opIndex];
-	return op?.methodIds ?? '';
+	const op = data.parsed4337call?.userOps[opIndex];
+	return op?.parsedUserOp?.methodIds ?? '';
 }
 
 export async function saveBundleData(data: IBundleData, dbTx: Transaction) : Promise<void> {
@@ -150,14 +150,14 @@ export async function sync4337txOfEpoch({receipts, blocks, blockTime, txFn}:ISyn
 		for (const rcpt of rcptOfBlock) {
 			txIdx ++;
 			// console.log(`event count [${rcpt.logs?.length ?? rcpt}]`);
-
+			const isTxToEntrypoint = entrypointAddrIdSet.has(await makeIdV(rcpt.to, null, {dt: blockTime}));
 			const bundler:IBundleData = {
 				bundlerTxId: BigInt(0),
 				bundlerTx: null,
 				aaTxArr: [],
 				accountDeployedArr: [],
 				revertReasonArr: [],
-				hasData: false,
+				hasData: isTxToEntrypoint,
 			} as IBundleData;
 
 			for (const log of rcpt.logs) {
@@ -205,7 +205,7 @@ export async function sync4337txOfEpoch({receipts, blocks, blockTime, txFn}:ISyn
 			if (bundler.hasData) {
 				const rawTx = blocks ? (blocks[blockIdx].transactions[txIdx]) as SdkTx : await txFn(rcpt.transactionHash);
 				if (rawTx) {
-					bundler.funcOfOpArr = await parseAATxMethods(rawTx.data, blockTime);
+					bundler.parsed4337call = parseAATxMethods(rawTx.data);
 				}
 				bundler.bundlerTx = {
 					hash: rcpt.transactionHash,
@@ -254,7 +254,7 @@ async function testQuery() {
 }
 
 /*
-node stat/service/eip/eip4337.js syncEpoch 250261540
+node stat/service/eip/eip4337.js syncEpoch 250759985
 node stat/service/eip/eip4337.js testQuery
 node stat/service/eip/eip4337.js testParseFunc
  */
@@ -272,6 +272,8 @@ async function main() {
 		const cfx = await initCfxSdk(cfg.conflux);
 		//net 71
 		let hash = '0x7cdb4307680f46e75b4280d5424eb1002b3e3feadaa70543b4f11791c2006332'
+		// failed example
+		// let hash = '0x8b57795528ebd9fc3828890a15db6631db8169dd58f62bd2b98b84c468bded1e'
 		const tx = await cfx.getTransactionByHash(hash);
 		testParse4337Func(tx.data);
 	} else {

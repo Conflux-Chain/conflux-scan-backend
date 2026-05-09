@@ -278,7 +278,7 @@ export async function initModel(sequelize: Sequelize) {
     console.log(`init models ok`);
     await dropEmptyTables();
     await migDB(sequelize);
-    bindBundleTxModels();
+    await bindBundleTxModels();
 }
 
 export function createMySql(dbConf) {

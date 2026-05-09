@@ -1078,8 +1078,8 @@ export function registerRouter(router: Router) {
 
     //eip7702
     router.get('/eip7702/auths', listGlobalAuthAction);
-    router.get('/eip4337/bundledTxs', listBundledTx);
-    router.get('/eip4337/aaTxs', list4337Tx);
+    router.get('/eip4337/bundle-txs', listBundledTx);
+    router.get('/eip4337/aa-txs', list4337Tx);
 
     registerDataApi(router)
 }
