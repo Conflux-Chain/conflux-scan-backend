@@ -150,6 +150,135 @@ const GENESIS = [
   },
 ]
 
+const PRECOMPILED_CONTRACTS = [
+  {
+    address: '0x0000000000000000000000000000000000000001',
+    name: 'ecrecover',
+    methodId: '0x96d107f6',
+    signature: 'ecrecover(bytes32,uint8,bytes32,bytes32)',
+    method: 'function ecrecover(bytes32 hash, uint8 v, bytes32 r, bytes32 s) view returns (address)'
+  },
+  {
+    address: '0x0000000000000000000000000000000000000002',
+    name: 'sha256',
+    methodId: '0xbebc76dd',
+    signature: 'sha256(bytes)',
+    method: 'function sha256(bytes data) view returns (bytes32)'
+  },
+  {
+    address: '0x0000000000000000000000000000000000000003',
+    name: 'ripemd160',
+    methodId: '0x9e641bf8',
+    signature: 'ripemd160(bytes)',
+    method: 'function ripemd160(bytes data) view returns (bytes20)'
+  },
+  {
+    address: '0x0000000000000000000000000000000000000004',
+    name: 'identity',
+    methodId: '0x840f6120',
+    signature: 'identity(bytes)',
+    method: 'function identity(bytes data) view returns (bytes)'
+  },
+  {
+    address: '0x0000000000000000000000000000000000000005',
+    name: 'modexp',
+    methodId: '0x8b4c9e83',
+    signature: 'modexp(bytes,bytes,bytes)',
+    method: 'function modexp(bytes base, bytes exponent, bytes modulus) view returns (bytes)'
+  },
+  {
+    address: '0x0000000000000000000000000000000000000006',
+    name: 'bn256Add',
+    methodId: '0x88c99789',
+    signature: 'bn256Add(uint256,uint256,uint256,uint256)',
+    method: 'function bn256Add(uint256 x1, uint256 y1, uint256 x2, uint256 y2) view returns (uint256 x3, uint256 y3)'
+  },
+  {
+    address: '0x0000000000000000000000000000000000000007',
+    name: 'bn256ScalarMul',
+    methodId: '0xe37fd69e',
+    signature: 'bn256ScalarMul(uint256,uint256,uint256)',
+    method: 'function bn256ScalarMul(uint256 x, uint256 y, uint256 scalar) view returns (uint256 x2, uint256 y2)'
+  },
+  {
+    address: '0x0000000000000000000000000000000000000008',
+    name: 'bn256Pairing',
+    methodId: '0x023651d0',
+    signature: 'bn256Pairing(bytes)',
+    method: 'function bn256Pairing(bytes input) view returns (bool)'
+  },
+  {
+    address: '0x0000000000000000000000000000000000000009',
+    name: 'blake2f',
+    methodId: '0x13df579f',
+    signature: 'blake2f(bytes)',
+    method: 'function blake2f(bytes input) view returns (bytes)'
+  },
+  {
+    address: '0x000000000000000000000000000000000000000a',
+    name: 'BLS12_G1ADD',
+    methodId: '0xbae142fa',
+    signature: 'BLS12_G1ADD(uint256,uint256,uint256,uint256)',
+    method: 'function BLS12_G1ADD(uint256 x1, uint256 y1, uint256 x2, uint256 y2) view returns (uint256 x3, uint256 y3)'
+  },
+  {
+    address: '0x000000000000000000000000000000000000000b',
+    name: 'BLS12_G1MSM',
+    methodId: '0xa9a8cfa5',
+    signature: 'BLS12_G1MSM(bytes)',
+    method: 'function BLS12_G1MSM(bytes input) view returns (uint256 x, uint256 y)'
+  },
+  {
+    address: '0x000000000000000000000000000000000000000c',
+    name: 'BLS12_G2ADD',
+    methodId: '0xc02b71f8',
+    signature: 'BLS12_G2ADD(uint256[2],uint256[2],uint256[2],uint256[2])',
+    method: 'function BLS12_G2ADD(uint256[2] x1, uint256[2] y1, uint256[2] x2, uint256[2] y2) view returns (uint256[2] x3, uint256[2] y3)'
+  },
+  {
+    address: '0x000000000000000000000000000000000000000d',
+    name: 'BLS12_G2MSM',
+    methodId: '0xbc4f64e8',
+    signature: 'BLS12_G2MSM(bytes)',
+    method: 'function BLS12_G2MSM(bytes input) view returns (uint256[2] x, uint256[2] y)'
+  },
+  {
+    address: '0x000000000000000000000000000000000000000e',
+    name: 'BLS12_PAIRING_CHECK',
+    methodId: '0xcb327e05',
+    signature: 'BLS12_PAIRING_CHECK(bytes)',
+    method: 'function BLS12_PAIRING_CHECK(bytes input) view returns (bool)'
+  },
+  {
+    address: '0x000000000000000000000000000000000000000f',
+    name: 'BLS12_MAP_FP_TO_G1',
+    methodId: '0x854f07f7',
+    signature: 'BLS12_MAP_FP_TO_G1(uint256)',
+    method: 'function BLS12_MAP_FP_TO_G1(uint256 fp) view returns (uint256 x, uint256 y)'
+  },
+  {
+    address: '0x0000000000000000000000000000000000000010',
+    name: 'BLS12_MAP_FP2_TO_G2',
+    methodId: '0x18f8be01',
+    signature: 'BLS12_MAP_FP2_TO_G2(uint256[2])',
+    method: 'function BLS12_MAP_FP2_TO_G2(uint256[2] fp2) view returns (uint256[2] x, uint256[2] y)'
+  },
+  {
+    address: '0x0000000000000000000000000000000000000011',
+    name: 'BLS12_G1MUL',
+    methodId: '0xcf8cbb02',
+    signature: 'BLS12_G1MUL(uint256,uint256,uint256)',
+    method: 'function BLS12_G1MUL(uint256 x, uint256 y, uint256 scalar) view returns (uint256 xr, uint256 yr)'
+  },
+  {
+    address: '0x0000000000000000000000000000000000000012',
+    name: 'BLS12_G2MUL',
+    methodId: '0x878196f9',
+    signature: 'BLS12_G2MUL(uint256[2],uint256[2],uint256)',
+    method: 'function BLS12_G2MUL(uint256[2] x, uint256[2] y, uint256 scalar) view returns (uint256[2] xr, uint256[2] yr)'
+  },
+]
+
 const CODE_FORMAT = {
   SOLIDITY_SINGLE_FILE: {code: 'solidity-single-file', desc: 'Solidity (Single file)'},
   SOLIDITY_STANDARD_JSON_INPUT: {code: 'solidity-standard-json-input', desc: 'Solidity (Standard-json-input)'},
@@ -241,6 +370,9 @@ export const CONST = {
   GENESIS_ADDR_CONTRACT_MAP: lodash.keyBy(GENESIS, 'address'),
   GENESIS_TX_CONTRACT_MAP: GENESIS.reduce(
       (result, item) => (Object.values(item.txHash).forEach(hash => result[hash] = item.address), result), {}),
+  PRECOMPILED_CONTRACT: PRECOMPILED_CONTRACTS.map((item: any) => item.address),
+  PRECOMPILED_NAME_CONTRACT_MAP: lodash.keyBy(PRECOMPILED_CONTRACTS, 'name'),
+  PRECOMPILED_ADDR_CONTRACT_MAP: lodash.keyBy(PRECOMPILED_CONTRACTS, 'address'),
 
   POSITION_IMPLEMENTATION_SLOT: '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc',
   //This is the keccak-256 hash of "org.zeppelinos.proxy.implementation",

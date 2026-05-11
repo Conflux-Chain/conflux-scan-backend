@@ -1,4 +1,4 @@
-import {Hex40Map, makeId} from "../../model/HexMap";
+import {Hex40Map, makeId, makeIdV} from "../../model/HexMap";
 import {init as initialize} from "./FixDailyTokenStat";
 import {StatApp} from "../../StatApp";
 import {StatConfig} from "../../config/StatConfig";
@@ -15,6 +15,7 @@ import {execSync} from "child_process";
 import {sleep} from "./ProcessTool";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
 import {NameTag} from "../../model/NameTag";
+import {AbiInfo, IAbiInfo, saveContractAbiRef, UPDATE_FIELDS_FOR_DUPLICATE_ABI} from "../../model/ContractInfo";
 
 const fs = require('fs');
 const path = require('path');
@@ -45,6 +46,7 @@ async function run() {
     await init();
     if (type === 1) {
         await initContracts()
+        await initPrecompiledAbi()
     }
     if (type === 2) {
         await fetchCompilers()
@@ -90,8 +92,11 @@ async function initContracts() {
             .map(a => ({...CONST.GENESIS_ADDR_CONTRACT_MAP[a], address: a}));
         contracts = [...INTERNAL, ...GENESIS];
     } else {
-        contracts = Object.keys(CONST.INTERNAL_NAME_CONTRACT_MAP)
+        const INTERNAL = Object.keys(CONST.INTERNAL_NAME_CONTRACT_MAP)
             .map(n => ({...CONST.INTERNAL_NAME_CONTRACT_MAP[n], name: n})).filter((item: any) => item.space === 'evm');
+        const precompiled = Object.keys(CONST.PRECOMPILED_NAME_CONTRACT_MAP)
+            .map(n => CONST.PRECOMPILED_NAME_CONTRACT_MAP[n]);
+        contracts = [...INTERNAL, ...precompiled];
     }
 
     for (const c of contracts) {
@@ -118,6 +123,22 @@ async function initContracts() {
         c.website && (contract.website = c.website);
 
         await Contract.upsert(contract);
+    }
+}
+
+async function initPrecompiledAbi() {
+    for (const [name, contract] of Object.entries(CONST.PRECOMPILED_NAME_CONTRACT_MAP)) {
+        const {address, methodId, signature, method } = contract as any;
+        const arr: IAbiInfo[] = [{
+            type: 'function',
+            fullName: signature,
+            hash: methodId,
+            formatWithArg: method
+        }];
+        await AbiInfo.bulkCreate(arr, { updateOnDuplicate: UPDATE_FIELDS_FOR_DUPLICATE_ABI });
+        const contractId = await makeIdV(address);
+        await saveContractAbiRef(arr as AbiInfo[], contractId);
+        console.log(`Precompiled contract ${name} abi added!`)
     }
 }
 

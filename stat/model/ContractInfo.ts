@@ -60,7 +60,7 @@ export class ContractABI extends Model<IContractABI> implements IContractABI {
         })
     }
 }
-let UPDATE_FIELDS_FOR_DUPLICATE_ABI: (keyof IAbiInfo)[] = ['updatedAt'];
+export let UPDATE_FIELDS_FOR_DUPLICATE_ABI: (keyof IAbiInfo)[] = ['updatedAt'];
 export function setFieldsForUpdate(v: (keyof IAbiInfo)[]) {
     UPDATE_FIELDS_FOR_DUPLICATE_ABI = v;
 }
@@ -130,7 +130,7 @@ export async function saveAbiInfo(abiObj:any, contractId?:number, dryRun = false
         return false;
     })
 }
-async function saveContractAbiRef(arr: AbiInfo[], contractId: number) {
+export async function saveContractAbiRef(arr: AbiInfo[], contractId: number) {
     return Promise.all(arr.map(async info => {
         const res = await AbiInfo.findOne({
             where: {type: info.type, fullName: info.fullName}

@@ -296,7 +296,7 @@ export async function hex40IdMap(hex40Array: Array<string>): Promise<Map<string,
     })
     const hex40IdMap = new Map<string, number>()
     result.forEach(hex40 => {
-        hex40IdMap.set(hex40.hex, hex40.id)
+        hex40IdMap.set(hex40.hex.toLowerCase(), hex40.id)
     })
     return hex40IdMap;
 }
