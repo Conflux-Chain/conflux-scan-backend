@@ -30,15 +30,15 @@ export interface AATxQueryParams extends IPageParam{
     entryPointId?: number;
 }
 
-let cacheLiter: Literal = null;
-function buildErrMsgSql(): string {
-    if (cacheLiter) {
-        return cacheLiter;
+let cachedErrMsgLiteral: Literal = null;
+function buildErrMsgSql(): Literal {
+    if (cachedErrMsgLiteral) {
+        return cachedErrMsgLiteral;
     }
     const txT = FullTransaction.getTableName().toString();
     const errMsgT = FailedTx.getTableName().toString();
 
-    cacheLiter = Sequelize.literal(`(
+    cachedErrMsgLiteral = Sequelize.literal(`(
                     SELECT CASE 
                         WHEN status = 1 THEN (
                             SELECT txExecErrorMsg 
@@ -52,7 +52,7 @@ function buildErrMsgSql(): string {
                         ELSE NULL
                     END
                 )`);
-    return cacheLiter;
+    return cachedErrMsgLiteral;
 }
 
 /**

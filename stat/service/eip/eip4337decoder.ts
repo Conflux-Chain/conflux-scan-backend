@@ -86,7 +86,7 @@ export function parseHandleOps(callData: string): I4337call {
 			rawData: op,
 			sender, nonce,
 			callData, accountGasLimits, paymasterAndData,
-			parsedUserOp: parse7702execute(callData)
+			parsedUserOp: null
 		});
 	}
 	return {
