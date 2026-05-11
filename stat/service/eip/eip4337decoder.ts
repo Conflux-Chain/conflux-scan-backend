@@ -122,7 +122,7 @@ function parse7702execute(callData: string): IParsed7702Param {
 		ret = {method: decode.name, rawParamArr: paramArr} as IParsed7702Param;
 	} else {
 		const [dest, value, func] = decode.args;
-		ret = {method: decode.name, execArr: [{dest, value, func}]} as unknown as IParsed7702Param;
+		ret = {method: decode.name, rawParamArr: [{dest, value, func}]} as IParsed7702Param;
 	}
 
 	return ret;
@@ -163,7 +163,6 @@ export function parseAATxMethods(hex4337data: string): I4337call {
 			})
 		}
 
-		// parsedUserOp.methodIds = exec7702arr.map(fn => `${fn.destId}:${fn.func}`).join(',');
 	}
 
 	return i4337call;
