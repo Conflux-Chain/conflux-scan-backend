@@ -4303,6 +4303,10 @@ components:
           pattern: '^0x[a-fA-F0-9]{40}$'
           description: Ethereum address (hex format) of the entry point contract
           example: "0xbcb648b716206fdf1ede2715bf20a90e6b746a7e"
+        failedReason:
+          type: string
+          description: Reason the user operation failed. Empty string if the operation succeeded. Possible values include the revert reason string, "Bundle TX failed" (when the bundle transaction itself failed), or "unknown".
+          example: "AA23 reverted"
     BundleTxResponse:
       type: object
       properties:
@@ -4366,7 +4370,7 @@ components:
           type: integer
           format: int32
           description: Status of this transaction. 0 for success, 1 for failure.
-          example: 2
+          example: 0
         value:
           type: string
           pattern: '^\d+\.\d+$'
@@ -4396,6 +4400,11 @@ components:
           type: string
           description: Method of the tx call. Can be empty.
           example: "handleOps"
+        errMsg:
+          type: string
+          nullable: true
+          description: Transaction execution error message. Only present when status is 1 (failure). Null or absent when the transaction succeeded.
+          example: "out of gas"
     TxsByTypeStat:
       type: object
       properties:
