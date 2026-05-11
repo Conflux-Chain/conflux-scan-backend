@@ -136,6 +136,8 @@ export class FullBlockService {
                 const errStr = `${err}`
                 if (errStr.includes('Lock wait timeout exceeded;')) {
                     console.log(`lock time out at epoch ${wantEpoch}:`, err)
+                } else if (errStr.includes('invalid block assumption')) {
+                    console.log(`pivot reorg detected at epoch ${wantEpoch}, will retry`)
                 } else {
                     console.log(`sync block fail at epoch ${wantEpoch}`, err)
                 }
