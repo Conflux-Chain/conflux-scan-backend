@@ -1778,19 +1778,28 @@ paths:
     get:
       tags:
         - 'EIP'
-      description: 'Query BundleTx with optional filters for bundler and entryPoint (AND relationship).
-      The candidate data set comprises all bundled transactions on the chain.'
+      description: |
+        Returns a paginated list of EIP-4337 bundle transactions. Each bundle transaction is a
+        regular on-chain transaction submitted by a bundler to an EntryPoint contract, containing
+        one or more UserOperations (AA transactions).
+
+        Results can be filtered by bundler address and/or EntryPoint address (filters are combined with AND logic).
+        Results are ordered by epoch descending (newest first).
+
+        Each item includes the bundle hash, status (success/failure), transaction fee, value, number of
+        included UserOperations, failed UserOperation count, the called EntryPoint method, and the
+        execution error message (if the bundle failed).
       parameters:
         - name: bundler
           in: query
           required: false
-          description: "Address of the bundler."
+          description: "Filter by bundler address (the EOA that submitted the bundle to the EntryPoint)."
           schema:
             type: string
         - name: entryPoint
           in: query
           required: false
-          description: "Address of the entry point."
+          description: "Filter by EntryPoint contract address."
           schema:
             type: string
         - $ref: '#/components/parameters/skipParam'
@@ -1806,25 +1815,34 @@ paths:
     get:
       tags:
         - 'EIP'
-      description: 'Query AATx with optional filters for sender/signer, bundler, entryPoint (AND relationship).
-      The candidate data set comprises all account abstraction (UserOperation) transactions on the chain.'
+      description: |
+        Returns a paginated list of EIP-4337 UserOperation (AA) transactions. Each record represents
+        a single UserOperation that was bundled into a bundle transaction and executed via an EntryPoint
+        contract.
+
+        Results can be filtered by sender (smart account address), bundler address, and/or EntryPoint
+        address (filters are combined with AND logic). Results are ordered by epoch descending (newest first).
+
+        Each item includes the user operation hash, execution success status, gas cost, methods called
+        (both the EIP-4337 inner call method and the EIP-7702 delegation method if applicable),
+        and the failure reason if the operation did not succeed.
       parameters:
         - name: sender
           in: query
           required: false
-          description: "Address of the abstract account transaction signer."
+          description: "Filter by sender address (the smart contract account that initiated the UserOperation)."
           schema:
             type: string
         - name: bundler
           in: query
           required: false
-          description: "Address of the bundler."
+          description: "Filter by bundler address (the EOA that submitted the bundle to the EntryPoint)."
           schema:
             type: string
         - name: entryPoint
           in: query
           required: false
-          description: "Address of the entry point."
+          description: "Filter by EntryPoint contract address."
           schema:
             type: string
         - $ref: '#/components/parameters/skipParam'
