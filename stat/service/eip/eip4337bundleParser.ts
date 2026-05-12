@@ -49,6 +49,12 @@ export interface IBundleTxParseResult {
 	userOps: IAAOpDetail[];
 }
 
+function toChecksumHex(addr: string): string {
+	if (!addr) return '';
+	return ethers.getAddress(format.hexAddress(addr));
+}
+
+
 /**
  * Count ERC-20 and NFT transfer events in a set of logs.
  * ERC-20 Transfer: same sig as ERC-721 but only 3 topics (from/to not indexed for tokenId).
@@ -140,8 +146,8 @@ export async function parseBundleTxByHash(cfx: Conflux, txHash: string): Promise
 		const parsedUserOp = parsed4337call.userOps[i];
 		const gasLimit = parseCallGasLimit(parsedUserOp?.accountGasLimits);
 		const method = parsedUserOp?.parsedUserOp?.method ?? '';
-		const sender = event?.sender ? ethers.getAddress(event.sender) : '';
-		const paymaster = event?.paymaster ? ethers.getAddress(event.paymaster) : '';
+		const sender = toChecksumHex(event?.sender);
+		const paymaster = toChecksumHex(event?.paymaster);
 
 		userOps.push({
 			userOpHash: event?.userOpHash ?? '',
@@ -166,8 +172,8 @@ export async function parseBundleTxByHash(cfx: Conflux, txHash: string): Promise
 	return {
 		hash: txHash,
 		method: parsed4337call.method,
-		from: tx.from ? ethers.getAddress(format.hexAddress(tx.from)) : '',
-		to: tx.to ? ethers.getAddress(format.hexAddress(tx.to)) : '',
+		from: toChecksumHex(tx.from),
+		to: toChecksumHex(tx.to),
 		status: receipt.outcomeStatus === 0 ? 0 : 1,
 		txnFee: formatEther(receipt.gasFee ?? 0n),
 		blockNumber: Number(receipt.epochNumber),
