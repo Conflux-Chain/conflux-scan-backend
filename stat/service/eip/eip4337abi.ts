@@ -1,9 +1,9 @@
 import { ethers } from 'ethers';
 
-// UserOperationEvent 的事件签名
+// Event signature for UserOperationEvent
 const USER_OPERATION_EVENT_SIGNATURE = ethers.id("UserOperationEvent(bytes32,address,address,uint256,bool,uint256,uint256)");
 
-// 事件参数的 ABI 编码类型
+// ABI-encoded types for event parameters
 const EVENT_ABI = [
     "bytes32 indexed userOpHash",
     "address indexed sender",
@@ -27,44 +27,44 @@ export interface IUserOperationEvent {
 }
 
 /**
- * 解析 UserOperationEvent 事件
- * @param log - 区块链事件日志
- * @returns 解析后的 UserOperationEvent 对象
- * @throws 如果 log 不是 UserOperationEvent 或 data 长度不匹配
+ * Parse a UserOperationEvent log entry
+ * @param log - blockchain event log
+ * @returns parsed UserOperationEvent object
+ * @throws if log is not a UserOperationEvent or data length does not match
  */
 export function parseUserOperationEvent(log: any): IUserOperationEvent {
-    // 检查 topics 字段是否存在且包含完整的 indexed 参数
+    // Check that topics field exists and contains all indexed parameters
     if (!log.topics || log.topics.length < 4) {
         return null;
     }
 
-    // 验证是否是 UserOperationEvent
+    // Verify this is a UserOperationEvent
     if (log.topics[0] !== USER_OPERATION_EVENT_SIGNATURE) {
         // console.log(`topics 0 mismatch ${(log.topics||[])[0]} vs ${USER_OPERATION_EVENT_SIGNATURE}`)
         return null;
     }
 
-    // 检查 data 字段是否存在
+    // Check that the data field exists
     if (!log.data) {
         console.log(` ${__filename} no data`);
         return null;
     }
 
-    // data 字段应该是 4 个 uint256 参数的编码 (每个 32 字节 = 64 字符)
-    // nonce (uint256): 32 字节
-    // success (bool): 32 字节 (实际只使用第一个字节)
-    // actualGasCost (uint256): 32 字节
-    // actualGasUsed (uint256): 32 字节
-    // 总共: 4 * 32 = 128 字节 = 256 个十六进制字符 (不含 0x 前缀)
+    // The data field encodes 4 uint256 parameters (each 32 bytes = 64 hex chars):
+    // nonce (uint256): 32 bytes
+    // success (bool): 32 bytes (only the first byte is used)
+    // actualGasCost (uint256): 32 bytes
+    // actualGasUsed (uint256): 32 bytes
+    // Total: 4 * 32 = 128 bytes = 256 hex characters (excluding 0x prefix)
     const dataWithoutPrefix = log.data.startsWith('0x') ? log.data.slice(2) : log.data;
-    const expectedDataLength = 256; // 4 * 64 字符
+    const expectedDataLength = 256; // 4 * 64 chars
 
     if (dataWithoutPrefix.length !== expectedDataLength) {
         console.log(`data length ${dataWithoutPrefix.length} vs ${expectedDataLength}`);
         return null;
     }
 
-    // 解析 topics 中的 indexed 参数
+    // Parse indexed parameters from topics:
     // topics[0] = event signature
     // topics[1] = userOpHash (bytes32 indexed)
     // topics[2] = sender (address indexed)
@@ -73,12 +73,12 @@ export function parseUserOperationEvent(log: any): IUserOperationEvent {
     const sender = ethers.getAddress('0x' + log.topics[2].slice(-40));
     const paymaster = ethers.getAddress('0x' + log.topics[3].slice(-40));
 
-    // 解析 data 中的非 indexed 参数
-    // data 格式: [nonce, success, actualGasCost, actualGasUsed] 每个都是 32 字节
-    const nonce = ethers.toBigInt(log.data.slice(0, 66));      // 第一个 32 字节 (0x + 64 chars)
-    const success = ethers.toBigInt('0x'+log.data.slice(66, 130)) !== 0n;  // 第二个 32 字节，非零即为 true
-    const actualGasCost = ethers.toBigInt('0x' + log.data.slice(130, 194));   // 第三个 32 字节
-    const actualGasUsed = ethers.toBigInt('0x'+log.data.slice(194, 258));   // 第四个 32 字节
+    // Parse non-indexed parameters from data:
+    // data format: [nonce, success, actualGasCost, actualGasUsed], each 32 bytes
+    const nonce = ethers.toBigInt(log.data.slice(0, 66));      // first 32 bytes (0x + 64 chars)
+    const success = ethers.toBigInt('0x'+log.data.slice(66, 130)) !== 0n;  // second 32 bytes, non-zero means true
+    const actualGasCost = ethers.toBigInt('0x' + log.data.slice(130, 194));   // third 32 bytes
+    const actualGasUsed = ethers.toBigInt('0x'+log.data.slice(194, 258));   // fourth 32 bytes
 
     return {
         address: log.address,
@@ -94,10 +94,10 @@ export function parseUserOperationEvent(log: any): IUserOperationEvent {
 
 // ------
 
-// AccountDeployed 的事件签名
+// Event signature for AccountDeployed
 const ACCOUNT_DEPLOYED_EVENT_SIGNATURE = ethers.id("AccountDeployed(bytes32,address,address,address)");
 
-// 事件接口
+// Event interface
 const reasonInterface = new ethers.Interface([
     "event AccountDeployed(bytes32 indexed userOpHash, address indexed sender, address factory, address paymaster)"
 ]);
@@ -111,14 +111,14 @@ export interface IAccountDeployedEvent {
 }
 
 /**
- * 使用 ethers Interface 解析 AccountDeployed 事件
- * @param log - 区块链事件日志
- * @returns 解析后的 AccountDeployed 对象
- * @throws 如果解析失败或 data 长度不匹配
+ * Parse an AccountDeployed event using ethers Interface
+ * @param log - blockchain event log
+ * @returns parsed AccountDeployed object
+ * @throws if parsing fails or data length does not match
  */
 export function parseAccountDeployed(log: any): IAccountDeployedEvent {
     try {
-        // 验证是否是 AccountDeployed 事件
+        // Verify this is an AccountDeployed event
         if (!log.topics || log.topics.length < 3) {
             // throw new Error("Invalid log topics: expected at least 3 topics");
             return null;
@@ -129,18 +129,18 @@ export function parseAccountDeployed(log: any): IAccountDeployedEvent {
             return null;
         }
 
-        // 检查 data 字段是否存在
+        // Check that the data field exists
         if (!log.data || log.data === '0x') {
             // throw new Error("Log data is missing or empty");
             return null;
         }
 
-        // 验证 data 长度
-        // data 包含两个 address 参数: factory (address) 和 paymaster (address)
-        // 每个 address 在 abi 编码中占 32 字节 (64 个十六进制字符，不含 0x 前缀)
-        // 总共: 2 * 32 = 64 字节 = 128 个十六进制字符
+        // Validate data length:
+        // data contains two address parameters: factory (address) and paymaster (address)
+        // each address occupies 32 bytes in ABI encoding (64 hex chars, excluding 0x prefix)
+        // Total: 2 * 32 = 64 bytes = 128 hex characters
         const dataWithoutPrefix = log.data.startsWith('0x') ? log.data.slice(2) : log.data;
-        const expectedDataLength = 128; // 2 * 64 字符
+        const expectedDataLength = 128; // 2 * 64 chars
 
         if (dataWithoutPrefix.length !== expectedDataLength) {
             // throw new Error(
@@ -150,7 +150,7 @@ export function parseAccountDeployed(log: any): IAccountDeployedEvent {
             return null;
         }
 
-        // 使用 Interface 解析
+        // Parse using Interface
         const parsedLog = reasonInterface.parseLog(log);
 
         if (!parsedLog) {
@@ -175,25 +175,25 @@ export function parseAccountDeployed(log: any): IAccountDeployedEvent {
 }
 
 /**
- * 手动解析 AccountDeployed 事件（不依赖 ethers Interface）
- * @param log - 区块链事件日志
- * @returns 解析后的 AccountDeployed 对象
- * @throws 如果 data 长度不匹配
+ * Manually parse an AccountDeployed event (without relying on ethers Interface)
+ * @param log - blockchain event log
+ * @returns parsed AccountDeployed object
+ * @throws if data length does not match
  */
 export function parseAccountDeployedManual(log: any): IAccountDeployedEvent {
-    // 验证事件签名
+    // Validate event signature
     if (log.topics && log.topics[0] !== ACCOUNT_DEPLOYED_EVENT_SIGNATURE) {
         throw new Error(`Invalid event signature: expected AccountDeployed, got ${log.topics?.[0]}`);
     }
 
-    // 检查 data 字段
+    // Check the data field
     if (!log.data || log.data === '0x') {
         throw new Error("Log data is missing or empty");
     }
 
-    // 验证 data 长度
+    // Validate data length
     const dataWithoutPrefix = log.data.startsWith('0x') ? log.data.slice(2) : log.data;
-    const expectedDataLength = 128; // 2个 address，每个 32 字节
+    const expectedDataLength = 128; // 2 addresses, 32 bytes each
 
     if (dataWithoutPrefix.length !== expectedDataLength) {
         throw new Error(
@@ -202,21 +202,21 @@ export function parseAccountDeployedManual(log: any): IAccountDeployedEvent {
         );
     }
 
-    // 解析 topics 中的 indexed 参数
+    // Parse indexed parameters from topics:
     // topics[0] = event signature
     // topics[1] = userOpHash (bytes32 indexed)
     // topics[2] = sender (address indexed)
     const userOpHash = log.topics[1];
     const sender = ethers.getAddress(log.topics[2]);
 
-    // 解析 data 中的非 indexed 参数
-    // data 格式: [factory, paymaster] 每个都是 32 字节
-    // factory: 第一个 32 字节，取后 20 字节作为地址
-    // paymaster: 第二个 32 字节，取后 20 字节作为地址
+    // Parse non-indexed parameters from data:
+    // data format: [factory, paymaster], each 32 bytes
+    // factory: first 32 bytes, last 20 bytes used as address
+    // paymaster: second 32 bytes, last 20 bytes used as address
     const factoryBytes = log.data.slice(0, 66);  // 0x + 64 chars
-    const paymasterBytes = log.data.slice(66, 130); // 下一个 64 chars
+    const paymasterBytes = log.data.slice(66, 130); // next 64 chars
 
-    // 将 bytes32 转换为 address（取后20字节）
+    // Convert bytes32 to address (take last 20 bytes)
     const factory = ethers.getAddress('0x' + factoryBytes.slice(-40));
     const paymaster = ethers.getAddress('0x' + paymasterBytes.slice(-40));
 
@@ -231,10 +231,10 @@ export function parseAccountDeployedManual(log: any): IAccountDeployedEvent {
 
 // ------
 
-// UserOperationRevertReason 的事件签名
+// Event signature for UserOperationRevertReason
 const USER_OP_REVERT_REASON_EVENT_SIGNATURE = ethers.id("UserOperationRevertReason(bytes32,address,uint256,bytes)");
 
-// 事件接口
+// Event interface
 const eventInterface = new ethers.Interface([
     "event UserOperationRevertReason(bytes32 indexed userOpHash, address indexed sender, uint256 nonce, bytes revertReason)"
 ]);
@@ -248,14 +248,14 @@ export interface IUserOperationRevertReason {
 }
 
 /**
- * 使用 ethers Interface 解析 UserOperationRevertReason 事件
- * @param log - 区块链事件日志
- * @returns 解析后的 UserOperationRevertReason 对象
- * @throws 如果解析失败或 data 长度不匹配
+ * Parse a UserOperationRevertReason event using ethers Interface
+ * @param log - blockchain event log
+ * @returns parsed UserOperationRevertReason object
+ * @throws if parsing fails or data length does not match
  */
 export function parseUserOperationRevertReason(log: any): IUserOperationRevertReason {
     try {
-        // 验证是否是 UserOperationRevertReason 事件
+        // Verify this is a UserOperationRevertReason event
         if (!log.topics || log.topics.length < 3) {
             // throw new Error("Invalid log topics: expected at least 3 topics");
             return null;
@@ -266,17 +266,17 @@ export function parseUserOperationRevertReason(log: any): IUserOperationRevertRe
             return null;
         }
 
-        // 检查 data 字段是否存在
+        // Check that the data field exists
         if (!log.data || log.data === '0x') {
             // throw new Error("Log data is missing or empty");
             return null;
         }
 
-        // 验证 data 最小长度
-        // data 包含: nonce (uint256, 32字节) + revertReason (bytes, 动态长度)
-        // 至少需要 32 字节的 nonce，加上 bytes 的长度前缀
+        // Validate minimum data length:
+        // data contains: nonce (uint256, 32 bytes) + revertReason (bytes, dynamic length)
+        // at minimum 32 bytes for nonce, plus the bytes length prefix
         const dataWithoutPrefix = log.data.startsWith('0x') ? log.data.slice(2) : log.data;
-        const minDataLength = 64; // 至少 32 字节 (nonce) 的十六进制字符数
+        const minDataLength = 64; // at least 32 bytes (nonce) in hex chars
 
         if (dataWithoutPrefix.length < minDataLength) {
             // throw new Error(
@@ -286,7 +286,7 @@ export function parseUserOperationRevertReason(log: any): IUserOperationRevertRe
             return null;
         }
 
-        // 使用 Interface 解析
+        // Parse using Interface
         const parsedLog = eventInterface.parseLog(log);
 
         if (!parsedLog) {
@@ -296,12 +296,12 @@ export function parseUserOperationRevertReason(log: any): IUserOperationRevertRe
 
         const args = parsedLog.args as any;
 
-        // 将 revertReason 从 bytes 转换为字符串（如果是可读的字符串）
+        // Convert revertReason from bytes to string (if it is a readable string)
         let revertReasonStr: string;
         try {
             revertReasonStr = ethers.toUtf8String(args.revertReason);
         } catch {
-            // 如果不是 UTF-8 字符串，保留十六进制表示
+            // If not a valid UTF-8 string, keep the hex representation
             revertReasonStr = args.revertReason;
         }
 
@@ -320,25 +320,25 @@ export function parseUserOperationRevertReason(log: any): IUserOperationRevertRe
 }
 
 /**
- * 手动解析 UserOperationRevertReason 事件（不依赖 ethers Interface）
- * @param log - 区块链事件日志
- * @returns 解析后的 UserOperationRevertReason 对象
- * @throws 如果 data 长度不匹配
+ * Manually parse a UserOperationRevertReason event (without relying on ethers Interface)
+ * @param log - blockchain event log
+ * @returns parsed UserOperationRevertReason object
+ * @throws if data length does not match
  */
 export function parseUserOperationRevertReasonManual(log: any): IUserOperationRevertReason {
-    // 验证事件签名
+    // Validate event signature
     if (log.topics && log.topics[0] !== USER_OP_REVERT_REASON_EVENT_SIGNATURE) {
         throw new Error(`Invalid event signature: expected UserOperationRevertReason, got ${log.topics?.[0]}`);
     }
 
-    // 检查 data 字段
+    // Check the data field
     if (!log.data || log.data === '0x') {
         throw new Error("Log data is missing or empty");
     }
 
-    // 验证 data 最小长度
+    // Validate minimum data length
     const dataWithoutPrefix = log.data.startsWith('0x') ? log.data.slice(2) : log.data;
-    const minDataLength = 64; // 至少 32 字节 (nonce)
+    const minDataLength = 64; // at least 32 bytes (nonce)
 
     if (dataWithoutPrefix.length < minDataLength) {
         throw new Error(
@@ -347,28 +347,28 @@ export function parseUserOperationRevertReasonManual(log: any): IUserOperationRe
         );
     }
 
-    // 解析 topics 中的 indexed 参数
+    // Parse indexed parameters from topics:
     // topics[0] = event signature
     // topics[1] = userOpHash (bytes32 indexed)
     // topics[2] = sender (address indexed)
     const userOpHash = log.topics[1];
     const sender = ethers.getAddress(log.topics[2]);
 
-    // 解析 data 中的非 indexed 参数
-    // data 格式: [nonce (uint256), revertReason (bytes)]
-    // nonce: 第一个 32 字节
-    // revertReason: 剩余部分，需要解析 bytes 编码
+    // Parse non-indexed parameters from data:
+    // data format: [nonce (uint256), revertReason (bytes)]
+    // nonce: first 32 bytes
+    // revertReason: remainder, needs bytes decoding
 
-    // 解析 nonce (前 32 字节)
+    // Parse nonce (first 32 bytes)
     const nonceHex = log.data.slice(0, 66); // 0x + 64 chars
     const nonce = ethers.toBigInt(nonceHex);
 
-    // 解析 revertReason (bytes 类型)
-    // bytes 编码格式: [长度(uint256)] + [数据]
+    // Parse revertReason (bytes type)
+    // bytes encoding format: [length (uint256)] + [data]
     const remainingData = '0x' + dataWithoutPrefix.slice(64);
     const revertReasonBytes = ethers.getBytes(remainingData);
 
-    // bytes 的前 32 字节是长度
+    // The first 32 bytes of bytes are the length
     if (revertReasonBytes.length < 32) {
         throw new Error("Invalid revertReason encoding: missing length prefix");
     }
@@ -376,7 +376,7 @@ export function parseUserOperationRevertReasonManual(log: any): IUserOperationRe
     const dataLength = Number(ethers.toBigInt(revertReasonBytes.slice(0, 32)));
     const actualData = revertReasonBytes.slice(32, 32 + dataLength);
 
-    // 尝试转换为字符串
+    // Attempt to convert to string
     let revertReasonStr: string;
     try {
         revertReasonStr = ethers.toUtf8String(actualData);
@@ -394,9 +394,9 @@ export function parseUserOperationRevertReasonManual(log: any): IUserOperationRe
 }
 
 /**
- * 解析 revert reason 为可读字符串（辅助函数）
- * @param revertReasonBytes - revert reason 的 bytes 数据
- * @returns 可读的字符串
+ * Parse a revert reason into a human-readable string (helper function)
+ * @param revertReasonBytes - bytes data of the revert reason
+ * @returns human-readable string
  */
 export function parseRevertReason(revertReasonBytes: string): string {
     if (!revertReasonBytes || revertReasonBytes === '0x') {
@@ -404,14 +404,14 @@ export function parseRevertReason(revertReasonBytes: string): string {
     }
 
     try {
-        // 尝试作为 UTF-8 字符串解析
+        // Attempt to parse as UTF-8 string
         return ethers.toUtf8String(revertReasonBytes);
     } catch {
-        // 尝试解析为自定义错误
+        // Attempt to parse as a custom error
         try {
-            // 检查是否是标准的错误签名 (Error(string))
+            // Check if this is a standard Error(string) signature
             if (revertReasonBytes.startsWith('0x08c379a0')) {
-                // 这是 Error(string) 的签名
+                // This is the Error(string) signature
                 const iface = new ethers.Interface([
                     "function Error(string)"
                 ]);
@@ -419,7 +419,7 @@ export function parseRevertReason(revertReasonBytes: string): string {
                 return decoded[0];
             }
         } catch {
-            // 如果无法解析，返回十六进制
+            // If unable to parse, return hex
             return revertReasonBytes;
         }
     }
