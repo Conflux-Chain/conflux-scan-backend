@@ -1,5 +1,5 @@
 import {ethers, formatEther} from "ethers";
-import {Conflux} from "js-conflux-sdk";
+import {Conflux, format} from "js-conflux-sdk";
 import {parseAATxMethods} from "./eip4337decoder";
 import {parseUserOperationEvent} from "./eip4337abi";
 
@@ -166,8 +166,8 @@ export async function parseBundleTxByHash(cfx: Conflux, txHash: string): Promise
 	return {
 		hash: txHash,
 		method: parsed4337call.method,
-		from: tx.from ? ethers.getAddress(tx.from) : '',
-		to: tx.to ?? '',
+		from: tx.from ? ethers.getAddress(format.hexAddress(tx.from)) : '',
+		to: tx.to ? ethers.getAddress(format.hexAddress(tx.to)) : '',
 		status: receipt.outcomeStatus === 0 ? 0 : 1,
 		txnFee: formatEther(receipt.gasFee ?? 0n),
 		blockNumber: Number(receipt.epochNumber),
