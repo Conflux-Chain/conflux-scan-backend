@@ -1854,6 +1854,41 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/AATxResponse"
+  /eip4337/bundle-tx:
+    get:
+      tags:
+        - 'EIP'
+      description: |
+        Parse a single EIP-4337 bundle transaction by hash and return the breakdown of
+        all UserOperations it contains.
+
+        The response includes bundle-level metadata (bundler, entryPoint, status, fee,
+        block number, timestamp) and a list of per-user-op details parsed live from the
+        transaction input data and receipt event logs.
+
+        Each user op item includes: the user operation hash, the EIP-7702 execution
+        method, its zero-based position within the bundle, the sender (smart account)
+        address, ERC-20 token transfer count, NFT transfer count, gas fee paid, call
+        gas limit, success status, nonce, and paymaster address.
+
+        Returns an error if the transaction is not found or is not a recognised 4337
+        bundle transaction.
+      parameters:
+        - name: txHash
+          in: query
+          required: true
+          description: "Transaction hash of the bundle (0x-prefixed, 64 hex characters)."
+          schema:
+            type: string
+            pattern: '^0x[a-fA-F0-9]{64}$'
+            example: "0x7cdb4307680f46e75b4280d5424eb1002b3e3feadaa70543b4f11791c2006332"
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/BundleTxDetailResponse"
   /data/accounts:
     get:
       tags:
@@ -4423,6 +4458,116 @@ components:
           nullable: true
           description: Transaction execution error message. Only present when status is 1 (failure). Null or absent when the transaction succeeded.
           example: "out of gas"
+    BundleTxDetailResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          description: Response status code (1 for success, 0 for error)
+          example: "1"
+        message:
+          type: string
+          description: Response message
+          example: "OK"
+        result:
+          $ref: '#/components/schemas/BundleTxParseResult'
+    BundleTxParseResult:
+      type: object
+      properties:
+        hash:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{64}$'
+          description: Transaction hash of the bundle
+          example: "0x7cdb4307680f46e75b4280d5424eb1002b3e3feadaa70543b4f11791c2006332"
+        method:
+          type: string
+          description: EntryPoint method name (e.g. handleOps)
+          example: "handleOps"
+        from:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{40}$'
+          description: Bundler address (checksummed hex)
+          example: "0x487f1d870c7da2a5790c16ab6ee02279e0401c95"
+        to:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{40}$'
+          description: EntryPoint contract address (checksummed hex)
+          example: "0x4337084d9e255ff0702461cf8895ce9e3b5ff108"
+        status:
+          type: integer
+          description: "Bundle transaction status. 0 = success, 1 = failure."
+          example: 0
+        txnFee:
+          type: string
+          description: Total gas fee paid for the bundle transaction, in ETH (decimal string)
+          example: "0.023988577700662400"
+        blockNumber:
+          type: integer
+          format: int64
+          description: Block/epoch number in which the bundle was included
+          example: 249033515
+        timestamp:
+          type: integer
+          format: int64
+          description: Block timestamp in Unix seconds
+          example: 1744687236
+        userOps:
+          type: array
+          description: List of UserOperations parsed from this bundle
+          items:
+            $ref: '#/components/schemas/AAOpDetail'
+    AAOpDetail:
+      type: object
+      properties:
+        userOpHash:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{64}$'
+          description: User operation hash
+          example: "0xabcfa8a60f7cc55ce51b321ada3135b9e79fd0a3b74b782f79bb818d10b08c9a"
+        method:
+          type: string
+          description: "EIP-7702 execution method (e.g. execute, executeBatch). Empty string if not applicable."
+          example: "executeBatch"
+        position:
+          type: integer
+          description: Zero-based index of this user op within the bundle
+          example: 0
+        from:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{40}$'
+          description: Sender (smart account) address in checksummed hex format
+          example: "0xAbd527c17826FE0Ac1F7651511913Ba230B5dDfe"
+        tokenTxnCount:
+          type: integer
+          description: Number of ERC-20 token transfer events attributed to this user op
+          minimum: 0
+          example: 1
+        nftTxnCount:
+          type: integer
+          description: Number of ERC-721 / ERC-1155 transfer events attributed to this user op
+          minimum: 0
+          example: 0
+        txnFee:
+          type: string
+          description: Actual gas cost paid for this user op, in ETH (decimal string). From the UserOperationEvent.
+          example: "0.000000000000100000"
+        gasLimit:
+          type: string
+          description: callGasLimit for this user op, as a decimal string
+          example: "82240"
+        success:
+          type: boolean
+          description: Whether this user op executed successfully
+          example: true
+        nonce:
+          type: string
+          description: User op nonce (big integer as decimal string)
+          example: "56621881160224303014452052690345518318535648048051400767399579939072347664222"
+        paymaster:
+          type: string
+          pattern: '^(0x[a-fA-F0-9]{40})?$'
+          description: Paymaster address in checksummed hex. Empty string if no paymaster was used.
+          example: "0x0000000000000000000000000000000000000000"
     TxsByTypeStat:
       type: object
       properties:

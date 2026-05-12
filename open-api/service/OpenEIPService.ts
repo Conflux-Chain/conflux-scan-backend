@@ -1,11 +1,13 @@
 import {paginateCore} from "../../stat/router/ParamChecker";
-import {mustBeAddressParamIfPresent} from "../../stat/service/common/utils";
+import {mustBeAddressParamIfPresent, mustBeHex64ParamIfPresent, getCfxSdk} from "../../stat/service/common/utils";
 import {StatApp} from "../../stat/StatApp";
 import {listAuthAction} from "../../stat/model/EIP7702model";
 import {getAccountQuery} from "../../stat/service/AccountQuery";
 import {setBody} from "../router/middleware";
 import {queryAATx, queryBundleTx} from "../../stat/service/eip/eip4337query";
 import {getAddrId} from "../../stat/model/HexMap";
+import {parseBundleTxByHash} from "../../stat/service/eip/eip4337bundleParser";
+import {Errors} from "../../stat/service/common/LogicError";
 
 export async function listGlobalAuthAction(ctx) {
     const {skip, limit} = paginateCore(ctx.request.query)
@@ -40,6 +42,22 @@ export async function list4337Tx(ctx) {
         senderId: sender ? (await getAddrId(sender, undefined) ?? -1) : undefined,
         skip, limit,
     });
+
+    setBody(ctx, result);
+}
+
+export async function getBundleTxDetail(ctx) {
+    const {txHash} = ctx.request.query;
+    if (!txHash) {
+        throw new Errors.ParameterError('param <txHash> is required');
+    }
+    mustBeHex64ParamIfPresent(ctx.request.query, 'txHash');
+
+    const result = await parseBundleTxByHash(getCfxSdk(), txHash);
+
+    if (!result) {
+        throw new Errors.ParameterError(`Bundle tx not found or not a 4337 bundle: ${txHash}`);
+    }
 
     setBody(ctx, result);
 }

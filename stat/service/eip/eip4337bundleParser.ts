@@ -1,0 +1,177 @@
+import {ethers, formatEther} from "ethers";
+import {Conflux} from "js-conflux-sdk";
+import {parseAATxMethods} from "./eip4337decoder";
+import {parseUserOperationEvent} from "./eip4337abi";
+
+const TRANSFER_SIG = ethers.id("Transfer(address,address,uint256)");
+const TRANSFER_SINGLE_SIG = ethers.id("TransferSingle(address,address,address,uint256,uint256)");
+const TRANSFER_BATCH_SIG = ethers.id("TransferBatch(address,address,address,uint256[],uint256[])");
+const USER_OPERATION_EVENT_SIG = ethers.id("UserOperationEvent(bytes32,address,address,uint256,bool,uint256,uint256)");
+
+export interface IAAOpDetail {
+	userOpHash: string;
+	/** EIP-7702 execution method (e.g. execute, executeBatch). Empty if not applicable. */
+	method: string;
+	/** Zero-based index of this user op within the bundle. */
+	position: number;
+	/** Sender (smart account) address in checksum hex format. */
+	from: string;
+	/** Number of ERC-20 token transfer events attributed to this user op. */
+	tokenTxnCount: number;
+	/** Number of ERC-721 / ERC-1155 transfer events attributed to this user op. */
+	nftTxnCount: number;
+	/** Actual gas cost paid for this user op, in ETH (decimal string). */
+	txnFee: string;
+	/** callGasLimit for this user op (decimal string). */
+	gasLimit: string;
+	success: boolean;
+	nonce: string;
+	/** Paymaster address. Empty string if none. */
+	paymaster: string;
+}
+
+export interface IBundleTxParseResult {
+	hash: string;
+	/** EntryPoint method name (e.g. handleOps). */
+	method: string;
+	/** Bundler address (checksummed hex). */
+	from: string;
+	/** EntryPoint contract address (checksummed hex). */
+	to: string;
+	/** 0 = success, 1 = failure (matching existing convention). */
+	status: number;
+	/** Total gas fee for the bundle tx, in ETH (decimal string). */
+	txnFee: string;
+	/** Block/epoch number. */
+	blockNumber: number;
+	/** Block timestamp in seconds (Unix). */
+	timestamp: number;
+	userOps: IAAOpDetail[];
+}
+
+/**
+ * Count ERC-20 and NFT transfer events in a set of logs.
+ * ERC-20 Transfer: same sig as ERC-721 but only 3 topics (from/to not indexed for tokenId).
+ * ERC-721 Transfer: 4 topics (from, to, tokenId all indexed).
+ * ERC-1155 TransferSingle / TransferBatch.
+ */
+function countTransfers(logs: any[]): {tokenTxnCount: number; nftTxnCount: number} {
+	let tokenTxnCount = 0;
+	let nftTxnCount = 0;
+	for (const log of logs) {
+		const topics: string[] = log.topics || [];
+		const sig = topics[0];
+		if (!sig) continue;
+		if (sig === TRANSFER_SIG) {
+			if (topics.length === 3) tokenTxnCount++;
+			else if (topics.length === 4) nftTxnCount++;
+		} else if (sig === TRANSFER_SINGLE_SIG || sig === TRANSFER_BATCH_SIG) {
+			nftTxnCount++;
+		}
+	}
+	return {tokenTxnCount, nftTxnCount};
+}
+
+/**
+ * Extract callGasLimit from the packed bytes32 accountGasLimits field.
+ * High 128 bits = verificationGasLimit, low 128 bits = callGasLimit.
+ */
+function parseCallGasLimit(accountGasLimits: string): string {
+	if (!accountGasLimits) return '0';
+	try {
+		let hex = accountGasLimits.startsWith('0x') ? accountGasLimits.slice(2) : accountGasLimits;
+		hex = hex.padStart(64, '0');
+		return BigInt('0x' + hex.slice(32, 64)).toString();
+	} catch {
+		return '0';
+	}
+}
+
+/**
+ * Parse a bundle transaction by hash using the Conflux SDK.
+ *
+ * Fetches the transaction and receipt, parses the handleOps calldata and
+ * receipt logs, and returns structured per-user-op details.
+ *
+ * Returns null if the tx is not found or is not a recognised 4337 bundle.
+ */
+export async function parseBundleTxByHash(cfx: Conflux, txHash: string): Promise<IBundleTxParseResult | null> {
+	const [tx, receipt] = await Promise.all([
+		cfx.getTransactionByHash(txHash),
+		cfx.getTransactionReceipt(txHash),
+	]);
+
+	if (!tx || !receipt) {
+		return null;
+	}
+
+	const parsed4337call = parseAATxMethods(tx.data || '0x');
+	if (!parsed4337call) {
+		return null;
+	}
+
+	const logs: any[] = receipt.logs || [];
+
+	// Locate positions of UserOperationEvent logs – they mark the end of each user op.
+	const userOpEventIndices: number[] = [];
+	for (let i = 0; i < logs.length; i++) {
+		if ((logs[i].topics as string[])?.[0] === USER_OPERATION_EVENT_SIG) {
+			userOpEventIndices.push(i);
+		}
+	}
+
+	// Slice logs between consecutive UserOperationEvent entries.
+	// Logs *before* event[i] belong to user op i.
+	const userOpLogGroups: any[][] = [];
+	let prevIdx = 0;
+	for (const eventIdx of userOpEventIndices) {
+		userOpLogGroups.push(logs.slice(prevIdx, eventIdx));
+		prevIdx = eventIdx + 1;
+	}
+
+	const userOps: IAAOpDetail[] = [];
+
+	for (let i = 0; i < userOpEventIndices.length; i++) {
+		const eventLog = logs[userOpEventIndices[i]];
+		const event = parseUserOperationEvent(eventLog);
+		const innerLogs = userOpLogGroups[i] || [];
+		const {tokenTxnCount, nftTxnCount} = countTransfers(innerLogs);
+
+		const parsedUserOp = parsed4337call.userOps[i];
+		const gasLimit = parseCallGasLimit(parsedUserOp?.accountGasLimits);
+		const method = parsedUserOp?.parsedUserOp?.method ?? '';
+		const sender = event?.sender ? ethers.getAddress(event.sender) : '';
+		const paymaster = event?.paymaster ? ethers.getAddress(event.paymaster) : '';
+
+		userOps.push({
+			userOpHash: event?.userOpHash ?? '',
+			method,
+			position: i,
+			from: sender,
+			tokenTxnCount,
+			nftTxnCount,
+			txnFee: event ? formatEther(event.actualGasCost) : '0',
+			gasLimit,
+			success: event?.success ?? false,
+			nonce: event?.nonce?.toString() ?? '',
+			paymaster,
+		});
+	}
+
+	// Fetch block for timestamp.
+	const blockHash = (receipt as any).blockHash;
+	const block = blockHash ? await cfx.getBlockByHash(blockHash) : null;
+	const timestamp = block ? Number(block.timestamp) : 0;
+
+	return {
+		hash: txHash,
+		method: parsed4337call.method,
+		from: tx.from ? ethers.getAddress(tx.from) : '',
+		to: tx.to ?? '',
+		status: receipt.outcomeStatus === 0 ? 0 : 1,
+		txnFee: formatEther(receipt.gasFee ?? 0n),
+		blockNumber: Number(receipt.epochNumber),
+		timestamp,
+		userOps,
+	};
+}

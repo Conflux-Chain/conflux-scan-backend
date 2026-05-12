@@ -32,6 +32,7 @@ import {
 	testParse4337Func
 } from "./eip4337decoder";
 import {loadConfig} from "../../config/StatConfig";
+import {parseBundleTxByHash} from "./eip4337bundleParser";
 
 export interface IBundleData {
 	parsed4337call: I4337call,
@@ -305,11 +306,28 @@ async function testQuery() {
 	});
 }
 
+async function testBundleParser(cfx: Conflux, hash: string) {
+	// net 71: example of [send eth, approve, transfer]
+	hash = hash || '0x7cdb4307680f46e75b4280d5424eb1002b3e3feadaa70543b4f11791c2006332';
+	console.log('parsing bundle tx:', hash, ' net ', cfx.networkId);
+	const result = await parseBundleTxByHash(cfx, hash);
+	if (!result) {
+		console.log('not a 4337 bundle or tx not found');
+		return;
+	}
+	const {userOps, ...bundle} = result;
+	console.log('bundle:', JSON.stringify(bundle, null, 2));
+	for (const op of userOps) {
+		console.log(`  userOp[${op.position}]:`, JSON.stringify(op, null, 4));
+	}
+}
+
 /*
 npx tsc && node stat/service/eip/eip4337.js syncEpoch 250759985
 npx tsc && node stat/service/eip/eip4337.js syncEpoch 250247030 // failed tx
 npx tsc && node stat/service/eip/eip4337.js testQuery
 npx tsc && node stat/service/eip/eip4337.js testParseFunc
+npx tsc && node stat/service/eip/eip4337.js testBundleParser [txHash]
  */
 async function main() {
 	const [,,cmd,arg1] = process.argv;
@@ -330,6 +348,10 @@ async function main() {
 		const tx = await cfx.getTransactionByHash(hash);
 		console.log('tx:', hash, ' net ', cfx.networkId);
 		await testParse4337Func(tx.data, tx.to);
+	} else if (cmd === 'testBundleParser') {
+		const cfg = loadConfig('Prod');
+		const cfx = await initCfxSdk(cfg.conflux);
+		await testBundleParser(cfx, arg1);
 	} else {
 		console.log(`unknown cmd: ${cmd}`);
 	}
