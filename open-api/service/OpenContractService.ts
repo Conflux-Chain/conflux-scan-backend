@@ -5,7 +5,7 @@ import {format} from "js-conflux-sdk";
 import {
     checkPresent,
     mustBeAddressArrayParamIfPresent,
-    mustBeAddressParamIfPresent,
+    mustBeAddressParamIfPresent, mustBeEnumParamIfPresent, mustBeIntParamIfPresent,
     splitFullyQualifiedName
 } from "../../stat/service/common/utils";
 import {setBody} from "../router/middleware";
@@ -13,6 +13,7 @@ import {FullTransaction} from "../../stat/model/FullBlock";
 import {QueryTypes} from "sequelize";
 import {VerificationJob, VerifyInput} from "../../stat/service/ContractQuery";
 import {formatToBase32} from "../../stat/model/HexMap";
+import {paginateCore} from "../../stat/router/ParamChecker";
 
 const lodash = require('lodash');
 const util = require('util');
@@ -77,14 +78,6 @@ export async function polishContract(page) {
             delete page.addressInfo[k];
         });
     }
-}
-export function removeEmptyKey(obj, key) {
-    if (isEmptyObj(obj[key])) {
-        delete obj[key]
-    }
-}
-export function isEmptyObj(obj) {
-    return !obj || !Object.keys(obj).map(k=>obj[k]).some(v=> v!==undefined && v!==null)
 }
 
 export async function getABI(ctx) {
@@ -306,4 +299,20 @@ export async function checkProxyVerification(ctx) {
     } catch (e){
         setBody(ctx, e.message, 1, 'NOTOK');
     }
+}
+
+export async function listVerifiedContracts(ctx) {
+    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC', 'ASC'])
+    mustBeIntParamIfPresent(ctx.request.query, 'cursor', 'limit');
+
+    const {sort, cursor} = ctx.request.query;
+    const {_, limit} = paginateCore(ctx.request.query);
+
+    const data = await getApiService().contractQuery.listVerifyByCursor({sort, cursor, limit});
+
+    setBody(ctx, data)
+}
+
+export async function listVerifiedContractsLatest() {
+
 }

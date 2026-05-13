@@ -28,7 +28,7 @@ import {
     checkVerifyStatus,
     verifyProxyContract,
     checkProxyVerification,
-    getContractCreation,
+    getContractCreation, listVerifiedContracts, listVerifiedContractsLatest,
 } from "../service/OpenContractService";
 import {
     getToken,
@@ -1072,6 +1072,10 @@ export function registerRouter(router: Router) {
     router.get('/account/approvals', listApproval)
     router.get('/account/tokens', listAccountAssets)
     router.get('/account/infos', listAccountInfos)
+
+    // contract
+    router.get('/contract/verified', listVerifiedContracts)
+    router.get('/contract/verified/latest', listVerifiedContractsLatest)
 
     // token
     router.get('/token/tokeninfos', listTokens);

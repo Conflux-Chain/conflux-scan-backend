@@ -303,6 +303,16 @@ async function migDB(seq: Sequelize) {
     await changeColumnIfNecessary(qi, verifiedContracts, 'libraries', {
         type: DataTypes.STRING(2048),
     });
+    await addColumnIfNotExistsV2(qi, verifiedContracts, 'compiler', {
+        type: DataTypes.CHAR(10), allowNull: false, defaultValue: 'solc',
+    });
+    await addColumnIfNotExistsV2(qi, verifiedContracts, 'codeFormat', {
+        type: DataTypes.CHAR(32), allowNull: false, defaultValue: 'Solidity(Json)',
+    });
+    await addColumnIfNotExistsV2(qi, verifiedContracts, 'verifiedAt', {
+        type: DataTypes.DATE, allowNull: false, defaultValue: '1970-01-01 00:00:00',
+    });
+    await addIndexIfNotExistsMySQL(qi, verifiedContracts, 'idx_verifiedAt', {fields: ['verifiedAt']});
 
     const dailyNFTStat = DailyNFTStat.getTableName().toString();
     await changeColumnIfNecessary(qi, dailyNFTStat, 'statType', {
@@ -463,6 +473,7 @@ export async function addIndexIfNotExistsMySQL(
         if (!indexExists) {
             console.log(`Index "${indexName}" does not exist on table "${tableName}", creating...`);
 
+            options.name = indexName;
             await queryInterface.addIndex(tableName, options.fields as string[], options);
 
             console.log(`Index "${indexName}" created successfully`);

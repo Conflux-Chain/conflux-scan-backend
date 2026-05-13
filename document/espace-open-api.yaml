@@ -1155,6 +1155,27 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/TransferList"
+  '/contract/verified':
+    get:
+      tags:
+        - Contracts
+      summary: List verified contracts with cursor pagination
+      description: >
+        Returns a cursor-paginated list of verified contracts.
+        Rules:
+        1. Arbitrary page navigation is not supported.
+        2. Clients must use the `nextCursor` returned by the server.
+      parameters:
+        - $ref: '#/components/parameters/cursorParamWithoutMaximum'
+        - $ref: '#/components/parameters/limitParam'
+        - $ref: '#/components/parameters/sortParam'
+      responses:
+        '200':
+          description: Cursor-paginated verified contracts list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationList'
   '/token/tokeninfos':
     get:
       tags:
@@ -3172,6 +3193,66 @@ components:
                     description: "Timestamp in seconds"
             addressInfo:
               $ref: '#/components/schemas/AddressInfo'
+    VerificationList:
+      type: object
+      properties:
+        status:
+          type: integer
+        message:
+          type: string
+        result:
+          type: object
+          properties:
+            total:
+              type: integer
+            next:
+              description: A cursor to retrieve the next page
+              type: string
+            list:
+              type: array
+              items:
+                properties:
+                  address:
+                    type: string
+                    example: "0x1234567890abcdef1234567890abcdef12345678"
+                  contractName:
+                    type: string
+                    example: "MyToken"
+                  compiler:
+                    type: string
+                    example: "solc"
+                  compilerVersion:
+                    type: string
+                    example: "v0.8.24+commit.e11b9ed9"
+                  language:
+                    type: string
+                    example: "solidity"
+                  codeFormat:
+                    type: string
+                    example: "Solidity(Json)"
+                  balance:
+                    type: string
+                    example: "10000"
+                  txns:
+                    type: number
+                    example: "10000"
+                  setting:
+                    type: object
+                    properties:
+                      optimizationEnabled:
+                        type: boolean
+                      constructorArgumentsEnabled:
+                        type: boolean
+                    example:
+                      optimizationEnabled: true
+                      constructorArgumentsEnabled: false
+                  license:
+                    type: string
+                    example: "MIT"
+                  verifiedAt:
+                    type: string
+                    format: date-time
+                    example: "2026-05-14T10:30:00Z"
     TransferListWithCursor:
       type: object
       properties:
