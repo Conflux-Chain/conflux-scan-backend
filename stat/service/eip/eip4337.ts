@@ -280,30 +280,16 @@ export async function sync4337txOfEpoch({receipts, blocks, blockTime, txFn}:ISyn
 	} as IDBAction
 }
 
-async function testQuery() {
-	// Query BundleTx with both filters
+async function testQuery(target: string) {
 	const page = {skip: 0, limit: 10};
-	const bundles = await queryBundleTx({
-		// bundlerId: BigInt(123),
-		// entryPointId: BigInt(456),
-		...page,
-	});
-	console.log(`bundles `, JSON.stringify(bundles, null , 4));
-
-	// Query AATx with sender filter only
-	const aaTxs = await queryAATx({
-		// senderId: 789,
-		...page,
-	});
-	// console.log(`aa TX:\n`, JSON.stringify(aaTxs, null, 4));
-
-	// Query AATx with all three filters
-	const filteredTxs = await queryAATx({
-		senderId: 789,
-		bundlerId: (123),
-		entryPointId: (456),
-		...page,
-	});
+	if (!target || target === 'bundle') {
+		const bundles = await queryBundleTx({...page});
+		console.log(`bundles `, JSON.stringify(bundles, null, 4));
+	}
+	if (!target || target === 'aa') {
+		const aaTxs = await queryAATx({...page});
+		console.log(`aa TX:\n`, JSON.stringify(aaTxs, null, 4));
+	}
 }
 
 async function testBundleParser(cfx: Conflux, hash: string) {
@@ -325,7 +311,9 @@ async function testBundleParser(cfx: Conflux, hash: string) {
 /*
 npx tsc && node stat/service/eip/eip4337.js syncEpoch 250759985
 npx tsc && node stat/service/eip/eip4337.js syncEpoch 250247030 // failed tx
-npx tsc && node stat/service/eip/eip4337.js testQuery
+npx tsc && node stat/service/eip/eip4337.js testQuery          // both
+npx tsc && node stat/service/eip/eip4337.js testQuery bundle   // bundle txs only
+npx tsc && node stat/service/eip/eip4337.js testQuery aa       // aa txs only
 npx tsc && node stat/service/eip/eip4337.js testParseFunc
 npx tsc && node stat/service/eip/eip4337.js testBundleParser [txHash]
  */
@@ -337,7 +325,7 @@ async function main() {
 		await syncEpoch(cfx, parseInt(arg1), null);
 	} else if (cmd === 'testQuery') {
 		await init();
-		await testQuery();
+		await testQuery(arg1);
 	} else if (cmd === 'testParseFunc') {
 		const cfg = loadConfig('Prod');
 		const cfx = await initCfxSdk(cfg.conflux);
