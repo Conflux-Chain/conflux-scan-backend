@@ -135,9 +135,9 @@ async function initPrecompiledAbi() {
             hash: methodId,
             formatWithArg: method
         }];
-        await AbiInfo.bulkCreate(arr, { updateOnDuplicate: UPDATE_FIELDS_FOR_DUPLICATE_ABI });
+        const abiInfos = await AbiInfo.bulkCreate(arr, { updateOnDuplicate: UPDATE_FIELDS_FOR_DUPLICATE_ABI });
         const contractId = await makeIdV(address);
-        await saveContractAbiRef(arr as AbiInfo[], contractId);
+        await saveContractAbiRef(abiInfos, contractId);
         console.log(`Precompiled contract ${name} abi added!`)
     }
 }
