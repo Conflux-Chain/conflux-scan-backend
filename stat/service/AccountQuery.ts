@@ -283,6 +283,11 @@ export class AccountQuery {
                 contracts[address] = {name: internal.name};
                 verifies[address] = {name: internal.name};
             }
+            const precompiled = CONST.PRECOMPILED_ADDR_CONTRACT_MAP[address];
+            if (precompiled) {
+                contracts[address] = {name: precompiled.name};
+                verifies[address] = {name: precompiled.name};
+            }
         }
 
         if (withProxyImplInfo) {

@@ -567,7 +567,13 @@ export class ConfluxService {
           }
           if (input) {
             if(input.length >= 10 && to) {
-              methodList.push({index, to, method: input.substring(0, 10)});
+              const precompiled = CONST.PRECOMPILED_ADDR_CONTRACT_MAP[format.hexAddress(to)];
+              if (precompiled) {
+                methodList.push({index, to, method: precompiled.methodId});
+                trace.action.input = precompiled.methodId + input.substring(2);
+              } else {
+                methodList.push({index, to, method: input.substring(0, 10)});
+              }
             }
           }
           if (type === CONST.TRACE_TYPE.CREATE_RESULT) {
