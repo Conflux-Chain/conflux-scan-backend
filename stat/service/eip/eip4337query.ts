@@ -1,11 +1,12 @@
 // Query result interfaces with joined data
 import {AATx, BundleTx, IAATx, IBundleTx, UserOperationRevertReason} from "../../model/eip4337model";
-import {Hex40Map} from "../../model/HexMap";
+import {Hex40Map, idHex40Map} from "../../model/HexMap";
 import {IPageParam} from "../../router/ParamChecker";
 import {ethers} from "ethers";
 import {Sequelize} from "sequelize";
 import {FailedTx, FullTransaction} from "../../model/FullBlock";
 import {Literal} from "sequelize/lib/utils";
+import {fillMethodInfo} from "../contract/contractTool";
 
 export interface BundleTxQueryResult extends IBundleTx {
     bundlerHex: string;      // hex address from Hex40Map
@@ -216,3 +217,64 @@ const pickAddr = (key: string, bundle: BundleTx|AATx) => {
     const v = bundle.get(key)?.hex;
     return v ? ethers.getAddress('0x' + v) : '';
 }
+
+/**
+ * Parse the packed AATx.methods string into individual (contractId, methodHash) pairs.
+ * Format: "hex40mapId:methodHash,hex40mapId:methodHash,..."
+ */
+function parseMethodsField(methods: string): {contractId: number; methodHash: string}[] {
+    if (!methods) return [];
+    return methods.split(',').map(part => {
+        const sep = part.indexOf(':');
+        if (sep < 1) return null;
+        const contractId = parseInt(part.slice(0, sep));
+        const methodHash = part.slice(sep + 1);
+        if (!contractId || !methodHash) return null;
+        return {contractId, methodHash};
+    }).filter(Boolean);
+}
+
+/**
+ * Resolve the raw AATx.methods field (format: "hex40mapId:methodHash,...") to
+ * human-readable names via fillMethodInfo. Mutates each item in the list,
+ * replacing the string `methods` field with an array of resolved entries:
+ *   [{to, method, methodId}]
+ * where `method` is the resolved name and `methodId` is the original 4-byte hash.
+ */
+export async function fillAATxMethodInfo(list: any[]): Promise<void> {
+    const flatList: {method: string; to: string}[] = [];
+    const toIdArr: number[] = [];
+    const itemFlatIndices: number[][] = list.map(() => []);
+
+    const allContractIds = new Set<number>();
+    list.forEach(item => {
+        parseMethodsField(item.methods).forEach(({contractId}) => allContractIds.add(contractId));
+    });
+
+    if (allContractIds.size === 0) {
+        list.forEach(item => { item.methods = []; });
+        return;
+    }
+
+    const idToHex = await idHex40Map([...allContractIds], true);
+
+    list.forEach((item, listIdx) => {
+        parseMethodsField(item.methods).forEach(({contractId, methodHash}) => {
+            itemFlatIndices[listIdx].push(flatList.length);
+            flatList.push({method: methodHash, to: idToHex.get(contractId) || ''});
+            toIdArr.push(contractId);
+        });
+    });
+
+    await fillMethodInfo(flatList, toIdArr, true).catch(err => {
+        console.error('fillAATxMethodInfo error:', err);
+    });
+
+    list.forEach((item, listIdx) => {
+        item.methods = itemFlatIndices[listIdx].map(fi => {
+            const entry = flatList[fi] as any;
+            return {to: entry.to, method: entry.method, methodId: entry.methodId};
+        });
+    });
+}
+

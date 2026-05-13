@@ -4,7 +4,7 @@ import {StatApp} from "../../stat/StatApp";
 import {listAuthAction} from "../../stat/model/EIP7702model";
 import {getAccountQuery} from "../../stat/service/AccountQuery";
 import {setBody} from "../router/middleware";
-import {queryAATx, queryBundleTx} from "../../stat/service/eip/eip4337query";
+import {queryAATx, queryBundleTx, fillAATxMethodInfo} from "../../stat/service/eip/eip4337query";
 import {getAddrId} from "../../stat/model/HexMap";
 import {parseBundleTxByHash} from "../../stat/service/eip/eip4337bundleParser";
 import {Errors} from "../../stat/service/common/LogicError";
@@ -42,6 +42,8 @@ export async function list4337Tx(ctx) {
         senderId: sender ? (await getAddrId(sender, undefined) ?? -1) : undefined,
         skip, limit,
     });
+
+    await fillAATxMethodInfo(result.list);
 
     setBody(ctx, result);
 }
