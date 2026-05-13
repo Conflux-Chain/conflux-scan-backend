@@ -237,7 +237,7 @@ function parseMethodsField(methods: string): {contractId: number; methodHash: st
 /**
  * Resolve the raw AATx.methods field (format: "hex40mapId:methodHash,...") to
  * human-readable names via fillMethodInfo. Mutates each item in the list,
- * replacing the string `methods` field with an array of resolved entries:
+ * keeping the original string in `methods` and adding a new `parsedMethods` array:
  *   [{to, method, methodId}]
  * where `method` is the resolved name and `methodId` is the original 4-byte hash.
  */
@@ -252,7 +252,7 @@ export async function fillAATxMethodInfo(list: any[]): Promise<void> {
     });
 
     if (allContractIds.size === 0) {
-        list.forEach(item => { item.methods = []; });
+        list.forEach(item => { item.parsedMethods = []; });
         return;
     }
 
@@ -271,7 +271,7 @@ export async function fillAATxMethodInfo(list: any[]): Promise<void> {
     });
 
     list.forEach((item, listIdx) => {
-        item.methods = itemFlatIndices[listIdx].map(fi => {
+        item.parsedMethods = itemFlatIndices[listIdx].map(fi => {
             const entry = flatList[fi] as any;
             return {to: entry.to, method: entry.method, methodId: entry.methodId};
         });

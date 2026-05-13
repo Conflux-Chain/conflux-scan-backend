@@ -4305,8 +4305,26 @@ components:
           example: "executeBatch"
         methods:
           type: string
-          description: Method(s) of the AA transaction. Can be empty. If multiple methods, separate by commas (e.g., "Approve,Transfer").
-          example: "Approve,Transfer"
+          description: Raw method(s) string of the AA transaction (format "hex40mapId:methodHash,..."). Can be empty.
+          example: "503880:0xd0e30db0,503880:0x8a4068dd"
+        parsedMethods:
+          type: array
+          description: Resolved method info parsed from the `methods` field.
+          items:
+            type: object
+            properties:
+              to:
+                type: string
+                description: Contract address (checksummed hex)
+                example: "0x1234567890abcdef1234567890abcdef12345678"
+              method:
+                type: string
+                description: Resolved human-readable method name, if available
+                example: "deposit"
+              methodId:
+                type: string
+                description: Original 4-byte method selector
+                example: "0xd0e30db0"
         userOpHash:
           type: string
           pattern: '^0x[a-fA-F0-9]{64}$'
@@ -4568,6 +4586,24 @@ components:
           pattern: '^(0x[a-fA-F0-9]{40})?$'
           description: Paymaster address in checksummed hex. Empty string if no paymaster was used.
           example: "0x0000000000000000000000000000000000000000"
+        parsedMethods:
+          type: array
+          description: Resolved method info for calls made by this user op.
+          items:
+            type: object
+            properties:
+              to:
+                type: string
+                description: Contract address (checksummed hex)
+                example: "0x1234567890abcdef1234567890abcdef12345678"
+              method:
+                type: string
+                description: Resolved human-readable method name, if available
+                example: "deposit"
+              methodId:
+                type: string
+                description: Original 4-byte method selector
+                example: "0xd0e30db0"
     TxsByTypeStat:
       type: object
       properties:
