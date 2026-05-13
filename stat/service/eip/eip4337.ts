@@ -20,6 +20,7 @@ import {Transaction} from "sequelize";
 import {Conflux, format} from "js-conflux-sdk";
 import {init} from "../tool/FixDailyTokenStat";
 import {getCfxSdk, initCfxSdk} from "../common/utils";
+import {ContractQuery} from "../ContractQuery";
 import {queryAATx, queryBundleTx, fillAATxMethodInfo} from "./eip4337query";
 import {Block, TransactionReceipt, Transaction as SdkTx} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {IDBAction} from "../BatchDBTx";
@@ -325,7 +326,9 @@ async function main() {
 		const cfx = await initCfxSdk(cfg.conflux);
 		await syncEpoch(cfx, parseInt(arg1), null);
 	} else if (cmd === 'testQuery') {
-		await init();
+		const cfg = await init();
+		const cfx = await initCfxSdk(cfg.conflux);
+		new ContractQuery({cfx, config: cfg.verification});
 		await testQuery(arg1);
 	} else if (cmd === 'testParseFunc') {
 		const cfg = loadConfig('Prod');
