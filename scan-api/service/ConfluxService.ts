@@ -570,7 +570,9 @@ export class ConfluxService {
               const precompiled = CONST.PRECOMPILED_ADDR_CONTRACT_MAP[format.hexAddress(to)];
               if (precompiled) {
                 methodList.push({index, to, method: precompiled.methodId});
-                trace.action.input = precompiled.methodId + input.substring(2);
+                if ((input.length - 2) % 64 === 0) {
+                  trace.action.input = precompiled.methodId + input.substring(2);
+                }
               } else {
                 methodList.push({index, to, method: input.substring(0, 10)});
               }
