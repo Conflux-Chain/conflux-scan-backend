@@ -10,7 +10,7 @@ import {VerifiedContracts} from "../../model/VerifiedContracts";
 import {Conflux, format} from "js-conflux-sdk";
 import {ethers} from "ethers";
 import {Contract} from "../../model/Contract";
-import {Op} from "sequelize";
+import {Op, Sequelize} from "sequelize";
 import {execSync} from "child_process";
 import {sleep} from "./ProcessTool";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
@@ -59,6 +59,9 @@ async function run() {
     }
     if (type === 5) {
         await updateNametagHexId()
+    }
+    if (type === 6) {
+        await addVerifiedColumns()
     }
     await close();
 }
@@ -307,3 +310,58 @@ async function updateNametagHexId() {
 
     console.log(`Done! ${cntr}`);
 }
+
+async function addVerifiedColumns() {
+    const axios = require('axios');
+    const baseUrl = "https://www.confluxscan.net/verification";
+
+    const list = await VerifiedContracts.findAll({
+        attributes: ['id', 'address', 'name', 'language', [Sequelize.fn('LEFT', Sequelize.col('sourceCode'), 5), 'sourceCode']],
+        order: [['id', 'ASC']],
+    });
+    console.log(`start to process ${list.length} contracts ...`);
+
+    for (let i = 0; i < list.length; i++) {
+        const {id, address: base32, name, sourceCode} = list[i];
+
+        const address = ethers.getAddress(format.hexAddress(base32));
+        const queryUrl = `${baseUrl}/contract/${StatApp.networkId}/${address}?fields=compilation`;
+
+        while (true) {
+            try {
+                const resp = await axios.get(queryUrl, {family: 4, headers: {'Accept': 'application/json'}});
+                const {address: respAddress, match, compilation, verifiedAt} = resp.data;
+                if (respAddress !== address) {
+                    console.log(`contract ${name} ${base32} address not match. expect ${address} got ${respAddress}`);
+                    process.exit(9);
+                }
+                if (!match) {
+                    console.log(`contract ${name} ${base32} not verified`);
+                    process.exit(9);
+                }
+                await VerifiedContracts.update({
+                    compiler: compilation.compiler,
+                    codeFormat: `${compilation.language}${sourceCode.startsWith("{") ? "(Json)" : ""}`,
+                    verifiedAt: verifiedAt.replace('T', ' ').replace(/T$/, ''),
+                }, {
+                    where: {id}
+                });
+                break;
+            } catch (e) {
+                if (e.status === 404) {
+                    console.log(`fetch contract ${name} ${base32} not found`);
+                    break;
+                }
+
+                console.log(`fetch contract ${name} ${base32} error`, e);
+            }
+        }
+
+        if ((i + 1) % 1000 === 0) {
+            console.log(`${i} contracts processed`);
+        }
+    }
+
+    console.log(`done! ${list.length} contracts processed`);
+}
+

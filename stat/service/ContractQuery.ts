@@ -35,7 +35,8 @@ import {
     KEY_EVM_VERSIONS,
     KEY_SOLC_VERSIONS,
     KEY_VYPER_VERSIONS,
-    KV
+    VERIFIED_COUNT_ALL,
+    KV,
 } from "../model/KV";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import axios from "axios";
@@ -43,6 +44,10 @@ import {doHeartBeat, HeartBeatBean, KEY_COMPILER} from "../model/HeartBeat";
 import {ConfigInstance, VerificationOptions} from "../config/StatConfig";
 import {Conflux, format, sign} from "js-conflux-sdk";
 import {ContractImpl} from "../model/ContractImpl";
+import {AddressTransactionIndex} from "../model/FullBlock";
+import {CfxBalance} from "../model/Balance";
+import {PruneInfo, PruneType} from "../model/PruneInfo";
+import l from "lodash";
 
 const path = require('path');
 const superagent = require('superagent');
@@ -191,7 +196,7 @@ export class ContractQuery {
                 }
             });
 
-            const verifyArray = await this.listVerify(libs.map(item => item.address));
+            const verifyArray = await this.listVerifyByAddress(libs.map(item => item.address));
             const verifyMap = Object.fromEntries(verifyArray.map(item => [item.address, true]));
 
             libs.forEach(item => ( item['exactMatch'] = !!verifyMap[item.address]));
@@ -205,7 +210,7 @@ export class ContractQuery {
 
     private MAX_CONTRACTS = 100;
 
-    public async listVerify(addresses: string[]) {
+    public async listVerifyByAddress(addresses: string[]) {
         if (!addresses?.length) {
             return [];
         }
@@ -251,19 +256,87 @@ export class ContractQuery {
         ];
     }
 
+    public async listVerifyByCursor(
+        {
+            sort = 'DESC',
+            cursor = 0,
+            limit = 10,
+        }: {
+            sort?: string,
+            cursor?: number,
+            limit?: number,
+    }) {
+        const cursorField = "id";
+        const options: any = {
+            order: [[cursorField, sort]],
+            limit,
+            raw: true,
+        };
+        if (cursor > 0) {
+            options.where = {[cursorField]: {[sort === 'DESC' ? Op.lt : Op.gt]: cursor}};
+        }
+
+        const rows = await VerifiedContracts.findAll(options);
+
+        const list = rows.map(item => {
+            const contractName = splitFullyQualifiedName(item.name).contractName;
+            const compilerVersion = item.language === "vyper" ?
+                item.version : l.trimStart(item.version.split("+commit")[0], "v");
+            return {
+                address: fmtAddr(item.address, StatApp.networkId),
+                hex: format.hexAddress(item.address),
+                contractName,
+                compiler: item.compiler,
+                compilerVersion,
+                language: item.language,
+                codeFormat: item.codeFormat,
+                balance: 0,
+                txns: 0,
+                setting: {
+                    optimizationEnabled: item.optimization !== "0" && item.optimization !== "N/A",
+                    constructorArgumentsEnabled: item?.constructorArgs?.length > 2,
+                },
+                verifiedAt: item.verifiedAt,
+                license: item.license,
+            }
+        });
+
+        const mapHexToId = await Hex40Map.findAll({
+            where: {hex: {[Op.in]: list.map(item => item.hex.substr(2))}},
+        }).then(list => Object.fromEntries(list.map(item => [`0x${item.hex}`, item.id])));
+
+        const balances = await CfxBalance.findAll({where: {addressId: {[Op.in]: Object.values(mapHexToId)}}});
+        list.forEach(item => {
+            item.balance = balances[item.hex]?.total || 0
+        });
+
+        await Promise.all(list.map(async item => {
+            const addressId = mapHexToId[item.hex];
+            const count = await AddressTransactionIndex.count({where: {addressId}});
+            const pruneInfo = await PruneInfo.findOne({where: {addressId, type: PruneType.ADDR_TX}});
+            item.txns = count + (pruneInfo?.pruned || 0);
+        }));
+
+        const total = await KV.getNumber(VERIFIED_COUNT_ALL, 0);
+
+        list.forEach(item => {delete item.hex});
+
+        return {total, list, next: rows?.length ? rows[rows.length - 1][cursorField] : 0};
+    }
+
     public async listVerifyInBatch(addresses: string[], chunkSize = this.MAX_CONTRACTS) {
         if(!addresses?.length){
             return [];
         }
 
         if(addresses.length < this.MAX_CONTRACTS) {
-            return this.listVerify(addresses);
+            return this.listVerifyByAddress(addresses);
         }
 
         const tasks = Array.from(
             { length: Math.ceil(addresses.length / chunkSize) },
             (_, index) => addresses.slice(index * chunkSize, (index + 1) * chunkSize)
-        ).map(addresses => this.listVerify(addresses));
+        ).map(addresses => this.listVerifyByAddress(addresses));
 
         const contracts = await Promise.all(tasks);
 
@@ -316,7 +389,7 @@ export class ContractQuery {
         }
 
         const {address, match, abi, compilation, stdJsonInput, licenseType, contractLabel, similarMatchChainId,
-            similarMatchAddress, creationBytecode} = resp.data;
+            similarMatchAddress, creationBytecode, verifiedAt} = resp.data;
         if (!match) {
             return null;
         }
@@ -328,6 +401,7 @@ export class ContractQuery {
         }
 
         let {
+            compiler,
             language,
             compilerVersion,
             compilerSettings,
@@ -359,19 +433,22 @@ export class ContractQuery {
 
         const verified = {
             address: format.address(address, StatApp.networkId),
-            sourceCode,
             name: fullyQualifiedName,
-            abi: JSON.stringify(abi),
-            language: language.toLowerCase(),
+            compiler,
             version: compilerVersion,
+            language: language.toLowerCase(),
             evmVersion: compilerSettings?.evmVersion ? compilerSettings.evmVersion : "Default",
             optimization: language === 'Vyper' ? (compilerSettings?.optimize || '0') : (compilerSettings?.optimizer?.enabled ? '1' : '0'),
             runs: compilerSettings?.optimizer?.runs,
             libraries: compilerSettings?.libraries,
             license: CONST.CONTRACT_LICENSE[licenseType || 1].code,
             constructorArgs: similarMatchChainId ? undefined : creationBytecode.transformationValues?.constructorArguments,
+            codeFormat: `${language}${sourceCode.startsWith("{") ? "(Json)" : ""}`,
+            sourceCode,
+            abi: JSON.stringify(abi),
             similarMatchChainId,
             similarMatchAddress,
+            verifiedAt: verifiedAt.replace('T', ' ').replace(/T$/, ''),
         };
 
         VerifiedContracts.upsert(
