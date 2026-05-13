@@ -4299,9 +4299,11 @@ components:
           pattern: '^0x[a-fA-F0-9]{64}$'
           description: Transaction hash of the bundle (64 hex characters with 0x prefix)
           example: "0x756ecbdef50dc356372e061a334e72eff499b4a1ee2ef44cb13b026c8d6c5c3a"
-        method7702:
+        method:
           type: string
-          description: Method of the AA tx call. Can be empty.
+          description: >
+            The method called on the smart account contract for this user op
+            (e.g. `execute`, `executeBatch`). Empty string if not resolved.
           example: "executeBatch"
         methods:
           type: string

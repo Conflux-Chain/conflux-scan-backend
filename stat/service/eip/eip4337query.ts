@@ -187,6 +187,10 @@ export async function queryAATx(params: AATxQueryParams): Promise<{ list: AATxQu
         delete row['eventContractId'];
         delete row['bundler'];
 
+        // rename DB column method7702 → method in API response
+        row['method'] = row['method7702'];
+        delete row['method7702'];
+
         list.push(row);
     }
     return {list, total: count};
