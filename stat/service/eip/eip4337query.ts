@@ -251,15 +251,12 @@ export async function fillAATxMethodInfo(list: any[]): Promise<void> {
         parseMethodsField(item.methods).forEach(({contractId}) => allContractIds.add(contractId));
     });
 
-    console.log('[fillAATxMethodInfo] allContractIds:', [...allContractIds]);
-
     if (allContractIds.size === 0) {
         list.forEach(item => { item.methods = []; });
         return;
     }
 
     const idToHex = await idHex40Map([...allContractIds], true);
-    console.log('[fillAATxMethodInfo] idToHex:', [...idToHex.entries()]);
 
     list.forEach((item, listIdx) => {
         parseMethodsField(item.methods).forEach(({contractId, methodHash}) => {
@@ -269,24 +266,15 @@ export async function fillAATxMethodInfo(list: any[]): Promise<void> {
         });
     });
 
-    console.log('[fillAATxMethodInfo] flatList (before fillMethodInfo):', JSON.stringify(flatList));
-    console.log('[fillAATxMethodInfo] toIdArr:', toIdArr);
-
     await fillMethodInfo(flatList, toIdArr, true).catch(err => {
         console.error('fillAATxMethodInfo error:', err);
     });
 
-    console.log('[fillAATxMethodInfo] flatList (after fillMethodInfo):', JSON.stringify(flatList));
-
     list.forEach((item, listIdx) => {
-        const resolved = itemFlatIndices[listIdx].map(fi => {
+        item.methods = itemFlatIndices[listIdx].map(fi => {
             const entry = flatList[fi] as any;
             return {to: entry.to, method: entry.method, methodId: entry.methodId};
         });
-        console.log('[fillAATxMethodInfo] item.methods resolved:', JSON.stringify(resolved));
-        item.methods = resolved;
-        // DEBUG: also expose raw flatList for inspection
-        item._debug_flatList = flatList;
     });
 }
 
