@@ -10,6 +10,11 @@ const optCoreStat = {skip: 0, skipMax: 10000, limit: 10, limitMax: LIMIT_MAX_STA
 const optEVM = {skip: 1, skipMax: 10000, limit: 100, limitMax: LIMIT_MAX};
 const optEVMStat = {skip: 1, skipMax: 10000, limit: 100, limitMax: LIMIT_MAX_STAT};
 
+export interface IPageParam {
+    skip: number;
+    limit: number;
+}
+
 export function paginateCore(reqObj: object, options?: any) {
     return paginate(reqObj, 'skip', 'limit', lodash.assign({...optCore}, options));
 }
