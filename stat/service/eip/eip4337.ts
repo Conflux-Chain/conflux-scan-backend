@@ -20,7 +20,7 @@ import {Transaction} from "sequelize";
 import {Conflux, format} from "js-conflux-sdk";
 import {init} from "../tool/FixDailyTokenStat";
 import {getCfxSdk, initCfxSdk} from "../common/utils";
-import {queryAATx, queryBundleTx} from "./eip4337query";
+import {queryAATx, queryBundleTx, fillAATxMethodInfo} from "./eip4337query";
 import {Block, TransactionReceipt, Transaction as SdkTx} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {IDBAction} from "../BatchDBTx";
 import {
@@ -288,6 +288,7 @@ async function testQuery(target: string) {
 	}
 	if (!target || target === 'aa') {
 		const aaTxs = await queryAATx({...page});
+		await fillAATxMethodInfo(aaTxs.list);
 		console.log(`aa TX:\n`, JSON.stringify(aaTxs, null, 4));
 	}
 }
