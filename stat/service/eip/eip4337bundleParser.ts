@@ -45,8 +45,6 @@ export interface IAAOpDetail {
 	maxPriorityFeePerGas?: string;
 	/** Raw signature bytes (hex string). */
 	signature?: string;
-	/** actualGasUsed as reported by UserOperationEvent (decimal string). */
-	actualGasUsed?: string;
 	/** Bundle tx gas limit (decimal string). */
 	txGasLimit?: string;
 	/** Bundle tx gas used from receipt (decimal string). */
@@ -220,7 +218,6 @@ export async function parseBundleTxByHash(
 			op.maxFeePerGas = gasFeesParsed.low;
 			op.maxPriorityFeePerGas = gasFeesParsed.high;
 			op.signature = parsedUserOp.signature ?? '';
-			op.actualGasUsed = event?.actualGasUsed?.toString() ?? '0';
 			op.txGasLimit = (tx as any).gas?.toString() ?? '0';
 			op.txGasUsed = (receipt as any).gasUsed?.toString() ?? '0';
 		}

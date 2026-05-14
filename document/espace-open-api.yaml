@@ -4665,10 +4665,6 @@ components:
           type: string
           description: "Raw signature bytes (hex string)."
           example: "0xabcd..."
-        actualGasUsed:
-          type: string
-          description: "actualGasUsed as reported by UserOperationEvent (decimal string)."
-          example: "95000"
         txGasLimit:
           type: string
           description: "Bundle tx gas limit (decimal string)."

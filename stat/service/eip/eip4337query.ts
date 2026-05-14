@@ -25,7 +25,6 @@ export interface AATxQueryResult extends IAATx {
     maxFeePerGas?: string;
     maxPriorityFeePerGas?: string;
     signature?: string;
-    actualGasUsed?: string;
     txGasLimit?: string;
     txGasUsed?: string;
     [key: string]: any;      // allow dynamic extra fields

@@ -79,7 +79,6 @@ export async function getAATxDetail(ctx) {
             aaTx.maxFeePerGas         = matchedOp.maxFeePerGas;
             aaTx.maxPriorityFeePerGas = matchedOp.maxPriorityFeePerGas;
             aaTx.signature            = matchedOp.signature;
-            aaTx.actualGasUsed        = matchedOp.actualGasUsed;
             aaTx.txGasLimit           = matchedOp.txGasLimit;
             aaTx.txGasUsed            = matchedOp.txGasUsed;
         }
