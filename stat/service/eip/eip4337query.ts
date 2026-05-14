@@ -29,6 +29,7 @@ export interface AATxQueryParams extends IPageParam{
     senderId?: number;
     bundlerId?: number;
     entryPointId?: number;
+    userOpHash?: string;
 }
 
 let cachedErrMsgLiteral: Literal = null;
@@ -125,6 +126,9 @@ export async function queryBundleTx(params: BundleTxQueryParams): Promise<{ tota
 export async function queryAATx(params: AATxQueryParams): Promise<{ list: AATxQueryResult[], total: number }> {
     const whereClause: any = {};
 
+    if (params.userOpHash !== undefined) {
+        whereClause.userOpHash = params.userOpHash;
+    }
     if (params.senderId !== undefined) {
         whereClause.senderId = params.senderId;
     }

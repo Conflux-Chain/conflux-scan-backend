@@ -83,7 +83,7 @@ import {Errors} from "../../stat/service/common/LogicError";
 import {TokenQuery, TokenType} from "../../stat/service/TokenQuery";
 import {NFTType} from "../../stat/service/nftchecker/NFTCheckerService";
 import {HomepageDashboard} from "../../stat/service/HomepageDashboard";
-import {list4337Tx, listBundledTx, listGlobalAuthAction, getBundleTxDetail} from "../service/OpenEIPService";
+import {list4337Tx, listBundledTx, listGlobalAuthAction, getBundleTxDetail, getAATxDetail} from "../service/OpenEIPService";
 
 const lodash = require('lodash');
 
@@ -1081,6 +1081,7 @@ export function registerRouter(router: Router) {
     router.get('/eip4337/bundle-txs', listBundledTx);
     router.get('/eip4337/aa-txs', list4337Tx);
     router.get('/eip4337/bundle-tx', getBundleTxDetail);
+    router.get('/eip4337/aa-tx', getAATxDetail);
 
     registerDataApi(router)
 }

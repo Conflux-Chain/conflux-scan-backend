@@ -48,6 +48,28 @@ export async function list4337Tx(ctx) {
     setBody(ctx, result);
 }
 
+export async function getAATxDetail(ctx) {
+    const {userOpHash} = ctx.request.query;
+    if (!userOpHash) {
+        throw new Errors.ParameterError('param <userOpHash> is required');
+    }
+    mustBeHex64ParamIfPresent(ctx.request.query, 'userOpHash');
+
+    const result = await queryAATx({
+        userOpHash,
+        skip: 0, limit: 1,
+    });
+
+    if (!result.list.length) {
+        setBody(ctx, null);
+        return;
+    }
+
+    await fillAATxMethodInfo(result.list);
+
+    setBody(ctx, result.list[0]);
+}
+
 export async function getBundleTxDetail(ctx) {
     const {txHash} = ctx.request.query;
     if (!txHash) {

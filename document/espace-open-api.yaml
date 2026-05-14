@@ -1854,6 +1854,31 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/AATxResponse"
+  /eip4337/aa-tx:
+    get:
+      tags:
+        - 'EIP'
+      description: |
+        Returns the detail of a single EIP-4337 UserOperation (AA) transaction by its user operation hash.
+
+        The response is a single `AATxItem` object (same shape as items in `/eip4337/aa-txs`),
+        with resolved method info in `parsedMethods`. Returns `null` if not found.
+      parameters:
+        - name: userOpHash
+          in: query
+          required: true
+          description: "User operation hash (0x-prefixed, 64 hex characters)."
+          schema:
+            type: string
+            pattern: '^0x[a-fA-F0-9]{64}$'
+            example: "0xabcfa8a60f7cc55ce51b321ada3135b9e79fd0a3b74b782f79bb818d10b08c9a"
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/AATxItem"
   /eip4337/bundle-tx:
     get:
       tags:
