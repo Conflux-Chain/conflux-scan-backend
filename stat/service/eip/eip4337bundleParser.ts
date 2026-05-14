@@ -33,6 +33,24 @@ export interface IAAOpDetail {
 	nonce: string;
 	/** Paymaster address. Empty string if none. */
 	paymaster: string;
+
+	// --- deep fields (populated only when parseBundleTxByHash is called with deep=true) ---
+	/** verificationGasLimit for this user op (decimal string). High 128 bits of accountGasLimits. */
+	verificationGasLimit?: string;
+	/** preVerificationGas for this user op (decimal string). */
+	preVerificationGas?: string;
+	/** maxFeePerGas in wei (decimal string). Low 128 bits of gasFees. */
+	maxFeePerGas?: string;
+	/** maxPriorityFeePerGas in wei (decimal string). High 128 bits of gasFees. */
+	maxPriorityFeePerGas?: string;
+	/** Raw signature bytes (hex string). */
+	signature?: string;
+	/** actualGasUsed as reported by UserOperationEvent (decimal string). */
+	actualGasUsed?: string;
+	/** Bundle tx gas limit (decimal string). */
+	txGasLimit?: string;
+	/** Bundle tx gas used from receipt (decimal string). */
+	txGasUsed?: string;
 }
 
 export interface IBundleTxParseResult {
@@ -99,6 +117,23 @@ function parseCallGasLimit(accountGasLimits: string): string {
 }
 
 /**
+ * Unpack a bytes32 field into two 128-bit values.
+ * Returns { high, low } as decimal strings.
+ */
+function unpackBytes32(packed: string): { high: string; low: string } {
+	try {
+		let hex = (packed ?? '').startsWith('0x') ? packed.slice(2) : (packed ?? '');
+		hex = hex.padStart(64, '0');
+		return {
+			high: BigInt('0x' + hex.slice(0, 32)).toString(),
+			low:  BigInt('0x' + hex.slice(32, 64)).toString(),
+		};
+	} catch {
+		return { high: '0', low: '0' };
+	}
+}
+
+/**
  * Parse a bundle transaction by hash using the Conflux SDK.
  *
  * Fetches the transaction and receipt, parses the handleOps calldata and
@@ -106,7 +141,11 @@ function parseCallGasLimit(accountGasLimits: string): string {
  *
  * Returns null if the tx is not found or is not a recognised 4337 bundle.
  */
-export async function parseBundleTxByHash(cfx: Conflux, txHash: string): Promise<IBundleTxParseResult | null> {
+export async function parseBundleTxByHash(
+	cfx: Conflux,
+	txHash: string,
+	options?: { targetUserOpHash?: string },
+): Promise<IBundleTxParseResult | null> {
 	const [tx, receipt] = await Promise.all([
 		cfx.getTransactionByHash(txHash),
 		cfx.getTransactionReceipt(txHash),
@@ -140,6 +179,7 @@ export async function parseBundleTxByHash(cfx: Conflux, txHash: string): Promise
 		prevIdx = eventIdx + 1;
 	}
 
+	const targetUserOpHash = options?.targetUserOpHash;
 	const userOps: IAAOpDetail[] = [];
 
 	for (let i = 0; i < userOpEventIndices.length; i++) {
@@ -154,9 +194,10 @@ export async function parseBundleTxByHash(cfx: Conflux, txHash: string): Promise
 		const internalTxnCount = parsedUserOp?.parsedUserOp?.rawParamArr?.length ?? 0;
 		const sender = toChecksumHex(event?.sender);
 		const paymaster = toChecksumHex(event?.paymaster);
+		const opHash = event?.userOpHash ?? '';
 
-		userOps.push({
-			userOpHash: event?.userOpHash ?? '',
+		const op: IAAOpDetail = {
+			userOpHash: opHash,
 			method,
 			position: i,
 			from: sender,
@@ -168,7 +209,23 @@ export async function parseBundleTxByHash(cfx: Conflux, txHash: string): Promise
 			success: event?.success ?? false,
 			nonce: event?.nonce?.toString() ?? '',
 			paymaster,
-		});
+		};
+
+		// Deep-parse extra fields only for the target user op.
+		if (targetUserOpHash && opHash === targetUserOpHash && parsedUserOp) {
+			const accountGasLimitsParsed = unpackBytes32(parsedUserOp.accountGasLimits);
+			const gasFeesParsed = unpackBytes32(parsedUserOp.gasFees);
+			op.verificationGasLimit = accountGasLimitsParsed.high;
+			op.preVerificationGas = parsedUserOp.preVerificationGas?.toString() ?? '0';
+			op.maxFeePerGas = gasFeesParsed.low;
+			op.maxPriorityFeePerGas = gasFeesParsed.high;
+			op.signature = parsedUserOp.signature ?? '';
+			op.actualGasUsed = event?.actualGasUsed?.toString() ?? '0';
+			op.txGasLimit = (tx as any).gas?.toString() ?? '0';
+			op.txGasUsed = (receipt as any).gasUsed?.toString() ?? '0';
+		}
+
+		userOps.push(op);
 	}
 
 	// Fetch block for timestamp.

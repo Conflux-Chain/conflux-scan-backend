@@ -66,8 +66,26 @@ export async function getAATxDetail(ctx) {
     }
 
     await fillAATxMethodInfo(result.list);
+    const aaTx = result.list[0];
 
-    setBody(ctx, result.list[0]);
+    // Enrich with deep-parsed fields from the bundle tx.
+    const bundleTxHash = aaTx.txHash;
+    if (bundleTxHash) {
+        const parsed = await parseBundleTxByHash(getCfxSdk(), bundleTxHash, {targetUserOpHash: userOpHash});
+        const matchedOp = parsed?.userOps.find(op => op.userOpHash === userOpHash);
+        if (matchedOp) {
+            aaTx.verificationGasLimit = matchedOp.verificationGasLimit;
+            aaTx.preVerificationGas   = matchedOp.preVerificationGas;
+            aaTx.maxFeePerGas         = matchedOp.maxFeePerGas;
+            aaTx.maxPriorityFeePerGas = matchedOp.maxPriorityFeePerGas;
+            aaTx.signature            = matchedOp.signature;
+            aaTx.actualGasUsed        = matchedOp.actualGasUsed;
+            aaTx.txGasLimit           = matchedOp.txGasLimit;
+            aaTx.txGasUsed            = matchedOp.txGasUsed;
+        }
+    }
+
+    setBody(ctx, aaTx);
 }
 
 export async function getBundleTxDetail(ctx) {

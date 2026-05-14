@@ -1861,8 +1861,10 @@ paths:
       description: |
         Returns the detail of a single EIP-4337 UserOperation (AA) transaction by its user operation hash.
 
-        The response is a single `AATxItem` object (same shape as items in `/eip4337/aa-txs`),
-        with resolved method info in `parsedMethods`. Returns `null` if not found.
+        Returns all fields from `AATxItem` (same as items in `/eip4337/aa-txs`) plus extra fields
+        from `AATxDetailExtra` — parsed live from the bundle tx: verificationGasLimit,
+        preVerificationGas, maxFeePerGas, maxPriorityFeePerGas, signature, actualGasUsed,
+        txGasLimit, txGasUsed. Returns `null` if not found.
       parameters:
         - name: userOpHash
           in: query
@@ -1878,7 +1880,7 @@ paths:
           content:
             "application/json":
               schema:
-                $ref: "#/components/schemas/AATxItem"
+                $ref: "#/components/schemas/AATxDetailResponse"
   /eip4337/bundle-tx:
     get:
       tags:
@@ -4639,6 +4641,46 @@ components:
                 type: string
                 description: Original 4-byte method selector
                 example: "0xd0e30db0"
+    AATxDetailExtra:
+      type: object
+      description: Extra fields returned only by the /eip4337/aa-tx detail endpoint, parsed live from the bundle tx.
+      properties:
+        verificationGasLimit:
+          type: string
+          description: "verificationGasLimit for this user op (decimal string). High 128 bits of accountGasLimits."
+          example: "100000"
+        preVerificationGas:
+          type: string
+          description: "preVerificationGas for this user op (decimal string)."
+          example: "50000"
+        maxFeePerGas:
+          type: string
+          description: "maxFeePerGas in wei (decimal string). Low 128 bits of gasFees."
+          example: "1000000000"
+        maxPriorityFeePerGas:
+          type: string
+          description: "maxPriorityFeePerGas in wei (decimal string). High 128 bits of gasFees."
+          example: "1000000000"
+        signature:
+          type: string
+          description: "Raw signature bytes (hex string)."
+          example: "0xabcd..."
+        actualGasUsed:
+          type: string
+          description: "actualGasUsed as reported by UserOperationEvent (decimal string)."
+          example: "95000"
+        txGasLimit:
+          type: string
+          description: "Bundle tx gas limit (decimal string)."
+          example: "500000"
+        txGasUsed:
+          type: string
+          description: "Bundle tx gas used from receipt (decimal string)."
+          example: "420000"
+    AATxDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/AATxItem'
+        - $ref: '#/components/schemas/AATxDetailExtra'
     TxsByTypeStat:
       type: object
       properties:
