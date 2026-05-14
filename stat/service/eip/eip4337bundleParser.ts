@@ -16,6 +16,11 @@ export interface IAAOpDetail {
 	position: number;
 	/** Sender (smart account) address in checksum hex format. */
 	from: string;
+	/**
+	 * Number of internal executions decoded from the user op callData.
+	 * `execute` = 1, `executeBatch` = N (the actual array length), 0 if not decoded.
+	 */
+	internalTxnCount: number;
 	/** Number of ERC-20 token transfer events attributed to this user op. */
 	tokenTxnCount: number;
 	/** Number of ERC-721 / ERC-1155 transfer events attributed to this user op. */
@@ -146,6 +151,7 @@ export async function parseBundleTxByHash(cfx: Conflux, txHash: string): Promise
 		const parsedUserOp = parsed4337call.userOps[i];
 		const gasLimit = parseCallGasLimit(parsedUserOp?.accountGasLimits);
 		const method = parsedUserOp?.parsedUserOp?.method ?? '';
+		const internalTxnCount = parsedUserOp?.parsedUserOp?.rawParamArr?.length ?? 0;
 		const sender = toChecksumHex(event?.sender);
 		const paymaster = toChecksumHex(event?.paymaster);
 
@@ -154,6 +160,7 @@ export async function parseBundleTxByHash(cfx: Conflux, txHash: string): Promise
 			method,
 			position: i,
 			from: sender,
+			internalTxnCount,
 			tokenTxnCount,
 			nftTxnCount,
 			txnFee: event ? formatEther(event.actualGasCost) : '0',

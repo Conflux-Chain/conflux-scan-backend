@@ -4557,6 +4557,14 @@ components:
           pattern: '^0x[a-fA-F0-9]{40}$'
           description: Sender (smart account) address in checksummed hex format
           example: "0xAbd527c17826FE0Ac1F7651511913Ba230B5dDfe"
+        internalTxnCount:
+          type: integer
+          description: >
+            Number of internal executions decoded from the user op callData.
+            `execute` always yields 1; `executeBatch` yields the actual call array length.
+            0 if the callData could not be decoded.
+          minimum: 0
+          example: 3
         tokenTxnCount:
           type: integer
           description: Number of ERC-20 token transfer events attributed to this user op
