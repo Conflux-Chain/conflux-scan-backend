@@ -356,6 +356,7 @@ async function main() {
 	}
 
 	await AATx.sequelize?.close();
+	process.exit(0);
 }
 /*
  drop table bundleTx;
