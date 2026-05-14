@@ -17,6 +17,18 @@ export interface AATxQueryResult extends IAATx {
     senderHex: string;       // hex address from Hex40Map
     bundlerHex: string;      // hex address from Hex40Map
     entryPointHex: string;   // hex address from Hex40Map
+    txHash?: string;         // bundle tx hash (from joined BundleTx)
+    failedReason?: string;
+    // deep fields — populated only by getAATxDetail
+    verificationGasLimit?: string;
+    preVerificationGas?: string;
+    maxFeePerGas?: string;
+    maxPriorityFeePerGas?: string;
+    signature?: string;
+    actualGasUsed?: string;
+    txGasLimit?: string;
+    txGasUsed?: string;
+    [key: string]: any;      // allow dynamic extra fields
 }
 
 // Query parameters interfaces
