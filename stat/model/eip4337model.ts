@@ -109,7 +109,7 @@ export class AATx extends Model<IAATx> implements IAATx {
 			nonce: {type: DataTypes.STRING(78), allowNull: false},
 			success: {type: DataTypes.BOOLEAN, allowNull: false},
 			actualGasCost: {type: DataTypes.DECIMAL(36,18), allowNull: false},
-			actualGasUsed: {type: DataTypes.DECIMAL(36,18), allowNull: false},
+			actualGasUsed: {type: DataTypes.BIGINT, allowNull: false},
 			methods: {type: DataTypes.STRING(LEN_AA_TX_METHODS),
 				allowNull: true, defaultValue: '', },
 			method7702: {type: DataTypes.STRING(32), allowNull: false, defaultValue: '', },
@@ -245,4 +245,5 @@ alter table bundleTx add column status int default 0;
 alter table bundleTx add column failedTxCount int default 0;
 alter table bundleTx add column method varchar(32) default '';
 alter table aaTx add column method7702 varchar(32) default '';
+alter table aaTx modify column actualGasUsed bigint not null default 0;
  */
