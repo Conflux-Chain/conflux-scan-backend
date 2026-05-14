@@ -4,7 +4,7 @@ import {StatApp} from "../../stat/StatApp";
 import {listAuthAction} from "../../stat/model/EIP7702model";
 import {getAccountQuery} from "../../stat/service/AccountQuery";
 import {setBody} from "../router/middleware";
-import {queryAATx, queryBundleTx, fillAATxMethodInfo} from "../../stat/service/eip/eip4337query";
+import {queryAATx, queryBundleTx, fillAATxMethodInfo, getAATxDetail as fetchAATxDetail} from "../../stat/service/eip/eip4337query";
 import {getAddrId} from "../../stat/model/HexMap";
 import {parseBundleTxByHash} from "../../stat/service/eip/eip4337bundleParser";
 import {Errors} from "../../stat/service/common/LogicError";
@@ -55,36 +55,8 @@ export async function getAATxDetail(ctx) {
     }
     mustBeHex64ParamIfPresent(ctx.request.query, 'userOpHash');
 
-    const result = await queryAATx({
-        userOpHash,
-        skip: 0, limit: 1,
-    });
-
-    if (!result.list.length) {
-        setBody(ctx, null);
-        return;
-    }
-
-    await fillAATxMethodInfo(result.list);
-    const aaTx = result.list[0];
-
-    // Enrich with deep-parsed fields from the bundle tx.
-    const bundleTxHash = aaTx.txHash;
-    if (bundleTxHash) {
-        const parsed = await parseBundleTxByHash(getCfxSdk(), bundleTxHash, {targetUserOpHash: userOpHash});
-        const matchedOp = parsed?.userOps.find(op => op.userOpHash === userOpHash);
-        if (matchedOp) {
-            aaTx.verificationGasLimit = matchedOp.verificationGasLimit;
-            aaTx.preVerificationGas   = matchedOp.preVerificationGas;
-            aaTx.maxFeePerGas         = matchedOp.maxFeePerGas;
-            aaTx.maxPriorityFeePerGas = matchedOp.maxPriorityFeePerGas;
-            aaTx.signature            = matchedOp.signature;
-            aaTx.txGasLimit           = matchedOp.txGasLimit;
-            aaTx.txGasUsed            = matchedOp.txGasUsed;
-        }
-    }
-
-    setBody(ctx, aaTx);
+    const detail = await fetchAATxDetail(getCfxSdk(), userOpHash);
+    setBody(ctx, detail ?? null);
 }
 
 export async function getBundleTxDetail(ctx) {

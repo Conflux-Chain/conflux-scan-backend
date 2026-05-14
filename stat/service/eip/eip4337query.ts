@@ -7,6 +7,8 @@ import {Sequelize} from "sequelize";
 import {FailedTx, FullTransaction} from "../../model/FullBlock";
 import {Literal} from "sequelize/lib/utils";
 import {fillMethodInfo} from "../contract/contractTool";
+import {parseBundleTxByHash} from "./eip4337bundleParser";
+import {Conflux} from "js-conflux-sdk";
 
 export interface BundleTxQueryResult extends IBundleTx {
     bundlerHex: string;      // hex address from Hex40Map
@@ -295,5 +297,36 @@ export async function fillAATxMethodInfo(list: any[]): Promise<void> {
             return {to: entry.to, method: entry.method, methodId: entry.methodId};
         });
     });
+}
+
+/**
+ * Fetch a single AA tx by userOpHash from the DB, enrich with resolved method names,
+ * and deep-parse extra gas/signature fields from the bundle tx.
+ * Returns null if not found.
+ */
+export async function getAATxDetail(cfx: Conflux, userOpHash: string): Promise<AATxQueryResult | null> {
+    const result = await queryAATx({userOpHash, skip: 0, limit: 1});
+    if (!result.list.length) return null;
+
+    await fillAATxMethodInfo(result.list);
+    const aaTx = result.list[0];
+
+    const bundleTxHash = aaTx.txHash;
+    if (bundleTxHash) {
+        const parsed = await parseBundleTxByHash(cfx, bundleTxHash, {targetUserOpHash: userOpHash});
+        const matchedOp = parsed?.userOps.find(op => op.userOpHash === userOpHash);
+        if (matchedOp) {
+            Object.assign(aaTx, {
+                verificationGasLimit: matchedOp.verificationGasLimit,
+                preVerificationGas:   matchedOp.preVerificationGas,
+                maxFeePerGas:         matchedOp.maxFeePerGas,
+                maxPriorityFeePerGas: matchedOp.maxPriorityFeePerGas,
+                signature:            matchedOp.signature,
+                txGasLimit:           matchedOp.txGasLimit,
+                txGasUsed:            matchedOp.txGasUsed,
+            });
+        }
+    }
+    return aaTx;
 }
 

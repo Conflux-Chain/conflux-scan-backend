@@ -21,7 +21,7 @@ import {Conflux, format} from "js-conflux-sdk";
 import {init} from "../tool/FixDailyTokenStat";
 import {getCfxSdk, initCfxSdk} from "../common/utils";
 import {ContractQuery} from "../ContractQuery";
-import {queryAATx, queryBundleTx, fillAATxMethodInfo} from "./eip4337query";
+import {queryAATx, queryBundleTx, fillAATxMethodInfo, getAATxDetail} from "./eip4337query";
 import {Block, TransactionReceipt, Transaction as SdkTx} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {IDBAction} from "../BatchDBTx";
 import {
@@ -318,6 +318,7 @@ npx tsc && node stat/service/eip/eip4337.js testQuery bundle   // bundle txs onl
 npx tsc && node stat/service/eip/eip4337.js testQuery aa       // aa txs only
 npx tsc && node stat/service/eip/eip4337.js testParseFunc
 npx tsc && node stat/service/eip/eip4337.js testBundleParser [txHash]
+npx tsc && node stat/service/eip/eip4337.js testAATxDetail <userOpHash>
  */
 async function main() {
 	const [,,cmd,arg1] = process.argv;
@@ -344,6 +345,12 @@ async function main() {
 		const cfg = loadConfig('Prod');
 		const cfx = await initCfxSdk(cfg.conflux);
 		await testBundleParser(cfx, arg1);
+	} else if (cmd === 'testAATxDetail') {
+		const cfg = await init();
+		const cfx = await initCfxSdk(cfg.conflux);
+		new ContractQuery({cfx, config: cfg.verification});
+		const detail = await getAATxDetail(cfx, arg1);
+		console.log('AA tx detail:\n', JSON.stringify(detail, null, 4));
 	} else {
 		console.log(`unknown cmd: ${cmd}`);
 	}
