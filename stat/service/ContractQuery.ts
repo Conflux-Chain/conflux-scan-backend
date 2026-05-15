@@ -279,21 +279,11 @@ export class ContractQuery {
 
         const list = rows.map(item => {
             const contractName = splitFullyQualifiedName(item.name).contractName;
-
-            let compilerVersion;
-            try{
-                compilerVersion = item.language === CONST.LANGUAGE.VYPER ?
-                   item.version : lodash.trimStart(item.version.split("+commit")[0], "v");
-            }catch (e){
-                console.log(`debug verified list ===1===`, JSON.stringify({
-                    language: item.language,
-                    version: item.version
-                }), e);
-            }
-
+            const compilerVersion = item.language === CONST.LANGUAGE.VYPER ?
+                item.version : lodash.trimStart(item.version.split("+commit")[0], "v");
             return {
                 address: fmtAddr(item.address, StatApp.networkId),
-                hex: format.hexAddress(item.address),
+                addressId: item.addressId,
                 contractName,
                 compiler: item.compiler,
                 compilerVersion,
@@ -310,17 +300,13 @@ export class ContractQuery {
             }
         });
 
-        const mapHexToId = await Hex40Map.findAll({
-            where: {hex: {[Op.in]: list.map(item => item.hex.substr(2))}},
-        }).then(list => Object.fromEntries(list.map(item => [`0x${item.hex}`, item.id])));
+        const mapAddrToId = Object.fromEntries(rows.map(item => [item.address, item.addressId]));
 
-        const balances = await CfxBalance.findAll({where: {addressId: {[Op.in]: Object.values(mapHexToId)}}});
-        list.forEach(item => {
-            item.balance = balances[item.hex]?.total || 0
-        });
+        const balances = await CfxBalance.findAll({where: {addressId: {[Op.in]: Object.values(mapAddrToId)}}});
+        list.forEach(item => item.balance = balances[item.address]?.total || 0);
 
         await Promise.all(list.map(async item => {
-            const addressId = mapHexToId[item.hex];
+            const addressId = mapAddrToId[item.address];
             const count = await AddressTransactionIndex.count({where: {addressId}});
             const pruneInfo = await PruneInfo.findOne({where: {addressId, type: PruneType.ADDR_TX}});
             item.txns = count + (pruneInfo?.pruned || 0);
@@ -328,7 +314,7 @@ export class ContractQuery {
 
         const total = await KV.getNumber(VERIFIED_COUNT_ALL, 0);
 
-        list.forEach(item => {delete item.hex});
+        list.forEach(item => delete item.addressId);
 
         return {total, list, next: rows?.length ? rows[rows.length - 1][cursorField] : 0};
     }
