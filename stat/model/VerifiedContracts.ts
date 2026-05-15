@@ -21,6 +21,8 @@ export interface IVerifiedContracts{
     similarMatchAddress?: string
     matchId?: number
     verifiedAt?: Date
+    deployer?: string
+    epochNumber?: number
 }
 
 export class VerifiedContracts extends Model<IVerifiedContracts> implements IVerifiedContracts {
@@ -44,6 +46,8 @@ export class VerifiedContracts extends Model<IVerifiedContracts> implements IVer
     similarMatchAddress?: string
     matchId?: number
     verifiedAt?: Date
+    deployer?: string
+    epochNumber?: number
 
     static register(seq: Sequelize) {
         VerifiedContracts.init({
@@ -67,6 +71,8 @@ export class VerifiedContracts extends Model<IVerifiedContracts> implements IVer
             similarMatchAddress: {type: DataTypes.CHAR(64)},
             matchId: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0},
             verifiedAt: {type: DataTypes.DATE, allowNull: false},
+            deployer: {type: DataTypes.CHAR(64), allowNull: false},
+            epochNumber: {type: DataTypes.BIGINT, allowNull: false},
         }, {
             tableName: 'verified_contracts',
             sequelize: seq,
@@ -93,6 +99,8 @@ export class VerifiedContracts extends Model<IVerifiedContracts> implements IVer
             evmVersion: contract.evmVersion,
             matchId: contract.matchId,
             verifiedAt: contract.verifiedAt,
+            deployer: contract.deployer,
+            epochNumber: contract.epochNumber,
         }, {
             transaction: dbTx
         })

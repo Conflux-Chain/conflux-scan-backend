@@ -15,6 +15,7 @@ import {execSync} from "child_process";
 import {sleep} from "./ProcessTool";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
 import {NameTag} from "../../model/NameTag";
+import {ContractTraceCreateQuery} from "../ContractTraceCreateQuery";
 
 const fs = require('fs');
 const path = require('path');
@@ -66,6 +67,7 @@ async function run() {
 
 let cfx: Conflux;
 let contractQuery: ContractQuery;
+let traceCreate: ContractTraceCreateQuery;
 
 async function init() {
     const config: StatConfig = await initialize()
@@ -74,6 +76,7 @@ async function init() {
 
     cfx = await initCfxSdk(config.conflux);
     contractQuery = new ContractQuery({cfx, config: config.verification});
+    traceCreate = new ContractTraceCreateQuery(cfx);
 }
 
 async function close() {
@@ -318,12 +321,16 @@ async function addVerifiedColumns() {
                     console.log(`contract ${name} ${base32} not verified`);
                     process.exit(9);
                 }
+                const createInfo = await traceCreate.query(base32);
+                const {epochNumber, from} = createInfo;
                 await VerifiedContracts.update({
                     addressId: await makeIdV(format.hexAddress(base32)),
                     compiler: compilation.compiler,
                     codeFormat: `${compilation.language}${sourceCode.startsWith("{") ? "(Json)" : ""}`,
                     verifiedAt: verifiedAt.replace('T', ' ').replace(/T$/, ''),
                     matchId,
+                    epochNumber,
+                    deployer: from,
                 }, {
                     where: {id}
                 });
