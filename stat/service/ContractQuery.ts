@@ -47,6 +47,7 @@ import {ContractImpl} from "../model/ContractImpl";
 import {AddressTransactionIndex} from "../model/FullBlock";
 import {CfxBalance} from "../model/Balance";
 import {PruneInfo, PruneType} from "../model/PruneInfo";
+import {ContractTraceCreateQuery} from "./ContractTraceCreateQuery";
 
 const path = require('path');
 const superagent = require('superagent');
@@ -73,6 +74,7 @@ export function getContractQuery() {
 export class ContractQuery {
     static verifyEnable: boolean;
     private cfx: Conflux;
+    private traceCreate: ContractTraceCreateQuery;
     private readonly verifyUrl: string;
 
     private readonly cacheTtl: number
@@ -92,6 +94,7 @@ export class ContractQuery {
         }
 
         this.cfx = cfx;
+        this.traceCreate = new ContractTraceCreateQuery(cfx);
         ContractQuery.verifyEnable = enable;
         this.verifyUrl = url;
 
@@ -319,6 +322,38 @@ export class ContractQuery {
         return {total, list, next: rows?.length ? rows[rows.length - 1][cursorField] : 0};
     }
 
+    /*
+    SELECT
+        *
+    FROM
+    (
+        SELECT
+            v.*, b.total as balance
+        FROM
+        (
+            SELECT
+                id, address, addressId, name, compiler, version, language, codeFormat, optimization,
+                LEFT(constructorArgs, 4) AS constructorArgs, verifiedAt, license, matchId
+            FROM
+                verified_contracts
+            ORDER BY
+                matchId DESC
+            LIMIT 10
+        ) v
+        LEFT JOIN cfx_balance b on v.addressId = b.addressId
+    ) tmp
+    WHERE
+       address = ''
+       or name = ''
+       or codeFormat = ''
+       or version = ''
+       or balance >= '' and balance <= ''
+       or verifiedAt >= '' and verifiedAt <= ''
+       or license = ''
+    LIMIT 0, 10;
+
+    */
+
     public async listVerifyInBatch(addresses: string[], chunkSize = this.MAX_CONTRACTS) {
         if(!addresses?.length){
             return [];
@@ -446,11 +481,15 @@ export class ContractQuery {
             similarMatchAddress,
             matchId,
             verifiedAt: verifiedAt.replace('T', ' ').replace(/T$/, ''),
-        };
+        } as VerifiedContracts;
 
-        VerifiedContracts.upsert(
-            {...verified, libraries: JSON.stringify(verified.libraries)}
-        ).catch(err => safeAddErrorLog("contract-query", "get-verify-by-sourcify", err));
+        this.traceCreate.query(contractAddress).then(async item => {
+            const {epochNumber, from} = item;
+            verified.epochNumber = epochNumber;
+            verified.deployer = from;
+            await VerifiedContracts.upsert({...verified, libraries: JSON.stringify(verified.libraries)});
+        }).catch(err => safeAddErrorLog("contract-query", "get-verify-by-sourcify", err));
+
         this._addCache(hex, verified);
 
         this.saveABI(address, abi).then();
