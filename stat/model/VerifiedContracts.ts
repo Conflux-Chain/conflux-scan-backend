@@ -18,6 +18,7 @@ export interface IVerifiedContracts{
     evmVersion?: string
     similarMatchChainId?: number
     similarMatchAddress?: string
+    matchId?: number
     verifiedAt?: Date
 }
 
@@ -39,6 +40,7 @@ export class VerifiedContracts extends Model<IVerifiedContracts> implements IVer
     evmVersion?: string
     similarMatchChainId?: number
     similarMatchAddress?: string
+    matchId?: number
     verifiedAt?: Date
 
     static register(seq: Sequelize) {
@@ -60,6 +62,7 @@ export class VerifiedContracts extends Model<IVerifiedContracts> implements IVer
             evmVersion: {type: DataTypes.CHAR(20)},
             similarMatchChainId: {type: DataTypes.INTEGER},
             similarMatchAddress: {type: DataTypes.CHAR(64)},
+            matchId: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0},
             verifiedAt: {type: DataTypes.DATE, allowNull: false},
         }, {
             tableName: 'verified_contracts',
@@ -84,6 +87,7 @@ export class VerifiedContracts extends Model<IVerifiedContracts> implements IVer
             license: contract.license,
             libraries: contract.libraries,
             evmVersion: contract.evmVersion,
+            matchId: contract.matchId,
             verifiedAt: contract.verifiedAt,
         }, {
             transaction: dbTx

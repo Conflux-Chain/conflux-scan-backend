@@ -47,7 +47,6 @@ import {ContractImpl} from "../model/ContractImpl";
 import {AddressTransactionIndex} from "../model/FullBlock";
 import {CfxBalance} from "../model/Balance";
 import {PruneInfo, PruneType} from "../model/PruneInfo";
-import l from "lodash";
 
 const path = require('path');
 const superagent = require('superagent');
@@ -266,7 +265,7 @@ export class ContractQuery {
             cursor?: number,
             limit?: number,
     }) {
-        const cursorField = "id";
+        const cursorField = "matchId";
         const options: any = {
             order: [[cursorField, sort]],
             limit,
@@ -280,8 +279,18 @@ export class ContractQuery {
 
         const list = rows.map(item => {
             const contractName = splitFullyQualifiedName(item.name).contractName;
-            const compilerVersion = item.language === CONST.LANGUAGE.VYPER ?
-                item.version : l.trimStart(item.version.split("+commit")[0], "v");
+
+            let compilerVersion;
+            try{
+                compilerVersion = item.language === CONST.LANGUAGE.VYPER ?
+                   item.version : lodash.trimStart(item.version.split("+commit")[0], "v");
+            }catch (e){
+                console.log(`debug verified list ===1===`, JSON.stringify({
+                    language: item.language,
+                    version: item.version
+                }), e);
+            }
+
             return {
                 address: fmtAddr(item.address, StatApp.networkId),
                 hex: format.hexAddress(item.address),
@@ -388,7 +397,7 @@ export class ContractQuery {
             return null;
         }
 
-        const {address, match, abi, compilation, stdJsonInput, licenseType, contractLabel, similarMatchChainId,
+        const {matchId, address, match, abi, compilation, stdJsonInput, licenseType, contractLabel, similarMatchChainId,
             similarMatchAddress, creationBytecode, verifiedAt} = resp.data;
         if (!match) {
             return null;
@@ -449,6 +458,7 @@ export class ContractQuery {
             abi: JSON.stringify(abi),
             similarMatchChainId,
             similarMatchAddress,
+            matchId,
             verifiedAt: verifiedAt.replace('T', ' ').replace(/T$/, ''),
         };
 

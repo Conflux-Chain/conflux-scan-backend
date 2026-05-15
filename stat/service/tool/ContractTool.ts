@@ -330,7 +330,7 @@ async function addVerifiedColumns() {
         while (true) {
             try {
                 const resp = await axios.get(queryUrl, {family: 4, headers: {'Accept': 'application/json'}});
-                const {address: respAddress, match, compilation, verifiedAt} = resp.data;
+                const {matchId, address: respAddress, match, compilation, verifiedAt} = resp.data;
                 if (respAddress !== address) {
                     console.log(`contract ${name} ${base32} address not match. expect ${address} got ${respAddress}`);
                     process.exit(9);
@@ -343,6 +343,7 @@ async function addVerifiedColumns() {
                     compiler: compilation.compiler,
                     codeFormat: `${compilation.language}${sourceCode.startsWith("{") ? "(Json)" : ""}`,
                     verifiedAt: verifiedAt.replace('T', ' ').replace(/T$/, ''),
+                    matchId: matchId,
                 }, {
                     where: {id}
                 });
