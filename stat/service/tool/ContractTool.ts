@@ -340,10 +340,11 @@ async function addVerifiedColumns() {
                     process.exit(9);
                 }
                 await VerifiedContracts.update({
+                    addressId: await makeIdV(format.hexAddress(base32)),
                     compiler: compilation.compiler,
                     codeFormat: `${compilation.language}${sourceCode.startsWith("{") ? "(Json)" : ""}`,
                     verifiedAt: verifiedAt.replace('T', ' ').replace(/T$/, ''),
-                    matchId: matchId,
+                    matchId,
                 }, {
                     where: {id}
                 });
