@@ -1,4 +1,4 @@
-import {Hex40Map, makeId} from "../../model/HexMap";
+import {Hex40Map, makeId, makeIdV} from "../../model/HexMap";
 import {init as initialize} from "./FixDailyTokenStat";
 import {StatApp} from "../../StatApp";
 import {StatConfig} from "../../config/StatConfig";
@@ -319,10 +319,11 @@ async function addVerifiedColumns() {
                     process.exit(9);
                 }
                 await VerifiedContracts.update({
+                    addressId: await makeIdV(format.hexAddress(base32)),
                     compiler: compilation.compiler,
                     codeFormat: `${compilation.language}${sourceCode.startsWith("{") ? "(Json)" : ""}`,
                     verifiedAt: verifiedAt.replace('T', ' ').replace(/T$/, ''),
-                    matchId: matchId,
+                    matchId,
                 }, {
                     where: {id}
                 });

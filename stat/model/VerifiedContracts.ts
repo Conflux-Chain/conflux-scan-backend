@@ -3,6 +3,7 @@ import {Model,Sequelize,DataTypes} from "sequelize";
 export interface IVerifiedContracts{
     id?:number
     address:string
+    addressId?: number
     name:string
     compiler?:string
     version?:string
@@ -25,6 +26,7 @@ export interface IVerifiedContracts{
 export class VerifiedContracts extends Model<IVerifiedContracts> implements IVerifiedContracts {
     id?: number
     address: string
+    addressId?: number
     name: string
     compiler?: string
     version?: string
@@ -47,6 +49,7 @@ export class VerifiedContracts extends Model<IVerifiedContracts> implements IVer
         VerifiedContracts.init({
             id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
             address: {type: DataTypes.CHAR(64), allowNull: false, unique: true},
+            addressId: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0},
             name: {type: DataTypes.CHAR(255), allowNull: false},
             compiler: {type: DataTypes.CHAR(10), allowNull: false},
             version: {type: DataTypes.CHAR(255), allowNull: false},
@@ -74,6 +77,7 @@ export class VerifiedContracts extends Model<IVerifiedContracts> implements IVer
     static async add(contract: VerifiedContracts, dbTx = undefined): Promise<IVerifiedContracts> {
         return await VerifiedContracts.create({
             address: contract.address,
+            addressId: contract.addressId,
             name: contract.name,
             compiler: contract.compiler,
             version: contract.version,
