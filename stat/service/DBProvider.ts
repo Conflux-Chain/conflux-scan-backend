@@ -307,10 +307,13 @@ async function migDB(seq: Sequelize) {
         type: DataTypes.CHAR(10), allowNull: false, defaultValue: 'solc',
     });
     await addColumnIfNotExistsV2(qi, verifiedContracts, 'codeFormat', {
-        type: DataTypes.CHAR(32), allowNull: false, defaultValue: 'Solidity(Json)',
+        type: DataTypes.CHAR(32), allowNull: false, defaultValue: 'Solidity',
     });
     await addColumnIfNotExistsV2(qi, verifiedContracts, 'verifiedAt', {
         type: DataTypes.DATE, allowNull: false, defaultValue: '1970-01-01 00:00:00',
+    });
+    await addColumnIfNotExistsV2(qi, verifiedContracts, 'matchId', {
+        type: DataTypes.BIGINT, allowNull: false, defaultValue: '0',
     });
     await addIndexIfNotExistsMySQL(qi, verifiedContracts, 'idx_verifiedAt', {fields: ['verifiedAt']});
 
