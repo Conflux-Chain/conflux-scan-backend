@@ -419,6 +419,11 @@ export const CONST = {
     'cancun',
   ],
 
+  LANGUAGE: {
+    SOLIDITY: "Solidity",
+    VYPER: "Vyper"
+  },
+
   VYPER_SETTING_OPTIMIZE: ['gas', 'codesize', 'none', true, false],
 
   TASK_STATUS: {

@@ -38,6 +38,7 @@ export class ContractService {
     if (verified) {
       verify = lodash.assign(verified, {
         exactMatch: true,
+        language: verified.language.toLowerCase(),
         optimization: parseInt(verified.optimization), // N/A|1|0|gas|codesize|none
         similarMatchAddress: this.formatSimilarMatchAddress(verified.similarMatchAddress, verified.similarMatchChainId),
         similarMatchNetworkId: verified.similarMatchChainId,
