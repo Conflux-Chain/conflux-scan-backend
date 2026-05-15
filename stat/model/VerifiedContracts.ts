@@ -48,7 +48,7 @@ export class VerifiedContracts extends Model<IVerifiedContracts> implements IVer
             name: {type: DataTypes.CHAR(255), allowNull: false},
             compiler: {type: DataTypes.CHAR(10), allowNull: false},
             version: {type: DataTypes.CHAR(255), allowNull: false},
-            language: {type: DataTypes.CHAR(255), allowNull: false},
+            language: {type: DataTypes.CHAR(20), allowNull: false},
             constructorArgs: {type: DataTypes.TEXT},
             codeFormat: {type: DataTypes.CHAR(255), allowNull: false},
             sourceCode: {type: DataTypes.TEXT({length: 'long'}), allowNull: false,},

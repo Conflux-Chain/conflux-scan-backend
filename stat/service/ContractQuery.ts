@@ -280,7 +280,7 @@ export class ContractQuery {
 
         const list = rows.map(item => {
             const contractName = splitFullyQualifiedName(item.name).contractName;
-            const compilerVersion = item.language === "vyper" ?
+            const compilerVersion = item.language === CONST.LANGUAGE.VYPER ?
                 item.version : l.trimStart(item.version.split("+commit")[0], "v");
             return {
                 address: fmtAddr(item.address, StatApp.networkId),
@@ -355,7 +355,7 @@ export class ContractQuery {
     }){
         const hex = format.hexAddress(verified.address)
         return lodash.assign(verified, {
-            language: 'solidity',
+            language: CONST.LANGUAGE.SOLIDITY,
             version: CONST.INTERNAL_ADDR_CONTRACT_MAP[hex].compilerVersion,
             evmVersion: 'Default',
             optimization: CONST.INTERNAL_ADDR_CONTRACT_MAP[hex].optimization,
@@ -425,7 +425,7 @@ export class ContractQuery {
             sourceCode = JSON.stringify(stdJsonInput);
         }
 
-        if(language === 'Vyper') {
+        if(language === CONST.LANGUAGE.VYPER) {
             const versions = await this.listVyperVersions();
             compilerVersion = convertVyperVersion(compilerVersion, versions);
             fullyQualifiedName = contractLabel;
@@ -436,9 +436,10 @@ export class ContractQuery {
             name: fullyQualifiedName,
             compiler,
             version: compilerVersion,
-            language: language.toLowerCase(),
+            language,
             evmVersion: compilerSettings?.evmVersion ? compilerSettings.evmVersion : "Default",
-            optimization: language === 'Vyper' ? (compilerSettings?.optimize || '0') : (compilerSettings?.optimizer?.enabled ? '1' : '0'),
+            optimization: language === CONST.LANGUAGE.VYPER ? (compilerSettings?.optimize || '0') :
+                (compilerSettings?.optimizer?.enabled ? '1' : '0'),
             runs: compilerSettings?.optimizer?.runs,
             libraries: compilerSettings?.libraries,
             license: CONST.CONTRACT_LICENSE[licenseType || 1].code,
@@ -490,12 +491,7 @@ export class ContractQuery {
             attributes,
             where: {address: format.address(contractAddress, StatApp.networkId)},
             raw: true,
-        }).then((verify: VerifiedContracts) => {
-            if(verify?.language?.substring(0, 8) === 'solidity') {
-                verify.language = 'solidity';
-            }
-            return verify;
-        })
+        });
     }
 
     private async listVerifyByDB(addresses: string[]) {
@@ -818,7 +814,7 @@ export class ContractQuery {
 
         if(codeFormat === CONST.CONTRACT_CODE_FORMAT_INFO.SOLIDITY_SINGLE_FILE.code) {
             jsonInput = {
-                language: "Solidity",
+                language: CONST.LANGUAGE.SOLIDITY,
                 sources: {
                     [contractPath]: {
                         content: this._rmRedundantLicense(sourceCode),
@@ -837,7 +833,7 @@ export class ContractQuery {
 
         if(codeFormat === CONST.CONTRACT_CODE_FORMAT_INFO.VYPER_SINGLE_FILE.code) {
             jsonInput = {
-                language: "Vyper",
+                language: CONST.LANGUAGE.VYPER,
                 sources: {
                     [contractPath]: {
                         content: sourceCode,
