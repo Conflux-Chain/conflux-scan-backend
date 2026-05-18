@@ -11,9 +11,16 @@ import {Errors} from "../../stat/service/common/LogicError";
 
 const LIST_LIMIT = 50_000;
 
+function assertSkipWithinLimit(skip: number) {
+    if (skip >= LIST_LIMIT) {
+        throw new Errors.ParameterError(`Parameter <skip> exceeds listLimit (${LIST_LIMIT})`);
+    }
+}
+
 export async function listGlobalAuthAction(ctx) {
     const {skip, limit} = paginateCore(ctx.request.query)
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'author', 'address', 'txSender');
+    assertSkipWithinLimit(skip);
     const {author, address, txSender} = ctx.request.query;
     const result = await listAuthAction({author, address, txSender, skip, limit});
     setBody(ctx, {...result, listLimit: LIST_LIMIT});
@@ -22,6 +29,7 @@ export async function listGlobalAuthAction(ctx) {
 export async function listBundledTx(ctx) {
     const {skip, limit} = paginateCore(ctx.request.query)
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'bundler', 'entryPoint');
+    assertSkipWithinLimit(skip);
     const {bundler, entryPoint} = ctx.request.query;
 
     const result = await queryBundleTx({
@@ -36,7 +44,7 @@ export async function listBundledTx(ctx) {
 export async function list4337Tx(ctx) {
     const {skip, limit} = paginateCore(ctx.request.query)
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'bundler', 'entryPoint', 'sender');
-    const {bundler, entryPoint, sender} = ctx.request.query;
+    assertSkipWithinLimit(skip);
 
     const result = await queryAATx({
         bundlerId: bundler ? (await getAddrId(bundler) ?? -1) : undefined,

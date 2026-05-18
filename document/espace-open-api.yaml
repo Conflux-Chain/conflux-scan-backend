@@ -4259,7 +4259,7 @@ components:
               type: integer
             listLimit:
               type: integer
-              description: "Maximum number of records this API returns in total (across all pages). Only the latest listLimit records are accessible."
+              description: "Maximum number of records this API returns in total. Only the latest listLimit records are accessible; requesting with skip >= listLimit returns a 400 error."
               example: 50000
             list:
               type: array
@@ -4313,7 +4313,7 @@ components:
           example: 5
         listLimit:
           type: integer
-          description: "Maximum number of records this API returns in total (across all pages). Only the latest listLimit records are accessible."
+          description: "Maximum number of records this API returns in total. Only the latest listLimit records are accessible; requesting with skip >= listLimit returns a 400 error."
           example: 50000
         list:
           type: array
@@ -4440,7 +4440,7 @@ components:
           example: 1
         listLimit:
           type: integer
-          description: "Maximum number of records this API returns in total (across all pages). Only the latest listLimit records are accessible."
+          description: "Maximum number of records this API returns in total. Only the latest listLimit records are accessible; requesting with skip >= listLimit returns a 400 error."
           example: 50000
         list:
           type: array
