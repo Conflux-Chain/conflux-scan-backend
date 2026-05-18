@@ -24,6 +24,7 @@ export interface IVerifiedContracts{
     deployer?: string
     epochNumber?: number
     txns?: number
+    withNametag?: boolean
 }
 
 export class VerifiedContracts extends Model<IVerifiedContracts> implements IVerifiedContracts {
@@ -50,6 +51,7 @@ export class VerifiedContracts extends Model<IVerifiedContracts> implements IVer
     deployer?: string
     epochNumber?: number
     txns?: number
+    withNametag?: boolean
 
     static register(seq: Sequelize) {
         VerifiedContracts.init({
@@ -76,6 +78,7 @@ export class VerifiedContracts extends Model<IVerifiedContracts> implements IVer
             deployer: {type: DataTypes.CHAR(64), allowNull: false},
             epochNumber: {type: DataTypes.BIGINT, allowNull: false},
             txns: {type: DataTypes.INTEGER, allowNull: false, defaultValue: 0},
+            withNametag: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
         }, {
             tableName: 'verified_contracts',
             sequelize: seq,
@@ -105,6 +108,7 @@ export class VerifiedContracts extends Model<IVerifiedContracts> implements IVer
             deployer: contract.deployer,
             epochNumber: contract.epochNumber,
             txns: contract.txns,
+            withNametag: contract.withNametag,
         }, {
             transaction: dbTx
         })

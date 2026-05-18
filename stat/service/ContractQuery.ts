@@ -37,6 +37,8 @@ import {
     KEY_VYPER_VERSIONS,
     VERIFIED_COUNT_ALL,
     KEY_STAT_TXNS_FOR_VERIFIED_CONTRACTS,
+    KEY_STAT_ANNOUNCE_NAME_FOR_VERIFIED_CONTRACTS,
+    KEY_STAT_NAME_TAG_FOR_VERIFIED_CONTRACTS,
     KV,
 } from "../model/KV";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
@@ -49,6 +51,7 @@ import {AddressTransactionIndex, FullBlock, FullTransaction, loadMaxBlockEpoch} 
 import {CfxBalance} from "../model/Balance";
 import {PruneInfo, PruneType} from "../model/PruneInfo";
 import {ContractTraceCreateQuery} from "./ContractTraceCreateQuery";
+import {NameTag} from "../model/NameTag";
 
 const path = require('path');
 const superagent = require('superagent');
@@ -1374,8 +1377,8 @@ export class ContractQuery {
         return [];
     }
 
-    public async scheduleStatTxnVolume() {
-        async function updateTxnsCount(addressId) {
+    public async scheduleStatTxnVolume(interval = 3000) {
+        async function updateTxnsCountById(addressId) {
             const count = await AddressTransactionIndex.count({where: {addressId}});
             const pruneInfo = await PruneInfo.findOne({where: {addressId, type: PruneType.ADDR_TX}});
             const txns = count + (pruneInfo?.pruned || 0);
@@ -1395,13 +1398,12 @@ export class ContractQuery {
             console.log(`start to stat txns for ${size} contracts...`);
             for (let i = 0; i < size; i++) {
                 const {id, addressId} = list[i];
-                await updateTxnsCount(addressId);
+                await updateTxnsCountById(addressId);
                 lastId = id;
             }
         }
 
-        const interval = 3000;
-        setInterval(async () => {
+        async function updateTxnsCount() {
             const maxEpoch: number = await loadMaxBlockEpoch();
             const curEpoch = await KV.getNumber(KEY_STAT_TXNS_FOR_VERIFIED_CONTRACTS, 0)
             const minEpoch = Math.max(curEpoch, maxEpoch - 1000);
@@ -1418,12 +1420,69 @@ export class ContractQuery {
             for (const addressId of addressIds) {
                 const verify = await VerifiedContracts.findOne({where: {addressId}});
                 if (verify) {
-                    await updateTxnsCount(addressId);
+                    await updateTxnsCountById(addressId);
                 }
             }
             await KV.upsert({key: KEY_STAT_TXNS_FOR_VERIFIED_CONTRACTS, value: `${maxEpoch}`})
-        }, interval);
+        }
+
+        async function repeat() {
+            await updateTxnsCount().catch(e => {
+                console.log('Schedule stat_txns_of_verified_contracts fail', e);
+            });
+            setTimeout(repeat, interval);
+        }
+
+        repeat().then();
         console.log(`[stat_txns_of_verified_contracts]schedule in ${interval / 1000}s interval`);
+    }
+
+    public async scheduleWithNametag(interval = 3000) {
+        async function updateWithNametag() {
+            const maxEpochAnnounceName = await Contract.findOne({order: [["epoch", "desc"]]}).then(r => r?.epoch ?? 0);
+            const curEpochAnnounceName = await KV.getNumber(KEY_STAT_ANNOUNCE_NAME_FOR_VERIFIED_CONTRACTS, 0);
+            const addrArr1 = await Contract.findAll({
+                attributes: ["hex40id"],
+                where: {epoch: {[Op.between]: [curEpochAnnounceName, maxEpochAnnounceName]}, name: {[Op.ne]: null}},
+                raw: true,
+            }).then(list => list.map((item: any) => item.hex40id));
+
+            const maxEpochNametag = await NameTag.findOne({order: [["epoch", "desc"]]}).then(r => r?.epoch ?? 0);
+            const curEpochNametag = await KV.getNumber(KEY_STAT_NAME_TAG_FOR_VERIFIED_CONTRACTS, 0);
+            const addrArr2 = await NameTag.findAll({
+                attributes: ["hex40id"],
+                where: {
+                    [Op.and]: [
+                        {epoch: {[Op.between]: [curEpochNametag, maxEpochNametag]}},
+                        {
+                            [Op.or]: [
+                                {nameTag: {[Op.ne]: null}},
+                                {labels: {[Op.ne]: null}},
+                            ]
+                        }
+                    ]
+                },
+                raw: true,
+            }).then(list => list.map((item: any) => item.hex40id));
+
+            const addressIds = new Set([...addrArr1, ...addrArr2]);
+            for (const addressId of [...addressIds]) {
+                await VerifiedContracts.update({withNametag: true}, {where: {addressId}});
+            }
+
+            await KV.upsert({key: KEY_STAT_ANNOUNCE_NAME_FOR_VERIFIED_CONTRACTS, value: `${maxEpochAnnounceName}`});
+            await KV.upsert({key: KEY_STAT_NAME_TAG_FOR_VERIFIED_CONTRACTS, value: `${maxEpochNametag}`});
+        }
+
+        async function repeat() {
+            await updateWithNametag().catch(e => {
+                console.log('Schedule stat_withNametag_of_verified_contracts fail', e);
+            });
+            setTimeout(repeat, interval);
+        }
+
+        repeat().then();
+        console.log(`[stat_withNametag_of_verified_contracts]schedule in ${interval / 1000}s interval`);
     }
 }
 

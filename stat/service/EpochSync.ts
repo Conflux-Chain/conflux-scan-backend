@@ -51,7 +51,7 @@ const FIELDS_TOKEN_REGISTER = ['icon', 'website', 'ipfsGateway', 'quoteUrl'];
 const FIELDS_TOKEN = [...['hex40id', 'base32'], ...FIELDS_TOKEN_BASIC, ...FIELDS_TOKEN_REGISTER];
 
 const FIELDS_CONTRACT_REGISTER = ['name', 'website', 'abi', 'sourceCode'];
-const FIELDS_CONTRACT = [...['hex40id', 'base32'], ...FIELDS_CONTRACT_REGISTER];
+const FIELDS_CONTRACT = [...['hex40id', 'base32', 'epoch'], ...FIELDS_CONTRACT_REGISTER];
 
 const SELECTOR_DESTROY = '0x00f55d9d';
 
@@ -688,6 +688,7 @@ export class EpochSync extends SyncBase {
             item['labels'] = item['labels']?.size ? [...item['labels']].join(NAME_TAG_SPLIT) : null;
             item['createdAt'] = epochTimestamp;
             item['updatedAt'] = epochTimestamp;
+            item['epoch'] = epochNumber;
             return item;
         });
     }

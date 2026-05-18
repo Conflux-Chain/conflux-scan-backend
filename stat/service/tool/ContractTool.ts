@@ -67,6 +67,9 @@ async function run() {
     if (type === 7) {
         await contractQuery.scheduleStatTxnVolume()
     }
+    if (type === 8) {
+        await contractQuery.scheduleWithNametag()
+    }
     await close();
 }
 
