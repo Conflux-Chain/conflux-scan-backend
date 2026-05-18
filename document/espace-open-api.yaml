@@ -4257,6 +4257,10 @@ components:
           properties:
             total:
               type: integer
+            listLimit:
+              type: integer
+              description: "Maximum number of records this API returns in total (across all pages). Only the latest listLimit records are accessible."
+              example: 50000
             list:
               type: array
               items:
@@ -4307,6 +4311,10 @@ components:
           description: Total number of records matching the query
           minimum: 0
           example: 5
+        listLimit:
+          type: integer
+          description: "Maximum number of records this API returns in total (across all pages). Only the latest listLimit records are accessible."
+          example: 50000
         list:
           type: array
           description: Array of account abstraction transaction records
@@ -4430,6 +4438,10 @@ components:
           format: int64
           description: Total number of records matching the query
           example: 1
+        listLimit:
+          type: integer
+          description: "Maximum number of records this API returns in total (across all pages). Only the latest listLimit records are accessible."
+          example: 50000
         list:
           type: array
           description: Array of bundle transaction records
