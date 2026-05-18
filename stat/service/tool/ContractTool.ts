@@ -62,6 +62,9 @@ async function run() {
     if (type === 6) {
         await addVerifiedColumns()
     }
+    if (type === 7) {
+        await contractQuery.scheduleStatTxnVolume()
+    }
     await close();
 }
 

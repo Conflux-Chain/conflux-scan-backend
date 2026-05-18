@@ -324,6 +324,9 @@ async function migDB(seq: Sequelize) {
     await addColumnIfNotExistsV2(qi, verifiedContracts, 'epochNumber', {
         type: DataTypes.BIGINT, allowNull: false, defaultValue: '0',
     });
+    await addColumnIfNotExistsV2(qi, verifiedContracts, 'txns', {
+        type: DataTypes.INTEGER, allowNull: false, defaultValue: '0',
+    });
     await addIndexIfNotExistsMySQL(qi, verifiedContracts, 'idx_verifiedAt', {fields: ['verifiedAt']});
 
     const dailyNFTStat = DailyNFTStat.getTableName().toString();
