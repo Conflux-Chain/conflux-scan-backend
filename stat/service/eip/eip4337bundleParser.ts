@@ -2,6 +2,7 @@ import {ethers, formatEther} from "ethers";
 import {Conflux, format} from "js-conflux-sdk";
 import {parseAATxMethods} from "./eip4337decoder";
 import {parseUserOperationEvent} from "./eip4337abi";
+import {AATx, BundleTx} from "../../model/eip4337model";
 
 const TRANSFER_SIG = ethers.id("Transfer(address,address,uint256)");
 const TRANSFER_SINGLE_SIG = ethers.id("TransferSingle(address,address,address,uint256,uint256)");
@@ -241,4 +242,65 @@ export async function parseBundleTxByHash(
 		timestamp,
 		userOps,
 	};
+}
+
+/** 4-byte selector of EntryPoint.innerHandleOp */
+const INNER_HANDLE_OP_SELECTOR = '0x0042dc53';
+
+/**
+ * Look up the bundle transaction hash for a given user op hash.
+ * Returns null if the user op is not found.
+ */
+export async function getBundleTxHashForUserOp(userOpHash: string): Promise<string | null> {
+	const aaTx = await AATx.findOne({
+		where: { userOpHash },
+		include: [{ model: BundleTx, as: 'bundleTx', attributes: ['hash'], required: true }],
+		raw: false,
+	});
+	// @ts-ignore
+	return aaTx?.get('bundleTx')?.hash ?? null;
+}
+
+/**
+ * Find the position (0-based index) of a user op in its bundle by scanning
+ * the UserOperationEvent logs in the receipt.
+ * Returns -1 if not found.
+ */
+export async function getAAOpPositionInBundle(cfx: Conflux, bundleTxHash: string, userOpHash: string): Promise<number> {
+	const receipt = await cfx.getTransactionReceipt(bundleTxHash);
+	const logs: any[] = (receipt as any)?.logs ?? [];
+	let position = 0;
+	for (const log of logs) {
+		if ((log.topics as string[])?.[0] !== USER_OPERATION_EVENT_SIG) continue;
+		const event = parseUserOperationEvent(log);
+		if (event?.userOpHash === userOpHash) return position;
+		position++;
+	}
+	return -1;
+}
+
+/**
+ * Extract the trace subtree for the N-th user op from a bundle tx trace tree.
+ *
+ * EIP-4337: the EntryPoint calls innerHandleOp (from=EP, to=EP, input starts with
+ * INNER_HANDLE_OP_SELECTOR) once per user op, in order, after all validation calls.
+ * The N-th such self-call node corresponds to user op at position N.
+ *
+ * @param traceTree  The traceTree array returned by ConfluxService.getTransactionTrace.
+ * @param position   Zero-based index of the target user op in the bundle.
+ * @returns The innerHandleOp call node, or null if not found.
+ */
+export function extractAAOpTraceNode(traceTree: any[], position: number): any | null {
+	const rootCalls: any[] = traceTree?.[0]?.calls ?? [];
+	let count = 0;
+	for (const call of rootCalls) {
+		const from: string = call.action?.from ?? '';
+		const to: string   = call.action?.to ?? '';
+		const input: string = call.action?.input ?? '';
+		if (from.toLowerCase() === to.toLowerCase() && input.startsWith(INNER_HANDLE_OP_SELECTOR)) {
+			if (count === position) return call;
+			count++;
+		}
+	}
+	return null;
 }
