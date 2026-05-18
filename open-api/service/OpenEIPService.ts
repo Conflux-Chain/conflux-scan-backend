@@ -9,12 +9,14 @@ import {getAddrId} from "../../stat/model/HexMap";
 import {parseBundleTxByHash} from "../../stat/service/eip/eip4337bundleParser";
 import {Errors} from "../../stat/service/common/LogicError";
 
+const LIST_LIMIT = 50_000;
+
 export async function listGlobalAuthAction(ctx) {
     const {skip, limit} = paginateCore(ctx.request.query)
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'author', 'address', 'txSender');
     const {author, address, txSender} = ctx.request.query;
     const result = await listAuthAction({author, address, txSender, skip, limit});
-    setBody(ctx, result);
+    setBody(ctx, {...result, listLimit: LIST_LIMIT});
 }
 
 export async function listBundledTx(ctx) {
@@ -28,7 +30,7 @@ export async function listBundledTx(ctx) {
         skip, limit,
     });
 
-    setBody(ctx, result);
+    setBody(ctx, {...result, listLimit: LIST_LIMIT});
 }
 
 export async function list4337Tx(ctx) {
@@ -45,7 +47,7 @@ export async function list4337Tx(ctx) {
 
     await fillAATxMethodInfo(result.list);
 
-    setBody(ctx, result);
+    setBody(ctx, {...result, listLimit: LIST_LIMIT});
 }
 
 export async function getAATxDetail(ctx) {
