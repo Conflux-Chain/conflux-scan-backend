@@ -327,7 +327,13 @@ async function migDB(seq: Sequelize) {
     await addColumnIfNotExistsV2(qi, verifiedContracts, 'txns', {
         type: DataTypes.INTEGER, allowNull: false, defaultValue: '0',
     });
+    await addColumnIfNotExistsV2(qi, verifiedContracts, 'withNametag', {
+        type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false,
+    });
     await addIndexIfNotExistsMySQL(qi, verifiedContracts, 'idx_verifiedAt', {fields: ['verifiedAt']});
+
+    const contract = Contract.getTableName().toString();
+    await addIndexIfNotExistsMySQL(qi, contract, 'idx_epoch', {fields: ['epoch']});
 
     const dailyNFTStat = DailyNFTStat.getTableName().toString();
     await changeColumnIfNecessary(qi, dailyNFTStat, 'statType', {
