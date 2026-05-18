@@ -23,6 +23,7 @@ export interface IVerifiedContracts{
     verifiedAt?: Date
     deployer?: string
     epochNumber?: number
+    txns?: number
 }
 
 export class VerifiedContracts extends Model<IVerifiedContracts> implements IVerifiedContracts {
@@ -48,6 +49,7 @@ export class VerifiedContracts extends Model<IVerifiedContracts> implements IVer
     verifiedAt?: Date
     deployer?: string
     epochNumber?: number
+    txns?: number
 
     static register(seq: Sequelize) {
         VerifiedContracts.init({
@@ -73,6 +75,7 @@ export class VerifiedContracts extends Model<IVerifiedContracts> implements IVer
             verifiedAt: {type: DataTypes.DATE, allowNull: false},
             deployer: {type: DataTypes.CHAR(64), allowNull: false},
             epochNumber: {type: DataTypes.BIGINT, allowNull: false},
+            txns: {type: DataTypes.INTEGER, allowNull: false, defaultValue: 0},
         }, {
             tableName: 'verified_contracts',
             sequelize: seq,
@@ -101,6 +104,7 @@ export class VerifiedContracts extends Model<IVerifiedContracts> implements IVer
             verifiedAt: contract.verifiedAt,
             deployer: contract.deployer,
             epochNumber: contract.epochNumber,
+            txns: contract.txns,
         }, {
             transaction: dbTx
         })

@@ -2,7 +2,7 @@ import {
     Hex40Map,
     getAddrId,
     formatToBase32,
-    makeId,
+    makeId, makeIdV,
 } from "../model/HexMap";
 import {Op, QueryTypes} from "sequelize";
 import {fmtAddr, StatApp} from "../StatApp";
@@ -36,6 +36,7 @@ import {
     KEY_SOLC_VERSIONS,
     KEY_VYPER_VERSIONS,
     VERIFIED_COUNT_ALL,
+    KEY_STAT_TXNS_FOR_VERIFIED_CONTRACTS,
     KV,
 } from "../model/KV";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
@@ -44,7 +45,7 @@ import {doHeartBeat, HeartBeatBean, KEY_COMPILER} from "../model/HeartBeat";
 import {ConfigInstance, VerificationOptions} from "../config/StatConfig";
 import {Conflux, format, sign} from "js-conflux-sdk";
 import {ContractImpl} from "../model/ContractImpl";
-import {AddressTransactionIndex} from "../model/FullBlock";
+import {AddressTransactionIndex, FullBlock, FullTransaction, loadMaxBlockEpoch} from "../model/FullBlock";
 import {CfxBalance} from "../model/Balance";
 import {PruneInfo, PruneType} from "../model/PruneInfo";
 import {ContractTraceCreateQuery} from "./ContractTraceCreateQuery";
@@ -463,6 +464,7 @@ export class ContractQuery {
 
         const verified = {
             address: format.address(address, StatApp.networkId),
+            addressId: await makeIdV(address),
             name: fullyQualifiedName,
             compiler,
             version: compilerVersion,
@@ -485,8 +487,8 @@ export class ContractQuery {
 
         this.traceCreate.query(contractAddress).then(async item => {
             const {epochNumber, from} = item;
-            verified.epochNumber = epochNumber;
             verified.deployer = from;
+            verified.epochNumber = epochNumber;
             await VerifiedContracts.upsert({...verified, libraries: JSON.stringify(verified.libraries)});
         }).catch(err => safeAddErrorLog("contract-query", "get-verify-by-sourcify", err));
 
@@ -1370,6 +1372,58 @@ export class ContractQuery {
         }
 
         return [];
+    }
+
+    public async scheduleStatTxnVolume() {
+        async function updateTxnsCount(addressId) {
+            const count = await AddressTransactionIndex.count({where: {addressId}});
+            const pruneInfo = await PruneInfo.findOne({where: {addressId, type: PruneType.ADDR_TX}});
+            const txns = count + (pruneInfo?.pruned || 0);
+            await VerifiedContracts.update({txns}, {where: {addressId}});
+        }
+
+        let lastId = 0;
+        while (true) {
+            const list = await VerifiedContracts.findAll({
+                attributes: ['id', 'addressId'],
+                where: {id: {[Op.gt]: lastId},}, offset: 0, limit: 1000, order: [['id', 'ASC']],
+            });
+            const size = list?.length;
+            if (!size) {
+                break;
+            }
+            console.log(`start to stat txns for ${size} contracts...`);
+            for (let i = 0; i < size; i++) {
+                const {id, addressId} = list[i];
+                await updateTxnsCount(addressId);
+                lastId = id;
+            }
+        }
+
+        const interval = 3000;
+        setInterval(async () => {
+            const maxEpoch: number = await loadMaxBlockEpoch();
+            const curEpoch = await KV.getNumber(KEY_STAT_TXNS_FOR_VERIFIED_CONTRACTS, 0)
+            const minEpoch = Math.max(curEpoch, maxEpoch - 1000);
+            const addressIds = await FullBlock.sequelize.query(`
+            select distinct(fromId) as id from ${FullTransaction.getTableName()} 
+            where epoch >= :minEpoch and epoch <= :maxEpoch
+            union 
+            select distinct(toId) as id from ${FullTransaction.getTableName()} 
+            where epoch >= :minEpoch and epoch <= :maxEpoch`, {
+                type: QueryTypes.SELECT, replacements: {minEpoch, maxEpoch}, raw: true
+            }).then(items => {
+                return items.map((item: any) => item.id)
+            });
+            for (const addressId of addressIds) {
+                const verify = await VerifiedContracts.findOne({where: {addressId}});
+                if (verify) {
+                    await updateTxnsCount(addressId);
+                }
+            }
+            await KV.upsert({key: KEY_STAT_TXNS_FOR_VERIFIED_CONTRACTS, value: `${maxEpoch}`})
+        }, interval);
+        console.log(`[stat_txns_of_verified_contracts]schedule in ${interval / 1000}s interval`);
     }
 }
 
