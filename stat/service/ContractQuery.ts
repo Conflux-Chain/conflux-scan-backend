@@ -465,9 +465,10 @@ export class ContractQuery {
             fullyQualifiedName = contractLabel;
         }
 
+        const addressId = await makeIdV(address);
         const verified = {
             address: format.address(address, StatApp.networkId),
-            addressId: await makeIdV(address),
+            addressId,
             name: fullyQualifiedName,
             compiler,
             version: compilerVersion,
@@ -492,6 +493,12 @@ export class ContractQuery {
             const {epochNumber, from} = item;
             verified.deployer = from;
             verified.epochNumber = epochNumber;
+            const count = await AddressTransactionIndex.count({where: {addressId}});
+            const pruneInfo = await PruneInfo.findOne({where: {addressId, type: PruneType.ADDR_TX}});
+            verified.txns = count + (pruneInfo?.pruned || 0);
+            const contract = await Contract.findOne({attributes: ['name'], where: {hex40id: addressId}, raw: true});
+            const nametag = await NameTag.findOne({where: {hex40id: addressId}, raw: true});
+            verified.withNametag = Boolean(contract.name || nametag.nameTag || nametag.labels);
             await VerifiedContracts.upsert({...verified, libraries: JSON.stringify(verified.libraries)});
         }).catch(err => safeAddErrorLog("contract-query", "get-verify-by-sourcify", err));
 
@@ -547,7 +554,29 @@ export class ContractQuery {
             raw: true,
         })
     }
-
+/*
+    SELECT
+    id,
+    address,
+    name,
+    verifiedAt,
+    matchId,
+    SUBSTRING(
+        sourceCode,
+        GREATEST(1, LOCATE('uniswap', sourceCode) - 10),
+    LEAST(
+        LENGTH('uniswap') + 20,
+    LENGTH(sourceCode) - GREATEST(1, LOCATE('uniswap', sourceCode) - 10) + 1
+)
+) AS returnStr
+    FROM
+    verified_contracts
+    WHERE
+    sourceCode LIKE '%uniswap%'
+    ORDER BY
+    matchId DESC
+    LIMIT 5000;
+*/
     async getImpl(address: string): Promise<ImplInfo | undefined> {
         const impl = await this._getImpl(address);
         if (!impl) {
