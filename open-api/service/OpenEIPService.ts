@@ -45,6 +45,7 @@ export async function list4337Tx(ctx) {
     const {skip, limit} = paginateCore(ctx.request.query)
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'bundler', 'entryPoint', 'sender');
     assertSkipWithinLimit(skip);
+    const {bundler, entryPoint, sender} = ctx.request.query;
 
     const result = await queryAATx({
         bundlerId: bundler ? (await getAddrId(bundler) ?? -1) : undefined,
