@@ -1,7 +1,7 @@
 import {Conflux, format} from "js-conflux-sdk";
 import {PARSER_ERROR} from "js-conflux-sdk/src/ERROR_CODES";
 import {Op} from 'sequelize'
-import {NftMint, Token} from "../../model/Token";
+import {cacheTtl, dbCache, NftMint, Token} from "../../model/Token";
 import {init} from "./FixDailyTokenStat";
 import {initCfxSdk} from "../common/utils";
 import * as oss from "ali-oss";
@@ -20,17 +20,6 @@ const abi = require('./abi');
 const fs = require('fs');
 const path = require('path');
 const lodash = require('lodash');
-const NodeCache = require( "node-cache" );
-const cacheTtl = 60 * 10 // 10 minutes
-const dbCache = new NodeCache({ maxKeys: 10000,  stdTTL: cacheTtl, checkperiod: 60})
-
-export function addTokenCache(obj:{name?, symbol, decimals?, granularity?, base32:string}) {
-    try {
-        dbCache.set(obj.base32 || '', obj, cacheTtl)
-    } catch (e){
-        //error: Cache max keys amount exceeded
-    }
-}
 
 export class TokenTool {
     protected cfx;

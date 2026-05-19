@@ -1,6 +1,17 @@
 import {Model,Sequelize,DataTypes} from "sequelize";
-import {addTokenCache} from "../service/tool/TokenTool";
 import {CENSOR_STATUS} from "../service/censor/CensorService";
+
+const NodeCache = require( "node-cache" );
+export const cacheTtl = 60 * 10 // 10 minutes
+export const dbCache = new NodeCache({ maxKeys: 10000,  stdTTL: cacheTtl, checkperiod: 60})
+
+export function addTokenCache(obj:{name?, symbol, decimals?, granularity?, base32:string}) {
+    try {
+        dbCache.set(obj.base32 || '', obj, cacheTtl)
+    } catch (e){
+        //error: Cache max keys amount exceeded
+    }
+}
 
 export interface IToken{
     id?:number
