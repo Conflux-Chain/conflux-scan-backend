@@ -1167,6 +1167,8 @@ paths:
         2. Clients must use the `nextCursor` returned by the server.
       parameters:
         - $ref: '#/components/parameters/cursorParamWithoutMaximum'
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
         - $ref: '#/components/parameters/limitParam'
         - $ref: '#/components/parameters/sortParam'
       responses:

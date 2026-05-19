@@ -267,10 +267,15 @@ export class ContractQuery {
             sort = 'DESC',
             cursor = 0,
             limit = 10,
+            minTimestamp,
+            maxTimestamp,
         }: {
             sort?: string,
             cursor?: number,
             limit?: number,
+            minTimestamp?: number,
+            maxTimestamp?: number,
+
     }) {
         const cursorField = "matchId";
         const options: any = {
@@ -278,8 +283,21 @@ export class ContractQuery {
             limit,
             raw: true,
         };
+        const conditionArray = [];
         if (cursor > 0) {
-            options.where = {[cursorField]: {[sort === 'DESC' ? Op.lt : Op.gt]: cursor}};
+            conditionArray.push({[cursorField]: {[sort === 'DESC' ? Op.lt : Op.gt]: cursor}});
+        }
+        if (minTimestamp !== undefined) {
+            conditionArray.push({verifiedAt: {[Op.gte]: new Date(minTimestamp * 1000)}});
+        }
+        if (maxTimestamp !== undefined) {
+            conditionArray.push({verifiedAt: {[Op.lte]: new Date(maxTimestamp * 1000)}});
+        }
+        if (conditionArray.length === 1) {
+            options.where = conditionArray[0];
+        }
+        if (conditionArray.length > 1) {
+            options.where = {[Op.and]: conditionArray};
         }
 
         const rows = await VerifiedContracts.findAll(options);

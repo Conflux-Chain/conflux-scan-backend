@@ -303,12 +303,14 @@ export async function checkProxyVerification(ctx) {
 
 export async function listVerifiedContracts(ctx) {
     mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC', 'ASC'])
-    mustBeIntParamIfPresent(ctx.request.query, 'cursor', 'limit');
+    mustBeIntParamIfPresent(ctx.request.query, 'cursor', 'limit', 'minTimestamp','maxTimestamp');
 
     const {sort, cursor} = ctx.request.query;
-    const {_, limit} = paginateCore(ctx.request.query);
+    const {_, limit, minTimestamp, maxTimestamp} = paginateCore(ctx.request.query);
 
-    const data = await getApiService().contractQuery.listVerifyByCursor({sort, cursor, limit});
+    const data = await getApiService().contractQuery.listVerifyByCursor({
+        sort, cursor, limit, minTimestamp, maxTimestamp
+    });
 
     setBody(ctx, data)
 }
