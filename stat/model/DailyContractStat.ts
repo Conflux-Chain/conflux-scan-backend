@@ -46,6 +46,51 @@ export class DailyContractCreate extends Model<IDailyContractCreate> implements 
     }
 }
 
+export interface IDailyContractVerified{
+    id?: number,
+    statDay: Date,
+    statType: string,
+    verifiedNew: number
+    verifiedTotal: number
+}
+
+export class DailyContractVerified extends Model<IDailyContractVerified> implements IDailyContractVerified{
+    id?: number;
+    statDay: Date;
+    statType: string;
+    verifiedNew: number;
+    verifiedTotal: number;
+    static register(sequelize) {
+        DailyContractVerified.init({
+            id: {type: DataTypes.BIGINT, primaryKey: true, allowNull: false, autoIncrement: true},
+            statDay: {type: DataTypes.DATE, allowNull: false},
+            statType: {type: DataTypes.CHAR(3), allowNull: false, defaultValue: '1d'},
+            verifiedNew: {type: DataTypes.BIGINT, allowNull: false},
+            verifiedTotal: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0},
+        },{
+            sequelize: sequelize,
+            tableName: 'daily_contract_verified',
+            timestamps: true,
+            indexes: [{
+                name: "idx_statType_statDay",
+                fields: ["statType", "statDay"],
+                unique: true,
+            }]
+        })
+    }
+
+    static async add(dailyContractVerified: DailyContractVerified, dbTx = undefined): Promise<DailyContractVerified> {
+        return await DailyContractVerified.create({
+            statDay: dailyContractVerified.statDay,
+            statType: dailyContractVerified.statType,
+            verifiedNew: dailyContractVerified.verifiedNew,
+            verifiedTotal: dailyContractVerified.verifiedTotal,
+        }, {
+            transaction: dbTx
+        })
+    }
+}
+
 export interface IDailyContractRegister{
     id?: number,
     statDay: Date,

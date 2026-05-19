@@ -1347,6 +1347,24 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/ContractDeployedStat"
+  /statistics/contract/verified:
+    get:
+      tags:
+        - 'Stats'
+      description: "Get statistics of verified contract."
+      parameters:
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/sortParam'
+        - $ref: '#/components/parameters/skipParamWithoutMaximum'
+        - $ref: '#/components/parameters/limitParamStat'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/ContractVerifiedStat"
   /statistics/account/cfx/holder:
     get:
       tags:
@@ -3675,6 +3693,31 @@ components:
                   total:
                     type: string
                     description: 'total deployed contracts.'
+                  statTime:
+                    type: string
+                    description: 'Statistics time, UTC.'
+    ContractVerifiedStat:
+      type: object
+      properties:
+        status:
+          type: integer
+        message:
+          type: string
+        result:
+          type: object
+          properties:
+            total:
+              type: integer
+            list:
+              type: array
+              items:
+                properties:
+                  count:
+                    type: string
+                    description: 'daily verified contracts.'
+                  total:
+                    type: string
+                    description: 'total verified contracts.'
                   statTime:
                     type: string
                     description: 'Statistics time, UTC.'

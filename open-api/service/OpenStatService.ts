@@ -63,6 +63,11 @@ export async function listContractStats(ctx) {
     setBody(ctx, page);
 }
 
+export async function listContractVerifiedStats(ctx) {
+    const page = await getApiService().statsQuery.listContractVerifiedStats(parseStatParam(ctx));
+    setBody(ctx, page);
+}
+
 export async function listApproval(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'account');
     mustBeEnumParamIfPresent(ctx.request.query, 'tokenType', ['ERC20','ERC721','ERC1155', 'CRC20','CRC721','CRC1155']);

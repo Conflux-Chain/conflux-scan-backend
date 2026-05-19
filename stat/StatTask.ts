@@ -44,6 +44,7 @@ import {ContractQuery} from "./service/ContractQuery";
 import {TokenQuoteSync} from "./service/TokenQuoteSync";
 import {ContractDappNameSync} from "./service/ContractDappNameSync";
 import {VerifiedContracts} from "./model/VerifiedContracts";
+import {StatDailyContractVerified} from "./service/timerstat/StatDailyContractVerified";
 
 async function runTools() {
     const [,, cmd, arg1] = process.argv;
@@ -88,6 +89,7 @@ async function main() {
     new StatDailyGas({cfx});
     new StatDailyContractAnalysis({cfx});
     new StatDailyContractCreation({cfx})
+    new StatDailyContractVerified({cfx})
     new StatDailyContractRegister({cfx});
     new StatDailyTxn({cfx});
     new StatDailyNFT({cfx});

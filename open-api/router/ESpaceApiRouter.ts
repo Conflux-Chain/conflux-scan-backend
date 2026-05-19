@@ -62,7 +62,7 @@ import {
     listTpsStats,
     listTransactionReceiverTopStat, listTransactionSenderStat,
     listTransactionSenderTopStat,
-    listCoreTransactionStat,
+    listCoreTransactionStat, listContractVerifiedStats,
 } from "../service/OpenStatService";
 import {
     calCount,
@@ -1031,6 +1031,7 @@ export function registerRouter(router: Router) {
     router.get('/statistics/mining', listCoreMiningStat)
     router.get('/statistics/tps', listTpsStats);
     router.get('/statistics/contract', listContractStats);
+    router.get('/statistics/contract/verified', listContractVerifiedStats);
     router.get('/statistics/account/cfx/holder', listCfxHolderStats);
     router.get('/statistics/account/growth', listAccountGrowthStats);
     router.get('/statistics/account/active', listTransactionSenderStat);

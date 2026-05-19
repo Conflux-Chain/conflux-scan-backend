@@ -28,7 +28,12 @@ import {
     FailedTx,
     TxnRowMark
 } from "../model/FullBlock";
-import {DailyContractCreate, DailyContractRegister, DailyContractStat} from "../model/DailyContractStat";
+import {
+    DailyContractCreate,
+    DailyContractRegister,
+    DailyContractStat,
+    DailyContractVerified
+} from "../model/DailyContractStat";
 import {createFullMinerBlockTable} from "../model/FullMinerBlock";
 import {ProxyVerify} from "../model/Contract";
 import {TokenSecurityAudit} from "../model/TokenSecurityAudit";
@@ -227,6 +232,7 @@ export async function initModel(sequelize: Sequelize) {
     DailyTransaction.register(sequelize);
     DailyCfxHolder.register(sequelize);
     DailyContractCreate.register(sequelize);
+    DailyContractVerified.register(sequelize);
     DailyContractStat.register(sequelize);
     DailyContractRegister.register(sequelize);
     DailyNFTStat.register(sequelize);
