@@ -315,31 +315,24 @@ export class ContractQuery {
                 language: item.language,
                 codeFormat: item.codeFormat,
                 balance: 0,
-                txns: 0,
+                txns: item.txns,
                 setting: {
                     optimizationEnabled: item.optimization !== "0" && item.optimization !== "N/A",
                     constructorArgumentsEnabled: item?.constructorArgs?.length > 2,
                 },
-                verifiedAt: item.verifiedAt,
+                verifiedAt: item.verifiedAt.getTime()/1000,
                 license: item.license,
             }
         });
 
-        const mapAddrToId = Object.fromEntries(rows.map(item => [item.address, item.addressId]));
-
-        const balances = await CfxBalance.findAll({where: {addressId: {[Op.in]: Object.values(mapAddrToId)}}});
-        list.forEach(item => item.balance = balances[item.address]?.total || 0);
-
-        await Promise.all(list.map(async item => {
-            const addressId = mapAddrToId[item.address];
-            const count = await AddressTransactionIndex.count({where: {addressId}});
-            const pruneInfo = await PruneInfo.findOne({where: {addressId, type: PruneType.ADDR_TX}});
-            item.txns = count + (pruneInfo?.pruned || 0);
-        }));
-
-        const total = await KV.getNumber(VERIFIED_COUNT_ALL, 0);
+        if (!list?.length) {
+            const balances = await CfxBalance.findAll({where: {addressId: {[Op.in]: list.map(item => item.addressId)}}});
+            list.forEach(item => item.balance = balances[item.addressId]?.total || 0);
+        }
 
         list.forEach(item => delete item.addressId);
+
+        const total = await KV.getNumber(VERIFIED_COUNT_ALL, 0);
 
         return {total, list, next: rows?.length ? rows[rows.length - 1][cursorField] : 0};
     }
