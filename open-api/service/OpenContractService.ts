@@ -14,6 +14,8 @@ import {QueryTypes} from "sequelize";
 import {VerificationJob, VerifyInput} from "../../stat/service/ContractQuery";
 import {formatToBase32} from "../../stat/model/HexMap";
 import {paginateCore} from "../../stat/router/ParamChecker";
+import {Errors} from "../../stat/service/common/LogicError";
+import {listAuthAction} from "../../stat/model/EIP7702model";
 
 const lodash = require('lodash');
 const util = require('util');
@@ -305,8 +307,8 @@ export async function listVerifiedContracts(ctx) {
     mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC', 'ASC'])
     mustBeIntParamIfPresent(ctx.request.query, 'cursor', 'limit', 'minTimestamp','maxTimestamp');
 
-    const {sort, cursor} = ctx.request.query;
-    const {_, limit, minTimestamp, maxTimestamp} = paginateCore(ctx.request.query);
+    const {sort, cursor, minTimestamp, maxTimestamp} = ctx.request.query;
+    const {_, limit} = paginateCore(ctx.request.query);
 
     const data = await getApiService().contractQuery.listVerifyByCursor({
         sort, cursor, limit, minTimestamp, maxTimestamp
@@ -315,6 +317,32 @@ export async function listVerifiedContracts(ctx) {
     setBody(ctx, data)
 }
 
-export async function listVerifiedContractsLatest() {
+const LIST_LIMIT = 5_000;
 
+export async function listVerifiedContractsLatest(ctx) {
+    mustBeEnumParamIfPresent(ctx.request.query, 'compiler', ['solc', 'vyper']);
+    mustBeEnumParamIfPresent(ctx.request.query, 'sortField', ['verified_time', 'txn_volume']);
+    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC', 'ASC']);
+    mustBeEnumParamIfPresent(ctx.request.query, 'hasNametag', ['false', 'true']);
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contractAddress', 'deployerAddress');
+    mustBeIntParamIfPresent(ctx.request.query, 'licenseType', 'startBlock', 'endBlock', 'minEpochNumber', 'maxEpochNumber',
+        'minTimestamp', 'maxTimestamp', 'skip', 'limit');
+
+    const {
+        compiler, contractName, compilerVersion, licenseType,
+        contractAddress, deployerAddress, startBlock, endBlock, minEpochNumber, maxEpochNumber, minTimestamp, maxTimestamp,
+        hasNametag, sortField, sort,
+    } = ctx.request.query;
+    const {skip, limit} = paginateCore(ctx.request.query, {skipMax: LIST_LIMIT});
+
+    const startEpoch = StatApp.isEVM ? startBlock : minEpochNumber;
+    const endEpoch = StatApp.isEVM ? endBlock : maxEpochNumber;
+
+    const data = await getApiService().contractQuery.listVerifyByFilter(lodash.omitBy({
+        compiler, contractName, compilerVersion, licenseType,
+        contractAddress, deployerAddress, startEpoch, endEpoch, minTimestamp, maxTimestamp,
+        hasNametag, sortField, sort, skip, limit
+    }, lodash.isNil));
+
+    setBody(ctx, {...data, listLimit: LIST_LIMIT});
 }

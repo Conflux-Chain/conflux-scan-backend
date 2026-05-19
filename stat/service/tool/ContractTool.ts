@@ -16,6 +16,8 @@ import {sleep} from "./ProcessTool";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
 import {NameTag} from "../../model/NameTag";
 import {ContractTraceCreateQuery} from "../ContractTraceCreateQuery";
+import {AddressTransactionIndex} from "../../model/FullBlock";
+import {PruneInfo, PruneType} from "../../model/PruneInfo";
 
 const fs = require('fs');
 const path = require('path');
@@ -327,16 +329,32 @@ async function addVerifiedColumns() {
                     console.log(`contract ${name} ${base32} not verified`);
                     process.exit(9);
                 }
+
+                const addressId = await makeIdV(format.hexAddress(base32));
+
                 const createInfo = await traceCreate.query(base32);
                 const {epochNumber, from} = createInfo;
+
+                const count = await AddressTransactionIndex.count({where: {addressId}});
+                const pruneInfo = await PruneInfo.findOne({where: {addressId, type: PruneType.ADDR_TX}});
+                const txns = count + (pruneInfo?.pruned || 0);
+
+                const contract = await Contract.findOne({attributes: ['name'], where: {hex40id: addressId}, raw: true});
+                const nametag = await NameTag.findOne({where: {hex40id: addressId}, raw: true});
+                const hasNametag = Boolean(contract.name || nametag.nameTag || nametag.labels);
+
                 await VerifiedContracts.update({
-                    addressId: await makeIdV(format.hexAddress(base32)),
-                    compiler: compilation.compiler,
+                    addressId,
                     codeFormat: `${compilation.language}${sourceCode.startsWith("{") ? "(Json)" : ""}`,
-                    verifiedAt: verifiedAt.replace('T', ' ').replace(/T$/, ''),
+
                     matchId,
+                    compiler: compilation.compiler,
+                    verifiedAt: verifiedAt.replace('T', ' ').replace(/T$/, ''),
+
                     epochNumber,
                     deployer: from,
+                    txns,
+                    hasNametag,
                 }, {
                     where: {id}
                 });

@@ -275,7 +275,6 @@ export class ContractQuery {
             limit?: number,
             minTimestamp?: number,
             maxTimestamp?: number,
-
     }) {
         const cursorField = "matchId";
         const options: any = {
@@ -283,35 +282,38 @@ export class ContractQuery {
             limit,
             raw: true,
         };
-        const conditionArray = [];
+        const conditions = [];
         if (cursor > 0) {
-            conditionArray.push({[cursorField]: {[sort === 'DESC' ? Op.lt : Op.gt]: cursor}});
+            conditions.push({[cursorField]: {[sort === 'DESC' ? Op.lt : Op.gt]: cursor}});
         }
+        const timeConditions = []
         if (minTimestamp !== undefined) {
-            conditionArray.push({verifiedAt: {[Op.gte]: new Date(minTimestamp * 1000)}});
+            timeConditions.push({verifiedAt: {[Op.gte]: new Date(minTimestamp * 1000)}});
         }
         if (maxTimestamp !== undefined) {
-            conditionArray.push({verifiedAt: {[Op.lte]: new Date(maxTimestamp * 1000)}});
+            timeConditions.push({verifiedAt: {[Op.lte]: new Date(maxTimestamp * 1000)}});
         }
-        if (conditionArray.length === 1) {
-            options.where = conditionArray[0];
+        conditions.push(...timeConditions);
+        if (conditions.length === 1) {
+            options.where = conditions[0];
         }
-        if (conditionArray.length > 1) {
-            options.where = {[Op.and]: conditionArray};
+        if (conditions.length > 1) {
+            options.where = {[Op.and]: conditions};
         }
 
         const rows = await VerifiedContracts.findAll(options);
 
         const list = rows.map(item => {
             const contractName = splitFullyQualifiedName(item.name).contractName;
-            const compilerVersion = item.language === CONST.LANGUAGE.VYPER ?
+            const compilerVersionShort = item.language === CONST.LANGUAGE.VYPER ?
                 item.version : lodash.trimStart(item.version.split("+commit")[0], "v");
             return {
                 address: fmtAddr(item.address, StatApp.networkId),
                 addressId: item.addressId,
                 contractName,
                 compiler: item.compiler,
-                compilerVersion,
+                compilerVersion: item.version,
+                compilerVersionShort,
                 language: item.language,
                 codeFormat: item.codeFormat,
                 balance: 0,
@@ -322,6 +324,9 @@ export class ContractQuery {
                 },
                 verifiedAt: item.verifiedAt.getTime()/1000,
                 license: item.license,
+                deployer: fmtAddr(item.deployer, StatApp.networkId),
+                [StatApp.isEVM ? "blockNumber" : "epochNumber"]: item.epochNumber,
+                hasNametag: item.hasNametag,
             }
         });
 
@@ -332,42 +337,161 @@ export class ContractQuery {
 
         list.forEach(item => delete item.addressId);
 
-        const total = await KV.getNumber(VERIFIED_COUNT_ALL, 0);
+        let total;
+        if (timeConditions.length) {
+            total = await VerifiedContracts.count({
+                where: timeConditions.length === 1 ? timeConditions[0] : {[Op.and]: timeConditions}
+            });
+        } else {
+            total = await KV.getNumber(VERIFIED_COUNT_ALL, 0);
+        }
 
         return {total, list, next: rows?.length ? rows[rows.length - 1][cursorField] : 0};
     }
 
-    /*
-    SELECT
-        *
-    FROM
-    (
-        SELECT
-            v.*, b.total as balance
-        FROM
-        (
-            SELECT
-                id, address, addressId, name, compiler, version, language, codeFormat, optimization,
-                LEFT(constructorArgs, 4) AS constructorArgs, verifiedAt, license, matchId
-            FROM
-                verified_contracts
-            ORDER BY
-                matchId DESC
-            LIMIT 10
-        ) v
-        LEFT JOIN cfx_balance b on v.addressId = b.addressId
-    ) tmp
-    WHERE
-       address = ''
-       or name = ''
-       or codeFormat = ''
-       or version = ''
-       or balance >= '' and balance <= ''
-       or verifiedAt >= '' and verifiedAt <= ''
-       or license = ''
-    LIMIT 0, 10;
+    public async listVerifyByFilter(
+        {
+            compiler,
+            contractName,
+            compilerVersion,
+            licenseType,
+            contractAddress,
+            deployerAddress,
+            startEpoch,
+            endEpoch,
+            minTimestamp,
+            maxTimestamp,
+            hasNametag,
+            sortField = 'verified_time',
+            sort = 'DESC',
+            skip = 0,
+            limit = 10,
+        }: {
+            compiler?: string,
+            contractName?: string,
+            compilerVersion?: string,
+            licenseType?: number,
+            contractAddress?: string,
+            deployerAddress?: string,
+            startEpoch?: number,
+            endEpoch?: number,
+            minTimestamp?: number,
+            maxTimestamp?: number,
+            hasNametag?: string,
+            sortField?: string,
+            sort?: string,
+            skip?: number,
+            limit?: number,
+        }) {
+        if (compilerVersion) {
+            if (compilerVersion.startsWith("vyper:")) {
+                const vyperVersions = await this.listVyperVersions();
+                compilerVersion = checkVyperVersion(compilerVersion, vyperVersions);
+            } else {
+                const solcVersions = await this.listSolcVersions();
+                compilerVersion = checkSolcVersion(compilerVersion, solcVersions);
+            }
+        }
 
-    */
+        if (lodash.isNumber(licenseType)) {
+            licenseType = checkLicense(licenseType);
+        }
+
+        const options: any = {
+            order: [[sortField === 'verified_time' ? 'verifiedAt' : 'txns', sort]],
+            offset: skip,
+            limit,
+            raw: true,
+        };
+        const conditions = [];
+        if (compiler !== undefined) {
+            conditions.push({compiler});
+        }
+        if (contractName !== undefined) {
+            conditions.push({name: {[Op.like]: `%${contractName}%`}});
+        }
+        if (compilerVersion !== undefined) {
+            conditions.push({version: compilerVersion});
+        }
+        if (lodash.isNumber(licenseType)) {
+            const license = CONST.CONTRACT_LICENSE[licenseType].code;
+            conditions.push({license});
+        }
+        if (contractAddress !== undefined) {
+            conditions.push({address: format.address(contractAddress, StatApp.networkId)});
+        }
+        if (deployerAddress !== undefined) {
+            conditions.push({deployer: ethers.getAddress(deployerAddress)});
+        }
+        if (startEpoch !== undefined) {
+            conditions.push({epoch: {[Op.gte]: startEpoch}});
+        }
+        if (endEpoch !== undefined) {
+            conditions.push({epoch: {[Op.lte]: endEpoch}});
+        }
+        if (minTimestamp !== undefined) {
+            conditions.push({verifiedAt: {[Op.gte]: new Date(minTimestamp * 1000)}});
+        }
+        if (maxTimestamp !== undefined) {
+            conditions.push({verifiedAt: {[Op.lte]: new Date(maxTimestamp * 1000)}});
+        }
+        if (hasNametag !== undefined) {
+            conditions.push({hasNametag: hasNametag === 'true'});
+        }
+        if (conditions.length === 1) {
+            options.where = conditions[0];
+        }
+        if (conditions.length > 1) {
+            options.where = {[Op.and]: conditions};
+        }
+
+        const rows = await VerifiedContracts.findAll(options);
+
+        const list = rows.map(item => {
+            const contractName = splitFullyQualifiedName(item.name).contractName;
+            const compilerVersionShort = item.language === CONST.LANGUAGE.VYPER ?
+                item.version : lodash.trimStart(item.version.split("+commit")[0], "v");
+            return {
+                address: fmtAddr(item.address, StatApp.networkId),
+                addressId: item.addressId,
+                contractName,
+                compiler: item.compiler,
+                compilerVersion: item.version,
+                compilerVersionShort,
+                language: item.language,
+                codeFormat: item.codeFormat,
+                balance: 0,
+                txns: item.txns,
+                setting: {
+                    optimizationEnabled: item.optimization !== "0" && item.optimization !== "N/A",
+                    constructorArgumentsEnabled: item?.constructorArgs?.length > 2,
+                },
+                verifiedAt: item.verifiedAt.getTime() / 1000,
+                license: item.license,
+                deployer: fmtAddr(item.deployer, StatApp.networkId),
+                [StatApp.isEVM ? "blockNumber" : "epochNumber"]: item.epochNumber,
+                hasNametag: item.hasNametag,
+            }
+        });
+
+        if (!list?.length) {
+            const balances = await CfxBalance.findAll({where: {addressId: {[Op.in]: list.map(item => item.addressId)}}});
+            list.forEach(item => item.balance = balances[item.addressId]?.total || 0);
+        }
+
+        list.forEach(item => delete item.addressId);
+
+        let total;
+        if (conditions.length) {
+            total = await VerifiedContracts.count({
+                where: conditions.length === 1 ? conditions[0] : {[Op.and]: conditions}
+            });
+        } else {
+            total = await KV.getNumber(VERIFIED_COUNT_ALL, 0);
+        }
+
+        return {total, list};
+    }
 
     public async listVerifyInBatch(addresses: string[], chunkSize = this.MAX_CONTRACTS) {
         if(!addresses?.length){
@@ -509,7 +633,7 @@ export class ContractQuery {
             verified.txns = count + (pruneInfo?.pruned || 0);
             const contract = await Contract.findOne({attributes: ['name'], where: {hex40id: addressId}, raw: true});
             const nametag = await NameTag.findOne({where: {hex40id: addressId}, raw: true});
-            verified.withNametag = Boolean(contract.name || nametag.nameTag || nametag.labels);
+            verified.hasNametag = Boolean(contract.name || nametag.nameTag || nametag.labels);
             await VerifiedContracts.upsert({...verified, libraries: JSON.stringify(verified.libraries)});
         }).catch(err => safeAddErrorLog("contract-query", "get-verify-by-sourcify", err));
 
@@ -565,29 +689,7 @@ export class ContractQuery {
             raw: true,
         })
     }
-/*
-    SELECT
-    id,
-    address,
-    name,
-    verifiedAt,
-    matchId,
-    SUBSTRING(
-        sourceCode,
-        GREATEST(1, LOCATE('uniswap', sourceCode) - 10),
-    LEAST(
-        LENGTH('uniswap') + 20,
-    LENGTH(sourceCode) - GREATEST(1, LOCATE('uniswap', sourceCode) - 10) + 1
-)
-) AS returnStr
-    FROM
-    verified_contracts
-    WHERE
-    sourceCode LIKE '%uniswap%'
-    ORDER BY
-    matchId DESC
-    LIMIT 5000;
-*/
+
     async getImpl(address: string): Promise<ImplInfo | undefined> {
         const impl = await this._getImpl(address);
         if (!impl) {
@@ -1483,7 +1585,12 @@ export class ContractQuery {
             const curEpochAnnounceName = await KV.getNumber(KEY_STAT_ANNOUNCE_NAME_FOR_VERIFIED_CONTRACTS, 0);
             const addrArr1 = await Contract.findAll({
                 attributes: ["hex40id"],
-                where: {epoch: {[Op.between]: [curEpochAnnounceName, maxEpochAnnounceName]}, name: {[Op.ne]: null}},
+                where: {
+                    [Op.and]: [
+                        {epoch: {[Op.between]: [curEpochAnnounceName, maxEpochAnnounceName]}},
+                        {[Op.and]: [{name: {[Op.ne]: null}}, {name: {[Op.ne]: ""}}]},
+                    ]
+                },
                 raw: true,
             }).then(list => list.map((item: any) => item.hex40id));
 
@@ -1496,8 +1603,8 @@ export class ContractQuery {
                         {epoch: {[Op.between]: [curEpochNametag, maxEpochNametag]}},
                         {
                             [Op.or]: [
-                                {nameTag: {[Op.ne]: null}},
-                                {labels: {[Op.ne]: null}},
+                                {[Op.and]: [{nameTag: {[Op.ne]: null}}, {nameTag: {[Op.ne]: ""}}]},
+                                {[Op.and]: [{labels: {[Op.ne]: null}}, {labels: {[Op.ne]: ""}}]},
                             ]
                         }
                     ]
@@ -1507,7 +1614,7 @@ export class ContractQuery {
 
             const addressIds = new Set([...addrArr1, ...addrArr2]);
             for (const addressId of [...addressIds]) {
-                await VerifiedContracts.update({withNametag: true}, {where: {addressId}});
+                await VerifiedContracts.update({hasNametag: true}, {where: {addressId}});
             }
 
             await KV.upsert({key: KEY_STAT_ANNOUNCE_NAME_FOR_VERIFIED_CONTRACTS, value: `${maxEpochAnnounceName}`});
