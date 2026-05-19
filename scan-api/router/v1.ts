@@ -26,6 +26,7 @@ import {fmtAddr} from "../../stat/StatApp";
 import {Errors} from "../../stat/service/common/LogicError";
 import {HomepageDashboard} from "../../stat/service/HomepageDashboard";
 import {ConfigInstance} from "../../stat/config/StatConfig";
+import {getBundleTxHashForUserOp, getAAOpPositionInBundle, extractAAOpTraceNode} from "../../stat/service/eip/eip4337bundleParser";
 
 const lodash = require('lodash');
 const moment = require("moment/moment");
@@ -1118,6 +1119,7 @@ router_get(router,'/transferTree/:transactionHash',
     tags: ['transfer'],
     input: {
       transactionHash: { in: 'path', type: 'string', required: true },
+      txType: { in: 'query', type: 'string' },
     },
     output: {
       200: 'object',
@@ -1125,9 +1127,20 @@ router_get(router,'/transferTree/:transactionHash',
     },
   }),
 
-  async function ({transactionHash}) {
-    const {app: { service: {accountQuery, conflux} },} = this as ScanCtx;
-    const result = await conflux.getTransactionTrace(transactionHash, true);
+  async function ({transactionHash, txType}) {
+    const {app: { cfx, service: {accountQuery, conflux} },} = this as ScanCtx;
+
+    let realTxHash = transactionHash;
+    let aaOpPosition = -1;
+
+    if (txType === 'aa') {
+      realTxHash = await getBundleTxHashForUserOp(transactionHash);
+      if (!realTxHash) return {};
+      aaOpPosition = await getAAOpPositionInBundle(cfx, realTxHash, transactionHash);
+      if (aaOpPosition < 0) return {};
+    }
+
+    const result = await conflux.getTransactionTrace(realTxHash, true);
     if (result.addressArray === undefined) {
       return result;
     }
@@ -1150,6 +1163,12 @@ router_get(router,'/transferTree/:transactionHash',
       withENSInfo: true,
       withNameTagInfo: true
     });
+
+    if (txType === 'aa' && aaOpPosition >= 0) {
+      const opNode = extractAAOpTraceNode(result.traceTree, aaOpPosition);
+      result.traceTree = opNode ? [opNode] : [];
+    }
+
     return result;
   },
 );

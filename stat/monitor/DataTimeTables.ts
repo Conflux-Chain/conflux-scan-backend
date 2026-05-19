@@ -40,7 +40,7 @@ export const DataTimeTableList = {
 	tx_sender_daily: {ignore: false,},
 	tx_sender_hourly: {ignore: false,},
 	unique_addr: {ignore: true,},
-	unique_addr_daily: {ignore: false,},
+	unique_addr_Daily: {ignore: false,},
 	unique_addr_hourly: {ignore: false,},
 
 
@@ -135,5 +135,5 @@ export const DataTimeTableList = {
 	'testTimezone': {ignore: true,  },
 	'transfer_count': {ignore: true,  },
 	'vote_params': {ignore: true, time: 'timestamp'  },
-	'minerblock': {ignore: false, time: 'beginTime'  },
+	'minerBlock': {ignore: false, time: 'beginTime'  },
 }
