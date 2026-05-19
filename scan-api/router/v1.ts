@@ -1135,11 +1135,9 @@ router_get(router,'/transferTree/:transactionHash',
 
     if (txType === 'aa') {
       realTxHash = await getBundleTxHashForUserOp(transactionHash);
-      console.log(`[AA trace] userOpHash=${transactionHash} -> bundleTxHash=${realTxHash}`);
-      if (!realTxHash) { console.log(`[AA trace] no bundle tx found for userOpHash`); return {}; }
+      if (!realTxHash) return {};
       aaOpPosition = await getAAOpPositionInBundle(cfx, realTxHash, transactionHash);
-      console.log(`[AA trace] aaOpPosition=${aaOpPosition}`);
-      if (aaOpPosition < 0) { console.log(`[AA trace] op not found in bundle receipt logs`); return {}; }
+      if (aaOpPosition < 0) return {};
     }
 
     const result = await conflux.getTransactionTrace(realTxHash, true);

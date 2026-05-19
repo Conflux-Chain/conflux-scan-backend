@@ -252,16 +252,13 @@ const INNER_HANDLE_OP_SELECTOR = '0x0042dc53';
  * Returns null if the user op is not found.
  */
 export async function getBundleTxHashForUserOp(userOpHash: string): Promise<string | null> {
-	console.log(`[getBundleTxHashForUserOp] looking up userOpHash=${userOpHash}`);
 	const aaTx = await AATx.findOne({
 		where: { userOpHash },
 		include: [{ model: BundleTx, as: 'bundleTx', attributes: ['hash'], required: true }],
 		raw: false,
 	});
 	// @ts-ignore
-	const bundleHash = aaTx?.get('bundleTx')?.hash ?? null;
-	console.log(`[getBundleTxHashForUserOp] aaTx found=${!!aaTx} bundleHash=${bundleHash}`);
-	return bundleHash;
+	return aaTx?.get('bundleTx')?.hash ?? null;
 }
 
 /**
@@ -272,16 +269,13 @@ export async function getBundleTxHashForUserOp(userOpHash: string): Promise<stri
 export async function getAAOpPositionInBundle(cfx: Conflux, bundleTxHash: string, userOpHash: string): Promise<number> {
 	const receipt = await cfx.getTransactionReceipt(bundleTxHash);
 	const logs: any[] = (receipt as any)?.logs ?? [];
-	console.log(`[getAAOpPositionInBundle] bundleTxHash=${bundleTxHash} userOpHash=${userOpHash} totalLogs=${logs.length}`);
 	let position = 0;
 	for (const log of logs) {
 		if ((log.topics as string[])?.[0] !== USER_OPERATION_EVENT_SIG) continue;
 		const event = parseUserOperationEvent(log);
-		console.log(`[getAAOpPositionInBundle] UserOperationEvent at position=${position} hash=${event?.userOpHash}`);
 		if (event?.userOpHash === userOpHash) return position;
 		position++;
 	}
-	console.log(`[getAAOpPositionInBundle] userOpHash not found among ${position} UserOperationEvents`);
 	return -1;
 }
 
