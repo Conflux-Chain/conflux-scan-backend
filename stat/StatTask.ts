@@ -103,6 +103,8 @@ async function main() {
     const contractQuery = new ContractQuery({cfx, config: config.verification});
     contractQuery.scheduleUpdateCompilerVersions().then();
     contractQuery.scheduleVerifyByAuto().then();
+    contractQuery.scheduleStatTxnVolume().then();
+    contractQuery.scheduleWithNametag().then();
 
     if (!StatApp.isEVM) {
         let fullCfx = cfx;
