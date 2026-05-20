@@ -3,10 +3,12 @@ import {fmtAddr, StatApp} from "../../stat/StatApp";
 import {safeAddErrorLog} from "../../stat/monitor/ErrorMonitor";
 import {format} from "js-conflux-sdk";
 import {CONST} from "../../stat/service/common/constant";
-import {getAddrIdArray} from "../../stat/model/HexMap";
+import {getAddrIdArray, Hex40Map} from "../../stat/model/HexMap";
 import {fillMethodInfo} from "../../stat/service/contract/contractTool";
 import {ContractImpl} from "../../stat/model/ContractImpl";
-import {QueryTypes} from "sequelize";
+import {Op, QueryTypes} from "sequelize";
+import {TraceCreateContract} from "../../stat/model/TraceCreateContract";
+import {AuthAction} from "../../stat/model/EIP7702model";
 
 const _ = require('lodash');
 const { tracesInTree } = require('js-conflux-sdk/src/util/trace');
@@ -600,15 +602,59 @@ export class ConfluxService {
           }
         });
 
+        const authMap = {};
+        if (methodList?.length) {
+          const idToHexMap = await Hex40Map.findAll({
+            where: {hex: {[Op.in]: methodList.map(item => format.hexAddress(item.to).substr(2))}},
+          }).then(list => Object.fromEntries(list.map(item => [item.id, `0x${item.hex}`.toLowerCase()])));
+          const ids = await TraceCreateContract.findAll({
+            where: {to: {[Op.in]: Object.keys(idToHexMap)}}
+          }).then(list => list.map(item => item.to));
+          const hexes = Object.entries(idToHexMap)
+              .filter(([key]) => !ids.includes(Number(key)))
+              .map(([, value]) => value);
+          if (hexes?.length) {
+            const {epochNumber, index} = await cfx.getTransactionReceipt(transactionHash).catch(() => undefined) || {};
+            if (_.isNil(index)) {
+              throw new error.RPCError("Failed to get tx index by sdk");
+            }
+            const tasks = hexes.map(hex => AuthAction.sequelize.query(`
+              select * from auth_action 
+              where author = ? and address != ? and blockNumber <= ? and transactionPosition <= ?
+              order by blockNumber desc, transactionPosition desc
+              limit 1
+            `, {
+              type: QueryTypes.SELECT,
+              replacements: [hex, CONST.ZERO_ADDRESS, epochNumber, index]
+            }).then(items => items?.length ? items[0] : null));
+            const auths = await Promise.all(tasks);
+            auths.filter(Boolean).forEach((auth: any) =>
+                authMap[fmtAddr(auth.author, StatApp.networkId)] = fmtAddr(auth.address, StatApp.networkId)
+            )
+            if (transactionHash === '0xd31417b3a6f77486c648311bde9773a5516720fcc787bd785a1b47fe55003a13') {
+              console.log(`debug trace view ===1===`, JSON.stringify({idToHexMap, hexes, auths}));
+            }
+          }
+        }
+
         const methodMap = {};
         if (methodList?.length) {
           const ids = await getAddrIdArray(methodList.map(item => item.to));
+          /*if(transactionHash === '0xd31417b3a6f77486c648311bde9773a5516720fcc787bd785a1b47fe55003a13'){
+            console.log(`debug trace view ===2===`, JSON.stringify({ids,methodList}));
+          }*/
           await fillMethodInfo(methodList, ids, true, true);
+          /*if(transactionHash === '0xd31417b3a6f77486c648311bde9773a5516720fcc787bd785a1b47fe55003a13') {
+            console.log(`debug trace view ===3===`, JSON.stringify({ids, methodList}));
+          }*/
           methodList.forEach(({to, method, methodId}) => {
             methodMap[methodId] ||= {};
             methodMap[methodId][fmtAddr(to, cfx.networkId)] = method;
           });
         }
+        /*if(transactionHash === '0xd31417b3a6f77486c648311bde9773a5516720fcc787bd785a1b47fe55003a13') {
+          console.log(`debug trace view ===4===`, JSON.stringify({methodMap}));
+        }*/
 
         const proxyMap = {};
         if (toAddressSet.size) {
@@ -642,6 +688,7 @@ export class ConfluxService {
           result.addressArray = [...addressSet];
           result.proxyMap = proxyMap;
           result.methodMap = methodMap;
+          result.authMap = authMap;
         } catch (err) {
           throw new error.ResponseDataParsingError(`Failed to parse traces by sdk: ${err}`);
         }
