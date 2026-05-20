@@ -302,7 +302,9 @@ export async function getAAOpLogRange(
 	let opIdx = 0;
 	let prevEventLogIndex = -1;
 	for (let i = 0; i < logs.length; i++) {
-		if ((logs[i].topics as string[])?.[0] !== USER_OPERATION_EVENT_SIG) continue;
+		if ((logs[i].topics as string[])?.[0] !== USER_OPERATION_EVENT_SIG) {
+			continue;
+		}
 		if (opIdx === position) {
 			return { startExclusive: prevEventLogIndex, endInclusive: i };
 		}

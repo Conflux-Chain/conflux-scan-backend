@@ -1213,11 +1213,17 @@ router_get(router,'/eventLog',
     if (options.txType === 'aa') {
       const userOpHash = options.transactionHash;
       const bundleTxHash = await getBundleTxHashForUserOp(userOpHash);
-      if (!bundleTxHash) return { total: 0, list: [], debug: `no bundle tx found for userOpHash=${userOpHash}` };
+      if (!bundleTxHash) {
+        return { total: 0, list: [], debug: `no bundle tx found for userOpHash=${userOpHash}` };
+      }
       const position = await getAAOpPositionInBundle(cfx, bundleTxHash, userOpHash);
-      if (position < 0) return { total: 0, list: [], debug: `userOpHash=${userOpHash} not found in bundle tx=${bundleTxHash} logs` };
+      if (position < 0) {
+        return { total: 0, list: [], debug: `userOpHash=${userOpHash} not found in bundle tx=${bundleTxHash} logs` };
+      }
       logRange = await getAAOpLogRange(cfx, bundleTxHash, position);
-      if (!logRange) return { total: 0, list: [], debug: `could not compute log range for position=${position} in bundle tx=${bundleTxHash}` };
+      if (!logRange) {
+        return { total: 0, list: [], debug: `could not compute log range for position=${position} in bundle tx=${bundleTxHash}` };
+      }
       options.transactionHash = bundleTxHash;
     }
 
