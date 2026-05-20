@@ -341,7 +341,7 @@ async function addVerifiedColumns() {
 
                 const contract = await Contract.findOne({attributes: ['name'], where: {hex40id: addressId}, raw: true});
                 const nametag = await NameTag.findOne({where: {hex40id: addressId}, raw: true});
-                const hasNametag = Boolean(contract.name || nametag.nameTag || nametag.labels);
+                const hasNametag = Boolean(contract?.name || nametag?.nameTag || nametag?.labels);
 
                 await VerifiedContracts.update({
                     addressId,

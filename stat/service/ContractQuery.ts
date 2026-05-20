@@ -596,7 +596,7 @@ export class ContractQuery {
             verified.txns = count + (pruneInfo?.pruned || 0);
             const contract = await Contract.findOne({attributes: ['name'], where: {hex40id: addressId}, raw: true});
             const nametag = await NameTag.findOne({where: {hex40id: addressId}, raw: true});
-            verified.hasNametag = Boolean(contract.name || nametag.nameTag || nametag.labels);
+            verified.hasNametag = Boolean(contract?.name || nametag?.nameTag || nametag?.labels);
             await VerifiedContracts.upsert({...verified, libraries: JSON.stringify(verified.libraries)});
         }).catch(err => safeAddErrorLog("contract-query", "get-verify-by-sourcify", err));
 
