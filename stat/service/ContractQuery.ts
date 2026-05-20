@@ -301,52 +301,11 @@ export class ContractQuery {
             options.where = {[Op.and]: conditions};
         }
 
-        const rows = await VerifiedContracts.findAll(options);
+        const result: any = await this.listVerifyByOptions(options, timeConditions);
 
-        const list = rows.map(item => {
-            const contractName = splitFullyQualifiedName(item.name).contractName;
-            const compilerVersionShort = item.language === CONST.LANGUAGE.VYPER ?
-                item.version : lodash.trimStart(item.version.split("+commit")[0], "v");
-            return {
-                address: fmtAddr(item.address, StatApp.networkId),
-                addressId: item.addressId,
-                contractName,
-                compiler: item.compiler,
-                compilerVersion: item.version,
-                compilerVersionShort,
-                language: item.language,
-                codeFormat: item.codeFormat,
-                balance: 0,
-                txns: item.txns,
-                setting: {
-                    optimizationEnabled: item.optimization !== "0" && item.optimization !== "N/A",
-                    constructorArgumentsEnabled: item?.constructorArgs?.length > 2,
-                },
-                verifiedAt: item.verifiedAt.getTime()/1000,
-                license: item.license,
-                deployer: fmtAddr(item.deployer, StatApp.networkId),
-                [StatApp.isEVM ? "blockNumber" : "epochNumber"]: item.epochNumber,
-                hasNametag: item.hasNametag,
-            }
-        });
+        result.next = result?.list?.length ? result.list[result.list.length - 1][cursorField] : 0;
 
-        if (!list?.length) {
-            const balances = await CfxBalance.findAll({where: {addressId: {[Op.in]: list.map(item => item.addressId)}}});
-            list.forEach(item => item.balance = balances[item.addressId]?.total || 0);
-        }
-
-        list.forEach(item => delete item.addressId);
-
-        let total;
-        if (timeConditions.length) {
-            total = await VerifiedContracts.count({
-                where: timeConditions.length === 1 ? timeConditions[0] : {[Op.and]: timeConditions}
-            });
-        } else {
-            total = await KV.getNumber(VERIFIED_COUNT_ALL, 0);
-        }
-
-        return {total, list, next: rows?.length ? rows[rows.length - 1][cursorField] : 0};
+        return result;
     }
 
     public async listVerifyByFilter(
@@ -445,6 +404,10 @@ export class ContractQuery {
             options.where = {[Op.and]: conditions};
         }
 
+        return this.listVerifyByOptions(options, conditions);
+    }
+
+    private async listVerifyByOptions(options, countConditions) {
         const rows = await VerifiedContracts.findAll(options);
 
         const list = rows.map(item => {
@@ -482,15 +445,15 @@ export class ContractQuery {
         list.forEach(item => delete item.addressId);
 
         let total;
-        if (conditions.length) {
+        if (countConditions.length) {
             total = await VerifiedContracts.count({
-                where: conditions.length === 1 ? conditions[0] : {[Op.and]: conditions}
+                where: countConditions.length === 1 ? countConditions[0] : {[Op.and]: countConditions}
             });
         } else {
             total = await KV.getNumber(VERIFIED_COUNT_ALL, 0);
         }
 
-        return {total, list};
+        return {total, list}
     }
 
     public async listVerifyInBatch(addresses: string[], chunkSize = this.MAX_CONTRACTS) {
