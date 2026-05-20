@@ -26,7 +26,7 @@ import {fmtAddr} from "../../stat/StatApp";
 import {Errors} from "../../stat/service/common/LogicError";
 import {HomepageDashboard} from "../../stat/service/HomepageDashboard";
 import {ConfigInstance} from "../../stat/config/StatConfig";
-import {getBundleTxHashForUserOp, getAAOpPositionInBundle, extractAAOpTraceNode} from "../../stat/service/eip/eip4337bundleParser";
+import {getBundleTxHashForUserOp, getAAOpPositionInBundle, extractAAOpTraceNode, getAAOpLogRange} from "../../stat/service/eip/eip4337bundleParser";
 
 const lodash = require('lodash');
 const moment = require("moment/moment");
@@ -1180,6 +1180,7 @@ router_get(router,'/eventLog',
     input: {
       transactionHash: { in: 'query', type: 'string', required: true },
       aggregate: { in: 'query', type: 'boolean', default: false },
+      txType: { in: 'query', type: 'string' },
     },
     output: {
       200: {
@@ -1205,10 +1206,31 @@ router_get(router,'/eventLog',
   async function (options) {
     options.aggregate = options.aggregate === 'true';
     options.transactionHash = this.app.parseParam(()=>this.app.type.hex64(options.transactionHash))
-    const {app: { service: {eventLog} } } = this as ScanCtx;
+    const {app: { cfx, service: {eventLog, accountQuery} } } = this as ScanCtx;
+
+    let logRange: { startExclusive: number; endInclusive: number } | null = null;
+
+    if (options.txType === 'aa') {
+      const userOpHash = options.transactionHash;
+      const bundleTxHash = await getBundleTxHashForUserOp(userOpHash);
+      if (!bundleTxHash) return { total: 0, list: [], debug: `no bundle tx found for userOpHash=${userOpHash}` };
+      const position = await getAAOpPositionInBundle(cfx, bundleTxHash, userOpHash);
+      if (position < 0) return { total: 0, list: [], debug: `userOpHash=${userOpHash} not found in bundle tx=${bundleTxHash} logs` };
+      logRange = await getAAOpLogRange(cfx, bundleTxHash, position);
+      if (!logRange) return { total: 0, list: [], debug: `could not compute log range for position=${position} in bundle tx=${bundleTxHash}` };
+      options.transactionHash = bundleTxHash;
+    }
+
     const result: any = await eventLog.queryByTransactionHash(options)
 
-    const {app: { service: {accountQuery} },} = this as ScanCtx;
+    if (logRange) {
+      const { startExclusive, endInclusive } = logRange;
+      result.list = result.list.filter(
+        item => item.transactionLogIndex > startExclusive && item.transactionLogIndex <= endInclusive
+      );
+      result.total = result.list.length;
+    }
+
     const addresses = result.list.map(item => item.address);
     const accountBasic = await accountQuery.listPatchInfo(addresses);
     result.list.forEach(item => {

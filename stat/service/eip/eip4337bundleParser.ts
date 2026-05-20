@@ -280,6 +280,39 @@ export async function getAAOpPositionInBundle(cfx: Conflux, bundleTxHash: string
 }
 
 /**
+ * Return the transactionLogIndex range (startExclusive, endInclusive] for the
+ * user op at the given position within a bundle tx.
+ *
+ * The range is delimited by UserOperationEvent logs: logs for op N are those
+ * with logIndex > (N-1)-th UserOperationEvent logIndex (or -1 if N=0)
+ * and <= N-th UserOperationEvent logIndex.
+ *
+ * UserOperationRevertReason (emitted before UserOperationEvent on failure) is
+ * naturally included since it falls within the same range.
+ *
+ * Returns null if the position is out of range.
+ */
+export async function getAAOpLogRange(
+	cfx: Conflux,
+	bundleTxHash: string,
+	position: number,
+): Promise<{ startExclusive: number; endInclusive: number } | null> {
+	const receipt = await cfx.getTransactionReceipt(bundleTxHash);
+	const logs: any[] = (receipt as any)?.logs ?? [];
+	let opIdx = 0;
+	let prevEventLogIndex = -1;
+	for (let i = 0; i < logs.length; i++) {
+		if ((logs[i].topics as string[])?.[0] !== USER_OPERATION_EVENT_SIG) continue;
+		if (opIdx === position) {
+			return { startExclusive: prevEventLogIndex, endInclusive: i };
+		}
+		prevEventLogIndex = i;
+		opIdx++;
+	}
+	return null;
+}
+
+/**
  * Extract the trace subtree for the N-th user op from a bundle tx trace tree.
  *
  * EIP-4337: the EntryPoint calls innerHandleOp (from=EP, to=EP, input starts with
