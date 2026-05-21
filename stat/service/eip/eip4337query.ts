@@ -7,8 +7,9 @@ import {Sequelize} from "sequelize";
 import {FailedTx, FullTransaction} from "../../model/FullBlock";
 import {Literal} from "sequelize/lib/utils";
 import {fillMethodInfo} from "../contract/contractTool";
-import {parseBundleTxByHash} from "./eip4337bundleParser";
+import {parseBundleTxByHash, getAAOpPositionInBundle, getAAOpFlatTraces} from "./eip4337bundleParser";
 import {Conflux} from "js-conflux-sdk";
+import {getTransactionService} from "../../../scan-api/service/TransactionService";
 
 export interface BundleTxQueryResult extends IBundleTx {
     bundlerHex: string;      // hex address from Hex40Map
@@ -29,6 +30,7 @@ export interface AATxQueryResult extends IAATx {
     signature?: string;
     txGasLimit?: string;
     txGasUsed?: string;
+    cfxTransfers?: { total: number; list: any[] };
     [key: string]: any;      // allow dynamic extra fields
 }
 
@@ -325,6 +327,12 @@ export async function getAATxDetail(cfx: Conflux, userOpHash: string): Promise<A
                 txGasLimit:           matchedOp.txGasLimit,
                 txGasUsed:            matchedOp.txGasUsed,
             });
+        }
+
+        const position = await getAAOpPositionInBundle(cfx, bundleTxHash, userOpHash);
+        if (position >= 0) {
+            const traceArray = await getAAOpFlatTraces(cfx, bundleTxHash, position);
+            aaTx.cfxTransfers = getTransactionService().buildCfxTransfersFromTraceObj({traceArray});
         }
     }
     return aaTx;

@@ -15,10 +15,17 @@ const {hexToUtf8, utf8ToHex} = require("../../stat/service/tool/CensorTool");
 const {extractActualGasCost} = require("../../stat/service/common/utils");
 const BigFixed = require('bigfixed');
 
+let _instance: TransactionService;
+
+export function getTransactionService(): TransactionService {
+  return _instance;
+}
+
 export class TransactionService {
   app: ScanApp & any;
   constructor(app) {
     this.app = app;
+    _instance = this;
   }
 
   async query({ hash, fields, aggregate } = {} as any) {

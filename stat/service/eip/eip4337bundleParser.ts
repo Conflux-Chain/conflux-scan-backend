@@ -4,6 +4,8 @@ import {parseAATxMethods} from "./eip4337decoder";
 import {parseUserOperationEvent} from "./eip4337abi";
 import {AATx, BundleTx} from "../../model/eip4337model";
 
+const {tracesInTree} = require('js-conflux-sdk/src/util/trace');
+
 const TRANSFER_SIG = ethers.id("Transfer(address,address,uint256)");
 const TRANSFER_SINGLE_SIG = ethers.id("TransferSingle(address,address,address,uint256,uint256)");
 const TRANSFER_BATCH_SIG = ethers.id("TransferBatch(address,address,address,uint256[],uint256[])");
@@ -312,6 +314,38 @@ export async function getAAOpLogRange(
 		opIdx++;
 	}
 	return null;
+}
+
+/**
+ * Recursively flatten a trace tree node back into a DFS-ordered flat trace array,
+ * stripping the `calls` children array from each node.
+ */
+function flattenTraceNode(node: any): any[] {
+	if (!node) {
+		return [];
+	}
+	const {calls, ...trace} = node;
+	return [trace, ...(calls ?? []).flatMap((c: any) => flattenTraceNode(c))];
+}
+
+/**
+ * Fetch the bundle tx trace, extract the subtree for the user op at the given
+ * position, and return it as a flat DFS-ordered trace array suitable for
+ * TransactionService.buildCfxTransfersFromTraceObj.
+ *
+ * Returns an empty array if the position is out of range.
+ */
+export async function getAAOpFlatTraces(cfx: Conflux, bundleTxHash: string, position: number): Promise<any[]> {
+	const rawTraces = await (cfx as any).traceTransaction(bundleTxHash);
+	if (!rawTraces?.length) {
+		return [];
+	}
+	const traceTree: any[] = tracesInTree(rawTraces);
+	const opNode = extractAAOpTraceNode(traceTree, position);
+	if (!opNode) {
+		return [];
+	}
+	return flattenTraceNode(opNode);
 }
 
 /**
