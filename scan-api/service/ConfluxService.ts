@@ -663,6 +663,7 @@ export class ConfluxService {
         }*/
 
         const proxyMap = {};
+        Object.values(authMap).forEach(delegatedAddr => toAddressSet.add(delegatedAddr));
         if (toAddressSet.size) {
           const impls: any[] = await ContractImpl.sequelize.query(`
             select concat('0x', h.hex) as hex, c.proxyType from 
