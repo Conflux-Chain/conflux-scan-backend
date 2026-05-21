@@ -639,6 +639,12 @@ export class ConfluxService {
 
         const methodMap = {};
         if (methodList?.length) {
+          methodList.forEach(item => {
+            const delegatedAddr = authMap[fmtAddr(item.to, StatApp.networkId)];
+            if (delegatedAddr) {
+              item.to = delegatedAddr;
+            }
+          })
           const ids = await getAddrIdArray(methodList.map(item => item.to));
           /*if(transactionHash === '0xd31417b3a6f77486c648311bde9773a5516720fcc787bd785a1b47fe55003a13'){
             console.log(`debug trace view ===2===`, JSON.stringify({ids,methodList}));
