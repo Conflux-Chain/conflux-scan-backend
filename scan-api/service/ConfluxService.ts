@@ -605,30 +605,30 @@ export class ConfluxService {
         const authMap = {};
         if (methodList?.length) {
           const idToHexMap = await Hex40Map.findAll({
-            where: {hex: {[Op.in]: methodList.map(item => format.hexAddress(item.to).substr(2))}},
+            where: {hex: {[Op.in]: methodList.map(item => format.hexAddress(item.to).slice(2))}},
           }).then(list => Object.fromEntries(list.map(item => [item.id, `0x${item.hex}`.toLowerCase()])));
           const ids = await TraceCreateContract.findAll({
             where: {to: {[Op.in]: Object.keys(idToHexMap)}}
-          }).then(list => list.map(item => item.to));
+          }).then(list => list.map(item => String(item.to)));
           const hexes = Object.entries(idToHexMap)
-              .filter(([key]) => !ids.includes(Number(key)))
+              .filter(([key]) => !ids.includes(key))
               .map(([, value]) => value);
           if (hexes?.length) {
-            const {epochNumber, index} = await cfx.getTransactionReceipt(transactionHash).catch(() => undefined) || {};
+            const {epochNumber, index} = await this.getTransactionReceipt(transactionHash).catch(() => undefined) || {};
             if (_.isNil(index)) {
               throw new error.RPCError("Failed to get tx index by sdk");
             }
             const tasks = hexes.map(hex => AuthAction.sequelize.query(`
               select * from auth_action 
-              where author = ? and address != ? and blockNumber <= ? and transactionPosition <= ?
+              where author = ? and result = 'success' and (blockNumber < ? or (blockNumber = ? and transactionPosition <= ?))
               order by blockNumber desc, transactionPosition desc
               limit 1
             `, {
               type: QueryTypes.SELECT,
-              replacements: [hex, CONST.ZERO_ADDRESS, epochNumber, index]
+              replacements: [hex, epochNumber, epochNumber, index]
             }).then(items => items?.length ? items[0] : null));
             const auths = await Promise.all(tasks);
-            auths.filter(Boolean).forEach((auth: any) =>
+            auths.filter((auth: any) => auth && auth.address !== CONST.ZERO_ADDRESS).forEach((auth: any) =>
                 authMap[fmtAddr(auth.author, StatApp.networkId)] = fmtAddr(auth.address, StatApp.networkId)
             )
           }
