@@ -631,9 +631,6 @@ export class ConfluxService {
             auths.filter(Boolean).forEach((auth: any) =>
                 authMap[fmtAddr(auth.author, StatApp.networkId)] = fmtAddr(auth.address, StatApp.networkId)
             )
-            if (transactionHash === '0xd31417b3a6f77486c648311bde9773a5516720fcc787bd785a1b47fe55003a13') {
-              console.log(`debug trace view ===1===`, JSON.stringify({idToHexMap, hexes, auths}));
-            }
           }
         }
 
@@ -646,21 +643,12 @@ export class ConfluxService {
             }
           })
           const ids = await getAddrIdArray(methodList.map(item => item.to));
-          /*if(transactionHash === '0xd31417b3a6f77486c648311bde9773a5516720fcc787bd785a1b47fe55003a13'){
-            console.log(`debug trace view ===2===`, JSON.stringify({ids,methodList}));
-          }*/
           await fillMethodInfo(methodList, ids, true, true);
-          /*if(transactionHash === '0xd31417b3a6f77486c648311bde9773a5516720fcc787bd785a1b47fe55003a13') {
-            console.log(`debug trace view ===3===`, JSON.stringify({ids, methodList}));
-          }*/
           methodList.forEach(({to, method, methodId}) => {
             methodMap[methodId] ||= {};
             methodMap[methodId][fmtAddr(to, cfx.networkId)] = method;
           });
         }
-        /*if(transactionHash === '0xd31417b3a6f77486c648311bde9773a5516720fcc787bd785a1b47fe55003a13') {
-          console.log(`debug trace view ===4===`, JSON.stringify({methodMap}));
-        }*/
 
         const proxyMap = {};
         Object.values(authMap).forEach(delegatedAddr => toAddressSet.add(delegatedAddr));
@@ -692,10 +680,11 @@ export class ConfluxService {
           } else {
             result.traceArray = traceArray;
           }
-          result.addressArray = [...addressSet];
-          result.proxyMap = proxyMap;
-          result.methodMap = methodMap;
           result.authMap = authMap;
+          result.methodMap = methodMap;
+          result.proxyMap = proxyMap;
+          Object.values(authMap).forEach(delegatedAddr => addressSet.add(delegatedAddr));
+          result.addressArray = [...addressSet];
         } catch (err) {
           throw new error.ResponseDataParsingError(`Failed to parse traces by sdk: ${err}`);
         }
