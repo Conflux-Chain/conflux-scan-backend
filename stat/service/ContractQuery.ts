@@ -39,6 +39,7 @@ import {
     KEY_STAT_TXNS_FOR_VERIFIED_CONTRACTS,
     KEY_STAT_ANNOUNCE_NAME_FOR_VERIFIED_CONTRACTS,
     KEY_STAT_NAME_TAG_FOR_VERIFIED_CONTRACTS,
+    KEY_SOLC_VULNERABILITIES,
     KV,
 } from "../model/KV";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
@@ -410,11 +411,13 @@ export class ContractQuery {
     private async listVerifyByOptions(options, countConditions) {
         const rows = await VerifiedContracts.findAll(options);
 
+        const solcVulnerabilities = await this.listSolcVulnerabilities();
+
         const list = rows.map(item => {
             const contractName = splitFullyQualifiedName(item.name).contractName;
             const compilerVersionShort = item.language === CONST.LANGUAGE.VYPER ?
                 item.version : lodash.trimStart(item.version.split("+commit")[0], "v");
-            return {
+            const contract = {
                 address: fmtAddr(item.address, StatApp.networkId),
                 addressId: item.addressId,
                 contractName,
@@ -433,8 +436,12 @@ export class ContractQuery {
                 license: item.license,
                 deployer: fmtAddr(item.deployer, StatApp.networkId),
                 [StatApp.isEVM ? "blockNumber" : "epochNumber"]: item.epochNumber,
-                hasNametag: item.hasNametag,
+                hasNametag: Boolean(item.hasNametag),
+            };
+            if (item.language === CONST.LANGUAGE.SOLIDITY) {
+                contract.compilerVulnerabilities = solcVulnerabilities[contract.compilerVersionShort];
             }
+            return contract;
         });
 
         if (!list?.length) {
@@ -802,6 +809,11 @@ export class ContractQuery {
                 console.log('Schedule update compiler versions fail', e);
             });
 
+            await that.updateSolcVulnerabilities().catch(e => {
+                safeAddErrorLog('ContractQuery', 'updateSolcVulnerabilities', e).then();
+                console.log('Schedule update compiler vulnerabilities fail', e);
+            });
+
             await that.updateVyperVersions().catch(e => {
                 safeAddErrorLog('ContractQuery', 'updateVyperVersions', e).then();
                 console.log('Schedule update compiler versions fail', e);
@@ -823,6 +835,18 @@ export class ContractQuery {
         const {data} = resp;
         const versions = lodash.mapValues(data.releases, solcName => solcName.substring(8, solcName.length - 3));
         await KV.upsert({key: KEY_SOLC_VERSIONS, value: JSON.stringify(versions)});
+    }
+
+    // shortVersion => vulnerabilities
+    private async updateSolcVulnerabilities() {
+        const resp = await ContractQuery._getJsonRequestByAxios({
+            url: 'https://raw.githubusercontent.com/argotorg/solidity/refs/heads/develop/docs/bugs_by_version.json',
+            handleError: false,
+        });
+        const {data} = resp;
+        const vulnerabilities = Object.fromEntries(Object.entries(data)
+            .map(([shortVer, bugInfo]: [string, any]) => [shortVer, bugInfo.bugs.length]));
+        await KV.upsert({key: KEY_SOLC_VULNERABILITIES, value: JSON.stringify(vulnerabilities)});
     }
 
     // shortVersion => {desc, commit}
@@ -871,6 +895,10 @@ export class ContractQuery {
 
     async listSolcVersions(): Promise<{ [shortVersion: string]: string }> {
         return this.listCompilerVersions(KEY_SOLC_VERSIONS);
+    }
+
+    async listSolcVulnerabilities(): Promise<{ [shortVersion: string]: number }> {
+        return this.listCompilerVersions(KEY_SOLC_VULNERABILITIES);
     }
 
     async listVyperVersions(): Promise<{ [shortVersion: string]: { desc: string, commit: string } }> {

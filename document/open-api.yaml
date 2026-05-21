@@ -1646,6 +1646,9 @@ components:
           compilerVersion:
             type: string
             example: "v0.8.24+commit.e11b9ed9"
+          compilerVulnerabilities:
+            type: number
+            example: 1
           language:
             type: string
             example: "solidity"
