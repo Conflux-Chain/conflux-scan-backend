@@ -113,7 +113,10 @@ export class TransactionService {
     } = this as ScanCtx;
 
     const result = await service.conflux.getTransactionTrace(txHash);
+    return this.buildCfxTransfersFromTraceObj(result);
+  }
 
+  buildCfxTransfersFromTraceObj(result) {
     const traces = result.traceArray;
     if (!traces) {
       return {total: 0, list: []};
