@@ -10,6 +10,7 @@ import {fillMethodInfo} from "../contract/contractTool";
 import {parseBundleTxByHash, getAAOpPositionInBundle, getAAOpFlatTraces} from "./eip4337bundleParser";
 import {Conflux} from "js-conflux-sdk";
 import {TransactionService} from "../../../scan-api/service/TransactionService";
+import {fmtEVMAddr} from "../common/utils";
 
 export interface BundleTxQueryResult extends IBundleTx {
     bundlerHex: string;      // hex address from Hex40Map
@@ -332,7 +333,12 @@ export async function getAATxDetail(cfx: Conflux, userOpHash: string): Promise<A
         const position = await getAAOpPositionInBundle(cfx, bundleTxHash, userOpHash);
         if (position >= 0) {
             const traceArray = await getAAOpFlatTraces(cfx, bundleTxHash, position);
-            aaTx.cfxTransfers = TransactionService.buildCfxTransfersFromTraceObj({traceArray});
+            const cfxTransfers = TransactionService.buildCfxTransfersFromTraceObj({traceArray});
+            cfxTransfers.list.forEach(item => {
+                item.from = fmtEVMAddr(item.from);
+                item.to = fmtEVMAddr(item.to);
+            });
+            aaTx.cfxTransfers = cfxTransfers;
         }
     }
     return aaTx;
