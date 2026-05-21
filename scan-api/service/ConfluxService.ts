@@ -603,7 +603,7 @@ export class ConfluxService {
         });
 
         const authMap = {};
-        if (methodList?.length) {
+        if (StatApp.isEVM && methodList?.length) {
           const idToHexMap = await Hex40Map.findAll({
             where: {hex: {[Op.in]: methodList.map(item => format.hexAddress(item.to).slice(2))}},
           }).then(list => Object.fromEntries(list.map(item => [item.id, `0x${item.hex}`.toLowerCase()])));
