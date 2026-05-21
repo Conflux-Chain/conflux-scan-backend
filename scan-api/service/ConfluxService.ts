@@ -3,10 +3,12 @@ import {fmtAddr, StatApp} from "../../stat/StatApp";
 import {safeAddErrorLog} from "../../stat/monitor/ErrorMonitor";
 import {format} from "js-conflux-sdk";
 import {CONST} from "../../stat/service/common/constant";
-import {getAddrIdArray} from "../../stat/model/HexMap";
+import {getAddrIdArray, Hex40Map} from "../../stat/model/HexMap";
 import {fillMethodInfo} from "../../stat/service/contract/contractTool";
 import {ContractImpl} from "../../stat/model/ContractImpl";
-import {QueryTypes} from "sequelize";
+import {Op, QueryTypes} from "sequelize";
+import {TraceCreateContract} from "../../stat/model/TraceCreateContract";
+import {AuthAction} from "../../stat/model/EIP7702model";
 
 const _ = require('lodash');
 const { tracesInTree } = require('js-conflux-sdk/src/util/trace');
@@ -570,7 +572,9 @@ export class ConfluxService {
               const precompiled = CONST.PRECOMPILED_ADDR_CONTRACT_MAP[format.hexAddress(to)];
               if (precompiled) {
                 methodList.push({index, to, method: precompiled.methodId});
-                trace.action.input = precompiled.methodId + input.substring(2);
+                if ((input.length - 2) % 64 === 0) {
+                  trace.action.input = precompiled.methodId + input.substring(2);
+                }
               } else {
                 methodList.push({index, to, method: input.substring(0, 10)});
               }
@@ -598,8 +602,46 @@ export class ConfluxService {
           }
         });
 
+        const authMap = {};
+        if (StatApp.isEVM && methodList?.length) {
+          const idToHexMap = await Hex40Map.findAll({
+            where: {hex: {[Op.in]: methodList.map(item => format.hexAddress(item.to).slice(2))}},
+          }).then(list => Object.fromEntries(list.map(item => [item.id, `0x${item.hex}`.toLowerCase()])));
+          const ids = await TraceCreateContract.findAll({
+            where: {to: {[Op.in]: Object.keys(idToHexMap)}}
+          }).then(list => list.map(item => String(item.to)));
+          const hexes = Object.entries(idToHexMap)
+              .filter(([key]) => !ids.includes(key))
+              .map(([, value]) => value);
+          if (hexes?.length) {
+            const {epochNumber, index} = await this.getTransactionReceipt(transactionHash).catch(() => undefined) || {};
+            if (_.isNil(index)) {
+              throw new error.RPCError("Failed to get tx index by sdk");
+            }
+            const tasks = hexes.map(hex => AuthAction.sequelize.query(`
+              select * from auth_action 
+              where author = ? and result = 'success' and (blockNumber < ? or (blockNumber = ? and transactionPosition <= ?))
+              order by blockNumber desc, transactionPosition desc
+              limit 1
+            `, {
+              type: QueryTypes.SELECT,
+              replacements: [hex, epochNumber, epochNumber, index]
+            }).then(items => items?.length ? items[0] : null));
+            const auths = await Promise.all(tasks);
+            auths.filter((auth: any) => auth && auth.address !== CONST.ZERO_ADDRESS).forEach((auth: any) =>
+                authMap[fmtAddr(auth.author, StatApp.networkId)] = fmtAddr(auth.address, StatApp.networkId)
+            )
+          }
+        }
+
         const methodMap = {};
         if (methodList?.length) {
+          methodList.forEach(item => {
+            const delegatedAddr = authMap[fmtAddr(item.to, StatApp.networkId)];
+            if (delegatedAddr) {
+              item.to = delegatedAddr;
+            }
+          })
           const ids = await getAddrIdArray(methodList.map(item => item.to));
           await fillMethodInfo(methodList, ids, true, true);
           methodList.forEach(({to, method, methodId}) => {
@@ -609,6 +651,7 @@ export class ConfluxService {
         }
 
         const proxyMap = {};
+        Object.values(authMap).forEach(delegatedAddr => toAddressSet.add(delegatedAddr));
         if (toAddressSet.size) {
           const impls: any[] = await ContractImpl.sequelize.query(`
             select concat('0x', h.hex) as hex, c.proxyType from 
@@ -637,9 +680,11 @@ export class ConfluxService {
           } else {
             result.traceArray = traceArray;
           }
-          result.addressArray = [...addressSet];
-          result.proxyMap = proxyMap;
+          result.authMap = authMap;
           result.methodMap = methodMap;
+          result.proxyMap = proxyMap;
+          Object.values(authMap).forEach(delegatedAddr => addressSet.add(delegatedAddr));
+          result.addressArray = [...addressSet];
         } catch (err) {
           throw new error.ResponseDataParsingError(`Failed to parse traces by sdk: ${err}`);
         }
