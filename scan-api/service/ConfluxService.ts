@@ -692,10 +692,11 @@ export class ConfluxService {
           } else {
             result.traceArray = traceArray;
           }
-          result.addressArray = [...addressSet];
-          result.proxyMap = proxyMap;
-          result.methodMap = methodMap;
           result.authMap = authMap;
+          result.methodMap = methodMap;
+          result.proxyMap = proxyMap;
+          Object.values(authMap).forEach(delegatedAddr => addressSet.add(delegatedAddr));
+          result.addressArray = [...addressSet];
         } catch (err) {
           throw new error.ResponseDataParsingError(`Failed to parse traces by sdk: ${err}`);
         }
