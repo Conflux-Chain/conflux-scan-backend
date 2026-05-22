@@ -56,12 +56,16 @@ export interface IAAOpDetail {
 	txGasUsed?: string;
 	/** Raw callData of this user op (hex string). */
 	callData?: string;
+	/** initCode for account deployment — non-empty only on first user op (hex string). */
+	initCode?: string;
 	/** Raw paymasterAndData field from the user op (hex string). */
 	paymasterAndData?: string;
 	/** Decoded paymaster info. Null if no paymaster. */
 	paymasterDecoded?: { address: string } | null;
 	/** Effective gas price of the bundle tx in wei (decimal string). */
 	bundleEffectiveGasPrice?: string;
+	/** Raw packed accountGasLimits bytes32 field from the user op (hex string). */
+	accountGasLimits?: string;
 }
 
 export interface IBundleTxParseResult {
@@ -116,20 +120,6 @@ function countTransfers(logs: any[]): {tokenTxnCount: number; nftTxnCount: numbe
 	return {tokenTxnCount, nftTxnCount};
 }
 
-/**
- * Extract callGasLimit from the packed bytes32 accountGasLimits field.
- * High 128 bits = verificationGasLimit, low 128 bits = callGasLimit.
- */
-function parseCallGasLimit(accountGasLimits: string): string {
-	if (!accountGasLimits) return '0';
-	try {
-		let hex = accountGasLimits.startsWith('0x') ? accountGasLimits.slice(2) : accountGasLimits;
-		hex = hex.padStart(64, '0');
-		return BigInt('0x' + hex.slice(32, 64)).toString();
-	} catch {
-		return '0';
-	}
-}
 
 /**
  * Unpack a bytes32 field into two 128-bit values.
@@ -204,7 +194,7 @@ export async function parseBundleTxByHash(
 		const {tokenTxnCount, nftTxnCount} = countTransfers(innerLogs);
 
 		const parsedUserOp = parsed4337call.userOps[i];
-		const gasLimit = parseCallGasLimit(parsedUserOp?.accountGasLimits);
+		const gasLimit = unpackBytes32(parsedUserOp?.accountGasLimits).low;
 		const method = parsedUserOp?.parsedUserOp?.method ?? '';
 		const internalTxnCount = parsedUserOp?.parsedUserOp?.rawParamArr?.length ?? 0;
 		const sender = toChecksumHex(event?.sender);
@@ -239,10 +229,12 @@ export async function parseBundleTxByHash(
 			op.txGasLimit = (tx as any).gas?.toString() ?? '0';
 			op.txGasUsed = (receipt as any).gasUsed?.toString() ?? '0';
 			op.callData = parsedUserOp.callData ?? '';
+			op.initCode = parsedUserOp.initCode ?? '0x';
 			op.paymasterAndData = parsedUserOp.paymasterAndData ?? '0x';
 			const paymasterAddr = getPaymasterAddress(parsedUserOp.paymasterAndData);
 			op.paymasterDecoded = paymasterAddr ? { address: ethers.getAddress(paymasterAddr) } : null;
 			op.bundleEffectiveGasPrice = ((receipt as any).effectiveGasPrice ?? (tx as any).gasPrice ?? BigInt(0)).toString();
+			op.accountGasLimits = parsedUserOp.accountGasLimits ?? '0x';
 		}
 
 		userOps.push(op);

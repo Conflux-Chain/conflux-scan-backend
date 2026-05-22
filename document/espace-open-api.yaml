@@ -4662,6 +4662,10 @@ components:
           nullable: true
           description: "Raw callData of this user op (hex string)."
           example: "0xb61d27f6..."
+        initCode:
+          type: string
+          description: "initCode for account deployment — non-empty only on the first user op when the account is being deployed (hex string)."
+          example: "0x"
         position:
           type: integer
           description: "Zero-based index of this user op within its bundle transaction."
@@ -4691,6 +4695,10 @@ components:
           type: string
           description: "callGasLimit for this user op — execution phase gas limit (decimal string). Low 128 bits of accountGasLimits."
           example: "200000"
+        accountGasLimits:
+          type: string
+          description: "Raw packed accountGasLimits bytes32 field from the user op (hex string). High 128 bits = verificationGasLimit, low 128 bits = callGasLimit."
+          example: "0x00000000000000000000000000015745000000000000000000000000000326eb"
         maxFeePerGas:
           type: string
           description: "maxFeePerGas in wei (decimal string). Low 128 bits of gasFees."

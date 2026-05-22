@@ -326,10 +326,12 @@ export async function getAATxDetail(cfx: Conflux, userOpHash: string): Promise<A
                 txGasLimit:              matchedOp.txGasLimit,
                 txGasUsed:               matchedOp.txGasUsed,
                 data:                    matchedOp.callData ?? null,
+                initCode:                matchedOp.initCode ?? '0x',
                 position:                matchedOp.position,
                 paymasterAndData:        matchedOp.paymasterAndData ?? '0x',
                 paymasterDecoded:        matchedOp.paymasterDecoded ?? null,
                 bundleEffectiveGasPrice: matchedOp.bundleEffectiveGasPrice ?? '0',
+                accountGasLimits:        matchedOp.accountGasLimits ?? '0x',
                 actualGasUsed:           matchedOp.actualGasUsed,
             });
         }

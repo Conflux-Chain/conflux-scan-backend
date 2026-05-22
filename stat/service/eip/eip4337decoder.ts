@@ -12,6 +12,7 @@ export interface IUserOpParam {
 
 	sender: string;
 	nonce: BigNumberish;
+	initCode?: string;
 	paymasterAndData: string;
 	callData: string;
 	accountGasLimits: string;
@@ -84,10 +85,11 @@ export function parseHandleOps(callData: string): I4337call {
 	const [ops, beneficiary] = decoded.args;
 	const userOpArr: IUserOpParam[] = [];
 	for (const op of ops) {
-		const {callData, nonce, paymasterAndData, sender, accountGasLimits, preVerificationGas, gasFees, signature} = op;
+		const {callData, nonce, initCode, paymasterAndData, sender, accountGasLimits, preVerificationGas, gasFees, signature} = op;
 		userOpArr.push({
 			rawData: op,
 			sender, nonce,
+			initCode,
 			callData, accountGasLimits, paymasterAndData,
 			preVerificationGas, gasFees, signature,
 			parsedUserOp: null
