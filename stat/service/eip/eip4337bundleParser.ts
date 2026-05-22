@@ -30,7 +30,7 @@ export interface IAAOpDetail {
 	nftTxnCount: number;
 	/** Actual gas cost paid for this user op, in ETH (decimal string). */
 	txnFee: string;
-	/** callGasLimit for this user op (decimal string). */
+	/** callGasLimit for this user op (decimal string). Low 128 bits of accountGasLimits. */
 	gasLimit: string;
 	/** Actual gas units consumed by this user op (decimal string), from UserOperationEvent. */
 	actualGasUsed: string;
@@ -194,7 +194,7 @@ export async function parseBundleTxByHash(
 		const {tokenTxnCount, nftTxnCount} = countTransfers(innerLogs);
 
 		const parsedUserOp = parsed4337call.userOps[i];
-		const gasLimit = unpackBytes32(parsedUserOp?.accountGasLimits).low;
+		const gasLimit = unpackBytes32(parsedUserOp?.accountGasLimits).low;  // low 128 bits = callGasLimit
 		const method = parsedUserOp?.parsedUserOp?.method ?? '';
 		const internalTxnCount = parsedUserOp?.parsedUserOp?.rawParamArr?.length ?? 0;
 		const sender = toChecksumHex(event?.sender);
@@ -221,7 +221,7 @@ export async function parseBundleTxByHash(
 		if (targetUserOpHash && opHash === targetUserOpHash && parsedUserOp) {
 			const accountGasLimitsParsed = unpackBytes32(parsedUserOp.accountGasLimits);
 			const gasFeesParsed = unpackBytes32(parsedUserOp.gasFees);
-			op.verificationGasLimit = accountGasLimitsParsed.high;
+			op.verificationGasLimit = accountGasLimitsParsed.high;  // high 128 bits = verificationGasLimit
 			op.preVerificationGas = parsedUserOp.preVerificationGas?.toString() ?? '0';
 			op.maxFeePerGas = gasFeesParsed.low;
 			op.maxPriorityFeePerGas = gasFeesParsed.high;
