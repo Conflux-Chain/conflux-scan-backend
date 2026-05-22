@@ -309,29 +309,29 @@ async function migDB(seq: Sequelize) {
     await changeColumnIfNecessary(qi, verifiedContracts, 'libraries', {
         type: DataTypes.STRING(2048),
     });
+    await addColumnIfNotExistsV2(qi, verifiedContracts, 'addressId', {
+        type: DataTypes.BIGINT, allowNull: false, defaultValue: 0,
+    });
     await addColumnIfNotExistsV2(qi, verifiedContracts, 'compiler', {
         type: DataTypes.CHAR(10), allowNull: false, defaultValue: 'solc',
     });
     await addColumnIfNotExistsV2(qi, verifiedContracts, 'codeFormat', {
         type: DataTypes.CHAR(32), allowNull: false, defaultValue: 'Solidity',
     });
+    await addColumnIfNotExistsV2(qi, verifiedContracts, 'matchId', {
+        type: DataTypes.BIGINT, allowNull: false, defaultValue: 0,
+    });
     await addColumnIfNotExistsV2(qi, verifiedContracts, 'verifiedAt', {
         type: DataTypes.DATE, allowNull: false, defaultValue: '1970-01-01 00:00:00',
-    });
-    await addColumnIfNotExistsV2(qi, verifiedContracts, 'matchId', {
-        type: DataTypes.BIGINT, allowNull: false, defaultValue: '0',
-    });
-    await addColumnIfNotExistsV2(qi, verifiedContracts, 'addressId', {
-        type: DataTypes.BIGINT, allowNull: false, defaultValue: '0',
     });
     await addColumnIfNotExistsV2(qi, verifiedContracts, 'deployer', {
         type: DataTypes.CHAR(64), allowNull: false, defaultValue: '',
     });
     await addColumnIfNotExistsV2(qi, verifiedContracts, 'epochNumber', {
-        type: DataTypes.BIGINT, allowNull: false, defaultValue: '0',
+        type: DataTypes.BIGINT, allowNull: false, defaultValue: 0,
     });
     await addColumnIfNotExistsV2(qi, verifiedContracts, 'txns', {
-        type: DataTypes.INTEGER, allowNull: false, defaultValue: '0',
+        type: DataTypes.INTEGER, allowNull: false, defaultValue: 0,
     });
     await addColumnIfNotExistsV2(qi, verifiedContracts, 'hasNametag', {
         type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false,
