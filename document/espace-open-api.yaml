@@ -1862,8 +1862,8 @@ paths:
         Returns the detail of a single EIP-4337 UserOperation (AA) transaction by its user operation hash.
 
         Returns all fields from `AATxItem` (same as items in `/eip4337/aa-txs`) plus extra fields
-        from `AATxDetailExtra` — parsed live from the bundle tx: verificationGasLimit,
-        preVerificationGas, maxFeePerGas, maxPriorityFeePerGas, signature, actualGasUsed,
+        from `AATxDetailExtra` — parsed live from the bundle tx: data (user op callData),
+        verificationGasLimit, preVerificationGas, maxFeePerGas, maxPriorityFeePerGas, signature,
         txGasLimit, txGasUsed. Returns `null` if not found.
       parameters:
         - name: userOpHash
@@ -4657,6 +4657,11 @@ components:
       type: object
       description: Extra fields returned only by the /eip4337/aa-tx detail endpoint, parsed live from the bundle tx.
       properties:
+        data:
+          type: string
+          nullable: true
+          description: "Raw callData of this user op (hex string)."
+          example: "0xb61d27f6..."
         verificationGasLimit:
           type: string
           description: "verificationGasLimit for this user op (decimal string). High 128 bits of accountGasLimits."

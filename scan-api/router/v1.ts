@@ -1220,7 +1220,6 @@ router_get(router,'/aa-tx/:userOpHash',
     if (bundleTxHash) {
       aaTx['blockHash'] = parsed?.receipt?.blockHash || '';
       const matchedOp = parsed?.userOps.find((op: any) => op.userOpHash === userOpHash);
-      aaTx.data = matchedOp?.callData ?? null;
       const position = await getAAOpPositionInBundle(cfx, bundleTxHash, userOpHash, parsed?.receipt);
       aaTx.position = position;
       if (position >= 0) {
