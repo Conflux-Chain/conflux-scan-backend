@@ -32,6 +32,8 @@ export interface IAAOpDetail {
 	txnFee: string;
 	/** callGasLimit for this user op (decimal string). */
 	gasLimit: string;
+	/** Actual gas units consumed by this user op (decimal string), from UserOperationEvent. */
+	actualGasUsed: string;
 	success: boolean;
 	nonce: string;
 	/** Paymaster address. Empty string if none. */
@@ -58,6 +60,8 @@ export interface IAAOpDetail {
 	paymasterAndData?: string;
 	/** Decoded paymaster info. Null if no paymaster. */
 	paymasterDecoded?: { address: string } | null;
+	/** Effective gas price of the bundle tx in wei (decimal string). */
+	bundleEffectiveGasPrice?: string;
 }
 
 export interface IBundleTxParseResult {
@@ -217,6 +221,7 @@ export async function parseBundleTxByHash(
 			nftTxnCount,
 			txnFee: event ? formatEther(event.actualGasCost) : '0',
 			gasLimit,
+			actualGasUsed: event?.actualGasUsed?.toString() ?? '0',
 			success: event?.success ?? false,
 			nonce: event?.nonce?.toString() ?? '',
 			paymaster,
@@ -237,6 +242,7 @@ export async function parseBundleTxByHash(
 			op.paymasterAndData = parsedUserOp.paymasterAndData ?? '0x';
 			const paymasterAddr = getPaymasterAddress(parsedUserOp.paymasterAndData);
 			op.paymasterDecoded = paymasterAddr ? { address: ethers.getAddress(paymasterAddr) } : null;
+			op.bundleEffectiveGasPrice = ((receipt as any).effectiveGasPrice ?? (tx as any).gasPrice ?? BigInt(0)).toString();
 		}
 
 		userOps.push(op);

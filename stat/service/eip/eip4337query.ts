@@ -317,17 +317,19 @@ export async function getAATxDetail(cfx: Conflux, userOpHash: string): Promise<A
         const matchedOp = parsed?.userOps.find(op => op.userOpHash === userOpHash);
         if (matchedOp) {
             Object.assign(aaTx, {
-                verificationGasLimit: matchedOp.verificationGasLimit,
-                preVerificationGas:   matchedOp.preVerificationGas,
-                maxFeePerGas:         matchedOp.maxFeePerGas,
-                maxPriorityFeePerGas: matchedOp.maxPriorityFeePerGas,
-                signature:            matchedOp.signature,
-                txGasLimit:           matchedOp.txGasLimit,
-                txGasUsed:            matchedOp.txGasUsed,
-                data:                 matchedOp.callData ?? null,
-                position:             matchedOp.position,
-                paymasterAndData:     matchedOp.paymasterAndData ?? '0x',
-                paymasterDecoded:     matchedOp.paymasterDecoded ?? null,
+                verificationGasLimit:    matchedOp.verificationGasLimit,
+                preVerificationGas:      matchedOp.preVerificationGas,
+                maxFeePerGas:            matchedOp.maxFeePerGas,
+                maxPriorityFeePerGas:    matchedOp.maxPriorityFeePerGas,
+                signature:               matchedOp.signature,
+                txGasLimit:              matchedOp.txGasLimit,
+                txGasUsed:               matchedOp.txGasUsed,
+                data:                    matchedOp.callData ?? null,
+                position:                matchedOp.position,
+                paymasterAndData:        matchedOp.paymasterAndData ?? '0x',
+                paymasterDecoded:        matchedOp.paymasterDecoded ?? null,
+                bundleEffectiveGasPrice: matchedOp.bundleEffectiveGasPrice ?? '0',
+                actualGasUsed:           matchedOp.actualGasUsed,
             });
         }
     }

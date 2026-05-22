@@ -4707,6 +4707,14 @@ components:
           type: string
           description: "Bundle tx gas used from receipt (decimal string)."
           example: "420000"
+        actualGasUsed:
+          type: string
+          description: "Actual gas units consumed by this user op (decimal string), from UserOperationEvent."
+          example: "85000"
+        bundleEffectiveGasPrice:
+          type: string
+          description: "Effective gas price of the bundle tx in wei (decimal string)."
+          example: "1000000000"
     AATxDetailResponse:
       allOf:
         - $ref: '#/components/schemas/AATxItem'
