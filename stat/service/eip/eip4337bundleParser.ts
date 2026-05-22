@@ -52,6 +52,8 @@ export interface IAAOpDetail {
 	txGasLimit?: string;
 	/** Bundle tx gas used from receipt (decimal string). */
 	txGasUsed?: string;
+	/** Raw callData of this user op (hex string). */
+	callData?: string;
 }
 
 export interface IBundleTxParseResult {
@@ -227,6 +229,7 @@ export async function parseBundleTxByHash(
 			op.signature = parsedUserOp.signature ?? '';
 			op.txGasLimit = (tx as any).gas?.toString() ?? '0';
 			op.txGasUsed = (receipt as any).gasUsed?.toString() ?? '0';
+			op.callData = parsedUserOp.callData ?? '';
 		}
 
 		userOps.push(op);
