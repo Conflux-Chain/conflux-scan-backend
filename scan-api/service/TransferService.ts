@@ -44,15 +44,27 @@ export class TransferService {
   }
 
   async countAndList(options) {
-    let result;
+    const {
+      app: {tool},
+    } = this;
+
+    if (options.transferType === CONST.TRANSFER_TYPE.CFX) {
+      tool.checkExist(options, {
+        address: false, tokenId: false, tokenArray: false,
+      });
+    }
+
+    if (options.transferType === CONST.TRANSFER_TYPE.ERC20) {
+      tool.checkExist(options, {
+        tokenId: false,
+      });
+    }
 
     if (options.transactionHash !== undefined) {
-      result = await this._countAndListByTransactionHash(options);
-    } else {
-        result = await this._countAndListByRdb(options);
-        return result;
+      return this._countAndListByTransactionHash(options);
     }
-    return result;
+
+    return this._countAndListByRdb(options);
   }
 
   async _countAndListByRdb({ transferType, ...options }) {
