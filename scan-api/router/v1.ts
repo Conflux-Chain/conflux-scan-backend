@@ -26,7 +26,7 @@ import {fmtAddr} from "../../stat/StatApp";
 import {Errors} from "../../stat/service/common/LogicError";
 import {HomepageDashboard} from "../../stat/service/HomepageDashboard";
 import {ConfigInstance} from "../../stat/config/StatConfig";
-import {getBundleTxHashForUserOp, extractAAOpTraceNode, getAAOpLogRange, getAAOpFlatTraces, parseBundleTxByHash} from "../../stat/service/eip/eip4337bundleParser";
+import {getBundleTxHashForUserOp, getAAOpPositionInBundle, extractAAOpTraceNode, getAAOpLogRange, getAAOpFlatTraces, parseBundleTxByHash} from "../../stat/service/eip/eip4337bundleParser";
 import {TransactionService} from "../service/TransactionService";
 import {fmtEVMAddr} from "../../stat/service/common/utils";
 import {getAATxDetail} from "../../stat/service/eip/eip4337query";
