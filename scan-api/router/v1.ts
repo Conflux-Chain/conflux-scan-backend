@@ -30,6 +30,7 @@ import {getBundleTxHashForUserOp, getAAOpPositionInBundle, extractAAOpTraceNode,
 import {TransactionService} from "../service/TransactionService";
 import {fmtEVMAddr} from "../../stat/service/common/utils";
 import {getAATxDetail} from "../../stat/service/eip/eip4337query";
+import {getDelegatedAddrAtTx} from "../../stat/model/EIP7702model";
 
 const lodash = require('lodash');
 const moment = require("moment/moment");
@@ -1204,6 +1205,17 @@ router_get(router,'/aa-tx/:userOpHash',
     ]);
 
     aaTx.confirmedEpochCount = Math.max(confirmedEpochNumber - aaTx.epochNumber, 0);
+
+    if (aaTx.senderHex && aaTx.epochNumber && bundleTxHash) {
+      aaTx.effectiveAuth = await getDelegatedAddrAtTx(aaTx.senderHex, aaTx.epochNumber, bundleTxHash)
+        .then(res => {
+          return res ? service.accountQuery.patchAddressInfo([res], '', 'address').then(() => res) : null;
+        })
+        .catch(e => {
+          aaTx.effectiveAuthError = e?.message ?? String(e);
+          return null;
+        });
+    }
 
     if (bundleTxHash) {
       aaTx['blockHash'] = parsed?.receipt?.blockHash || '';
