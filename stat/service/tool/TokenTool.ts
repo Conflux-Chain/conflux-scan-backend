@@ -21,6 +21,12 @@ const fs = require('fs');
 const path = require('path');
 const lodash = require('lodash');
 
+let _instance: TokenTool;
+
+export function getTokenTool(): TokenTool {
+  return _instance;
+}
+
 export class TokenTool {
     protected cfx;
     public contract;
@@ -28,6 +34,7 @@ export class TokenTool {
     constructor(cfx:Conflux) {
         this.cfx = cfx;
         this.contract = cfx.Contract({abi});
+        _instance = this;
     }
 
     async getToken(address/*base32*/: string, epochNumber = undefined, useCache = false): Promise<{
