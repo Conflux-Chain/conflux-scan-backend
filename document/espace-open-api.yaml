@@ -1863,8 +1863,8 @@ paths:
 
         Returns all fields from `AATxItem` (same as items in `/eip4337/aa-txs`) plus extra fields
         from `AATxDetailExtra` — parsed live from the bundle tx: data (user op callData),
-        verificationGasLimit, preVerificationGas, maxFeePerGas, maxPriorityFeePerGas, signature,
-        txGasLimit, txGasUsed. Returns `null` if not found.
+        position, verificationGasLimit, preVerificationGas, maxFeePerGas, maxPriorityFeePerGas,
+        signature, txGasLimit, txGasUsed. Returns `null` if not found.
       parameters:
         - name: userOpHash
           in: query
@@ -4662,6 +4662,10 @@ components:
           nullable: true
           description: "Raw callData of this user op (hex string)."
           example: "0xb61d27f6..."
+        position:
+          type: integer
+          description: "Zero-based index of this user op within its bundle transaction."
+          example: 0
         verificationGasLimit:
           type: string
           description: "verificationGasLimit for this user op (decimal string). High 128 bits of accountGasLimits."
