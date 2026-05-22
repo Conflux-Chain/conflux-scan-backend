@@ -1200,6 +1200,7 @@ router_get(router,'/aa-tx/:userOpHash',
     const bundleTxHash = aaTx.txHash;
     if (bundleTxHash) {
       const parsed = await parseBundleTxByHash(cfx, bundleTxHash, {targetUserOpHash: userOpHash});
+      aaTx['blockHash'] = parsed?.receipt?.blockHash || '';
       const position = await getAAOpPositionInBundle(cfx, bundleTxHash, userOpHash, parsed?.receipt);
       if (position >= 0) {
         const [logRange, traceArray, allTokenTransfers] = await Promise.all([
