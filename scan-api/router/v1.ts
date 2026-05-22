@@ -1255,6 +1255,23 @@ router_get(router,'/aa-tx/:userOpHash',
       aaTx.tokenTransfers = { message: 'bundle tx not linked', total: 0, list: [] };
     }
 
+    const addresses = new Set<string>([
+      aaTx.senderHex,
+      aaTx.bundlerHex,
+      aaTx.entryPointHex,
+      aaTx.paymasterDecoded?.address,
+      aaTx.effectiveAuth?.address,
+      ...(aaTx.parsedMethods ?? []).map((m: any) => m.to),
+      ...(aaTx.cfxTransfers?.list ?? []).flatMap((t: any) => [t.from, t.to]),
+      ...(aaTx.tokenTransfers?.list ?? []).flatMap((t: any) => [t.from, t.to, t.address]),
+    ].filter(Boolean));
+
+    aaTx.nameMap = await service.accountQuery.list([...addresses], {
+      withContractInfo: true,
+      withENSInfo: true,
+      withNameTagInfo: true,
+    });
+
     return aaTx;
   },
 );
