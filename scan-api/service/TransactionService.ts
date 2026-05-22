@@ -15,10 +15,17 @@ const {hexToUtf8, utf8ToHex} = require("../../stat/service/tool/CensorTool");
 const {extractActualGasCost} = require("../../stat/service/common/utils");
 const BigFixed = require('bigfixed');
 
+let _instance: TransactionService;
+
+export function getTransactionService(): TransactionService {
+  return _instance;
+}
+
 export class TransactionService {
   app: ScanApp & any;
   constructor(app) {
     this.app = app;
+    _instance = this;
   }
 
   async query({ hash, fields, aggregate } = {} as any) {
@@ -105,7 +112,7 @@ export class TransactionService {
     );
   }
 
-  private MAX_RECORDS_CFX_TRANSFER = 100;
+  private static MAX_RECORDS_CFX_TRANSFER = 100;
 
   async getCfxTransfers(txHash: string) {
     const {
@@ -113,7 +120,10 @@ export class TransactionService {
     } = this as ScanCtx;
 
     const result = await service.conflux.getTransactionTrace(txHash);
+    return TransactionService.buildCfxTransfersFromTraceObj(result);
+  }
 
+  static buildCfxTransfersFromTraceObj(result) {
     const traces = result.traceArray;
     if (!traces) {
       return {total: 0, list: []};
@@ -144,7 +154,7 @@ export class TransactionService {
       });
     }
 
-    return {total: list.length, list: list.slice(0, this.MAX_RECORDS_CFX_TRANSFER)};
+    return {total: list.length, list: list.slice(0, TransactionService.MAX_RECORDS_CFX_TRANSFER)};
   }
 
   private MAX_RECORDS_TOKEN_TRANSFER = 100;
