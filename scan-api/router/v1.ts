@@ -26,7 +26,10 @@ import {fmtAddr} from "../../stat/StatApp";
 import {Errors} from "../../stat/service/common/LogicError";
 import {HomepageDashboard} from "../../stat/service/HomepageDashboard";
 import {ConfigInstance} from "../../stat/config/StatConfig";
-import {getBundleTxHashForUserOp, getAAOpPositionInBundle, extractAAOpTraceNode, getAAOpLogRange} from "../../stat/service/eip/eip4337bundleParser";
+import {getBundleTxHashForUserOp, getAAOpPositionInBundle, extractAAOpTraceNode, getAAOpLogRange, getAAOpFlatTraces} from "../../stat/service/eip/eip4337bundleParser";
+import {TransactionService} from "../service/TransactionService";
+import {fmtEVMAddr} from "../../stat/service/common/utils";
+import {getAATxDetail} from "../../stat/service/eip/eip4337query";
 
 const lodash = require('lodash');
 const moment = require("moment/moment");
@@ -1173,7 +1176,48 @@ router_get(router,'/transferTree/:transactionHash',
   },
 );
 
-// ----------------------------------- EventLog ---------------------------------
+// ----------------------------------- AA Tx Detail ---------------------------------
+router_get(router,'/aa-tx/:userOpHash',
+  OpenAPI.flow({
+    tags: ['aa'],
+    input: {
+      userOpHash: { in: 'path', type: 'string', required: true },
+    },
+    output: {
+      200: 'object',
+      600: { code: 'integer', message: 'string' },
+    },
+  }),
+
+  async function ({userOpHash}) {
+    const {app: {cfx}} = this as ScanCtx;
+
+    const aaTx = await getAATxDetail(cfx, userOpHash);
+    if (!aaTx) {
+      return { message: 'AA tx not found', userOpHash };
+    }
+
+    const bundleTxHash = aaTx.txHash;
+    if (bundleTxHash) {
+      const position = await getAAOpPositionInBundle(cfx, bundleTxHash, userOpHash);
+      if (position >= 0) {
+        const traceArray = await getAAOpFlatTraces(cfx, bundleTxHash, position);
+        const cfxTransfers = TransactionService.buildCfxTransfersFromTraceObj({traceArray});
+        cfxTransfers.list.forEach(item => {
+          item.from = fmtEVMAddr(item.from);
+          item.to = fmtEVMAddr(item.to);
+        });
+        aaTx.cfxTransfers = cfxTransfers;
+      } else {
+        aaTx.cfxTransfers = { message: 'op position not found in bundle', total: 0, list: [] };
+      }
+    } else {
+      aaTx.cfxTransfers = { message: 'bundle tx not linked', total: 0, list: [] };
+    }
+
+    return aaTx;
+  },
+);
 router_get(router,'/eventLog',
   OpenAPI.flow({
     tags: ['eventLog'],
