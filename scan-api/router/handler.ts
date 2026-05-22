@@ -25,10 +25,10 @@ export async function handleAATxDetail(
     confluxService.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_CONFIRMED),
   ]);
 
-  aaTx.confirmedEpochCount = Math.max(confirmedEpochNumber - aaTx.epochNumber, 0);
+  aaTx.confirmedEpochCount = Math.max(confirmedEpochNumber - Number(aaTx.epoch), 0);
 
-  if (aaTx.senderHex && aaTx.epochNumber && bundleTxHash) {
-    aaTx.effectiveAuth = await getDelegatedAddrAtTx(aaTx.senderHex, aaTx.epochNumber, bundleTxHash)
+  if (aaTx.senderHex && aaTx.epoch && bundleTxHash) {
+    aaTx.effectiveAuth = await getDelegatedAddrAtTx(aaTx.senderHex, Number(aaTx.epoch), bundleTxHash)
       .then(res => {
         return res ? accountQuery.patchAddressInfo([res], '', 'address').then(() => res) : null;
       })
