@@ -61,16 +61,16 @@ export class StatDailyContractVerified extends TimerStat{
             where: {
                 [Op.and]:[
                     {verifiedAt: {
-                            [Op.gte]:beginTime.getTime() / 1000
+                            [Op.gte]: beginTime
                         }},
                     {verifiedAt: {
-                            [Op.lt]:endTime.getTime() / 1000
+                            [Op.lt]: endTime
                         }}
                 ]
             },
         });
         const total = await VerifiedContracts.count({
-            where: {verifiedAt: {[Op.lt]: endTime.getTime() / 1000}},
+            where: {verifiedAt: {[Op.lt]: endTime}},
         });
 
         return {

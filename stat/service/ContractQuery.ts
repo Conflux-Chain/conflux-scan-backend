@@ -385,10 +385,10 @@ export class ContractQuery {
             conditions.push({deployer: ethers.getAddress(deployerAddress)});
         }
         if (startEpoch !== undefined) {
-            conditions.push({epoch: {[Op.gte]: startEpoch}});
+            conditions.push({epochNumber: {[Op.gte]: startEpoch}});
         }
         if (endEpoch !== undefined) {
-            conditions.push({epoch: {[Op.lte]: endEpoch}});
+            conditions.push({epochNumber: {[Op.lte]: endEpoch}});
         }
         if (minTimestamp !== undefined) {
             conditions.push({verifiedAt: {[Op.gte]: new Date(minTimestamp * 1000)}});
@@ -440,14 +440,18 @@ export class ContractQuery {
                 hasNametag: Boolean(item.hasNametag),
             };
             if (item.language === CONST.LANGUAGE.SOLIDITY) {
-                contract.compilerVulnerabilities = solcVulnerabilities[contract.compilerVersionShort];
+                contract.compilerVulnerabilities = solcVulnerabilities[compilerVersion];
             }
             return contract;
         });
 
-        if (!list?.length) {
+        if (list?.length) {
             const balances = await CfxBalance.findAll({where: {addressId: {[Op.in]: list.map(item => item.addressId)}}});
-            list.forEach(item => item.balance = balances[item.addressId]?.total || 0);
+            const balanceMap = balances.reduce((result, balance) => {
+                result[balance.addressId] = balance.total || 0;
+                return result;
+            }, {});
+            list.forEach(item => item.balance = balanceMap[item.addressId] || 0);
         }
 
         list.forEach(item => delete item.addressId);
@@ -592,7 +596,7 @@ export class ContractQuery {
             similarMatchChainId,
             similarMatchAddress,
             matchId,
-            verifiedAt: verifiedAt.replace('T', ' ').replace(/T$/, ''),
+            verifiedAt: new Date(verifiedAt),
         } as VerifiedContracts;
 
         this.traceCreate.query(contractAddress).then(async item => {
@@ -1549,11 +1553,17 @@ export class ContractQuery {
             where epoch >= :minEpoch and epoch <= :maxEpoch`, {
                 type: QueryTypes.SELECT, replacements: {minEpoch, maxEpoch}, raw: true
             }).then(items => {
-                return items.map((item: any) => item.id)
+                return items.map((item: any) => item.id).filter((id: any) => id != null)
             });
-            for (const addressId of addressIds) {
-                const verify = await VerifiedContracts.findOne({where: {addressId}});
-                if (verify) {
+            if (addressIds.length > 0) {
+                const verifiedContracts = await VerifiedContracts.findAll({
+                    attributes: ['addressId'],
+                    where: {
+                        addressId: {[Op.in]: addressIds},
+                    },
+                    raw: true,
+                });
+                for (const {addressId} of verifiedContracts as Array<{addressId: number}>) {
                     await updateTxnsCountById(addressId);
                 }
             }

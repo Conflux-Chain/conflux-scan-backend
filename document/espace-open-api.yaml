@@ -1164,7 +1164,7 @@ paths:
         Returns a cursor-paginated list of verified contracts.
         Rules:
         1. Arbitrary page navigation is not supported.
-        2. Clients must use the `nextCursor` returned by the server.
+        2. Clients must use the `next` value returned by the server.
       parameters:
         - $ref: '#/components/parameters/cursorParamWithoutMaximum'
         - $ref: '#/components/parameters/minTimestampParam'
