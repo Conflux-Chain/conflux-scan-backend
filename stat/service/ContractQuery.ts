@@ -1524,7 +1524,8 @@ export class ContractQuery {
         }
 
         let lastId = 0;
-        while (true) {
+        const curEpoch = await KV.getNumber(KEY_STAT_TXNS_FOR_VERIFIED_CONTRACTS, 0)
+        while (curEpoch === 0) {
             const list = await VerifiedContracts.findAll({
                 attributes: ['id', 'addressId'],
                 where: {id: {[Op.gt]: lastId},}, offset: 0, limit: 1000, order: [['id', 'ASC']],
