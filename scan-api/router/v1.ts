@@ -26,7 +26,7 @@ import {fmtAddr} from "../../stat/StatApp";
 import {Errors} from "../../stat/service/common/LogicError";
 import {HomepageDashboard} from "../../stat/service/HomepageDashboard";
 import {ConfigInstance} from "../../stat/config/StatConfig";
-import {getBundleTxHashForUserOp, getAAOpPositionInBundle, extractAAOpTraceNode, getAAOpLogRange, getAAOpFlatTraces} from "../../stat/service/eip/eip4337bundleParser";
+import {getBundleTxHashForUserOp, getAAOpPositionInBundle, extractAAOpTraceNode, getAAOpLogRange, getAAOpFlatTraces, parseBundleTxByHash} from "../../stat/service/eip/eip4337bundleParser";
 import {TransactionService} from "../service/TransactionService";
 import {fmtEVMAddr} from "../../stat/service/common/utils";
 import {getAATxDetail} from "../../stat/service/eip/eip4337query";
@@ -1199,7 +1199,8 @@ router_get(router,'/aa-tx/:userOpHash',
 
     const bundleTxHash = aaTx.txHash;
     if (bundleTxHash) {
-      const position = await getAAOpPositionInBundle(cfx, bundleTxHash, userOpHash);
+      const parsed = await parseBundleTxByHash(cfx, bundleTxHash, {targetUserOpHash: userOpHash});
+      const position = await getAAOpPositionInBundle(cfx, bundleTxHash, userOpHash, parsed?.receipt);
       if (position >= 0) {
         const traceArray = await getAAOpFlatTraces(cfx, bundleTxHash, position);
         const cfxTransfers = TransactionService.buildCfxTransfersFromTraceObj({traceArray});

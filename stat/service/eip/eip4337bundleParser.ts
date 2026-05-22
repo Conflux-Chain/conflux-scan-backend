@@ -71,6 +71,10 @@ export interface IBundleTxParseResult {
 	/** Block timestamp in seconds (Unix). */
 	timestamp: number;
 	userOps: IAAOpDetail[];
+	/** Raw transaction object from cfx.getTransactionByHash. */
+	tx: any;
+	/** Raw receipt object from cfx.getTransactionReceipt. */
+	receipt: any;
 }
 
 function toChecksumHex(addr: string): string {
@@ -243,6 +247,8 @@ export async function parseBundleTxByHash(
 		blockNumber: Number(receipt.epochNumber),
 		timestamp,
 		userOps,
+		tx,
+		receipt,
 	};
 }
 
@@ -268,8 +274,8 @@ export async function getBundleTxHashForUserOp(userOpHash: string): Promise<stri
  * the UserOperationEvent logs in the receipt.
  * Returns -1 if not found.
  */
-export async function getAAOpPositionInBundle(cfx: Conflux, bundleTxHash: string, userOpHash: string): Promise<number> {
-	const receipt = await cfx.getTransactionReceipt(bundleTxHash);
+export async function getAAOpPositionInBundle(cfx: Conflux, bundleTxHash: string, userOpHash: string, cachedReceipt?: any): Promise<number> {
+	const receipt = cachedReceipt ?? await cfx.getTransactionReceipt(bundleTxHash);
 	const logs: any[] = (receipt as any)?.logs ?? [];
 	let position = 0;
 	for (const log of logs) {
@@ -298,8 +304,9 @@ export async function getAAOpLogRange(
 	cfx: Conflux,
 	bundleTxHash: string,
 	position: number,
+	cachedReceipt?: any,
 ): Promise<{ startExclusive: number; endInclusive: number } | null> {
-	const receipt = await cfx.getTransactionReceipt(bundleTxHash);
+	const receipt = cachedReceipt ?? await cfx.getTransactionReceipt(bundleTxHash);
 	const logs: any[] = (receipt as any)?.logs ?? [];
 	let opIdx = 0;
 	let prevEventLogIndex = -1;
