@@ -1198,8 +1198,14 @@ router_get(router,'/aa-tx/:userOpHash',
     }
 
     const bundleTxHash = aaTx.txHash;
+    const [parsed, confirmedEpochNumber] = await Promise.all([
+      bundleTxHash ? parseBundleTxByHash(cfx, bundleTxHash, {targetUserOpHash: userOpHash}) : Promise.resolve(null),
+      service.conflux.getEpochNumber(CONST.EPOCH_NUMBER.LATEST_CONFIRMED),
+    ]);
+
+    aaTx.confirmedEpochCount = Math.max(confirmedEpochNumber - aaTx.epochNumber, 0);
+
     if (bundleTxHash) {
-      const parsed = await parseBundleTxByHash(cfx, bundleTxHash, {targetUserOpHash: userOpHash});
       aaTx['blockHash'] = parsed?.receipt?.blockHash || '';
       const position = await getAAOpPositionInBundle(cfx, bundleTxHash, userOpHash, parsed?.receipt);
       if (position >= 0) {
