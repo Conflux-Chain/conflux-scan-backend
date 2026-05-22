@@ -319,6 +319,7 @@ export async function getAATxDetail(cfx: Conflux, userOpHash: string): Promise<A
             Object.assign(aaTx, {
                 verificationGasLimit:    matchedOp.verificationGasLimit,
                 preVerificationGas:      matchedOp.preVerificationGas,
+                callGasLimit:            matchedOp.gasLimit,
                 maxFeePerGas:            matchedOp.maxFeePerGas,
                 maxPriorityFeePerGas:    matchedOp.maxPriorityFeePerGas,
                 signature:               matchedOp.signature,

@@ -4687,6 +4687,10 @@ components:
           type: string
           description: "preVerificationGas for this user op (decimal string)."
           example: "50000"
+        callGasLimit:
+          type: string
+          description: "callGasLimit for this user op — execution phase gas limit (decimal string). Low 128 bits of accountGasLimits."
+          example: "200000"
         maxFeePerGas:
           type: string
           description: "maxFeePerGas in wei (decimal string). Low 128 bits of gasFees."
