@@ -4666,6 +4666,19 @@ components:
           type: integer
           description: "Zero-based index of this user op within its bundle transaction."
           example: 0
+        paymasterAndData:
+          type: string
+          description: "Raw paymasterAndData field from the user op (hex string)."
+          example: "0xabc123..."
+        paymasterDecoded:
+          type: object
+          nullable: true
+          description: "Decoded paymaster info. Null if no paymaster is present."
+          properties:
+            address:
+              type: string
+              description: "Checksummed paymaster contract address."
+              example: "0xAbCd..."
         verificationGasLimit:
           type: string
           description: "verificationGasLimit for this user op (decimal string). High 128 bits of accountGasLimits."

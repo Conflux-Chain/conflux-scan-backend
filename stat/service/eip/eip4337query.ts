@@ -326,6 +326,8 @@ export async function getAATxDetail(cfx: Conflux, userOpHash: string): Promise<A
                 txGasUsed:            matchedOp.txGasUsed,
                 data:                 matchedOp.callData ?? null,
                 position:             matchedOp.position,
+                paymasterAndData:     matchedOp.paymasterAndData ?? '0x',
+                paymasterDecoded:     matchedOp.paymasterDecoded ?? null,
             });
         }
     }

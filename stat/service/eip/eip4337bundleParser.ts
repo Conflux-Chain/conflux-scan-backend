@@ -1,6 +1,6 @@
 import {ethers, formatEther} from "ethers";
 import {Conflux, format} from "js-conflux-sdk";
-import {parseAATxMethods} from "./eip4337decoder";
+import {parseAATxMethods, getPaymasterAddress} from "./eip4337decoder";
 import {parseUserOperationEvent} from "./eip4337abi";
 import {AATx, BundleTx} from "../../model/eip4337model";
 
@@ -54,6 +54,10 @@ export interface IAAOpDetail {
 	txGasUsed?: string;
 	/** Raw callData of this user op (hex string). */
 	callData?: string;
+	/** Raw paymasterAndData field from the user op (hex string). */
+	paymasterAndData?: string;
+	/** Decoded paymaster info. Null if no paymaster. */
+	paymasterDecoded?: { address: string } | null;
 }
 
 export interface IBundleTxParseResult {
@@ -230,6 +234,9 @@ export async function parseBundleTxByHash(
 			op.txGasLimit = (tx as any).gas?.toString() ?? '0';
 			op.txGasUsed = (receipt as any).gasUsed?.toString() ?? '0';
 			op.callData = parsedUserOp.callData ?? '';
+			op.paymasterAndData = parsedUserOp.paymasterAndData ?? '0x';
+			const paymasterAddr = getPaymasterAddress(parsedUserOp.paymasterAndData);
+			op.paymasterDecoded = paymasterAddr ? { address: ethers.getAddress(paymasterAddr) } : null;
 		}
 
 		userOps.push(op);
