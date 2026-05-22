@@ -2,7 +2,8 @@ import {
     Hex40Map,
     getAddrId,
     formatToBase32,
-    makeId, makeIdV,
+    makeId,
+    makeIdV,
 } from "../model/HexMap";
 import {Op, QueryTypes} from "sequelize";
 import {fmtAddr, StatApp} from "../StatApp";
@@ -415,15 +416,15 @@ export class ContractQuery {
 
         const list = rows.map(item => {
             const contractName = splitFullyQualifiedName(item.name).contractName;
-            const compilerVersionShort = item.language === CONST.LANGUAGE.VYPER ?
+            const compilerVersion = item.language === CONST.LANGUAGE.VYPER ?
                 item.version : lodash.trimStart(item.version.split("+commit")[0], "v");
             const contract = {
                 address: fmtAddr(item.address, StatApp.networkId),
                 addressId: item.addressId,
                 contractName,
                 compiler: item.compiler,
-                compilerVersion: item.version,
-                compilerVersionShort,
+                compilerVersion,
+                longCompilerVersion: item.version,
                 language: item.language,
                 codeFormat: item.codeFormat,
                 balance: 0,
@@ -432,8 +433,8 @@ export class ContractQuery {
                     optimizationEnabled: item.optimization !== "0" && item.optimization !== "N/A",
                     constructorArgumentsEnabled: item?.constructorArgs?.length > 2,
                 },
-                verifiedAt: item.verifiedAt.getTime() / 1000,
                 license: item.license,
+                verifiedAt: item.verifiedAt.getTime() / 1000,
                 deployer: fmtAddr(item.deployer, StatApp.networkId),
                 [StatApp.isEVM ? "blockNumber" : "epochNumber"]: item.epochNumber,
                 hasNametag: Boolean(item.hasNametag),

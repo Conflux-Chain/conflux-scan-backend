@@ -3315,6 +3315,9 @@ components:
             example: "solc"
           compilerVersion:
             type: string
+            example: "0.8.24"
+          longCompilerVersion:
+            type: string
             example: "v0.8.24+commit.e11b9ed9"
           compilerVulnerabilities:
             type: number
@@ -3345,9 +3348,8 @@ components:
             type: string
             example: "MIT"
           verifiedAt:
-            type: string
-            format: date-time
-            example: "2026-05-14T10:30:00Z"
+            type: number
+            example: 1767225600
           deployer:
             type: string
             example: "0x1234567890abcdef1234567890abcdef12345678"

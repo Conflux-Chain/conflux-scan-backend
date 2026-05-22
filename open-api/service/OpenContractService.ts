@@ -5,7 +5,9 @@ import {format} from "js-conflux-sdk";
 import {
     checkPresent,
     mustBeAddressArrayParamIfPresent,
-    mustBeAddressParamIfPresent, mustBeEnumParamIfPresent, mustBeIntParamIfPresent,
+    mustBeAddressParamIfPresent,
+    mustBeEnumParamIfPresent,
+    mustBeIntParamIfPresent,
     splitFullyQualifiedName
 } from "../../stat/service/common/utils";
 import {setBody} from "../router/middleware";
@@ -14,8 +16,6 @@ import {QueryTypes} from "sequelize";
 import {VerificationJob, VerifyInput} from "../../stat/service/ContractQuery";
 import {formatToBase32} from "../../stat/model/HexMap";
 import {paginateCore} from "../../stat/router/ParamChecker";
-import {Errors} from "../../stat/service/common/LogicError";
-import {listAuthAction} from "../../stat/model/EIP7702model";
 
 const lodash = require('lodash');
 const util = require('util');
@@ -308,7 +308,7 @@ export async function listVerifiedContracts(ctx) {
     mustBeIntParamIfPresent(ctx.request.query, 'cursor', 'limit', 'minTimestamp','maxTimestamp');
 
     const {sort, cursor, minTimestamp, maxTimestamp} = ctx.request.query;
-    const {_, limit} = paginateCore(ctx.request.query);
+    const {limit} = paginateCore(ctx.request.query);
 
     const data = await getApiService().contractQuery.listVerifyByCursor({
         sort, cursor, limit, minTimestamp, maxTimestamp
