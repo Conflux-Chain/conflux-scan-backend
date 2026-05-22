@@ -1190,7 +1190,7 @@ router_get(router,'/aa-tx/:userOpHash',
   }),
 
   async function ({userOpHash}) {
-    const {app: {cfx}} = this as ScanCtx;
+    const {app: {cfx, service}} = this as ScanCtx;
 
     const aaTx = await getAATxDetail(cfx, userOpHash);
     if (!aaTx) {
@@ -1202,18 +1202,38 @@ router_get(router,'/aa-tx/:userOpHash',
       const parsed = await parseBundleTxByHash(cfx, bundleTxHash, {targetUserOpHash: userOpHash});
       const position = await getAAOpPositionInBundle(cfx, bundleTxHash, userOpHash, parsed?.receipt);
       if (position >= 0) {
-        const traceArray = await getAAOpFlatTraces(cfx, bundleTxHash, position);
+        const [logRange, traceArray, allTokenTransfers] = await Promise.all([
+          getAAOpLogRange(cfx, bundleTxHash, position, parsed?.receipt),
+          getAAOpFlatTraces(cfx, bundleTxHash, position),
+          service.conflux.getTransactionTokenTransferArray(bundleTxHash),
+        ]);
+
         const cfxTransfers = TransactionService.buildCfxTransfersFromTraceObj({traceArray});
         cfxTransfers.list.forEach(item => {
           item.from = fmtEVMAddr(item.from);
           item.to = fmtEVMAddr(item.to);
         });
         aaTx.cfxTransfers = cfxTransfers;
+
+        const filteredTokenTransfers = logRange
+          ? allTokenTransfers.filter((t: any) =>
+              t.transactionLogIndex > logRange.startExclusive &&
+              t.transactionLogIndex <= logRange.endInclusive
+            )
+          : [];
+        filteredTokenTransfers.forEach((item: any) => {
+          item.from = fmtEVMAddr(item.from);
+          item.to = fmtEVMAddr(item.to);
+          item.address = fmtEVMAddr(item.address);
+        });
+        aaTx.tokenTransfers = { total: filteredTokenTransfers.length, list: filteredTokenTransfers };
       } else {
         aaTx.cfxTransfers = { message: 'op position not found in bundle', total: 0, list: [] };
+        aaTx.tokenTransfers = { message: 'op position not found in bundle', total: 0, list: [] };
       }
     } else {
       aaTx.cfxTransfers = { message: 'bundle tx not linked', total: 0, list: [] };
+      aaTx.tokenTransfers = { message: 'bundle tx not linked', total: 0, list: [] };
     }
 
     return aaTx;
