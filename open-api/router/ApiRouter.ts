@@ -1,7 +1,7 @@
 import * as Koa from 'koa'
 import * as Router from "koa-router";
 import * as bodyParser from "koa-bodyparser";
-import {ApiServer, getApiService} from '../ApiServer'
+import {ApiServer} from '../ApiServer'
 import {StatApp} from "../../stat/StatApp";
 import {registerRouter as registerRouterESpace} from "./ESpaceApiRouter";
 import {addSwagger, executionTime, handleException, setBody} from "./middleware";
@@ -22,6 +22,8 @@ import {
     getABI,
     getContractCreation,
     getSourceCode,
+    listVerifiedContracts,
+    listVerifiedContractsLatest,
     verifyProxyContract,
     verifySourcecode
 } from "../service/OpenContractService";
@@ -72,6 +74,7 @@ import {
     listTransactionSenderStat,
     listTransactionSenderTopStat,
     listCoreTransactionStat,
+    listContractVerifiedStats,
 } from "../service/OpenStatService";
 import {mustBeAddressParamIfPresent,} from "../../stat/service/common/utils";
 import {
@@ -174,6 +177,8 @@ function registerRouter(router: Router) {
     router.get('/contract/checkverifystatus', checkVerifyStatus)
     router.get('/contract/verifyproxycontract', verifyProxyContract)
     router.get('/contract/checkproxyverification', checkProxyVerification)
+    router.get('/contract/verified', listVerifiedContracts)
+    router.get('/contract/verified/latest', listVerifiedContractsLatest)
 
     // token
     router.get('/token/tokeninfo', getTokenInfo);
@@ -196,6 +201,7 @@ function registerRouter(router: Router) {
     router.get('/statistics/mining', listCoreMiningStat)
     router.get('/statistics/tps', listTpsStats);
     router.get('/statistics/contract', listContractStats);
+    router.get('/statistics/contract/verified', listContractVerifiedStats);
     router.get('/statistics/account/cfx/holder', listCfxHolderStats);
     router.get('/statistics/account/growth', listAccountGrowthStats);
     router.get('/statistics/account/active', listTransactionSenderStat);

@@ -3,6 +3,7 @@ import {
     getAddrId,
     formatToBase32,
     makeId,
+    makeIdV,
 } from "../model/HexMap";
 import {Op, QueryTypes} from "sequelize";
 import {fmtAddr, StatApp} from "../StatApp";
@@ -35,7 +36,12 @@ import {
     KEY_EVM_VERSIONS,
     KEY_SOLC_VERSIONS,
     KEY_VYPER_VERSIONS,
-    KV
+    VERIFIED_COUNT_ALL,
+    KEY_STAT_TXNS_FOR_VERIFIED_CONTRACTS,
+    KEY_STAT_ANNOUNCE_NAME_FOR_VERIFIED_CONTRACTS,
+    KEY_STAT_NAME_TAG_FOR_VERIFIED_CONTRACTS,
+    KEY_SOLC_VULNERABILITIES,
+    KV,
 } from "../model/KV";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import axios from "axios";
@@ -43,6 +49,11 @@ import {doHeartBeat, HeartBeatBean, KEY_COMPILER} from "../model/HeartBeat";
 import {ConfigInstance, VerificationOptions} from "../config/StatConfig";
 import {Conflux, format, sign} from "js-conflux-sdk";
 import {ContractImpl} from "../model/ContractImpl";
+import {AddressTransactionIndex, FullBlock, FullTransaction, loadMaxBlockEpoch} from "../model/FullBlock";
+import {CfxBalance} from "../model/Balance";
+import {PruneInfo, PruneType} from "../model/PruneInfo";
+import {ContractTraceCreateQuery} from "./ContractTraceCreateQuery";
+import {NameTag} from "../model/NameTag";
 
 const path = require('path');
 const superagent = require('superagent');
@@ -69,6 +80,7 @@ export function getContractQuery() {
 export class ContractQuery {
     static verifyEnable: boolean;
     private cfx: Conflux;
+    private traceCreate: ContractTraceCreateQuery;
     private readonly verifyUrl: string;
 
     private readonly cacheTtl: number
@@ -88,6 +100,7 @@ export class ContractQuery {
         }
 
         this.cfx = cfx;
+        this.traceCreate = new ContractTraceCreateQuery(cfx);
         ContractQuery.verifyEnable = enable;
         this.verifyUrl = url;
 
@@ -191,7 +204,7 @@ export class ContractQuery {
                 }
             });
 
-            const verifyArray = await this.listVerify(libs.map(item => item.address));
+            const verifyArray = await this.listVerifyByAddress(libs.map(item => item.address));
             const verifyMap = Object.fromEntries(verifyArray.map(item => [item.address, true]));
 
             libs.forEach(item => ( item['exactMatch'] = !!verifyMap[item.address]));
@@ -205,7 +218,7 @@ export class ContractQuery {
 
     private MAX_CONTRACTS = 100;
 
-    public async listVerify(addresses: string[]) {
+    public async listVerifyByAddress(addresses: string[]) {
         if (!addresses?.length) {
             return [];
         }
@@ -251,19 +264,223 @@ export class ContractQuery {
         ];
     }
 
+    public async listVerifyByCursor(
+        {
+            sort = 'DESC',
+            cursor = 0,
+            limit = 10,
+            minTimestamp,
+            maxTimestamp,
+        }: {
+            sort?: string,
+            cursor?: number,
+            limit?: number,
+            minTimestamp?: number,
+            maxTimestamp?: number,
+    }) {
+        const cursorField = "matchId";
+        const options: any = {
+            order: [[cursorField, sort]],
+            limit,
+            raw: true,
+        };
+        const conditions = [];
+        if (cursor > 0) {
+            conditions.push({[cursorField]: {[sort === 'DESC' ? Op.lt : Op.gt]: cursor}});
+        }
+        const timeConditions = []
+        if (minTimestamp !== undefined) {
+            timeConditions.push({verifiedAt: {[Op.gte]: new Date(minTimestamp * 1000)}});
+        }
+        if (maxTimestamp !== undefined) {
+            timeConditions.push({verifiedAt: {[Op.lte]: new Date(maxTimestamp * 1000)}});
+        }
+        conditions.push(...timeConditions);
+        if (conditions.length === 1) {
+            options.where = conditions[0];
+        }
+        if (conditions.length > 1) {
+            options.where = {[Op.and]: conditions};
+        }
+
+        const result: any = await this.listVerifyByOptions(options, timeConditions);
+
+        result.next = result?.list?.length ? result.list[result.list.length - 1][cursorField] : 0;
+
+        return result;
+    }
+
+    public async listVerifyByFilter(
+        {
+            compiler,
+            contractName,
+            compilerVersion,
+            licenseType,
+            contractAddress,
+            deployerAddress,
+            startEpoch,
+            endEpoch,
+            minTimestamp,
+            maxTimestamp,
+            hasNametag,
+            sortField = 'verified_time',
+            sort = 'DESC',
+            skip = 0,
+            limit = 10,
+        }: {
+            compiler?: string,
+            contractName?: string,
+            compilerVersion?: string,
+            licenseType?: number,
+            contractAddress?: string,
+            deployerAddress?: string,
+            startEpoch?: number,
+            endEpoch?: number,
+            minTimestamp?: number,
+            maxTimestamp?: number,
+            hasNametag?: string,
+            sortField?: string,
+            sort?: string,
+            skip?: number,
+            limit?: number,
+        }) {
+        if (compilerVersion) {
+            if (compilerVersion.startsWith("vyper:")) {
+                const vyperVersions = await this.listVyperVersions();
+                compilerVersion = checkVyperVersion(compilerVersion, vyperVersions);
+            } else {
+                const solcVersions = await this.listSolcVersions();
+                compilerVersion = checkSolcVersion(compilerVersion, solcVersions);
+            }
+        }
+
+        if (lodash.isNumber(licenseType)) {
+            licenseType = checkLicense(licenseType);
+        }
+
+        const options: any = {
+            order: [[sortField === 'verified_time' ? 'verifiedAt' : 'txns', sort]],
+            offset: skip,
+            limit,
+            raw: true,
+        };
+        const conditions = [];
+        if (compiler !== undefined) {
+            conditions.push({compiler});
+        }
+        if (contractName !== undefined) {
+            conditions.push({name: {[Op.like]: `%${contractName}%`}});
+        }
+        if (compilerVersion !== undefined) {
+            conditions.push({version: compilerVersion});
+        }
+        if (lodash.isNumber(licenseType)) {
+            const license = CONST.CONTRACT_LICENSE[licenseType].code;
+            conditions.push({license});
+        }
+        if (contractAddress !== undefined) {
+            conditions.push({address: format.address(contractAddress, StatApp.networkId)});
+        }
+        if (deployerAddress !== undefined) {
+            conditions.push({deployer: ethers.getAddress(deployerAddress)});
+        }
+        if (startEpoch !== undefined) {
+            conditions.push({epochNumber: {[Op.gte]: startEpoch}});
+        }
+        if (endEpoch !== undefined) {
+            conditions.push({epochNumber: {[Op.lte]: endEpoch}});
+        }
+        if (minTimestamp !== undefined) {
+            conditions.push({verifiedAt: {[Op.gte]: new Date(minTimestamp * 1000)}});
+        }
+        if (maxTimestamp !== undefined) {
+            conditions.push({verifiedAt: {[Op.lte]: new Date(maxTimestamp * 1000)}});
+        }
+        if (hasNametag !== undefined) {
+            conditions.push({hasNametag: hasNametag === 'true'});
+        }
+        if (conditions.length === 1) {
+            options.where = conditions[0];
+        }
+        if (conditions.length > 1) {
+            options.where = {[Op.and]: conditions};
+        }
+
+        return this.listVerifyByOptions(options, conditions);
+    }
+
+    private async listVerifyByOptions(options, countConditions) {
+        const rows = await VerifiedContracts.findAll(options);
+
+        const solcVulnerabilities = await this.listSolcVulnerabilities();
+
+        const list = rows.map(item => {
+            const contractName = splitFullyQualifiedName(item.name).contractName;
+            const compilerVersion = item.language === CONST.LANGUAGE.VYPER ?
+                item.version : lodash.trimStart(item.version.split("+commit")[0], "v");
+            const contract = {
+                address: fmtAddr(item.address, StatApp.networkId),
+                addressId: item.addressId,
+                contractName,
+                compiler: item.compiler,
+                compilerVersion,
+                longCompilerVersion: item.version,
+                language: item.language,
+                codeFormat: item.codeFormat,
+                balance: 0,
+                txns: item.txns,
+                setting: {
+                    optimizationEnabled: item.optimization !== "0" && item.optimization !== "N/A",
+                    constructorArguments: item?.constructorArgs?.length > 2,
+                },
+                license: item.license,
+                verifiedAt: item.verifiedAt.getTime() / 1000,
+                deployer: fmtAddr(item.deployer, StatApp.networkId),
+                [StatApp.isEVM ? "blockNumber" : "epochNumber"]: item.epochNumber,
+                hasNametag: Boolean(item.hasNametag),
+            };
+            if (item.language === CONST.LANGUAGE.SOLIDITY) {
+                contract.compilerVulnerabilities = solcVulnerabilities[compilerVersion];
+            }
+            return contract;
+        });
+
+        if (list?.length) {
+            const balances = await CfxBalance.findAll({where: {addressId: {[Op.in]: list.map(item => item.addressId)}}});
+            const balanceMap = balances.reduce((result, balance) => {
+                result[balance.addressId] = balance.total || 0;
+                return result;
+            }, {});
+            list.forEach(item => item.balance = balanceMap[item.addressId] || 0);
+        }
+
+        list.forEach(item => delete item.addressId);
+
+        let total;
+        if (countConditions.length) {
+            total = await VerifiedContracts.count({
+                where: countConditions.length === 1 ? countConditions[0] : {[Op.and]: countConditions}
+            });
+        } else {
+            total = await KV.getNumber(VERIFIED_COUNT_ALL, 0);
+        }
+
+        return {total, list}
+    }
+
     public async listVerifyInBatch(addresses: string[], chunkSize = this.MAX_CONTRACTS) {
         if(!addresses?.length){
             return [];
         }
 
         if(addresses.length < this.MAX_CONTRACTS) {
-            return this.listVerify(addresses);
+            return this.listVerifyByAddress(addresses);
         }
 
         const tasks = Array.from(
             { length: Math.ceil(addresses.length / chunkSize) },
             (_, index) => addresses.slice(index * chunkSize, (index + 1) * chunkSize)
-        ).map(addresses => this.listVerify(addresses));
+        ).map(addresses => this.listVerifyByAddress(addresses));
 
         const contracts = await Promise.all(tasks);
 
@@ -282,7 +499,7 @@ export class ContractQuery {
     }){
         const hex = format.hexAddress(verified.address)
         return lodash.assign(verified, {
-            language: 'solidity',
+            language: CONST.LANGUAGE.SOLIDITY,
             version: CONST.INTERNAL_ADDR_CONTRACT_MAP[hex].compilerVersion,
             evmVersion: 'Default',
             optimization: CONST.INTERNAL_ADDR_CONTRACT_MAP[hex].optimization,
@@ -315,8 +532,8 @@ export class ContractQuery {
             return null;
         }
 
-        const {address, match, abi, compilation, stdJsonInput, licenseType, contractLabel, similarMatchChainId,
-            similarMatchAddress, creationBytecode} = resp.data;
+        const {matchId, address, match, abi, compilation, stdJsonInput, licenseType, contractLabel, similarMatchChainId,
+            similarMatchAddress, creationBytecode, verifiedAt} = resp.data;
         if (!match) {
             return null;
         }
@@ -328,6 +545,7 @@ export class ContractQuery {
         }
 
         let {
+            compiler,
             language,
             compilerVersion,
             compilerSettings,
@@ -351,32 +569,49 @@ export class ContractQuery {
             sourceCode = JSON.stringify(stdJsonInput);
         }
 
-        if(language === 'Vyper') {
+        if(language === CONST.LANGUAGE.VYPER) {
             const versions = await this.listVyperVersions();
             compilerVersion = convertVyperVersion(compilerVersion, versions);
             fullyQualifiedName = contractLabel;
         }
 
+        const addressId = await makeIdV(address);
         const verified = {
             address: format.address(address, StatApp.networkId),
-            sourceCode,
+            addressId,
             name: fullyQualifiedName,
-            abi: JSON.stringify(abi),
-            language: language.toLowerCase(),
+            compiler,
             version: compilerVersion,
+            language,
             evmVersion: compilerSettings?.evmVersion ? compilerSettings.evmVersion : "Default",
-            optimization: language === 'Vyper' ? (compilerSettings?.optimize || '0') : (compilerSettings?.optimizer?.enabled ? '1' : '0'),
+            optimization: language === CONST.LANGUAGE.VYPER ? (compilerSettings?.optimize || '0') :
+                (compilerSettings?.optimizer?.enabled ? '1' : '0'),
             runs: compilerSettings?.optimizer?.runs,
             libraries: compilerSettings?.libraries,
             license: CONST.CONTRACT_LICENSE[licenseType || 1].code,
             constructorArgs: similarMatchChainId ? undefined : creationBytecode.transformationValues?.constructorArguments,
+            codeFormat: `${language}${sourceCode.startsWith("{") ? "(Json)" : ""}`,
+            sourceCode,
+            abi: JSON.stringify(abi),
             similarMatchChainId,
             similarMatchAddress,
-        };
+            matchId,
+            verifiedAt: new Date(verifiedAt),
+        } as VerifiedContracts;
 
-        VerifiedContracts.upsert(
-            {...verified, libraries: JSON.stringify(verified.libraries)}
-        ).catch(err => safeAddErrorLog("contract-query", "get-verify-by-sourcify", err));
+        this.traceCreate.query(contractAddress).then(async item => {
+            const {epochNumber, from} = item;
+            verified.deployer = from;
+            verified.epochNumber = epochNumber;
+            const count = await AddressTransactionIndex.count({where: {addressId}});
+            const pruneInfo = await PruneInfo.findOne({where: {addressId, type: PruneType.ADDR_TX}});
+            verified.txns = count + (pruneInfo?.pruned || 0);
+            const contract = await Contract.findOne({attributes: ['name'], where: {hex40id: addressId}, raw: true});
+            const nametag = await NameTag.findOne({where: {hex40id: addressId}, raw: true});
+            verified.hasNametag = Boolean(contract?.name || nametag?.nameTag || nametag?.labels);
+            await VerifiedContracts.upsert({...verified, libraries: JSON.stringify(verified.libraries)});
+        }).catch(err => safeAddErrorLog("contract-query", "get-verify-by-sourcify", err));
+
         this._addCache(hex, verified);
 
         this.saveABI(address, abi).then();
@@ -413,12 +648,7 @@ export class ContractQuery {
             attributes,
             where: {address: format.address(contractAddress, StatApp.networkId)},
             raw: true,
-        }).then((verify: VerifiedContracts) => {
-            if(verify?.language?.substring(0, 8) === 'solidity') {
-                verify.language = 'solidity';
-            }
-            return verify;
-        })
+        });
     }
 
     private async listVerifyByDB(addresses: string[]) {
@@ -584,6 +814,11 @@ export class ContractQuery {
                 console.log('Schedule update compiler versions fail', e);
             });
 
+            await that.updateSolcVulnerabilities().catch(e => {
+                safeAddErrorLog('ContractQuery', 'updateSolcVulnerabilities', e).then();
+                console.log('Schedule update compiler vulnerabilities fail', e);
+            });
+
             await that.updateVyperVersions().catch(e => {
                 safeAddErrorLog('ContractQuery', 'updateVyperVersions', e).then();
                 console.log('Schedule update compiler versions fail', e);
@@ -605,6 +840,18 @@ export class ContractQuery {
         const {data} = resp;
         const versions = lodash.mapValues(data.releases, solcName => solcName.substring(8, solcName.length - 3));
         await KV.upsert({key: KEY_SOLC_VERSIONS, value: JSON.stringify(versions)});
+    }
+
+    // shortVersion => vulnerabilities
+    private async updateSolcVulnerabilities() {
+        const resp = await ContractQuery._getJsonRequestByAxios({
+            url: 'https://raw.githubusercontent.com/argotorg/solidity/refs/heads/develop/docs/bugs_by_version.json',
+            handleError: false,
+        });
+        const {data} = resp;
+        const vulnerabilities = Object.fromEntries(Object.entries(data)
+            .map(([shortVer, bugInfo]: [string, any]) => [shortVer, bugInfo.bugs.length]));
+        await KV.upsert({key: KEY_SOLC_VULNERABILITIES, value: JSON.stringify(vulnerabilities)});
     }
 
     // shortVersion => {desc, commit}
@@ -653,6 +900,10 @@ export class ContractQuery {
 
     async listSolcVersions(): Promise<{ [shortVersion: string]: string }> {
         return this.listCompilerVersions(KEY_SOLC_VERSIONS);
+    }
+
+    async listSolcVulnerabilities(): Promise<{ [shortVersion: string]: number }> {
+        return this.listCompilerVersions(KEY_SOLC_VULNERABILITIES);
     }
 
     async listVyperVersions(): Promise<{ [shortVersion: string]: { desc: string, commit: string } }> {
@@ -741,7 +992,7 @@ export class ContractQuery {
 
         if(codeFormat === CONST.CONTRACT_CODE_FORMAT_INFO.SOLIDITY_SINGLE_FILE.code) {
             jsonInput = {
-                language: "Solidity",
+                language: CONST.LANGUAGE.SOLIDITY,
                 sources: {
                     [contractPath]: {
                         content: this._rmRedundantLicense(sourceCode),
@@ -760,7 +1011,7 @@ export class ContractQuery {
 
         if(codeFormat === CONST.CONTRACT_CODE_FORMAT_INFO.VYPER_SINGLE_FILE.code) {
             jsonInput = {
-                language: "Vyper",
+                language: CONST.LANGUAGE.VYPER,
                 sources: {
                     [contractPath]: {
                         content: sourceCode,
@@ -1262,6 +1513,128 @@ export class ContractQuery {
         }
 
         return [];
+    }
+
+    public async scheduleStatTxnVolume(interval = 3000) {
+        async function updateTxnsCountById(addressId) {
+            const count = await AddressTransactionIndex.count({where: {addressId}});
+            const pruneInfo = await PruneInfo.findOne({where: {addressId, type: PruneType.ADDR_TX}});
+            const txns = count + (pruneInfo?.pruned || 0);
+            await VerifiedContracts.update({txns}, {where: {addressId}});
+        }
+
+        let lastId = 0;
+        const curEpoch = await KV.getNumber(KEY_STAT_TXNS_FOR_VERIFIED_CONTRACTS, 0)
+        while (curEpoch === 0) {
+            const list = await VerifiedContracts.findAll({
+                attributes: ['id', 'addressId'],
+                where: {id: {[Op.gt]: lastId},}, offset: 0, limit: 1000, order: [['id', 'ASC']],
+            });
+            const size = list?.length;
+            if (!size) {
+                break;
+            }
+            console.log(`start to stat txns for ${size} contracts...`);
+            for (let i = 0; i < size; i++) {
+                const {id, addressId} = list[i];
+                await updateTxnsCountById(addressId);
+                lastId = id;
+            }
+        }
+
+        async function updateTxnsCount() {
+            const maxEpoch: number = await loadMaxBlockEpoch();
+            const curEpoch = await KV.getNumber(KEY_STAT_TXNS_FOR_VERIFIED_CONTRACTS, 0)
+            const minEpoch = Math.max(curEpoch, maxEpoch - 1000);
+            const addressIds = await FullBlock.sequelize.query(`
+            select distinct(fromId) as id from ${FullTransaction.getTableName()} 
+            where epoch >= :minEpoch and epoch <= :maxEpoch
+            union 
+            select distinct(toId) as id from ${FullTransaction.getTableName()} 
+            where epoch >= :minEpoch and epoch <= :maxEpoch`, {
+                type: QueryTypes.SELECT, replacements: {minEpoch, maxEpoch}, raw: true
+            }).then(items => {
+                return items.map((item: any) => item.id).filter((id: any) => id != null)
+            });
+            if (addressIds.length > 0) {
+                const verifiedContracts = await VerifiedContracts.findAll({
+                    attributes: ['addressId'],
+                    where: {
+                        addressId: {[Op.in]: addressIds},
+                    },
+                    raw: true,
+                });
+                for (const {addressId} of verifiedContracts as Array<{addressId: number}>) {
+                    await updateTxnsCountById(addressId);
+                }
+            }
+            await KV.upsert({key: KEY_STAT_TXNS_FOR_VERIFIED_CONTRACTS, value: `${maxEpoch}`})
+        }
+
+        async function repeat() {
+            await updateTxnsCount().catch(e => {
+                console.log('Schedule stat_txns_of_verified_contracts fail', e);
+            });
+            setTimeout(repeat, interval);
+        }
+
+        repeat().then();
+        console.log(`[stat_txns_of_verified_contracts]schedule in ${interval / 1000}s interval`);
+    }
+
+    public async scheduleWithNametag(interval = 3000) {
+        async function updateWithNametag() {
+            const maxEpochAnnounceName = await Contract.findOne({order: [["epoch", "desc"]]}).then(r => r?.epoch ?? 0);
+            const curEpochAnnounceName = await KV.getNumber(KEY_STAT_ANNOUNCE_NAME_FOR_VERIFIED_CONTRACTS, 0);
+            const addrArr1 = await Contract.findAll({
+                attributes: ["hex40id"],
+                where: {
+                    [Op.and]: [
+                        {epoch: {[Op.gt]: curEpochAnnounceName}},
+                        {epoch: {[Op.lte]: maxEpochAnnounceName}},
+                        {[Op.and]: [{name: {[Op.ne]: null}}, {name: {[Op.ne]: ""}}]},
+                    ]
+                },
+                raw: true,
+            }).then(list => list.map((item: any) => item.hex40id));
+
+            const maxEpochNametag = await NameTag.findOne({order: [["epoch", "desc"]]}).then(r => r?.epoch ?? 0);
+            const curEpochNametag = await KV.getNumber(KEY_STAT_NAME_TAG_FOR_VERIFIED_CONTRACTS, 0);
+            const addrArr2 = await NameTag.findAll({
+                attributes: ["hex40id"],
+                where: {
+                    [Op.and]: [
+                        {epoch: {[Op.gt]: curEpochNametag}},
+                        {epoch: {[Op.lte]: maxEpochNametag}},
+                        {
+                            [Op.or]: [
+                                {[Op.and]: [{nameTag: {[Op.ne]: null}}, {nameTag: {[Op.ne]: ""}}]},
+                                {[Op.and]: [{labels: {[Op.ne]: null}}, {labels: {[Op.ne]: ""}}]},
+                            ]
+                        }
+                    ]
+                },
+                raw: true,
+            }).then(list => list.map((item: any) => item.hex40id));
+
+            const addressIds = new Set([...addrArr1, ...addrArr2]);
+            if (addressIds.size) {
+                await VerifiedContracts.update({hasNametag: true}, {where: {addressId: {[Op.in]: [...addressIds]}}});
+            }
+
+            await KV.upsert({key: KEY_STAT_ANNOUNCE_NAME_FOR_VERIFIED_CONTRACTS, value: `${maxEpochAnnounceName}`});
+            await KV.upsert({key: KEY_STAT_NAME_TAG_FOR_VERIFIED_CONTRACTS, value: `${maxEpochNametag}`});
+        }
+
+        async function repeat() {
+            await updateWithNametag().catch(e => {
+                console.log('Schedule stat_withNametag_of_verified_contracts fail', e);
+            });
+            setTimeout(repeat, interval);
+        }
+
+        repeat().then();
+        console.log(`[stat_withNametag_of_verified_contracts]schedule in ${interval / 1000}s interval`);
     }
 }
 

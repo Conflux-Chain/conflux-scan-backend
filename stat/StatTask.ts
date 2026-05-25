@@ -10,6 +10,7 @@ import {
     ADDRESS_COUNT_ALL,
     ADDRESS_COUNT_ID,
     CONTRACT_COUNT_ALL, CONTRACT_COUNT_ID,
+    VERIFIED_COUNT_ALL, VERIFIED_COUNT_ID,
     IS_EVM2, KEY_FULL_STATE_RPC, KEY_SUPRESS_FULLSTATE_RPC_ERR,
     KV
 } from "./model/KV";
@@ -42,6 +43,8 @@ import {StatDailyGas} from "./service/timerstat/StatDailyGas";
 import {ContractQuery} from "./service/ContractQuery";
 import {TokenQuoteSync} from "./service/TokenQuoteSync";
 import {ContractDappNameSync} from "./service/ContractDappNameSync";
+import {VerifiedContracts} from "./model/VerifiedContracts";
+import {StatDailyContractVerified} from "./service/timerstat/StatDailyContractVerified";
 
 async function runTools() {
     const [,, cmd, arg1] = process.argv;
@@ -86,6 +89,7 @@ async function main() {
     new StatDailyGas({cfx});
     new StatDailyContractAnalysis({cfx});
     new StatDailyContractCreation({cfx})
+    new StatDailyContractVerified({cfx})
     new StatDailyContractRegister({cfx});
     new StatDailyTxn({cfx});
     new StatDailyNFT({cfx});
@@ -101,6 +105,8 @@ async function main() {
     const contractQuery = new ContractQuery({cfx, config: config.verification});
     contractQuery.scheduleUpdateCompilerVersions().then();
     contractQuery.scheduleVerifyByAuto().then();
+    contractQuery.scheduleStatTxnVolume().then();
+    contractQuery.scheduleWithNametag().then();
 
     if (!StatApp.isEVM) {
         let fullCfx = cfx;
@@ -118,6 +124,7 @@ async function main() {
 async function countTable() {
     await countTableDelta(Hex40Map, ADDRESS_COUNT_ALL, ADDRESS_COUNT_ID);
     await countTableDelta(TraceCreateContract, CONTRACT_COUNT_ALL, CONTRACT_COUNT_ID);
+    await countTableDelta(VerifiedContracts, VERIFIED_COUNT_ALL, VERIFIED_COUNT_ID);
 }
 
 async function countTableDelta(model, keyCountAll, keyCountId) {

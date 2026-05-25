@@ -10,12 +10,15 @@ import {VerifiedContracts} from "../../model/VerifiedContracts";
 import {Conflux, format} from "js-conflux-sdk";
 import {ethers} from "ethers";
 import {Contract} from "../../model/Contract";
-import {Op} from "sequelize";
+import {Op, Sequelize} from "sequelize";
 import {execSync} from "child_process";
 import {sleep} from "./ProcessTool";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
 import {NameTag} from "../../model/NameTag";
 import {AbiInfo, IAbiInfo, saveContractAbiRef, UPDATE_FIELDS_FOR_DUPLICATE_ABI} from "../../model/ContractInfo";
+import {ContractTraceCreateQuery} from "../ContractTraceCreateQuery";
+import {AddressTransactionIndex} from "../../model/FullBlock";
+import {PruneInfo, PruneType} from "../../model/PruneInfo";
 
 const fs = require('fs');
 const path = require('path');
@@ -60,11 +63,21 @@ async function run() {
     if (type === 5) {
         await updateNametagHexId()
     }
+    if (type === 6) {
+        await addVerifiedColumns()
+    }
+    if (type === 7) {
+        await contractQuery.scheduleStatTxnVolume()
+    }
+    if (type === 8) {
+        await contractQuery.scheduleWithNametag()
+    }
     await close();
 }
 
 let cfx: Conflux;
 let contractQuery: ContractQuery;
+let traceCreate: ContractTraceCreateQuery;
 
 async function init() {
     const config: StatConfig = await initialize()
@@ -73,6 +86,7 @@ async function init() {
 
     cfx = await initCfxSdk(config.conflux);
     contractQuery = new ContractQuery({cfx, config: config.verification});
+    traceCreate = new ContractTraceCreateQuery(cfx);
 }
 
 async function close() {
@@ -307,3 +321,80 @@ async function updateNametagHexId() {
 
     console.log(`Done! ${cntr}`);
 }
+
+async function addVerifiedColumns() {
+    const axios = require('axios');
+    const baseUrl = "https://www.confluxscan.net/verification";
+
+    const list = await VerifiedContracts.findAll({
+        attributes: ['id', 'address', 'name', 'language', [Sequelize.fn('LEFT', Sequelize.col('sourceCode'), 5), 'sourceCode']],
+        order: [['id', 'ASC']],
+    });
+    console.log(`start to process ${list.length} contracts ...`);
+
+    for (let i = 0; i < list.length; i++) {
+        const {id, address: base32, name, sourceCode} = list[i];
+
+        const address = ethers.getAddress(format.hexAddress(base32));
+        const queryUrl = `${baseUrl}/contract/${StatApp.networkId}/${address}?fields=compilation`;
+
+        while (true) {
+            try {
+                const resp = await axios.get(queryUrl, {family: 4, headers: {'Accept': 'application/json'}});
+                const {matchId, address: respAddress, match, compilation, verifiedAt} = resp.data;
+                if (respAddress !== address) {
+                    console.log(`contract ${name} ${base32} address not match. expect ${address} got ${respAddress}`);
+                    process.exit(9);
+                }
+                if (!match) {
+                    console.log(`contract ${name} ${base32} not verified`);
+                    process.exit(9);
+                }
+
+                const addressId = await makeIdV(format.hexAddress(base32));
+
+                const createInfo = await traceCreate.query(base32);
+                const {epochNumber, from} = createInfo;
+
+                const count = await AddressTransactionIndex.count({where: {addressId}});
+                const pruneInfo = await PruneInfo.findOne({where: {addressId, type: PruneType.ADDR_TX}});
+                const txns = count + (pruneInfo?.pruned || 0);
+
+                const contract = await Contract.findOne({attributes: ['name'], where: {hex40id: addressId}, raw: true});
+                const nametag = await NameTag.findOne({where: {hex40id: addressId}, raw: true});
+                const hasNametag = Boolean(contract?.name || nametag?.nameTag || nametag?.labels);
+
+                await VerifiedContracts.update({
+                    addressId,
+                    codeFormat: `${compilation.language}${sourceCode.startsWith("{") ? "(Json)" : ""}`,
+
+                    matchId,
+                    compiler: compilation.compiler,
+                    verifiedAt: verifiedAt.replace('T', ' ').replace(/T$/, ''),
+
+                    epochNumber,
+                    deployer: from,
+                    txns,
+                    hasNametag,
+                }, {
+                    where: {id}
+                });
+                break;
+            } catch (e) {
+                if (e.status === 404) {
+                    console.log(`fetch contract ${name} ${base32} not found`);
+                    break;
+                }
+
+                console.log(`fetch contract ${name} ${base32} error`, e);
+            }
+        }
+
+        if ((i + 1) % 1000 === 0) {
+            console.log(`${i} contracts processed`);
+        }
+    }
+
+    console.log(`done! ${list.length} contracts processed`);
+}
+

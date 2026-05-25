@@ -8,7 +8,7 @@ import {StatApp} from "../StatApp";
 import {CONST} from "./common/constant";
 import {KEY_EPOCH_CIP1559_ENABLED, KV} from "../model/KV";
 import {DailyGasStat} from "../model/DailyGasStat";
-import {DailyContractCreate, DailyContractStat} from "../model/DailyContractStat";
+import {DailyContractCreate, DailyContractStat, DailyContractVerified} from "../model/DailyContractStat";
 import {FullBlock, FullBlockExt, FullTransaction, loadMaxBlockEpoch, loadMinBlockEpoch} from "../model/FullBlock";
 import {Hex40Map} from "../model/HexMap";
 import {format} from "js-conflux-sdk";
@@ -98,6 +98,14 @@ export class StatsQuery {
         return this.listStats({
             model: DailyContractCreate,
             attributes: [['statDay', 'statTime'], ['contractCount', 'count'], ['contractTotal', 'total']],
+            intervalType: INTERVAL_TYPE.day, sortFiled: 'statDay', minTimestamp, maxTimestamp, sort, skip, limit
+        });
+    }
+
+    async listContractVerifiedStats({skip, limit, sort, minTimestamp, maxTimestamp}) {
+        return this.listStats({
+            model: DailyContractVerified,
+            attributes: [['statDay', 'statTime'], ['verifiedNew', 'count'], ['verifiedTotal', 'total']],
             intervalType: INTERVAL_TYPE.day, sortFiled: 'statDay', minTimestamp, maxTimestamp, sort, skip, limit
         });
     }

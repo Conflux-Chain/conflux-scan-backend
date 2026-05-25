@@ -29,6 +29,8 @@ import {
     verifyProxyContract,
     checkProxyVerification,
     getContractCreation,
+    listVerifiedContracts,
+    listVerifiedContractsLatest,
 } from "../service/OpenContractService";
 import {
     getToken,
@@ -45,24 +47,32 @@ import {
 import {
     getSupplyStat,
     listAccountActiveStats,
-    listAccountGrowthStats, listApproval,
+    listAccountGrowthStats,
+    listApproval,
     listCfxHolderStats,
     listCfxReceiverTopStat,
     listCfxSenderTopStat,
-    listCfxTransferStat, listCIP1559Stats,
+    listCfxTransferStat,
+    listCIP1559Stats,
     listContractStats,
     listGasUsedTopStat,
     listMinerTopStat,
-    listCoreMiningStat, listTokenHolderStat,
+    listCoreMiningStat,
+    listTokenHolderStat,
     listTokenParticipantTopStat,
     listTokenReceiverTopStat,
     listTokenSenderTopStat,
     listTokenTransferStat,
-    listTokenTransferTopStat, listTokenUniqueParticipantStat, listTokenUniqueReceiverStat, listTokenUniqueSenderStat,
+    listTokenTransferTopStat,
+    listTokenUniqueParticipantStat,
+    listTokenUniqueReceiverStat,
+    listTokenUniqueSenderStat,
     listTpsStats,
-    listTransactionReceiverTopStat, listTransactionSenderStat,
+    listTransactionReceiverTopStat,
+    listTransactionSenderStat,
     listTransactionSenderTopStat,
     listCoreTransactionStat,
+    listContractVerifiedStats,
 } from "../service/OpenStatService";
 import {
     calCount,
@@ -1031,6 +1041,7 @@ export function registerRouter(router: Router) {
     router.get('/statistics/mining', listCoreMiningStat)
     router.get('/statistics/tps', listTpsStats);
     router.get('/statistics/contract', listContractStats);
+    router.get('/statistics/contract/verified', listContractVerifiedStats);
     router.get('/statistics/account/cfx/holder', listCfxHolderStats);
     router.get('/statistics/account/growth', listAccountGrowthStats);
     router.get('/statistics/account/active', listTransactionSenderStat);
@@ -1072,6 +1083,10 @@ export function registerRouter(router: Router) {
     router.get('/account/approvals', listApproval)
     router.get('/account/tokens', listAccountAssets)
     router.get('/account/infos', listAccountInfos)
+
+    // contract
+    router.get('/contract/verified', listVerifiedContracts)
+    router.get('/contract/verified/latest', listVerifiedContractsLatest)
 
     // token
     router.get('/token/tokeninfos', listTokens);
