@@ -4683,6 +4683,16 @@ components:
               type: string
               description: "Checksummed paymaster contract address."
               example: "0xAbCd..."
+        paymasterVerificationGasLimit:
+          type: string
+          nullable: true
+          description: "paymasterVerificationGasLimit from paymasterAndData (decimal string). Null if no paymaster."
+          example: "50000"
+        paymasterPostOpGasLimit:
+          type: string
+          nullable: true
+          description: "paymasterPostOpGasLimit from paymasterAndData (decimal string). Null if no paymaster."
+          example: "10000"
         verificationGasLimit:
           type: string
           description: "verificationGasLimit for this user op (decimal string). High 128 bits of accountGasLimits."

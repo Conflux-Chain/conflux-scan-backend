@@ -62,6 +62,10 @@ export interface IAAOpDetail {
 	paymasterAndData?: string;
 	/** Decoded paymaster info. Null if no paymaster. */
 	paymasterDecoded?: { address: string } | null;
+	/** paymasterVerificationGasLimit from paymasterAndData (decimal string). */
+	paymasterVerificationGasLimit?: string;
+	/** paymasterPostOpGasLimit from paymasterAndData (decimal string). */
+	paymasterPostOpGasLimit?: string;
 	/** Effective gas price of the bundle tx in wei (decimal string). */
 	bundleEffectiveGasPrice?: string;
 	/** Raw packed accountGasLimits bytes32 field from the user op (hex string). */
@@ -233,6 +237,14 @@ export async function parseBundleTxByHash(
 			op.paymasterAndData = parsedUserOp.paymasterAndData ?? '0x';
 			const paymasterAddr = getPaymasterAddress(parsedUserOp.paymasterAndData);
 			op.paymasterDecoded = paymasterAddr ? { address: ethers.getAddress(paymasterAddr) } : null;
+			// v0.8 paymasterAndData: paymaster(20) + verificationGasLimit(16) + postOpGasLimit(16) + data
+			if (paymasterAddr && parsedUserOp.paymasterAndData?.length >= 106) {
+				const pmData = parsedUserOp.paymasterAndData.startsWith('0x')
+					? parsedUserOp.paymasterAndData.slice(2)
+					: parsedUserOp.paymasterAndData;
+				op.paymasterVerificationGasLimit = BigInt('0x' + pmData.slice(40, 72)).toString();
+				op.paymasterPostOpGasLimit = BigInt('0x' + pmData.slice(72, 104)).toString();
+			}
 			op.bundleEffectiveGasPrice = ((receipt as any).effectiveGasPrice ?? (tx as any).gasPrice ?? BigInt(0)).toString();
 			op.accountGasLimits = parsedUserOp.accountGasLimits ?? '0x';
 		}
