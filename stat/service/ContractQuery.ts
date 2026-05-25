@@ -1590,7 +1590,8 @@ export class ContractQuery {
                 attributes: ["hex40id"],
                 where: {
                     [Op.and]: [
-                        {epoch: {[Op.between]: [curEpochAnnounceName, maxEpochAnnounceName]}},
+                        {epoch: {[Op.gt]: curEpochAnnounceName}},
+                        {epoch: {[Op.lte]: maxEpochAnnounceName}},
                         {[Op.and]: [{name: {[Op.ne]: null}}, {name: {[Op.ne]: ""}}]},
                     ]
                 },
@@ -1603,7 +1604,8 @@ export class ContractQuery {
                 attributes: ["hex40id"],
                 where: {
                     [Op.and]: [
-                        {epoch: {[Op.between]: [curEpochNametag, maxEpochNametag]}},
+                        {epoch: {[Op.gt]: curEpochNametag}},
+                        {epoch: {[Op.lte]: maxEpochNametag}},
                         {
                             [Op.or]: [
                                 {[Op.and]: [{nameTag: {[Op.ne]: null}}, {nameTag: {[Op.ne]: ""}}]},
@@ -1616,8 +1618,8 @@ export class ContractQuery {
             }).then(list => list.map((item: any) => item.hex40id));
 
             const addressIds = new Set([...addrArr1, ...addrArr2]);
-            for (const addressId of [...addressIds]) {
-                await VerifiedContracts.update({hasNametag: true}, {where: {addressId}});
+            if (addressIds.size) {
+                await VerifiedContracts.update({hasNametag: true}, {where: {addressId: {[Op.in]: [...addressIds]}}});
             }
 
             await KV.upsert({key: KEY_STAT_ANNOUNCE_NAME_FOR_VERIFIED_CONTRACTS, value: `${maxEpochAnnounceName}`});
