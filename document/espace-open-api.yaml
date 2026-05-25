@@ -3339,11 +3339,11 @@ components:
             properties:
               optimizationEnabled:
                 type: boolean
-              constructorArgumentsEnabled:
+              constructorArguments:
                 type: boolean
             example:
               optimizationEnabled: true
-              constructorArgumentsEnabled: false
+              constructorArguments: false
           license:
             type: string
             example: "MIT"

@@ -431,7 +431,7 @@ export class ContractQuery {
                 txns: item.txns,
                 setting: {
                     optimizationEnabled: item.optimization !== "0" && item.optimization !== "N/A",
-                    constructorArgumentsEnabled: item?.constructorArgs?.length > 2,
+                    constructorArguments: item?.constructorArgs?.length > 2,
                 },
                 license: item.license,
                 verifiedAt: item.verifiedAt.getTime() / 1000,
