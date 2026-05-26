@@ -164,7 +164,7 @@ export async function parseBundleTxByHash(
 		return null;
 	}
 
-	const parsed4337call = parseAATxMethods(tx.data || '0x');
+	const parsed4337call = parseAATxMethods(tx.data || '0x', format.hexAddress(tx.to));
 	if (!parsed4337call) {
 		return null;
 	}
@@ -198,7 +198,9 @@ export async function parseBundleTxByHash(
 		const {tokenTxnCount, nftTxnCount} = countTransfers(innerLogs);
 
 		const parsedUserOp = parsed4337call.userOps[i];
-		const gasLimit = unpackBytes32(parsedUserOp?.accountGasLimits).low;  // low 128 bits = callGasLimit
+		const gasLimit = parsedUserOp?.isV6
+			? parsedUserOp.callGasLimit?.toString() ?? '0'
+			: unpackBytes32(parsedUserOp?.accountGasLimits).low;  // low 128 bits = callGasLimit
 		const method = parsedUserOp?.parsedUserOp?.method ?? '';
 		const internalTxnCount = parsedUserOp?.parsedUserOp?.rawParamArr?.length ?? 0;
 		const sender = toChecksumHex(event?.sender);
@@ -223,12 +225,20 @@ export async function parseBundleTxByHash(
 
 		// Deep-parse extra fields only for the target user op.
 		if (targetUserOpHash && opHash === targetUserOpHash && parsedUserOp) {
-			const accountGasLimitsParsed = unpackBytes32(parsedUserOp.accountGasLimits);
-			const gasFeesParsed = unpackBytes32(parsedUserOp.gasFees);
-			op.verificationGasLimit = accountGasLimitsParsed.high;  // high 128 bits = verificationGasLimit
-			op.preVerificationGas = parsedUserOp.preVerificationGas?.toString() ?? '0';
-			op.maxFeePerGas = gasFeesParsed.low;
-			op.maxPriorityFeePerGas = gasFeesParsed.high;
+			if (parsedUserOp.isV6) {
+				op.verificationGasLimit = parsedUserOp.verificationGasLimit?.toString() ?? '0';
+				op.preVerificationGas = parsedUserOp.preVerificationGas?.toString() ?? '0';
+				op.maxFeePerGas = parsedUserOp.maxFeePerGas?.toString() ?? '0';
+				op.maxPriorityFeePerGas = parsedUserOp.maxPriorityFeePerGas?.toString() ?? '0';
+			} else {
+				const accountGasLimitsParsed = unpackBytes32(parsedUserOp.accountGasLimits);
+				const gasFeesParsed = unpackBytes32(parsedUserOp.gasFees);
+				op.verificationGasLimit = accountGasLimitsParsed.high;  // high 128 bits = verificationGasLimit
+				op.preVerificationGas = parsedUserOp.preVerificationGas?.toString() ?? '0';
+				op.maxFeePerGas = gasFeesParsed.low;
+				op.maxPriorityFeePerGas = gasFeesParsed.high;
+				op.accountGasLimits = parsedUserOp.accountGasLimits ?? '0x';
+			}
 			op.signature = parsedUserOp.signature ?? '';
 			op.txGasLimit = (tx as any).gas?.toString() ?? '0';
 			op.txGasUsed = (receipt as any).gasUsed?.toString() ?? '0';
@@ -238,7 +248,8 @@ export async function parseBundleTxByHash(
 			const paymasterAddr = getPaymasterAddress(parsedUserOp.paymasterAndData);
 			op.paymasterDecoded = paymasterAddr ? { address: ethers.getAddress(paymasterAddr) } : null;
 			// v0.8 paymasterAndData: paymaster(20) + verificationGasLimit(16) + postOpGasLimit(16) + data
-			if (paymasterAddr && parsedUserOp.paymasterAndData?.length >= 106) {
+			// v0.6 does not embed separate paymaster gas limits
+			if (!parsedUserOp.isV6 && paymasterAddr && parsedUserOp.paymasterAndData?.length >= 106) {
 				const pmData = parsedUserOp.paymasterAndData.startsWith('0x')
 					? parsedUserOp.paymasterAndData.slice(2)
 					: parsedUserOp.paymasterAndData;
@@ -246,7 +257,6 @@ export async function parseBundleTxByHash(
 				op.paymasterPostOpGasLimit = BigInt('0x' + pmData.slice(72, 104)).toString();
 			}
 			op.bundleEffectiveGasPrice = ((receipt as any).effectiveGasPrice ?? (tx as any).gasPrice ?? BigInt(0)).toString();
-			op.accountGasLimits = parsedUserOp.accountGasLimits ?? '0x';
 		}
 
 		userOps.push(op);

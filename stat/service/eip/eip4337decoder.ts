@@ -1,24 +1,45 @@
 import {BigNumberish, ethers, formatEther} from "ethers";
 import {entryPointV8} from "./entryPointV8.json";
+import {entrypointV6} from "./entrypointV6.json";
 import {makeIdV} from "../../model/HexMap";
 import {LEN_AA_TX_METHODS} from "../../model/eip4337model";
 import {getCfxSdk} from "../common/utils";
 import {Conflux, Contract, format} from "js-conflux-sdk";
 
-const iface = new ethers.Interface(entryPointV8);
+// Known EntryPoint addresses (lowercase for comparison)
+export const ENTRY_POINT_V6 = '0x5ff137d4b0fdcd49dca30c7cf57e578a026d2789';
+export const ENTRY_POINT_V7 = '0x0000000071727de22e5e9d8baf0edac6f37da032';
+export const ENTRY_POINT_V8 = '0x4337084d9e255ff0702461cf8895ce9e3b5ff108';
+
+function getAbiForEntryPoint(entryPoint: string): any {
+	return entryPoint?.toLowerCase() === ENTRY_POINT_V6 ? entrypointV6 : entryPointV8;
+}
+
+const ifaceV8 = new ethers.Interface(entryPointV8);
+const ifaceV6 = new ethers.Interface(entrypointV6);
 
 export interface IUserOpParam {
 	rawData: any;
+	/** true for v0.6 EntryPoint, false for v0.7/v0.8 */
+	isV6?: boolean;
 
 	sender: string;
 	nonce: BigNumberish;
 	initCode?: string;
 	paymasterAndData: string;
 	callData: string;
-	accountGasLimits: string;
-	preVerificationGas: BigNumberish;
-	gasFees: string;
 	signature: string;
+
+	// v0.7/v0.8 packed fields
+	accountGasLimits?: string;
+	gasFees?: string;
+	preVerificationGas?: BigNumberish;
+
+	// v0.6 individual fields
+	callGasLimit?: BigNumberish;
+	verificationGasLimit?: BigNumberish;
+	maxFeePerGas?: BigNumberish;
+	maxPriorityFeePerGas?: BigNumberish;
 
 	parsedUserOp: IParsed7702Param;
 }
@@ -77,7 +98,9 @@ function printInterfaceMethods(abi: any): void {
 	console.log("================================");
 }
 
-export function parseHandleOps(callData: string): I4337call {
+export function parseHandleOps(callData: string, entryPoint?: string): I4337call {
+	const isV6 = entryPoint?.toLowerCase() === ENTRY_POINT_V6;
+	const iface = isV6 ? ifaceV6 : ifaceV8;
 	const decoded = iface.parseTransaction({ data: callData });
 	if (!decoded) {
 		return null;
@@ -85,15 +108,28 @@ export function parseHandleOps(callData: string): I4337call {
 	const [ops, beneficiary] = decoded.args;
 	const userOpArr: IUserOpParam[] = [];
 	for (const op of ops) {
-		const {callData, nonce, initCode, paymasterAndData, sender, accountGasLimits, preVerificationGas, gasFees, signature} = op;
-		userOpArr.push({
-			rawData: op,
-			sender, nonce,
-			initCode,
-			callData, accountGasLimits, paymasterAndData,
-			preVerificationGas, gasFees, signature,
-			parsedUserOp: null
-		});
+		if (isV6) {
+			const {callData, nonce, initCode, paymasterAndData, sender,
+				callGasLimit, verificationGasLimit, preVerificationGas,
+				maxFeePerGas, maxPriorityFeePerGas, signature} = op;
+			userOpArr.push({
+				rawData: op, isV6: true,
+				sender, nonce, initCode,
+				callData, paymasterAndData, signature,
+				callGasLimit, verificationGasLimit, preVerificationGas,
+				maxFeePerGas, maxPriorityFeePerGas,
+				parsedUserOp: null,
+			});
+		} else {
+			const {callData, nonce, initCode, paymasterAndData, sender, accountGasLimits, preVerificationGas, gasFees, signature} = op;
+			userOpArr.push({
+				rawData: op, isV6: false,
+				sender, nonce, initCode,
+				callData, accountGasLimits, paymasterAndData,
+				preVerificationGas, gasFees, signature,
+				parsedUserOp: null,
+			});
+		}
 	}
 	return {
 		method: decoded.name,
@@ -141,8 +177,8 @@ export interface IAAInternalTxCall {
 	value: bigint;
 }
 
-export function parseAATxMethods(hex4337data: string): I4337call {
-	const i4337call = parseHandleOps(hex4337data);
+export function parseAATxMethods(hex4337data: string, entryPoint?: string): I4337call {
+	const i4337call = parseHandleOps(hex4337data, entryPoint);
 	if (!i4337call) {
 		return null;
 	}
@@ -216,7 +252,8 @@ const contractMap = new Map<string, Contract>();
 export async function readOpHash(cfx: Conflux, entryPoint: string, op: any): Promise<string> {
 	let contract = contractMap.get(entryPoint);
 	if (!contract) {
-		contract = new Contract({abi: entryPointV8, address: entryPoint}, cfx);
+		const abi = getAbiForEntryPoint(entryPoint);
+		contract = new Contract({abi, address: entryPoint}, cfx);
 		contractMap.set(entryPoint, contract);
 	}
 	return contract['getUserOpHash'](op).then(res=>{
