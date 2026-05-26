@@ -15,7 +15,13 @@ import {execSync} from "child_process";
 import {sleep} from "./ProcessTool";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
 import {NameTag} from "../../model/NameTag";
-import {AbiInfo, IAbiInfo, saveContractAbiRef, UPDATE_FIELDS_FOR_DUPLICATE_ABI} from "../../model/ContractInfo";
+import {
+    AbiInfo,
+    IAbiInfo,
+    saveAbiSigs,
+    saveContractAbiRef,
+    UPDATE_FIELDS_FOR_DUPLICATE_ABI
+} from "../../model/ContractInfo";
 import {ContractTraceCreateQuery} from "../ContractTraceCreateQuery";
 import {AddressTransactionIndex} from "../../model/FullBlock";
 import {PruneInfo, PruneType} from "../../model/PruneInfo";
@@ -35,6 +41,11 @@ if (type === 2) {
     compiler = args[2]
 }
 if (type === 3) {
+    if (args[2] !== undefined) {
+        lastId = Number(args[2])
+    }
+}
+if (type === 7) {
     if (args[2] !== undefined) {
         lastId = Number(args[2])
     }
@@ -67,10 +78,7 @@ async function run() {
         await addVerifiedColumns()
     }
     if (type === 7) {
-        await contractQuery.scheduleStatTxnVolume()
-    }
-    if (type === 8) {
-        await contractQuery.scheduleWithNametag()
+        await extractContractAbi()
     }
     await close();
 }
@@ -396,5 +404,20 @@ async function addVerifiedColumns() {
     }
 
     console.log(`done! ${list.length} contracts processed`);
+}
+
+async function extractContractAbi() {
+    if (lastId < 0) {
+        return
+    }
+
+    const {id, hex} = await Hex40Map.findOne({where: {id: lastId}, raw: true});
+    const contract = await VerifiedContracts.findOne({
+        where: {address: format.address("0x" + hex, StatApp.networkId)},
+        raw: true
+    });
+
+    const abi = contract.abi;
+    await saveAbiSigs(abi, id);
 }
 
