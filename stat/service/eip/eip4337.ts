@@ -248,7 +248,7 @@ export async function sync4337txOfEpoch({receipts, blocks, blockTime, txFn}:ISyn
 						success: false,
 						userOpHash: await readOpHash(
 							getCfxSdk(),
-							rcpt.to,
+							format.hexAddress(rcpt.to),
 							op.rawData,
 						),
 					}
