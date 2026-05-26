@@ -197,7 +197,7 @@ export async function sync4337txOfEpoch({receipts, blocks, blockTime, txFn}:ISyn
 				continue;
 			}
 			const rawTx = blocks ? (blocks[blockIdx].transactions[txIdx]) as SdkTx : await txFn(rcpt.transactionHash);
-			const parsed4337call = parseAATxMethods(rawTx?.data || '0x');
+			const parsed4337call = parseAATxMethods(rawTx?.data || '0x', format.hexAddress(rcpt.to));
 			const bundler:IBundleData = {
 				bundlerTxId: BigInt(0),
 				bundlerTx: null,
