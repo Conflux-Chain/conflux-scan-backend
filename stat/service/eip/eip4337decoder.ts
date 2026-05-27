@@ -145,7 +145,8 @@ export interface ExecuteParams {
 
 const iface7702 = new ethers.Interface([
 	"function execute(address dest, uint256 value, bytes calldata func) external",
-	"function executeBatch((address,uint256,bytes)[]) external"
+	"function executeBatch((address,uint256,bytes)[]) external",
+	"function executeBatch(address[] calldata dest, bytes[] calldata func) external",
 ]);
 
 function parse7702execute(callData: string): IParsed7702Param {
@@ -155,11 +156,20 @@ function parse7702execute(callData: string): IParsed7702Param {
 	}
 	let ret: IParsed7702Param;
 	if (decode.name === 'executeBatch') {
-		const [rows] = decode.args;
 		const paramArr = [];
-		for (let i = 0; i < rows.length; i++) {
-			const [dest, value, func] = rows[i];
-			paramArr.push({dest, value, func});
+		if (decode.args.length === 2 && Array.isArray(decode.args[0]) && Array.isArray(decode.args[1])) {
+			// executeBatch(address[], bytes[]) — no value field
+			const [dests, funcs] = decode.args;
+			for (let i = 0; i < dests.length; i++) {
+				paramArr.push({dest: dests[i], value: 0n, func: funcs[i]});
+			}
+		} else {
+			// executeBatch((address,uint256,bytes)[])
+			const [rows] = decode.args;
+			for (let i = 0; i < rows.length; i++) {
+				const [dest, value, func] = rows[i];
+				paramArr.push({dest, value, func});
+			}
 		}
 		ret = {method: decode.name, rawParamArr: paramArr} as IParsed7702Param;
 	} else {
