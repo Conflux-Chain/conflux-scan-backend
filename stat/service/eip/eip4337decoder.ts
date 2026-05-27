@@ -193,9 +193,11 @@ export function parseAATxMethods(hex4337data: string, entryPoint?: string): I433
 		const parsedUserOp = parse7702execute(callData);
 		iUserOpParam.parsedUserOp = parsedUserOp;
 
-		const raw7702ParamArr = parsedUserOp.rawParamArr;
-		parsedUserOp.callArr = [];
-		if (!raw7702ParamArr) {
+		const raw7702ParamArr = parsedUserOp?.rawParamArr;
+		if (parsedUserOp) {
+			parsedUserOp.callArr = [];
+		}
+		if (!parsedUserOp || !raw7702ParamArr) {
 			continue;
 		}
 		for (const param of raw7702ParamArr) {
