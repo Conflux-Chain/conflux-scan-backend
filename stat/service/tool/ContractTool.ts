@@ -411,13 +411,35 @@ async function extractContractAbi() {
         return
     }
 
-    const {id, hex} = await Hex40Map.findOne({where: {id: lastId}, raw: true});
-    const contract = await VerifiedContracts.findOne({
-        where: {address: format.address("0x" + hex, StatApp.networkId)},
-        raw: true
-    });
+    const batchSize = 10;
+    let processedCount = 0;
 
-    const abi = contract.abi;
-    await saveAbiSigs(abi, id);
+    while (true) {
+        const contracts = await VerifiedContracts.findAll({
+            attributes: ["id", "addressId", "abi"],
+            where: {id: {[Op.gt]: lastId}},
+            order: [["id", "asc"]],
+            limit: batchSize,
+            raw: true
+        });
+
+        if (!contracts?.length) {
+            break;
+        }
+
+        for (const c of contracts) {
+            const {addressId, abi} = c;
+            await saveAbiSigs(abi, addressId);
+        }
+
+        lastId = contracts[contracts.length - 1].id;
+
+        processedCount += contracts.length;
+        if (processedCount % 1000 === 0) {
+            console.log(`${processedCount} contracts processed`);
+        }
+    }
+
+    console.log(`done! ${processedCount} contracts processed`);
 }
 

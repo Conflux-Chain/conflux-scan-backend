@@ -210,21 +210,18 @@ export class ContractAbiSignature extends Model<IContractAbiSignature> implement
     }
 }
 
-export async function saveAbiSigs(abiObj:any, contractId?:number, dryRun = false) {
+export async function saveAbiSigs(abiObj: any, contractId?: number, dryRun = false) {
     const abi = (typeof abiObj === 'string') ? JSON.parse(abiObj) : abiObj;
 
     let iFace: Interface;
     try {
         iFace = new Interface(abi);
     } catch (e) {
-        console.log(`failed to parse abi, contract id `, contractId, `abi`, abi, 'error is ', e);
-        if (dryRun) {
-            throw e;
-        }
-        return e.message?.includes('can not found matched coder');
+        console.log(`Failed to parse abi, contract ${contractId}, abi ${abi}`, e);
+        throw e;
     }
 
-    const arr: IAbiSignature[] = [];
+    const list = [];
     const fragments = [...Object.values(iFace.fragments)];
     for (const fragment of fragments) {
         const type = fragment.type;
@@ -238,15 +235,15 @@ export async function saveAbiSigs(abiObj:any, contractId?:number, dryRun = false
         const fullFormatHash = keccak256(Buffer.from(fullFormat));
 
         if (signature.length > MaxFullName) {
-            console.log(`skip entry exceeds max length , full name ${signature.length} > ${MaxFullName} \n`, signature);
+            console.log(`Abi signature ${signature.length} exceeds max length ${MaxFullName}\n`, signature);
             continue;
         }
         if (fullFormat.length > FormatWithArgMaxLength) {
-            console.log(`skip entry exceeds max length , full format ${fullFormat.length} > ${FormatWithArgMaxLength} \n`, fullFormat);
+            console.log(`Abi fullFormat ${fullFormat.length} exceeds max length ${FormatWithArgMaxLength}\n`, fullFormat);
             continue;
         }
 
-        arr.push({
+        list.push({
             type,
             fullFormatHash,
             fullFormat,
@@ -256,32 +253,35 @@ export async function saveAbiSigs(abiObj:any, contractId?:number, dryRun = false
     }
 
     if (dryRun) {
-        console.log(`abi beans are:`, arr);
-        return true;
+        console.log("Succeed to parse abi info", list);
+        return;
     }
 
-    return AbiSignature.bulkCreate(arr, {
-        updateOnDuplicate: ['updatedAt'],
-    }).then(arr=>{
-        console.log(`saved abi info: ${arr.length}`);
+    try {
+        await AbiSignature.bulkCreate(list as AbiSignature[], {
+            updateOnDuplicate: ['updatedAt'],
+        });
         if (contractId) {
-            return saveContractAbiSigs(arr, contractId);
+            await saveContractAbiSigs(list, contractId);
         }
-    }).then(()=>{
-        return true;
-    }).catch(err=>{
-        safeAddErrorLog('DB',`bulk-create-abi-info`, err);
-        console.log(`bulk create abi info fail:`, err)
-        return false;
-    })
+        console.log(`Succeed to save abi info: ${list.length}`);
+    } catch (err) {
+        console.log("Failed to save abi info", err);
+    }
 }
 
-export async function saveContractAbiSigs(arr: AbiSignature[], contractId: number) {
+export async function saveContractAbiSigs(list: AbiSignature[], contractId: number) {
     const one = await ContractAbiSignature.findOne({where: {contractId}});
     if (one) {
-        return
+        return;
     }
-    return ContractAbiSignature.bulkCreate(arr.map(item => ({contractId, abiId: item.id})));
+
+    const sigs = await Promise.all(list.map(item => AbiSignature
+        .findOne({where: {type: item.type, fullFormatHash: item.fullFormatHash}})
+        .then(item => ({contractId, abiId: item.id}))
+    ));
+
+    return ContractAbiSignature.bulkCreate(sigs);
 }
 
 export function parseAbiStr(str: string) {
