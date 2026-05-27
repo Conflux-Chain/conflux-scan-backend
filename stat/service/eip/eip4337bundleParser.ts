@@ -142,6 +142,25 @@ function unpackBytes32(packed: string): { high: string; low: string } {
 	}
 }
 
+
+function normalizeTxAddresses(tx: any): any {
+	if (!tx) return tx;
+	return {
+		...tx,
+		from: toChecksumHex(tx.from) || tx.from,
+		to: toChecksumHex(tx.to) || tx.to,
+	};
+}
+
+function normalizeReceiptAddresses(receipt: any): any {
+	if (!receipt) return receipt;
+	return {
+		...receipt,
+		from: toChecksumHex(receipt.from) || receipt.from,
+		to: toChecksumHex(receipt.to) || receipt.to,
+	};
+}
+
 /**
  * Parse a bundle transaction by hash using the Conflux SDK.
  *
@@ -277,8 +296,8 @@ export async function parseBundleTxByHash(
 		blockNumber: Number(receipt.epochNumber),
 		timestamp,
 		userOps,
-		tx,
-		receipt,
+		tx: normalizeTxAddresses(tx),
+		receipt: normalizeReceiptAddresses(receipt),
 	};
 }
 
