@@ -20,7 +20,6 @@ export async function init() {
     console.log(`serve static file at ${path.resolve(public_dir)}`)
 
     redirectLog({mainPath:'stat'})
-    app.use(proxyPath)
     app.use(async (ctx, next) => {
         const start = Date.now();
         await next();
