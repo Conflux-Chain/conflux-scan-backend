@@ -4,7 +4,7 @@ import {Conflux} from "js-conflux-sdk";
 import {loadConfig} from "../../config/StatConfig";
 import {createDB, initModel} from "../DBProvider";
 import {StatApp} from "../../StatApp";
-import {AbiInfo} from "../../model/ContractInfo";
+import {AbiSignature} from "../../model/ContractInfo";
 import {Op} from "sequelize";
 import {PpiLiquidity} from "./PpiLiquidity";
 
@@ -23,7 +23,7 @@ async function init() {
     await seq.sync({})
     await initModel(seq)
 
-    await AbiInfo.findAll({where:{fullName:{[Op.like]: '%Liquidity%'}}
+    await AbiSignature.findAll({where:{signature:{[Op.like]: '%Liquidity%'}}
     }).then(list=>{
         list.forEach(info => methodIdSet.add(info.hash))
     }).catch(err=>{

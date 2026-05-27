@@ -27,8 +27,8 @@ import {
     convertVyperVersion
 } from "./common/utils";
 import {VerifiedContracts} from "../model/VerifiedContracts";
-import {ethers} from "ethers";
-import {AbiInfo, saveAbiInfo} from "../model/ContractInfo";
+import {ethers, keccak256} from "ethers";
+import {AbiSignature, saveAbiSigs} from "../model/ContractInfo";
 import {sleep} from "./tool/ProcessTool";
 import {
     KEY_AUTO_VERIFY_TRACE_ID,
@@ -1132,8 +1132,8 @@ export class ContractQuery {
                 }
             } else {
                 const hexId = await getAddrId(address)
-                saveAbiInfo(abi, hexId).catch(e => {
-                    console.log(`saveAbiInfo ${address}`, e)
+                saveAbiSigs(abi, hexId).catch(e => {
+                    console.log(`Failed to save abi sig ${address}`, e)
                 })
                 return
             }
@@ -1498,12 +1498,13 @@ export class ContractQuery {
 
             if (data?.results?.length) {
                 const list = data.results.map((item: any) => ({
-                    hash,
                     type: "function",
-                    fullName: item.signature,
-                    formatWithArg: item.fullFormat,
+                    fullFormatHash: keccak256(Buffer.from(item.fullFormat)),
+                    fullFormat: item.fullFormat,
+                    hash,
+                    signature: item.signature,
                 }));
-                AbiInfo.bulkCreate(list, {
+                AbiSignature.bulkCreate(list, {
                     updateOnDuplicate: ['updatedAt']
                 }).then();
                 return list;

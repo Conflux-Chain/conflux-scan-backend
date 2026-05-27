@@ -8,7 +8,7 @@ import {ContractQuery, ImplInfo} from "../ContractQuery";
 import {IS_EVM2, KV} from "../../model/KV";
 import {VerifiedContracts} from "../../model/VerifiedContracts";
 import {Conflux, format} from "js-conflux-sdk";
-import {ethers} from "ethers";
+import {ethers, keccak256} from "ethers";
 import {Contract} from "../../model/Contract";
 import {Op, Sequelize} from "sequelize";
 import {execSync} from "child_process";
@@ -16,11 +16,10 @@ import {sleep} from "./ProcessTool";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
 import {NameTag} from "../../model/NameTag";
 import {
-    AbiInfo,
-    IAbiInfo,
+    AbiSignature,
+    IAbiSignature,
     saveAbiSigs,
-    saveContractAbiRef,
-    UPDATE_FIELDS_FOR_DUPLICATE_ABI
+    saveContractAbiSigs,
 } from "../../model/ContractInfo";
 import {ContractTraceCreateQuery} from "../ContractTraceCreateQuery";
 import {AddressTransactionIndex} from "../../model/FullBlock";
@@ -150,16 +149,17 @@ async function initContracts() {
 
 async function initPrecompiledAbi() {
     for (const [name, contract] of Object.entries(CONST.PRECOMPILED_NAME_CONTRACT_MAP)) {
-        const {address, methodId, signature, method } = contract as any;
-        const arr: IAbiInfo[] = [{
+        const {address, methodId, signature, method} = contract as any;
+        const arr: IAbiSignature[] = [{
             type: 'function',
-            fullName: signature,
+            fullFormatHash: keccak256(Buffer.from(method)),
+            fullFormat: method,
             hash: methodId,
-            formatWithArg: method
+            signature: signature,
         }];
-        const abiInfos = await AbiInfo.bulkCreate(arr, { updateOnDuplicate: UPDATE_FIELDS_FOR_DUPLICATE_ABI });
+        const sigs = await AbiSignature.bulkCreate(arr, {updateOnDuplicate: ['updatedAt']});
         const contractId = await makeIdV(address);
-        await saveContractAbiRef(abiInfos, contractId);
+        await saveContractAbiSigs(sigs, contractId);
         console.log(`Precompiled contract ${name} abi added!`)
     }
 }
