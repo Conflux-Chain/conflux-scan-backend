@@ -75,14 +75,6 @@ router.use(async (ctx, next) => {
 router_get(router,'/', function (ctx) {
   return { message: `scan-api-v1, [${ConfigInstance.serverTag}]` };
 });
-router_get(router,'/echo', function (ctx) {
-  return {
-    "headers": ctx.headers,
-    "ip": getClientIP(ctx),
-    "time": new Date().toISOString(),
-    "service": "v1",
-  }
-})
 // --------------------------------- OpenAPI ----------------------------------
 
 // -------------------------------- Statistic ---------------------------------
