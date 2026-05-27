@@ -4,7 +4,6 @@ import {loadConfig} from "./config/StatConfig";
 import {register} from "./router/StatRouter";
 import {KV} from "./model/KV";
 import {Server} from 'http'
-import {proxyPath} from "./router/DevopsRouter";
 import {saveApiLog} from "./monitor/ApiLog";
 import {KEY_STAT, repeatHeartBeat} from "./model/HeartBeat";
 
