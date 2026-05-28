@@ -321,13 +321,6 @@ router_get(router,'/block',
   async function (result) {
     const {app: { service: {accountQuery} },} = this as ScanCtx;
     const addresses = result.list.map(item => item.miner).filter(Boolean);
-    const accountBasic = await accountQuery.listPatchInfo(addresses)
-    result.list.forEach((block) => {
-      block.minerContractInfo = accountBasic.map[block.miner]?.contract;
-      block.minerTokenInfo = accountBasic.map[block.miner]?.token;
-      block.minerENSInfo = accountBasic.map[block.miner]?.ens;
-      block.minerNameTagInfo = accountBasic.map[block.miner]?.nameTag;
-    });
     result.nameMap = await accountQuery.list(addresses, {
       withContractInfo: true,
       withENSInfo: true,
