@@ -50,7 +50,7 @@ export async function buildAATxDBModel(op: IUserOperationEvent, blockTime: Date)
 		actualGasCost: formatEther(op.actualGasCost),
 		actualGasUsed: op.actualGasUsed.toString(),
 		bundleTxId: 0n,
-		eventContractId: await makeIdV(op.address, {dt: blockTime}),
+		eventContractId: await makeIdV(op.address, null, {dt: blockTime}),
 		createdAt: blockTime,
 		epoch: 0n,
 		id: 0n,
