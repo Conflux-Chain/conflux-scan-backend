@@ -22,7 +22,7 @@ export async function listGlobalAuthAction(ctx) {
     assertSkipWithinLimit(skip);
     const {author, address, txSender} = ctx.request.query;
     const result = await listAuthAction({author, address, txSender, skip, limit});
-    setBody(ctx, {...result, listLimit: LIST_LIMIT});
+    setBody(ctx, {...result, listLimit: SKIP_MAX});
 }
 
 export async function listBundledTx(ctx) {
@@ -37,7 +37,7 @@ export async function listBundledTx(ctx) {
         skip, limit,
     });
 
-    setBody(ctx, {...result, listLimit: LIST_LIMIT});
+    setBody(ctx, {...result, listLimit: SKIP_MAX});
 }
 
 export async function list4337Tx(ctx) {
@@ -55,7 +55,7 @@ export async function list4337Tx(ctx) {
 
     await fillAATxMethodInfo(result.list);
 
-    setBody(ctx, {...result, listLimit: LIST_LIMIT});
+    setBody(ctx, {...result, listLimit: SKIP_MAX});
 }
 
 export async function getAATxDetail(ctx) {
