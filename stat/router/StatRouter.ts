@@ -212,7 +212,6 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             throw new Errors.ParameterError(`param <limit> is invalid: exceeds 100`);
         }
         const result: any = await listAuthAction({author, skip, limit});
-        await getAccountQuery().patchAddressInfo(result.list, 'txSender', 'address');
         const addresses = new Set<string>(result.list.flatMap(item => [item.txSender, item.address]).filter(Boolean));
         result.nameMap = await statApp.accountQuery.list([...addresses, author], {
             withContractInfo: true, withNameTagInfo: true, withENSInfo: true
