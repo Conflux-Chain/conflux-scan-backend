@@ -26,7 +26,7 @@ export class TokenQuoteSync {
     private config: QuoteOptions;
     private cfx: Conflux;
     private readonly tokenTool: TokenTool;
-    private tick = -1; // 1 min per tick
+    private tick = -1; // 1 sec per tick by default
 
     constructor(cfx: Conflux, config: QuoteOptions) {
         if(config.enable && (!config.binanceAccessToken || !config.coinMarketCapAccessToken)) {
@@ -44,19 +44,18 @@ export class TokenQuoteSync {
         return await TokenQuoteTrack.findOne({where: {[Op.and]: [{address}, {convertSymbol}]}});
     }
 
-    public async schedule(delay: number = 60_000) {
-        console.log(`[token_quote]schedule in ${delay/1000}s interval`)
+    public async schedule(delay: number = 1_000) {
         const that = this
 
         async function repeat() {
             await that.run().catch(err => {
-                safeAddErrorLog('token-x', 'quote-sync', err).then();
-                console.log(`sync token_quote fail: `, err);
+                console.log(`Failed to sync token quote`, err);
             });
             setTimeout(repeat, delay)
         }
 
         repeat().then()
+        console.log(`Succeed to schedule token quote in ${delay / 1000}s interval`)
     }
 
     private async run() {
@@ -79,18 +78,32 @@ export class TokenQuoteSync {
             raw: true,
         });
 
-        await this.pullPrice(tokenList).catch(e => console.error(`token_quote.fromHk ${e}`));
-        await this.updateByMoonswap().catch(e => console.error(`token_quote.fromMoonswap ${e}`));
-        await this.updateBySwappi().catch(e => console.error(`token_quote.fromSwappi ${e}`));
-
-        // every 10 ticks
-        if (this.tick % 10 === 0) {
-            await this.updateByBN(tokenList).catch(e => console.error(`token_quote.fromBN ${e}`));
+        await this.pullPrice(tokenList).catch(e => {
+            safeAddErrorLog('stat-task', 'token-quote-peer', e).then();
+            console.log(`Failed to sync token quote from peer`, e);
+        });
+        await this.updateByMoonswap().catch(e => {
+            safeAddErrorLog('stat-task', 'token-quote-moonswap', e).then();
+            console.log(`Failed to sync token quote from moonswap`, e);
+        });
+        await this.updateBySwappi().catch(e => {
+            safeAddErrorLog('stat-task', 'token-quote-swappi', e).then();
+            console.log(`Failed to sync token quote from swappi`, e);
+        });
+        // every 5 sec
+        if (this.tick % 5 === 0) {
+            await this.updateByBN(tokenList).catch(e => {
+                safeAddErrorLog('stat-task', 'token-quote-bn', e).then();
+                console.log(`Failed to sync token quote from BN`, e);
+            });
         }
 
-        // every 60 ticks
+        // every 60 sec
         if (this.tick % 60 === 0) {
-            await this.updateByCMC(tokenList).catch(e => console.error(`token_quote.fromCMC ${e}`));
+            await this.updateByCMC(tokenList).catch(e => {
+                safeAddErrorLog('stat-task', 'quote-sync-cmc', e).then();
+                console.log(`Failed to sync token quote from CMC`, e);
+            });
         }
 
         this.tick = this.tick % 60 === 0 ? 0 : this.tick;
@@ -142,13 +155,7 @@ export class TokenQuoteSync {
         }
 
         const cmdIdArray = tokenArray.map(token => token.cmcId);
-        const cmcIdQuoteMap = await this.getFromCMC(cmdIdArray, 'USDT').catch(e => {
-            console.log(`token_quote.fromCMC ${e}`)
-            return undefined
-        });
-        if (cmcIdQuoteMap === undefined) {
-            return
-        }
+        const cmcIdQuoteMap = await this.getFromCMC(cmdIdArray, 'USDT');
 
         const quoteArray = tokenArray.map((token) => {
             const quote = cmcIdQuoteMap[token.cmcId] || {};
