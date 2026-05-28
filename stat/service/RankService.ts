@@ -200,28 +200,11 @@ export class RankService{
         }
     }
     async fillInfo(list:any[], networkId) {
-        const {
-            app: { accountQuery, service },
-        } = this;
-
         list.forEach(r=>{
             r.name = r.nameState === ADDR_INFO_STATE_OK ? r.name : null
             r.hex = r.hex ? ethers.getAddress(r.hex) : `0x${r.hex}`
             r.base32address = format.address(r.hex, networkId)
         })
-
-        const addressArray = list.map(item => item.base32address);
-        const accountService = accountQuery || service.accountQuery;
-        const accountBasic = await accountService.listPatchInfo(addressArray);
-        list.forEach(item => {
-            const mapRefKey = StatApp.isEVM ? item.hex : item.base32address;
-            item.tokenInfo = accountBasic.map[mapRefKey]?.token;
-            item.contractInfo = accountBasic.map[mapRefKey]?.contract;
-            item.ensInfo = accountBasic.map[mapRefKey]?.ens;
-            item.nameTagInfo = accountBasic.map[mapRefKey]?.nameTag;
-            item.name = item.contractInfo?.name || item.tokenInfo?.name;
-        });
-
         return {total: list.length, list};
     }
 }
