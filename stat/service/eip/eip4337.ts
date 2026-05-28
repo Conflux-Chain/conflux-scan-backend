@@ -231,7 +231,7 @@ export async function sync4337txOfEpoch({receipts, blocks, blockTime, txFn}:ISyn
 				await buildRevertReason(log, bundler, blockTime);
 			}
 
-			let failedTxCount = bundler.revertReasonArr.length;
+			let failedTxCount = bundler.aaTxArr.filter(tx => !tx.success).length;
 			if (rcpt.outcomeStatus == 1 && parsed4337call?.userOps.length) {
 				//build from tx data since there is no event for failed tx.
 				for (let i = 0; i < parsed4337call.userOps.length; i++) {

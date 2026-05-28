@@ -1,6 +1,6 @@
 import {ethers, formatEther} from "ethers";
 import {Conflux, format} from "js-conflux-sdk";
-import {parseAATxMethods, getPaymasterAddress} from "./eip4337decoder";
+import {parseAATxMethods, getPaymasterAddress, readOpHash} from "./eip4337decoder";
 import {parseUserOperationEvent} from "./eip4337abi";
 import {AATx, BundleTx} from "../../model/eip4337model";
 
@@ -98,6 +98,40 @@ export interface IBundleTxParseResult {
 function toChecksumHex(addr: string): string {
 	if (!addr) return '';
 	return ethers.getAddress(format.hexAddress(addr));
+}
+
+/**
+ * Build IAAOpDetail entries for a failed bundle where no UserOperationEvent logs were emitted.
+ * Falls back to the parsed calldata, marking all ops as failed with zero gas used.
+ */
+async function buildFailedUserOps(
+	cfx: Conflux,
+	entryPoint: string,
+	parsed4337call: ReturnType<typeof parseAATxMethods>,
+): Promise<IAAOpDetail[]> {
+	const result: IAAOpDetail[] = [];
+	for (let i = 0; i < parsed4337call.userOps.length; i++) {
+		const parsedOp = parsed4337call.userOps[i];
+		const gasLimit = parsedOp.isV6
+			? parsedOp.callGasLimit?.toString() ?? '0'
+			: unpackBytes32(parsedOp.accountGasLimits).low;
+		result.push({
+			userOpHash: await readOpHash(cfx, entryPoint, parsedOp.rawData),
+			method: parsedOp.parsedUserOp?.method ?? '',
+			position: i,
+			from: toChecksumHex(parsedOp.sender),
+			internalTxnCount: parsedOp.parsedUserOp?.rawParamArr?.length ?? 0,
+			tokenTxnCount: 0,
+			nftTxnCount: 0,
+			txnFee: '0',
+			gasLimit,
+			actualGasUsed: '0',
+			success: false,
+			nonce: parsedOp.nonce?.toString() ?? '',
+			paymaster: toChecksumHex(getPaymasterAddress(parsedOp.paymasterAndData)),
+		});
+	}
+	return result;
 }
 
 
@@ -279,6 +313,12 @@ export async function parseBundleTxByHash(
 		}
 
 		userOps.push(op);
+	}
+
+	// Failed bundle: no UserOperationEvent logs emitted. Build ops from calldata.
+	if (userOps.length === 0 && receipt.outcomeStatus !== 0) {
+		const failed = await buildFailedUserOps(cfx, format.hexAddress(tx.to), parsed4337call);
+		userOps.push(...failed);
 	}
 
 	// Fetch block for timestamp.
