@@ -405,6 +405,9 @@ export class AccountQuery {
         ]));
     }
 
+    /**
+     * @deprecated Use {@link list()} instead.
+     */
     public async listPatchInfo(
         addresses: string[],
         options: {

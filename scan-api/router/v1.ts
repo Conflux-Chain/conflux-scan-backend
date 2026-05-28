@@ -307,6 +307,7 @@ router_get(router,'/block',
             burntGasFee: 'integer',
           },
         ],
+        nameMap: 'object',
       },
       600: { code: 'integer', message: 'string' },
     },
@@ -380,6 +381,7 @@ router_get(router,'/transaction/:hash',
         maxFeePerGas: 'integer',
         maxPriorityFeePerGas: 'integer',
         burntGasFee: 'integer',
+        nameMap: 'object',
       },
       600: { code: 'integer', message: 'string' },
     },
@@ -437,8 +439,6 @@ router_get(router,'/transaction',
       200: {
         total: 'integer',
         listLimit: OpenAPI.schema({ type: 'integer', description: 'if exist, require skip+limit <= listLimit' }),
-        ensInfo: 'object',
-        nameMap: 'object',
         list: [{
           method: 'string',
           transactionIndex: 'integer',
@@ -456,6 +456,7 @@ router_get(router,'/transaction',
           gasFee: 'string',
           txExecErrorMsg: OpenAPI.schema({ type: 'string', nullable: true }),
         }],
+        nameMap: 'object',
       },
       600: { code: 'integer', message: 'string' },
     },
@@ -766,6 +767,7 @@ router_get(router,'/contract/:address',
         destroy: 'object',
         implementation: 'object',
         isRegistered: 'boolean',
+        nameMap: 'object',
       },
       600: { code: 'integer', message: 'string' },
     },
@@ -932,6 +934,7 @@ router_get(router,'/token',
             totalPrice: 'number',
           },
         ],
+        nameMap: 'object',
       },
       600: { code: 'integer', message: 'string' },
     },
@@ -981,7 +984,6 @@ router_get(router,'/transfer',
       200: {
         total: 'integer',
         listLimit: OpenAPI.schema({ type: 'integer', description: 'if exist, require skip+limit <= listLimit' }),
-        addressInfo: 'object',
         list: [
           {
             epochNumber: 'integer',
@@ -1001,6 +1003,7 @@ router_get(router,'/transfer',
             type: 'string', // for transferType is 'CFX'
           },
         ],
+        nameMap: 'object',
       },
       600: { code: 'integer', message: 'string' },
       429: { code: 'integer', message: 'string' },
@@ -1077,7 +1080,7 @@ router_get(router,'/eventLog',
             topics: ['string'],
           },
         ],
-        logContractInfo: 'object',
+        nameMap: 'object',
       },
       600: { code: 'integer', message: 'string' },
     },
@@ -1114,15 +1117,10 @@ router_get(router,'/ens/reverse/match',
     }),
 
     async function (options) {
-      const {app: { service: {accountQuery} },} = this as ScanCtx;
-      const accountBasic = await accountQuery.listPatchInfo(toArray(options.address));
-      const map = lodash.omitBy(Object.fromEntries(Object.keys(accountBasic.map).map(address => [
-        address,
-        accountBasic.map[address]?.ens
-      ])), lodash.isNil);
+      const {app: {service: {accountQuery}},} = this as ScanCtx;
 
       const nameMap = await accountQuery.list(toArray(options.address), {withENSInfo: true});
-      const ensMap = lodash.omitBy(Object.fromEntries(Object.keys(nameMap).map(address => [
+      const map = lodash.omitBy(Object.fromEntries(Object.keys(nameMap).map(address => [
         address,
         nameMap[address]?.ens
       ])), lodash.isNil);
@@ -1130,7 +1128,6 @@ router_get(router,'/ens/reverse/match',
       return {
         total: Object.keys(map).length,
         map,
-        ensMap
       };
     },
 );
