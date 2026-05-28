@@ -105,7 +105,10 @@ export function parseHandleOps(callData: string, entryPoint?: string): I4337call
 	if (!decoded) {
 		return null;
 	}
-	const [ops, beneficiary] = decoded.args;
+	const [opsArg] = decoded.args;
+	const ops = decoded.name === 'handleAggregatedOps'
+		? opsArg.flatMap((group: any) => group.userOps)
+		: opsArg;
 	const userOpArr: IUserOpParam[] = [];
 	for (const op of ops) {
 		if (isV6) {
