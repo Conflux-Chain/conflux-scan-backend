@@ -394,15 +394,17 @@ export class FullBlockService {
         start = Date.now();
         await this.buildBlockByEpoch(minEpochNumber, preLoadResult)
 
-        const data4337 = await sync4337txOfEpoch({
-            receipts, blocks: blockList, blockTime: preLoadResult['blockTime'], txFn: null
-        } as unknown as ISync4337txParam).catch(e=>{
-            e['epoch'] = minEpochNumber;
-            safeAddErrorLog("block", "sync4337tx", e);
-            return null;
-        })
-        if (data4337) {
-            preLoadResult.dbActionArr.push(data4337);
+        if (Cfg_is_EVM) {
+            const data4337 = await sync4337txOfEpoch({
+                receipts, blocks: blockList, blockTime: preLoadResult['blockTime'], txFn: null
+            } as unknown as ISync4337txParam).catch(e=>{
+                e['epoch'] = minEpochNumber;
+                safeAddErrorLog("block", "sync4337tx", e);
+                return null;
+            })
+            if (data4337) {
+                preLoadResult.dbActionArr.push(data4337);
+            }
         }
         preLoadResult.buildTime = Date.now() - start;
         return preLoadResult;
