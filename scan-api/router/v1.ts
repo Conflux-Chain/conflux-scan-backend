@@ -303,10 +303,6 @@ router_get(router,'/block',
             syncTimestamp: 'integer',
             gasUsed: 'string',
             totalReward: 'string',
-            minerContractInfo: 'object',
-            minerTokenInfo: 'object',
-            minerENSInfo: 'object',
-            minerNameTagInfo: 'object',
             coreBlock: 'boolean',
             burntGasFee: 'integer',
           },
@@ -377,15 +373,7 @@ router_get(router,'/transaction/:hash',
         txExecErrorMsg: OpenAPI.schema({ type: 'string', nullable: true }),
         txExecErrorInfo: 'object', // XXX
         confirmedEpochCount: 'integer', // XXX
-        cfxTransferCount: 'integer',
-        cfxTransferAllCount: 'integer',
         eventLogCount: 'integer',
-        // aggregated info
-        tokenTransfer: 'object',
-        tokenTransferContractInfo: 'object',
-        tokenTransferTokenInfo: 'object',
-        tokenTransferENSInfo: 'object',
-        tokenTransferNameTagInfo: 'object',
         type: 'integer',
         typeDesc: 'string',
         baseFeePerGas: 'integer',
@@ -466,12 +454,6 @@ router_get(router,'/transaction',
           epochNumber: 'integer',
           syncTimestamp: 'integer',
           gasFee: 'string',
-          fromENSInfo: 'object',
-          fromNameTagInfo: 'object',
-          toContractInfo: 'object',
-          toTokenInfo: 'object',
-          toENSInfo: 'object',
-          toNameTagInfo: 'object',
           txExecErrorMsg: OpenAPI.schema({ type: 'string', nullable: true }),
         }],
       },
@@ -1010,8 +992,6 @@ router_get(router,'/transfer',
             address: 'string',
             from: 'string',
             to: 'string',
-            fromEnsInfo: 'object',
-            toEnsInfo: 'object',
             operator: 'string',
             tokenId: 'string',
             value: 'string',
@@ -1059,18 +1039,19 @@ router_get(router,'/transferTree/:transactionHash',
   }),
 
   async function ({transactionHash}) {
-    const {app: { service: {accountQuery, conflux} },} = this as ScanCtx;
+    const {app: {service: {accountQuery, conflux}},} = this as ScanCtx;
+
     const result = await conflux.getTransactionTrace(transactionHash, true);
     if (result.addressArray === undefined) {
       return result;
     }
 
-    const addresses = result.addressArray;
-    result.nameMap = await accountQuery.list(addresses, {
+    result.nameMap = await accountQuery.list(result.addressArray, {
       withContractInfo: true,
       withENSInfo: true,
       withNameTagInfo: true
     });
+
     return result;
   },
 );
