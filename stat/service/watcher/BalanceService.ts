@@ -74,18 +74,9 @@ export class BalanceService {
             };
         })
 
-        // add token info
-        let accountBasic
         let nameMap = {};
         if(withTokenInfo) {
             const addressArray = retList.map(item => item.account.address);
-            accountBasic = await this.app.accountQuery.listPatchInfo(addressArray);
-            retList.forEach((item) => {
-                item['tokenInfo'] = accountBasic.map[item.account.address]?.token;
-                item['contractInfo'] = accountBasic.map[item.account.address]?.contract;
-                item['ensInfo'] = accountBasic.map[item.account.address]?.ens;
-                item['nameTagInfo'] = accountBasic.map[item.account.address]?.nameTag;
-            });
             nameMap = await this.app.accountQuery.list(addressArray);
         }
 
