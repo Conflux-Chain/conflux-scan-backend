@@ -614,11 +614,8 @@ export const jsonrpc_exportTransaction = jsonrpc.method_('exportTransaction',
       addressSet.add(each.to);
     });
 
-    /*const accountBasic = await service.accountQuery.listPatchInfo([...addressSet] as string[]);*/
     const nameMap = await service.accountQuery.list([...addressSet] as string[], {withContractInfo: true});
     list.forEach((each) => {
-      /*each['From_AddressName'] = accountBasic.map[each.from]?.contract?.name || accountBasic.map[each.from]?.token?.name || '';
-      each['To_AddressName'] = accountBasic.map[each.to]?.contract?.name || accountBasic.map[each.to]?.token?.name || '';*/
       each['From_AddressName'] = nameMap[each.from]?.token?.name || nameMap[each.from]?.contract?.name || '';
       each['To_AddressName'] = nameMap[each.to]?.token?.name || nameMap[each.to]?.contract?.name || '';
     });
@@ -698,7 +695,6 @@ export const jsonrpc_exportTransfer = jsonrpc.method_('exportTransfer',
     const addresses = new Set(list.flatMap(item => [item.from, item.to, item.address]).filter(Boolean));
     const nameMap = await service.accountQuery.list([...addresses] as string[], {withContractInfo: true});
 
-    /*const addressSet = new Set();*/
     for (const each of list) {
       if (transferType === CONST.TRANSFER_TYPE.CFX) {
         each.decimals = 18;
@@ -728,19 +724,7 @@ export const jsonrpc_exportTransfer = jsonrpc.method_('exportTransfer',
       if(each.address) {
         each['ContractName'] = nameMap[each.address]?.contract?.name || '';
       }
-      /*addressSet.add(each.from);
-      addressSet.add(each.to);
-      each.address && addressSet.add(each.address);*/
     }
-
-    /*const accountBasic = await service.accountQuery.listPatchInfo([...addressSet] as string[], {withContractInfo: true});
-    list.forEach((each) => {
-      each['From_AddressName'] = accountBasic.map[each.from]?.contract?.name || accountBasic.map[each.from]?.token?.name || '';
-      each['To_AddressName'] = accountBasic.map[each.to]?.contract?.name || accountBasic.map[each.to]?.token?.name || '';
-      if(each.address) {
-          each['ContractName'] = accountBasic.map[each.address]?.contract?.name || '';
-      }
-    });*/
 
     const exportFields = [
           ['timestamp', 'UnixTimestamp'],

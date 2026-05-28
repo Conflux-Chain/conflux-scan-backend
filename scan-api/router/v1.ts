@@ -202,11 +202,6 @@ router_get(router,'/frontend',
   async function (result) {
     const {app: { service: {accountQuery} },} = this as ScanCtx;
     const addresses = result.contracts.map(item => item.address).filter(Boolean);
-    const accountBasic = await accountQuery.listPatchInfo(addresses)
-    result.contracts.forEach((item) => {
-      item.ensInfo = accountBasic.map[item.address]?.ens;
-      item.nameTagInfo = accountBasic.map[item.address]?.nameTag;
-    });
     result.nameMap = await accountQuery.list(addresses, {withENSInfo: true, withNameTagInfo: true});
     return result;
   },
@@ -308,14 +303,11 @@ router_get(router,'/block',
             syncTimestamp: 'integer',
             gasUsed: 'string',
             totalReward: 'string',
-            minerContractInfo: 'object',
-            minerTokenInfo: 'object',
-            minerENSInfo: 'object',
-            minerNameTagInfo: 'object',
             coreBlock: 'boolean',
             burntGasFee: 'integer',
           },
         ],
+        nameMap: 'object',
       },
       600: { code: 'integer', message: 'string' },
     },
@@ -326,13 +318,6 @@ router_get(router,'/block',
   async function (result) {
     const {app: { service: {accountQuery} },} = this as ScanCtx;
     const addresses = result.list.map(item => item.miner).filter(Boolean);
-    const accountBasic = await accountQuery.listPatchInfo(addresses)
-    result.list.forEach((block) => {
-      block.minerContractInfo = accountBasic.map[block.miner]?.contract;
-      block.minerTokenInfo = accountBasic.map[block.miner]?.token;
-      block.minerENSInfo = accountBasic.map[block.miner]?.ens;
-      block.minerNameTagInfo = accountBasic.map[block.miner]?.nameTag;
-    });
     result.nameMap = await accountQuery.list(addresses, {
       withContractInfo: true,
       withENSInfo: true,
@@ -389,21 +374,14 @@ router_get(router,'/transaction/:hash',
         txExecErrorMsg: OpenAPI.schema({ type: 'string', nullable: true }),
         txExecErrorInfo: 'object', // XXX
         confirmedEpochCount: 'integer', // XXX
-        cfxTransferCount: 'integer',
-        cfxTransferAllCount: 'integer',
         eventLogCount: 'integer',
-        // aggregated info
-        tokenTransfer: 'object',
-        tokenTransferContractInfo: 'object',
-        tokenTransferTokenInfo: 'object',
-        tokenTransferENSInfo: 'object',
-        tokenTransferNameTagInfo: 'object',
         type: 'integer',
         typeDesc: 'string',
         baseFeePerGas: 'integer',
         maxFeePerGas: 'integer',
         maxPriorityFeePerGas: 'integer',
         burntGasFee: 'integer',
+        nameMap: 'object',
       },
       600: { code: 'integer', message: 'string' },
     },
@@ -461,8 +439,6 @@ router_get(router,'/transaction',
       200: {
         total: 'integer',
         listLimit: OpenAPI.schema({ type: 'integer', description: 'if exist, require skip+limit <= listLimit' }),
-        ensInfo: 'object',
-        nameMap: 'object',
         list: [{
           method: 'string',
           transactionIndex: 'integer',
@@ -478,14 +454,9 @@ router_get(router,'/transaction',
           epochNumber: 'integer',
           syncTimestamp: 'integer',
           gasFee: 'string',
-          fromENSInfo: 'object',
-          fromNameTagInfo: 'object',
-          toContractInfo: 'object',
-          toTokenInfo: 'object',
-          toENSInfo: 'object',
-          toNameTagInfo: 'object',
           txExecErrorMsg: OpenAPI.schema({ type: 'string', nullable: true }),
         }],
+        nameMap: 'object',
       },
       600: { code: 'integer', message: 'string' },
     },
@@ -494,8 +465,6 @@ router_get(router,'/transaction',
     toArray, jsonrpc_countAndListTransaction,
 
   async function (result) {
-    await getAccountQuery().patchAddressInfo(result.list, 'from', 'to');
-
     const addresses = new Set<string>(result.list.flatMap(item => [item.from, item.to, item.contractCreated])
         .filter(Boolean));
     result.nameMap = await getAccountQuery().list([...addresses]);
@@ -782,12 +751,6 @@ router_get(router,'/contract/:address',
           sponsorBalanceForCollateral: 'string',
           sponsorForGas: 'string',
           sponsorForCollateral: 'string',
-          sponsorForGasContractInfo: 'object',
-          sponsorForCollateralContractInfo: 'object',
-          sponsorForGasENSInfo: 'object',
-          sponsorForCollateralENSInfo: 'object',
-          sponsorForGasNameTagInfo: 'object',
-          sponsorForCollateralNameTagInfo: 'object',
         },
         token: {
           name: 'string',
@@ -804,6 +767,7 @@ router_get(router,'/contract/:address',
         destroy: 'object',
         implementation: 'object',
         isRegistered: 'boolean',
+        nameMap: 'object',
       },
       600: { code: 'integer', message: 'string' },
     },
@@ -821,13 +785,6 @@ router_get(router,'/contract/:address',
     const sponsorForCollateral = fmtAddr(sponsor?.sponsorForCollateral, StatApp.networkId);
     const addresses = [sponsorForGas, sponsorForCollateral].filter(Boolean);
     const {app: { service: {accountQuery} },} = this as ScanCtx;
-    const accountBasic = await accountQuery.listPatchInfo(addresses);
-    result.sponsor.sponsorForGasContractInfo = accountBasic.map[sponsorForGas]?.contract;
-    result.sponsor.sponsorForCollateralContractInfo = accountBasic.map[sponsorForCollateral]?.contract;
-    result.sponsor.sponsorForGasENSInfo = accountBasic.map[sponsorForGas]?.ens;
-    result.sponsor.sponsorForCollateralENSInfo = accountBasic.map[sponsorForCollateral]?.ens;
-    result.sponsor.sponsorForGasNameTagInfo = accountBasic.map[sponsorForGas]?.nameTag;
-    result.sponsor.sponsorForCollateralNameTagInfo = accountBasic.map[sponsorForCollateral]?.nameTag;
     result.nameMap = await accountQuery.list(addresses, {
       withContractInfo: true,
       withENSInfo: true,
@@ -975,11 +932,9 @@ router_get(router,'/token',
             quoteUrl: 'string',
             price: OpenAPI.schema({ type: 'number', nullable: true }),
             totalPrice: 'number',
-            contractName: 'string',
-            ensInfo: 'object',
-            nameTagInfo: 'object',
           },
         ],
+        nameMap: 'object',
       },
       600: { code: 'integer', message: 'string' },
     },
@@ -990,12 +945,6 @@ router_get(router,'/token',
   async function (result) {
     const addresses = result.list.map(token => token.address).filter(Boolean);
     const {app: { service: {accountQuery} },} = this as ScanCtx;
-    const accountBasic = await accountQuery.listPatchInfo(addresses);
-    result.list.forEach((token) => {
-      token.contractName = accountBasic.map[token.address]?.contract?.name;
-      token.ensInfo = accountBasic.map[token.address]?.ens;
-      token.nameTagInfo = accountBasic.map[token.address]?.nameTag;
-    });
     result.nameMap = await accountQuery.list(addresses, {
       withContractInfo: true,
       withENSInfo: true,
@@ -1035,7 +984,6 @@ router_get(router,'/transfer',
       200: {
         total: 'integer',
         listLimit: OpenAPI.schema({ type: 'integer', description: 'if exist, require skip+limit <= listLimit' }),
-        addressInfo: 'object',
         list: [
           {
             epochNumber: 'integer',
@@ -1046,8 +994,6 @@ router_get(router,'/transfer',
             address: 'string',
             from: 'string',
             to: 'string',
-            fromEnsInfo: 'object',
-            toEnsInfo: 'object',
             operator: 'string',
             tokenId: 'string',
             value: 'string',
@@ -1055,22 +1001,9 @@ router_get(router,'/transfer',
             syncTimestamp: 'integer',
             transferType: 'string', // for filter by 'transactionHash'
             type: 'string', // for transferType is 'CFX'
-            fromContractInfo: 'object',
-            fromTokenInfo: 'object',
-            fromENSInfo: 'object',
-            fromESpaceInfo: 'object',
-            fromNameTagInfo: 'object',
-            toContractInfo: 'object',
-            toTokenInfo: 'object',
-            toENSInfo: 'object',
-            toESpaceInfo: 'object',
-            toNameTagInfo: 'object',
-            transferContractInfo: 'object',
-            transferTokenInfo: 'object',
-            transferENSInfo: 'object',
-            transferNameTagInfo: 'object',
           },
         ],
+        nameMap: 'object',
       },
       600: { code: 'integer', message: 'string' },
       429: { code: 'integer', message: 'string' },
@@ -1086,23 +1019,6 @@ router_get(router,'/transfer',
 
     const addresses = result.list.flatMap(item => [item.from, item.to, item.address])
         .filter(item => item && item.length > 40);
-    const accountBasic = await accountQuery.listPatchInfo(addresses)
-    result.list.forEach((transfer) => {
-      transfer.fromContractInfo = accountBasic.map[transfer.from]?.contract;
-      transfer.fromTokenInfo = accountBasic.map[transfer.from]?.token;
-      transfer.fromENSInfo = accountBasic.map[transfer.from]?.ens;
-      transfer.fromESpaceInfo = accountBasic.map[transfer.from]?.eSpace;
-      transfer.fromNameTagInfo = accountBasic.map[transfer.from]?.nameTag;
-      transfer.toContractInfo = accountBasic.map[transfer.to]?.contract;
-      transfer.toTokenInfo = accountBasic.map[transfer.to]?.token;
-      transfer.toENSInfo = accountBasic.map[transfer.to]?.ens;
-      transfer.toESpaceInfo = accountBasic.map[transfer.to]?.eSpace;
-      transfer.toNameTagInfo = accountBasic.map[transfer.to]?.nameTag;
-      transfer.transferTokenInfo = accountBasic.map[transfer.address]?.token;
-      transfer.transferContractInfo = accountBasic.map[transfer.address]?.contract;
-      transfer.transferENSInfo = accountBasic.map[transfer.address]?.ens;
-      transfer.transferNameTagInfo = accountBasic.map[transfer.address]?.nameTag;
-    });
     result.nameMap = await accountQuery.list(addresses, {
       withContractInfo: true,
       withNameTagInfo: true,
@@ -1126,30 +1042,19 @@ router_get(router,'/transferTree/:transactionHash',
   }),
 
   async function ({transactionHash}) {
-    const {app: { service: {accountQuery, conflux} },} = this as ScanCtx;
+    const {app: {service: {accountQuery, conflux}},} = this as ScanCtx;
+
     const result = await conflux.getTransactionTrace(transactionHash, true);
     if (result.addressArray === undefined) {
       return result;
     }
 
-    const addresses = result.addressArray;
-    const accountBasic = await accountQuery.listPatchInfo(addresses);
-    const contractAddressArray = Object.keys(accountBasic.map);
-    result.contractMap = {};
-    result.tokenMap = {};
-    result.ensMap = {};
-    result.nameTagMap = {};
-    contractAddressArray.forEach((address) => {
-      result.contractMap[address] = accountBasic.map[address]?.contract;
-      result.tokenMap[address] = accountBasic.map[address]?.token;
-      result.ensMap[address] = accountBasic.map[address]?.ens;
-      result.nameTagMap[address] = accountBasic.map[address]?.nameTag;
-    });
-    result.nameMap = await accountQuery.list(addresses, {
+    result.nameMap = await accountQuery.list(result.addressArray, {
       withContractInfo: true,
       withENSInfo: true,
       withNameTagInfo: true
     });
+
     return result;
   },
 );
@@ -1173,11 +1078,9 @@ router_get(router,'/eventLog',
             address: 'string',
             data: 'string',
             topics: ['string'],
-            ensInfo: 'object',
-            nameTagInfo: 'object',
           },
         ],
-        logContractInfo: 'object',
+        nameMap: 'object',
       },
       600: { code: 'integer', message: 'string' },
     },
@@ -1191,11 +1094,6 @@ router_get(router,'/eventLog',
 
     const {app: { service: {accountQuery} },} = this as ScanCtx;
     const addresses = result.list.map(item => item.address);
-    const accountBasic = await accountQuery.listPatchInfo(addresses);
-    result.list.forEach(item => {
-      item.ensInfo = accountBasic.map[item.address]?.ens;
-      item.nameTagInfo = accountBasic.map[item.address]?.nameTag;
-    });
     result.nameMap = await accountQuery.list(addresses, {withNameTagInfo: true, withENSInfo: true});
 
     return result;
@@ -1219,15 +1117,10 @@ router_get(router,'/ens/reverse/match',
     }),
 
     async function (options) {
-      const {app: { service: {accountQuery} },} = this as ScanCtx;
-      const accountBasic = await accountQuery.listPatchInfo(toArray(options.address));
-      const map = lodash.omitBy(Object.fromEntries(Object.keys(accountBasic.map).map(address => [
-        address,
-        accountBasic.map[address]?.ens
-      ])), lodash.isNil);
+      const {app: {service: {accountQuery}},} = this as ScanCtx;
 
       const nameMap = await accountQuery.list(toArray(options.address), {withENSInfo: true});
-      const ensMap = lodash.omitBy(Object.fromEntries(Object.keys(nameMap).map(address => [
+      const map = lodash.omitBy(Object.fromEntries(Object.keys(nameMap).map(address => [
         address,
         nameMap[address]?.ens
       ])), lodash.isNil);
@@ -1235,7 +1128,6 @@ router_get(router,'/ens/reverse/match',
       return {
         total: Object.keys(map).length,
         map,
-        ensMap
       };
     },
 );
