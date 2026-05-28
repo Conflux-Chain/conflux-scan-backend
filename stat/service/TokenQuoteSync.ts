@@ -90,12 +90,15 @@ export class TokenQuoteSync {
             safeAddErrorLog('stat-task', 'token-quote-swappi', e).then();
             console.log(`Failed to sync token quote from swappi`, e);
         });
-        await this.updateByBN(tokenList).catch(e => {
-            safeAddErrorLog('stat-task', 'token-quote-bn', e).then();
-            console.log(`Failed to sync token quote from BN`, e);
-        });
+        // every 5 sec
+        if (this.tick % 5 === 0) {
+            await this.updateByBN(tokenList).catch(e => {
+                safeAddErrorLog('stat-task', 'token-quote-bn', e).then();
+                console.log(`Failed to sync token quote from BN`, e);
+            });
+        }
 
-        // every 60 ticks
+        // every 60 sec
         if (this.tick % 60 === 0) {
             await this.updateByCMC(tokenList).catch(e => {
                 safeAddErrorLog('stat-task', 'quote-sync-cmc', e).then();
