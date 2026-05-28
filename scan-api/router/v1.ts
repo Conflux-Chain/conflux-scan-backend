@@ -72,8 +72,10 @@ router.use(async (ctx, next) => {
         { code: e.code, message: e.message, data: e.partialData };
   }
 });
+
+let startTime = new Date().toLocaleTimeString();
 router_get(router,'/', function (ctx) {
-  return { message: `scan-api-v1, [${ConfigInstance.serverTag}]` };
+  return { message: `scan-api-v1, ${startTime}` };
 });
 // --------------------------------- OpenAPI ----------------------------------
 

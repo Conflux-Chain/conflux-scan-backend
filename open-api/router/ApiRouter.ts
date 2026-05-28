@@ -125,8 +125,9 @@ export async function register(app: Koa, apiServer: ApiServer, port:string|numbe
     app.use(middleware)
 
     app.proxy = true
+    let startTime = new Date().toLocaleTimeString();
     router.get('/', async (ctx)=>{
-        return root(ctx, apiServer.config.serverTag, port)
+        return root(ctx, `open api ${startTime}`, port)
     })
     router.get('/test-billing', async (ctx)=>{
         const {ok:paid, result: billingResult} =

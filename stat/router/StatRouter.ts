@@ -57,8 +57,9 @@ const cacheTtl = 60 // 1 minutes
 export const ROUTER_PREFIX = '/stat'
 
 function addRoute(router: Router<any, {}>, statApp: StatApp) {
+    let startTime = new Date().toLocaleTimeString();
     router.get('/server-info', async (ctx: Context) => {
-        ctx.body = { serverInfo: `${statApp.config.serverTag} network id ${StatApp.networkId}` }
+        ctx.body = { serverInfo: ` stat api ${startTime} network id ${StatApp.networkId}` }
     })
 
     router.get('/tokens/nft-token-id-count', async (ctx)=>{

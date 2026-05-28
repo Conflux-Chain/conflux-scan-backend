@@ -170,8 +170,7 @@ export function loadConfig(specified: string = undefined): StatConfig {
     const specific = specified ? require(`./${specified}`) : {};
 
     const config = {...template.default, ...local.default, ...specific.default};
-    // config.serverTag = `${config.serverTag}@${os.hostname()}`;
-    config.serverTag = `scan`;
+    config.serverTag = `${config.serverTag}@${os.hostname()}`;
 
     FirstBlockNo = config.firstBlockNo
     NoCoreSpace = config.noCoreSpace
