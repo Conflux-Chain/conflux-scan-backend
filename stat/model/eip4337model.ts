@@ -123,6 +123,7 @@ export class AATx extends Model<IAATx> implements IAATx {
 				{name: 'idx_senderId_entryPointId', fields: ['senderId', 'entryPointId']},
 				{name: 'idx_bundlerId_entryPointId', fields: ['bundlerId', 'entryPointId']},
 				{name: 'idx_entryPointId', fields: ['entryPointId']},
+				{name: 'idx_opHash', fields: ['userOpHash']},
 			]
 		});
 	}
