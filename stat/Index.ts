@@ -4,7 +4,6 @@ import {loadConfig} from "./config/StatConfig";
 import {register} from "./router/StatRouter";
 import {KV} from "./model/KV";
 import {Server} from 'http'
-import {proxyPath} from "./router/DevopsRouter";
 import {saveApiLog} from "./monitor/ApiLog";
 import {KEY_STAT, repeatHeartBeat} from "./model/HeartBeat";
 
@@ -21,7 +20,6 @@ export async function init() {
     console.log(`serve static file at ${path.resolve(public_dir)}`)
 
     redirectLog({mainPath:'stat'})
-    app.use(proxyPath)
     app.use(async (ctx, next) => {
         const start = Date.now();
         await next();

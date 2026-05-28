@@ -49,8 +49,9 @@ export async function listenPort(app: string) {
 }
 
 function regApi(router: Router, app: string, isEVM: boolean) {
+	let startTime = new Date().toLocaleTimeString();
 	router.get('/', (ctx, next) => {
-		ctx.body = {app, server: ConfigInstance.serverTag, net: StatApp.networkId, entry: getAppEntryName(), isEVM}
+		ctx.body = {app, server: `api ${startTime}`, net: StatApp.networkId, entry: getAppEntryName(), isEVM}
 	})
 }
 const superagent = require('superagent');

@@ -10,7 +10,6 @@ import {KEY_NFT_FROM_DB, KEY_TX_EPOCH, KV, USE_REMOTE_STAT} from "../model/KV";
 import {TxnQuery} from "../service/TxnQuery";
 import {koaSwagger} from "koa2-swagger-ui";
 import ApiDef from "./ApiDef";
-import {addDevopsRouter} from "./DevopsRouter";
 import {DailyToken, NftId, NftMint, Token} from "../model/Token";
 import {T_DAILY_TOKEN_TXN} from "../model/Erc20Transfer";
 import {sumRecentCfxAmount} from "../model/CfxTransfer";
@@ -57,8 +56,9 @@ const cacheTtl = 60 // 1 minutes
 export const ROUTER_PREFIX = '/stat'
 
 function addRoute(router: Router<any, {}>, statApp: StatApp) {
+    let startTime = new Date().toLocaleTimeString();
     router.get('/server-info', async (ctx: Context) => {
-        ctx.body = { serverInfo: `${statApp.config.serverTag} network id ${StatApp.networkId}` }
+        ctx.body = { serverInfo: ` stat api ${startTime} network id ${StatApp.networkId}` }
     })
 
     router.get('/tokens/nft-token-id-count', async (ctx)=>{
@@ -941,7 +941,6 @@ export function register(app:Koa, statApp: StatApp) {
     addSwagger(app, router)
     let middleware = router.routes();
     app.use(middleware)
-    addDevopsRouter(router, statApp)
     addConfluxConsortiumNFTRouter(router, statApp)
     console.log('router registered.')
 }

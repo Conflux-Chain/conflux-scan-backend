@@ -3,9 +3,10 @@ import {ConfigInstance} from "../../stat/config/StatConfig";
 
 export const router = new KoaRouter();
 
+let startTime = new Date().toLocaleTimeString();
 router.get('/', function () {
   return {
-    info: `scan-api at ${ConfigInstance.serverTag}`,
+    info: `scan-api at ${startTime}`,
   };
 });
 
