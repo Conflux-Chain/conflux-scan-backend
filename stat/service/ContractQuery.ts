@@ -27,8 +27,8 @@ import {
     convertVyperVersion
 } from "./common/utils";
 import {VerifiedContracts} from "../model/VerifiedContracts";
-import {ethers, keccak256} from "ethers";
-import {AbiSignature, saveAbiSigs} from "../model/ContractInfo";
+import {ethers} from "ethers";
+import {AbiSignature, getSignature, saveAbiSigs, SignatureType} from "../model/ContractInfo";
 import {sleep} from "./tool/ProcessTool";
 import {
     KEY_AUTO_VERIFY_TRACE_ID,
@@ -1497,13 +1497,9 @@ export class ContractQuery {
             const {data} = resp || {};
 
             if (data?.results?.length) {
-                const list = data.results.map((item: any) => ({
-                    type: "function",
-                    fullFormatHash: keccak256(Buffer.from(item.fullFormat)),
-                    fullFormat: item.fullFormat,
-                    hash,
-                    signature: item.signature,
-                }));
+                const list = data.results
+                    .map((item: any) => getSignature(SignatureType.Function, item.signature, item.fullFormat))
+                    .filter(Boolean);
                 AbiSignature.bulkCreate(list, {
                     updateOnDuplicate: ['updatedAt']
                 }).then();

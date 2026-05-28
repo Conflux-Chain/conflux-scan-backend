@@ -2,6 +2,12 @@ import {DataTypes, Model, Sequelize} from "sequelize";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import {Interface, keccak256} from "ethers";
 
+export enum SignatureType {
+    Function = "function",
+    Event = "event",
+    Error = "error",
+}
+
 export const MaxSignature = 1024;
 export const MaxFullFormat = 4096;
 
@@ -36,6 +42,7 @@ export class AbiSignature extends Model<IAbiSignature> implements IAbiSignature 
             sequelize: seq, tableName: 'abi_signatures', charset: 'ascii', collate: 'ascii_general_ci',
             indexes: [
                 {name: 'idx_type_full_hash', unique: true, fields: [{name: 'type'}, {name: 'fullFormatHash'}]},
+                {name: 'idx_type_hash', fields: [{name: 'type'}, {name: 'hash'}]},
             ]
         })
     }
@@ -82,31 +89,17 @@ export async function saveAbiSigs(abiObj: any, contractId?: number, dryRun = fal
     const fragments = [...Object.values(iFace.fragments)];
     for (const fragment of fragments) {
         const type = fragment.type;
-        if (type !== 'event' && type !== 'function' && type !== 'error') {
+        if (type !== SignatureType.Error && type !== SignatureType.Event && type !== SignatureType.Function) {
             continue;
         }
 
         const signature = fragment.format("sighash");
         const fullFormat = fragment.format("full");
-        const hash = keccak256(Buffer.from(signature));
-        const fullFormatHash = keccak256(Buffer.from(fullFormat));
 
-        if (signature.length > MaxSignature) {
-            console.log(`Abi signature ${signature.length} exceeds max length ${MaxSignature}\n`, signature);
-            continue;
+        const abiSig = getSignature(type as SignatureType, signature, fullFormat);
+        if (abiSig) {
+            list.push(abiSig);
         }
-        if (fullFormat.length > MaxFullFormat) {
-            console.log(`Abi fullFormat ${fullFormat.length} exceeds max length ${MaxFullFormat}\n`, fullFormat);
-            continue;
-        }
-
-        list.push({
-            type,
-            fullFormatHash,
-            fullFormat,
-            hash: (type === 'function' || type === 'error') ? hash.substring(0, 10) : hash,
-            signature,
-        });
     }
 
     if (dryRun) {
@@ -123,23 +116,52 @@ export async function saveAbiSigs(abiObj: any, contractId?: number, dryRun = fal
         }
         console.log(`Succeed to save abi info: ${list.length}`);
     } catch (err) {
-        safeAddErrorLog('DB',`bulk-create-abi-info`, err).then();
+        safeAddErrorLog('DB', `bulk-create-abi-info`, err).then();
         console.log("Failed to save abi info", err);
     }
 }
 
+export function getSignature(type: SignatureType, signature: string, fullFormat: string): IAbiSignature | null {
+    if (signature.length > MaxSignature) {
+        console.log(`Abi signature ${signature.length} exceeds max length ${MaxSignature}\n`, signature);
+        return null;
+    }
+    if (fullFormat.length > MaxFullFormat) {
+        console.log(`Abi fullFormat ${fullFormat.length} exceeds max length ${MaxFullFormat}\n`, fullFormat);
+        return null;
+    }
+
+    const hash = keccak256(Buffer.from(signature));
+    const fullFormatHash = keccak256(Buffer.from(fullFormat));
+
+    return {
+        type,
+        fullFormatHash,
+        fullFormat,
+        hash: type === SignatureType.Event ? hash : hash.substring(0, 10),
+        signature,
+    };
+}
+
 export async function saveContractAbiSigs(list: AbiSignature[], contractId: number) {
-    const one = await ContractAbiSignature.findOne({where: {contractId}});
-    if (one) {
+    const sigs = await Promise.all(list.map(item => AbiSignature
+        .findOne({where: {type: item.type, fullFormatHash: item.fullFormatHash}})
+        .then(found => found ? ({contractId, abiId: found.id}) : null)
+    ));
+
+    const uniqueSigs = Array.from(
+        new Map(
+            sigs
+                .filter((item): item is {contractId: number, abiId: number} => !!item && item.abiId != null)
+                .map(item => [`${item.contractId}:${item.abiId}`, item])
+        ).values()
+    );
+
+    if (uniqueSigs.length === 0) {
         return;
     }
 
-    const sigs = await Promise.all(list.map(item => AbiSignature
-        .findOne({where: {type: item.type, fullFormatHash: item.fullFormatHash}})
-        .then(item => ({contractId, abiId: item.id}))
-    ));
-
-    return ContractAbiSignature.bulkCreate(sigs);
+    return ContractAbiSignature.bulkCreate(uniqueSigs, {ignoreDuplicates: true});
 }
 
 export function parseAbiStr(str: string) {
