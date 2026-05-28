@@ -224,7 +224,6 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             throw new Errors.ParameterError(`param <txHash> is invalid`);
         }
         const result: any = await getAuthActionInTx(txHash);
-        await getAccountQuery().patchAddressInfo(result.list, '', 'address');
         const addresses = new Set<string>(result.list.flatMap(item => [item.address, item.author]).filter(Boolean));
         result.nameMap = await statApp.accountQuery.list([...addresses], {
             withContractInfo: true, withNameTagInfo: true, withENSInfo: true
