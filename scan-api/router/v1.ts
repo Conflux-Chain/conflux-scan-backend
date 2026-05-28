@@ -1019,20 +1019,6 @@ router_get(router,'/transfer',
             syncTimestamp: 'integer',
             transferType: 'string', // for filter by 'transactionHash'
             type: 'string', // for transferType is 'CFX'
-            fromContractInfo: 'object',
-            fromTokenInfo: 'object',
-            fromENSInfo: 'object',
-            fromESpaceInfo: 'object',
-            fromNameTagInfo: 'object',
-            toContractInfo: 'object',
-            toTokenInfo: 'object',
-            toENSInfo: 'object',
-            toESpaceInfo: 'object',
-            toNameTagInfo: 'object',
-            transferContractInfo: 'object',
-            transferTokenInfo: 'object',
-            transferENSInfo: 'object',
-            transferNameTagInfo: 'object',
           },
         ],
       },
@@ -1050,23 +1036,6 @@ router_get(router,'/transfer',
 
     const addresses = result.list.flatMap(item => [item.from, item.to, item.address])
         .filter(item => item && item.length > 40);
-    const accountBasic = await accountQuery.listPatchInfo(addresses)
-    result.list.forEach((transfer) => {
-      transfer.fromContractInfo = accountBasic.map[transfer.from]?.contract;
-      transfer.fromTokenInfo = accountBasic.map[transfer.from]?.token;
-      transfer.fromENSInfo = accountBasic.map[transfer.from]?.ens;
-      transfer.fromESpaceInfo = accountBasic.map[transfer.from]?.eSpace;
-      transfer.fromNameTagInfo = accountBasic.map[transfer.from]?.nameTag;
-      transfer.toContractInfo = accountBasic.map[transfer.to]?.contract;
-      transfer.toTokenInfo = accountBasic.map[transfer.to]?.token;
-      transfer.toENSInfo = accountBasic.map[transfer.to]?.ens;
-      transfer.toESpaceInfo = accountBasic.map[transfer.to]?.eSpace;
-      transfer.toNameTagInfo = accountBasic.map[transfer.to]?.nameTag;
-      transfer.transferTokenInfo = accountBasic.map[transfer.address]?.token;
-      transfer.transferContractInfo = accountBasic.map[transfer.address]?.contract;
-      transfer.transferENSInfo = accountBasic.map[transfer.address]?.ens;
-      transfer.transferNameTagInfo = accountBasic.map[transfer.address]?.nameTag;
-    });
     result.nameMap = await accountQuery.list(addresses, {
       withContractInfo: true,
       withNameTagInfo: true,
