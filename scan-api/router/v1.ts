@@ -202,11 +202,6 @@ router_get(router,'/frontend',
   async function (result) {
     const {app: { service: {accountQuery} },} = this as ScanCtx;
     const addresses = result.contracts.map(item => item.address).filter(Boolean);
-    const accountBasic = await accountQuery.listPatchInfo(addresses)
-    result.contracts.forEach((item) => {
-      item.ensInfo = accountBasic.map[item.address]?.ens;
-      item.nameTagInfo = accountBasic.map[item.address]?.nameTag;
-    });
     result.nameMap = await accountQuery.list(addresses, {withENSInfo: true, withNameTagInfo: true});
     return result;
   },
