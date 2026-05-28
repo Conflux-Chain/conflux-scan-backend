@@ -1,6 +1,7 @@
 import {BigNumberish, ethers, formatEther} from "ethers";
 import {entryPointV8} from "./entryPointV8.json";
 import {entrypointV6} from "./entrypointV6.json";
+import {entrypointV7Json} from "./entrypointV7.json";
 import {makeIdV} from "../../model/HexMap";
 import {LEN_AA_TX_METHODS} from "../../model/eip4337model";
 import {getCfxSdk} from "../common/utils";
@@ -12,10 +13,14 @@ export const ENTRY_POINT_V7 = '0x0000000071727de22e5e9d8baf0edac6f37da032';
 export const ENTRY_POINT_V8 = '0x4337084d9e255ff0702461cf8895ce9e3b5ff108';
 
 function getAbiForEntryPoint(entryPoint: string): any {
-	return entryPoint?.toLowerCase() === ENTRY_POINT_V6 ? entrypointV6 : entryPointV8;
+	const ep = entryPoint?.toLowerCase();
+	if (ep === ENTRY_POINT_V6) { return entrypointV6; }
+	if (ep === ENTRY_POINT_V7) { return entrypointV7Json; }
+	return entryPointV8;
 }
 
 const ifaceV8 = new ethers.Interface(entryPointV8);
+const ifaceV7 = new ethers.Interface(entrypointV7Json);
 const ifaceV6 = new ethers.Interface(entrypointV6);
 
 export interface IUserOpParam {
@@ -99,8 +104,16 @@ function printInterfaceMethods(abi: any): void {
 }
 
 export function parseHandleOps(callData: string, entryPoint?: string): I4337call {
-	const isV6 = entryPoint?.toLowerCase() === ENTRY_POINT_V6;
-	const iface = isV6 ? ifaceV6 : ifaceV8;
+	const ep = entryPoint?.toLowerCase();
+	const isV6 = ep === ENTRY_POINT_V6;
+	let iface: ethers.Interface;
+	if (ep === ENTRY_POINT_V6) {
+		iface = ifaceV6;
+	} else if (ep === ENTRY_POINT_V7) {
+		iface = ifaceV7;
+	} else {
+		iface = ifaceV8;
+	}
 	const decoded = iface.parseTransaction({ data: callData });
 	if (!decoded) {
 		return null;
