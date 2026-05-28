@@ -4985,9 +4985,16 @@ components:
           description: "Effective gas price of the bundle tx in wei (decimal string)."
           example: "1000000000"
     AATxDetailResponse:
-      allOf:
-        - $ref: '#/components/schemas/AATxItem'
-        - $ref: '#/components/schemas/AATxDetailExtra'
+      type: object
+      properties:
+        status:
+          type: integer
+        message:
+          type: string
+        result:
+          allOf:
+            - $ref: '#/components/schemas/AATxItem'
+            - $ref: '#/components/schemas/AATxDetailExtra'
     TxsByTypeStat:
       type: object
       properties:
