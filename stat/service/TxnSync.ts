@@ -66,14 +66,6 @@ export class TxnSync {
             addressArray.push(tx.base32);
         })
 
-        // add contract info and token info
-        const accountBasic = await accountQuery.listPatchInfo(addressArray);
-        list.forEach(item => {
-            item.tokenInfo = accountBasic.map[item.base32]?.token || {};
-            item.contractInfo = accountBasic.map[item.base32]?.contract || {};
-            item.ensInfo = accountBasic.map[item.base32]?.ens || {};
-            item.nameTagInfo = accountBasic.map[item.base32]?.nameTag || {};
-        });
         const nameMap = await accountQuery.list(addressArray);
 
         const finalRet = {list, sum, nameMap};
