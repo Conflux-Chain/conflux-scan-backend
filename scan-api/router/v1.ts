@@ -768,12 +768,6 @@ router_get(router,'/contract/:address',
           sponsorBalanceForCollateral: 'string',
           sponsorForGas: 'string',
           sponsorForCollateral: 'string',
-          sponsorForGasContractInfo: 'object',
-          sponsorForCollateralContractInfo: 'object',
-          sponsorForGasENSInfo: 'object',
-          sponsorForCollateralENSInfo: 'object',
-          sponsorForGasNameTagInfo: 'object',
-          sponsorForCollateralNameTagInfo: 'object',
         },
         token: {
           name: 'string',
@@ -807,13 +801,6 @@ router_get(router,'/contract/:address',
     const sponsorForCollateral = fmtAddr(sponsor?.sponsorForCollateral, StatApp.networkId);
     const addresses = [sponsorForGas, sponsorForCollateral].filter(Boolean);
     const {app: { service: {accountQuery} },} = this as ScanCtx;
-    const accountBasic = await accountQuery.listPatchInfo(addresses);
-    result.sponsor.sponsorForGasContractInfo = accountBasic.map[sponsorForGas]?.contract;
-    result.sponsor.sponsorForCollateralContractInfo = accountBasic.map[sponsorForCollateral]?.contract;
-    result.sponsor.sponsorForGasENSInfo = accountBasic.map[sponsorForGas]?.ens;
-    result.sponsor.sponsorForCollateralENSInfo = accountBasic.map[sponsorForCollateral]?.ens;
-    result.sponsor.sponsorForGasNameTagInfo = accountBasic.map[sponsorForGas]?.nameTag;
-    result.sponsor.sponsorForCollateralNameTagInfo = accountBasic.map[sponsorForCollateral]?.nameTag;
     result.nameMap = await accountQuery.list(addresses, {
       withContractInfo: true,
       withENSInfo: true,
