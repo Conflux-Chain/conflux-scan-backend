@@ -167,6 +167,7 @@ const iface7702 = new ethers.Interface([
 	"function execute(address dest, uint256 value, bytes calldata func) external",
 	"function executeBatch((address,uint256,bytes)[]) external",
 	"function executeBatch(address[] calldata dest, bytes[] calldata func) external",
+	"function executeBatch(address[] calldata dest, uint256[] calldata value, bytes[] calldata func) external",
 ]);
 
 function parse7702execute(callData: string): IParsed7702Param {
@@ -177,7 +178,13 @@ function parse7702execute(callData: string): IParsed7702Param {
 	let ret: IParsed7702Param;
 	if (decode.name === 'executeBatch') {
 		const paramArr = [];
-		if (decode.args.length === 2 && Array.isArray(decode.args[0]) && Array.isArray(decode.args[1])) {
+		if (decode.args.length === 3 && Array.isArray(decode.args[0]) && Array.isArray(decode.args[1]) && Array.isArray(decode.args[2])) {
+			// executeBatch(address[], uint256[], bytes[]) — v7 SimpleAccount style
+			const [dests, values, funcs] = decode.args;
+			for (let i = 0; i < dests.length; i++) {
+				paramArr.push({dest: dests[i], value: values[i], func: funcs[i]});
+			}
+		} else if (decode.args.length === 2 && Array.isArray(decode.args[0]) && Array.isArray(decode.args[1])) {
 			// executeBatch(address[], bytes[]) — no value field
 			const [dests, funcs] = decode.args;
 			for (let i = 0; i < dests.length; i++) {
