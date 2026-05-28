@@ -948,9 +948,6 @@ router_get(router,'/token',
             quoteUrl: 'string',
             price: OpenAPI.schema({ type: 'number', nullable: true }),
             totalPrice: 'number',
-            contractName: 'string',
-            ensInfo: 'object',
-            nameTagInfo: 'object',
           },
         ],
       },
@@ -963,12 +960,6 @@ router_get(router,'/token',
   async function (result) {
     const addresses = result.list.map(token => token.address).filter(Boolean);
     const {app: { service: {accountQuery} },} = this as ScanCtx;
-    const accountBasic = await accountQuery.listPatchInfo(addresses);
-    result.list.forEach((token) => {
-      token.contractName = accountBasic.map[token.address]?.contract?.name;
-      token.ensInfo = accountBasic.map[token.address]?.ens;
-      token.nameTagInfo = accountBasic.map[token.address]?.nameTag;
-    });
     result.nameMap = await accountQuery.list(addresses, {
       withContractInfo: true,
       withENSInfo: true,
