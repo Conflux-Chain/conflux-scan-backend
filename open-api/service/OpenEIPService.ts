@@ -1,4 +1,4 @@
-import {paginateCore} from "../../stat/router/ParamChecker";
+import {paginateCore, SKIP_MAX} from "../../stat/router/ParamChecker";
 import {mustBeAddressParamIfPresent, mustBeHex64ParamIfPresent, getCfxSdk} from "../../stat/service/common/utils";
 import {StatApp} from "../../stat/StatApp";
 import {listAuthAction} from "../../stat/model/EIP7702model";
@@ -9,11 +9,10 @@ import {getAddrId} from "../../stat/model/HexMap";
 import {parseBundleTxByHash} from "../../stat/service/eip/eip4337bundleParser";
 import {Errors} from "../../stat/service/common/LogicError";
 
-const LIST_LIMIT = 50_000;
 
 function assertSkipWithinLimit(skip: number) {
-    if (skip >= LIST_LIMIT) {
-        throw new Errors.ParameterError(`Parameter <skip> exceeds listLimit (${LIST_LIMIT})`);
+    if (skip >= SKIP_MAX) {
+        throw new Errors.ParameterError(`Parameter <skip> exceeds listLimit (${SKIP_MAX})`);
     }
 }
 

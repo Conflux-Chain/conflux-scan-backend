@@ -4,11 +4,12 @@ const lodash = require('lodash');
 
 export const LIMIT_MAX = 100
 export const LIMIT_MAX_STAT = 5000
+export const SKIP_MAX = 10000
 
-const optCore = {skip: 0, skipMax: 10000, limit: 10, limitMax: LIMIT_MAX};
-const optCoreStat = {skip: 0, skipMax: 10000, limit: 10, limitMax: LIMIT_MAX_STAT};
-const optEVM = {skip: 1, skipMax: 10000, limit: 100, limitMax: LIMIT_MAX};
-const optEVMStat = {skip: 1, skipMax: 10000, limit: 100, limitMax: LIMIT_MAX_STAT};
+const optCore = {skip: 0, skipMax: SKIP_MAX, limit: 10, limitMax: LIMIT_MAX};
+const optCoreStat = {skip: 0, skipMax: SKIP_MAX, limit: 10, limitMax: LIMIT_MAX_STAT};
+const optEVM = {skip: 1, skipMax: SKIP_MAX, limit: 100, limitMax: LIMIT_MAX};
+const optEVMStat = {skip: 1, skipMax: SKIP_MAX, limit: 100, limitMax: LIMIT_MAX_STAT};
 
 export interface IPageParam {
     skip: number;

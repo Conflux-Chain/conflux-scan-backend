@@ -105,6 +105,10 @@ export function parseHandleOps(callData: string, entryPoint?: string): I4337call
 	if (!decoded) {
 		return null;
 	}
+	if (decoded.name !== 'handleOps' && decoded.name !== 'handleAggregatedOps') {
+		// Non-bundle EntryPoint calls (depositTo, addStake, etc.) are not bundles
+		return null;
+	}
 	const [opsArg] = decoded.args;
 	const ops = decoded.name === 'handleAggregatedOps'
 		? opsArg.flatMap((group: any) => group.userOps)
