@@ -494,8 +494,6 @@ router_get(router,'/transaction',
     toArray, jsonrpc_countAndListTransaction,
 
   async function (result) {
-    await getAccountQuery().patchAddressInfo(result.list, 'from', 'to');
-
     const addresses = new Set<string>(result.list.flatMap(item => [item.from, item.to, item.contractCreated])
         .filter(Boolean));
     result.nameMap = await getAccountQuery().list([...addresses]);
