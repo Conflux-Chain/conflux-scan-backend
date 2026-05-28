@@ -4635,9 +4635,9 @@ components:
           example: "0.000000000000100000"
         actualGasUsed:
           type: string
-          pattern: '^\d+\.\d+$'
-          description: Actual gas used (decimal string)
-          example: "21000.000000000000000000"
+          pattern: '^\d+$'
+          description: Actual gas used (integer gas-unit string)
+          example: "21000"
         createdAt:
           type: string
           format: date-time
