@@ -296,14 +296,8 @@ export function parseUserOperationRevertReason(log: any): IUserOperationRevertRe
 
         const args = parsedLog.args as any;
 
-        // Convert revertReason from bytes to string (if it is a readable string)
-        let revertReasonStr: string;
-        try {
-            revertReasonStr = ethers.toUtf8String(args.revertReason);
-        } catch {
-            // If not a valid UTF-8 string, keep the hex representation
-            revertReasonStr = args.revertReason;
-        }
+        // Decode ABI-encoded revert data to expose standard Error(string) messages
+        const revertReasonStr = parseRevertReason(args.revertReason);
 
         return {
             address: log.address,
