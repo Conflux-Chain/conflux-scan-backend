@@ -1066,18 +1066,6 @@ router_get(router,'/transferTree/:transactionHash',
     }
 
     const addresses = result.addressArray;
-    const accountBasic = await accountQuery.listPatchInfo(addresses);
-    const contractAddressArray = Object.keys(accountBasic.map);
-    result.contractMap = {};
-    result.tokenMap = {};
-    result.ensMap = {};
-    result.nameTagMap = {};
-    contractAddressArray.forEach((address) => {
-      result.contractMap[address] = accountBasic.map[address]?.contract;
-      result.tokenMap[address] = accountBasic.map[address]?.token;
-      result.ensMap[address] = accountBasic.map[address]?.ens;
-      result.nameTagMap[address] = accountBasic.map[address]?.nameTag;
-    });
     result.nameMap = await accountQuery.list(addresses, {
       withContractInfo: true,
       withENSInfo: true,
