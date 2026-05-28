@@ -241,7 +241,7 @@ export async function sync4337txOfEpoch({receipts, blocks, blockTime, txFn}:ISyn
 						actualGasUsed: "0",
 						bundleTxId: 0n,
 						bundlerId: 0,
-						createdAt: undefined,
+						createdAt: blockTime,
 						entryPointId: rawTxToId,
 						epoch: BigInt(rcpt.epochNumber),
 						eventContractId: 0,
