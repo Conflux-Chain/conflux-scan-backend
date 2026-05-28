@@ -15,7 +15,7 @@ import {
     markTxPosition,
     TxnRowMark
 } from "../model/FullBlock";
-import {Hex40Map, makeId} from "../model/HexMap";
+import {Hex40Map, makeId, makeIdV} from "../model/HexMap";
 import {fmtDtUTC} from "../model/Utils";
 import {Transaction,QueryTypes,UniqueConstraintError, Op} from "sequelize"
 import {
@@ -34,7 +34,7 @@ import {sleep} from "./tool/ProcessTool";
 import {StatApp} from "../StatApp";
 import {PosRegister} from "../model/PoS";
 import {CONST} from "./common/constant";
-import {ConfigInstance, FirstBlockNo, NoCoreSpace} from "../config/StatConfig";
+import {Cfg_is_EVM, ConfigInstance, FirstBlockNo, NoCoreSpace} from "../config/StatConfig";
 import {cfxSafeEpochReceipts} from "../TokenTransferSync";
 import {Block} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {incDailyAddressCount} from "../model/StatAddress";
@@ -45,6 +45,7 @@ import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import {StuckChecker} from "../monitor/Monitor";
 import {saveAuthBlockStub} from "./eip/eip7702";
 import {ISync4337txParam, pop4337data, sync4337txOfEpoch} from "./eip/eip4337";
+import {entrypointAddrIdSet, entrypointAddrSet} from "../model/eip4337model";
 
 // Do not care the value
 const CODE_REWIND = 20201029
@@ -112,6 +113,12 @@ export class FullBlockService {
         await FullBlockService.adjustFirstBlockTime();
         await this.powSidePosSync.init()
         await this.updateEpochNumber();
+        if (Cfg_is_EVM) {
+            //setup 4337 addresses
+            for (const s of entrypointAddrSet) {
+                entrypointAddrIdSet.add(await makeIdV(s, null, {dt: new Date()}));
+            }
+        }
         if (this.latestStateEpoch - maxEpoch > this.batchBlockTx.safeCatchupGap) {
             this.preLoadMap.initTasks(maxEpoch + 1, this.batchBlockTx.initialTaskCount);
             // only enable it at startup

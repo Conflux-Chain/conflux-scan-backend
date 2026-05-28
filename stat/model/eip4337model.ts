@@ -128,7 +128,7 @@ export class AATx extends Model<IAATx> implements IAATx {
 	}
 }
 
-const entrypointAddrSet = new Set([
+export const entrypointAddrSet = new Set([
 	'0x5ff137d4b0fdcd49dca30c7cf57e578a026d2789', // --- v0.6
 	'0x0000000071727de22e5e9d8baf0edac6f37da032', // --- v0.7
 	'0x4337084d9e255ff0702461cf8895ce9e3b5ff108', // --- v0.8
@@ -147,10 +147,6 @@ export async function bindBundleTxModels() {
 	AATx.belongsTo(Hex40Map, { as: 'entryPoint', foreignKey: 'entryPointId' });
 
 	AATx.belongsTo(BundleTx, { as: 'bundleTx', foreignKey: 'bundleTxId' });
-
-	for (const s of entrypointAddrSet) {
-		entrypointAddrIdSet.add(await makeIdV(s, null, {dt: new Date()}));
-	}
 }
 
 

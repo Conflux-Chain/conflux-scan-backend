@@ -29,9 +29,6 @@ export async function handleAATxDetail(
 
   if (aaTx.senderHex && aaTx.epoch && bundleTxHash) {
     aaTx.effectiveAuth = await getDelegatedAddrAtTx(aaTx.senderHex, Number(aaTx.epoch), bundleTxHash)
-      .then(res => {
-        return res ? accountQuery.patchAddressInfo([res], '', 'address').then(() => res) : null;
-      })
       .catch(e => {
         aaTx.effectiveAuthError = e?.message ?? String(e);
         return null;
