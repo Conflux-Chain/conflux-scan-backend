@@ -1094,8 +1094,6 @@ router_get(router,'/eventLog',
             address: 'string',
             data: 'string',
             topics: ['string'],
-            ensInfo: 'object',
-            nameTagInfo: 'object',
           },
         ],
         logContractInfo: 'object',
@@ -1112,11 +1110,6 @@ router_get(router,'/eventLog',
 
     const {app: { service: {accountQuery} },} = this as ScanCtx;
     const addresses = result.list.map(item => item.address);
-    const accountBasic = await accountQuery.listPatchInfo(addresses);
-    result.list.forEach(item => {
-      item.ensInfo = accountBasic.map[item.address]?.ens;
-      item.nameTagInfo = accountBasic.map[item.address]?.nameTag;
-    });
     result.nameMap = await accountQuery.list(addresses, {withNameTagInfo: true, withENSInfo: true});
 
     return result;
