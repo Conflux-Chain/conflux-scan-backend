@@ -8,14 +8,19 @@ import {ContractQuery, ImplInfo} from "../ContractQuery";
 import {IS_EVM2, KV} from "../../model/KV";
 import {VerifiedContracts} from "../../model/VerifiedContracts";
 import {Conflux, format} from "js-conflux-sdk";
-import {ethers} from "ethers";
+import {ethers, keccak256} from "ethers";
 import {Contract} from "../../model/Contract";
 import {Op, Sequelize} from "sequelize";
 import {execSync} from "child_process";
 import {sleep} from "./ProcessTool";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
 import {NameTag} from "../../model/NameTag";
-import {AbiInfo, IAbiInfo, saveContractAbiRef, UPDATE_FIELDS_FOR_DUPLICATE_ABI} from "../../model/ContractInfo";
+import {
+    AbiSignature,
+    IAbiSignature,
+    saveAbiSigs,
+    saveContractAbiSigs,
+} from "../../model/ContractInfo";
 import {ContractTraceCreateQuery} from "../ContractTraceCreateQuery";
 import {AddressTransactionIndex} from "../../model/FullBlock";
 import {PruneInfo, PruneType} from "../../model/PruneInfo";
@@ -35,6 +40,11 @@ if (type === 2) {
     compiler = args[2]
 }
 if (type === 3) {
+    if (args[2] !== undefined) {
+        lastId = Number(args[2])
+    }
+}
+if (type === 7) {
     if (args[2] !== undefined) {
         lastId = Number(args[2])
     }
@@ -67,10 +77,7 @@ async function run() {
         await addVerifiedColumns()
     }
     if (type === 7) {
-        await contractQuery.scheduleStatTxnVolume()
-    }
-    if (type === 8) {
-        await contractQuery.scheduleWithNametag()
+        await extractContractAbi()
     }
     await close();
 }
@@ -142,16 +149,17 @@ async function initContracts() {
 
 async function initPrecompiledAbi() {
     for (const [name, contract] of Object.entries(CONST.PRECOMPILED_NAME_CONTRACT_MAP)) {
-        const {address, methodId, signature, method } = contract as any;
-        const arr: IAbiInfo[] = [{
+        const {address, methodId, signature, method} = contract as any;
+        const arr: IAbiSignature[] = [{
             type: 'function',
-            fullName: signature,
+            fullFormatHash: keccak256(Buffer.from(method)),
+            fullFormat: method,
             hash: methodId,
-            formatWithArg: method
+            signature: signature,
         }];
-        const abiInfos = await AbiInfo.bulkCreate(arr, { updateOnDuplicate: UPDATE_FIELDS_FOR_DUPLICATE_ABI });
+        const sigs = await AbiSignature.bulkCreate(arr, {updateOnDuplicate: ['updatedAt']});
         const contractId = await makeIdV(address);
-        await saveContractAbiRef(abiInfos, contractId);
+        await saveContractAbiSigs(sigs, contractId);
         console.log(`Precompiled contract ${name} abi added!`)
     }
 }
@@ -396,5 +404,42 @@ async function addVerifiedColumns() {
     }
 
     console.log(`done! ${list.length} contracts processed`);
+}
+
+async function extractContractAbi() {
+    if (lastId < 0) {
+        return
+    }
+
+    const batchSize = 10;
+    let processedCount = 0;
+
+    while (true) {
+        const contracts = await VerifiedContracts.findAll({
+            attributes: ["id", "addressId", "abi"],
+            where: {id: {[Op.gt]: lastId}},
+            order: [["id", "asc"]],
+            limit: batchSize,
+            raw: true
+        });
+
+        if (!contracts?.length) {
+            break;
+        }
+
+        for (const c of contracts) {
+            const {addressId, abi} = c;
+            await saveAbiSigs(abi, addressId);
+        }
+
+        lastId = contracts[contracts.length - 1].id;
+
+        processedCount += contracts.length;
+        if (processedCount % 1000 === 0) {
+            console.log(`${processedCount} contracts processed`);
+        }
+    }
+
+    console.log(`done! ${processedCount} contracts processed`);
 }
 

@@ -17,7 +17,7 @@ import {CfxTransfer, CfxTransferRowMark, createAddressCfxTransferTable, DailyCfx
 import {create721partition, Erc721Transfer} from "../model/Erc721Transfer";
 import {createAddressErc1155TransferTable, Erc1155Transfer} from "../model/Erc1155Transfer";
 import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
-import {AbiInfo, ContractABI, FormatWithArgMaxLength} from "../model/ContractInfo";
+import {AbiSignature, ContractAbiSignature} from "../model/ContractInfo";
 import {addNameSymbolFailureColumn, Contract} from "../model/Contract";
 import {
     BlockRowMark,
@@ -167,8 +167,8 @@ export async function initPartialModel(sequelize) {
     CfxTransferRowMark.register(sequelize)
     BlockRowMark.register(sequelize)
     TxnRowMark.register(sequelize)
-    AbiInfo.register(sequelize)
-    ContractABI.register(sequelize)
+    AbiSignature.register(sequelize)
+    ContractAbiSignature.register(sequelize)
     TokenApproval.register(sequelize)
     TaskEpochApproval.register(sequelize)
     ApprovalRelation.register(sequelize)

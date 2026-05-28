@@ -2,148 +2,168 @@ import {DataTypes, Model, Sequelize} from "sequelize";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import {Interface, keccak256} from "ethers";
 
-export interface IAbiInfo {
-    id?:number
-    hash:string
-    type:string
-    fullName:string
-    formatWithArg?: string
-    updatedAt?:Date
+export enum SignatureType {
+    Function = "function",
+    Event = "event",
+    Error = "error",
 }
-export const MaxFullName = 1024;
-export const FormatWithArgMaxLength = 4096;
-export class AbiInfo extends Model<IAbiInfo> implements IAbiInfo {
-    id?:number
-    hash:string
-    type:string
-    fullName:string
-    updatedAt?:Date
+
+export const MaxSignature = 1024;
+export const MaxFullFormat = 4096;
+
+export interface IAbiSignature {
+    id?: number
+    type: string
+    fullFormatHash: string
+    fullFormat: string
+    signature: string
+    hash: string
+    updatedAt?: Date
+}
+
+export class AbiSignature extends Model<IAbiSignature> implements IAbiSignature {
+    id?: number
+    type: string
+    fullFormatHash: string
+    fullFormat: string
+    signature: string
+    hash: string
+    updatedAt?: Date
+
     static register(seq) {
-        AbiInfo.init({
-            id: {type: DataTypes.BIGINT, allowNull: false, primaryKey:true, autoIncrement: true},
-            hash: {type: DataTypes.STRING(66), allowNull: false, defaultValue: ''},
-            type: {type: DataTypes.STRING(16), allowNull: false, defaultValue: ''},
-            fullName: {type: DataTypes.STRING(1024), allowNull: false, defaultValue: ''},
-            formatWithArg: {type: DataTypes.STRING(FormatWithArgMaxLength), allowNull: false, defaultValue: ''},
+        AbiSignature.init({
+            id: {type: DataTypes.BIGINT, allowNull: false, primaryKey: true, autoIncrement: true},
+            type: {type: DataTypes.STRING(16), allowNull: false},
+            fullFormatHash: {type: DataTypes.STRING(66), allowNull: false},
+            fullFormat: {type: DataTypes.STRING(MaxFullFormat), allowNull: false},
+            hash: {type: DataTypes.STRING(66), allowNull: false},
+            signature: {type: DataTypes.STRING(MaxSignature), allowNull: false},
         }, {
-            sequelize: seq, tableName: 'abi_stub', charset: 'ascii', collate: 'ascii_general_ci',
-            indexes:[
-                {name: 'idx_type_hash', unique:false, fields:[{name:'type'},{name:'hash'}]},
-                {name: 'idx_type_name', unique:true, fields:[{name:'type'},{name:'fullName'}]},
+            sequelize: seq, tableName: 'abi_signatures', charset: 'ascii', collate: 'ascii_general_ci',
+            indexes: [
+                {name: 'idx_type_full_hash', unique: true, fields: [{name: 'type'}, {name: 'fullFormatHash'}]},
+                {name: 'idx_type_hash', fields: [{name: 'type'}, {name: 'hash'}]},
             ]
         })
     }
 }
 
-export interface IContractABI {
+export interface IContractAbiSignature {
     id?:number;
     contractId:number;
     abiId: number;
     updatedAt?:Date;
 }
-export class ContractABI extends Model<IContractABI> implements IContractABI {
+export class ContractAbiSignature extends Model<IContractAbiSignature> implements IContractAbiSignature {
     id?:number;
     contractId:number;
     abiId: number;
     updatedAt?:Date;
     static register(seq: Sequelize) {
-        ContractABI.init({
+        ContractAbiSignature.init({
             id: {type: DataTypes.BIGINT, allowNull: false, primaryKey:true, autoIncrement: true},
             contractId: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0},
             abiId: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0},
             updatedAt: {type: DataTypes.DATE, allowNull: false},
         }, {
-            sequelize: seq, tableName: 'contract_abi',
+            sequelize: seq, tableName: 'contract_abi_signatures',
             indexes: [{
                 name: 'idx_cid', fields:['contractId', 'abiId'], unique:true,
             }],
         })
     }
 }
-export let UPDATE_FIELDS_FOR_DUPLICATE_ABI: (keyof IAbiInfo)[] = ['updatedAt'];
-export function setFieldsForUpdate(v: (keyof IAbiInfo)[]) {
-    UPDATE_FIELDS_FOR_DUPLICATE_ABI = v;
-}
-// Refer:
-// https://docs.soliditylang.org/en/v0.5.3/abi-spec.html
-// https://docs.soliditylang.org/en/v0.5.3/abi-spec.html#events
-export async function saveAbiInfo(abiObj:any, contractId?:number, dryRun = false) {
+
+export async function saveAbiSigs(abiObj: any, contractId?: number, dryRun = false) {
     const abi = (typeof abiObj === 'string') ? JSON.parse(abiObj) : abiObj;
 
     let iFace: Interface;
     try {
         iFace = new Interface(abi);
     } catch (e) {
-        console.log(`failed to parse abi, contract id `, contractId, `abi`, abi, 'error is ', e);
-        if (dryRun) {
-            throw e;
-        }
-        return e.message?.includes('can not found matched coder');
+        console.log(`Failed to parse abi, contract ${contractId}, abi ${abi}`, e);
+        throw e;
     }
 
-    const arr: IAbiInfo[] = [];
+    const list = [];
     const fragments = [...Object.values(iFace.fragments)];
     for (const fragment of fragments) {
         const type = fragment.type;
-        if (type !== 'event' && type !== 'function') {
+        if (type !== SignatureType.Error && type !== SignatureType.Event && type !== SignatureType.Function) {
             continue;
         }
 
         const signature = fragment.format("sighash");
         const fullFormat = fragment.format("full");
-        const hash = keccak256(Buffer.from(signature));
 
-        if (signature.length > MaxFullName) {
-            console.log(`skip entry exceeds max length , full name ${signature.length} > ${MaxFullName} \n`, signature);
-            continue;
+        const abiSig = getSignature(type as SignatureType, signature, fullFormat);
+        if (abiSig) {
+            list.push(abiSig);
         }
-        if (fullFormat.length > FormatWithArgMaxLength) {
-            console.log(`skip entry exceeds max length , full format ${fullFormat.length} > ${FormatWithArgMaxLength} \n`, fullFormat);
-            continue;
-        }
-
-        arr.push({
-            type,
-            fullName: signature,
-            hash: type === 'function' ? hash.substring(0, 10) : hash,
-            formatWithArg: fullFormat
-        });
     }
 
     if (dryRun) {
-        console.log(`abi beans are:`, arr);
-        return true;
+        console.log("Succeed to parse abi info", list);
+        return;
     }
 
-    return AbiInfo.bulkCreate(arr, {
-        updateOnDuplicate: UPDATE_FIELDS_FOR_DUPLICATE_ABI,
-    }).then(arr=>{
-        console.log(`saved abi info: ${arr.length}`);
-        if (contractId) {
-            return saveContractAbiRef(arr, contractId);
-        }
-    }).then(()=>{
-        return true;
-    }).catch(err=>{
-        safeAddErrorLog('DB',`bulk-create-abi-info`, err);
-        console.log(`bulk create abi info fail:`, err)
-        return false;
-    })
-}
-export async function saveContractAbiRef(arr: AbiInfo[], contractId: number) {
-    return Promise.all(arr.map(async info => {
-        const res = await AbiInfo.findOne({
-            where: {type: info.type, fullName: info.fullName}
+    try {
+        await AbiSignature.bulkCreate(list as AbiSignature[], {
+            updateOnDuplicate: ['updatedAt'],
         });
-        if (res) {
-            return ContractABI.upsert({
-                contractId, abiId: res.id,
-            });
-        } else {
-            console.log(`DB: abi not found for `, info);
+        if (contractId) {
+            await saveContractAbiSigs(list, contractId);
         }
-    }))
+        console.log(`Succeed to save abi info: ${list.length}`);
+    } catch (err) {
+        safeAddErrorLog('DB', `bulk-create-abi-info`, err).then();
+        console.log("Failed to save abi info", err);
+    }
 }
+
+export function getSignature(type: SignatureType, signature: string, fullFormat: string): IAbiSignature | null {
+    if (signature.length > MaxSignature) {
+        console.log(`Abi signature ${signature.length} exceeds max length ${MaxSignature}\n`, signature);
+        return null;
+    }
+    if (fullFormat.length > MaxFullFormat) {
+        console.log(`Abi fullFormat ${fullFormat.length} exceeds max length ${MaxFullFormat}\n`, fullFormat);
+        return null;
+    }
+
+    const hash = keccak256(Buffer.from(signature));
+    const fullFormatHash = keccak256(Buffer.from(fullFormat));
+
+    return {
+        type,
+        fullFormatHash,
+        fullFormat,
+        hash: type === SignatureType.Event ? hash : hash.substring(0, 10),
+        signature,
+    };
+}
+
+export async function saveContractAbiSigs(list: AbiSignature[], contractId: number) {
+    const sigs = await Promise.all(list.map(item => AbiSignature
+        .findOne({where: {type: item.type, fullFormatHash: item.fullFormatHash}})
+        .then(found => found ? ({contractId, abiId: found.id}) : null)
+    ));
+
+    const uniqueSigs = Array.from(
+        new Map(
+            sigs
+                .filter((item): item is {contractId: number, abiId: number} => !!item && item.abiId != null)
+                .map(item => [`${item.contractId}:${item.abiId}`, item])
+        ).values()
+    );
+
+    if (uniqueSigs.length === 0) {
+        return;
+    }
+
+    return ContractAbiSignature.bulkCreate(uniqueSigs, {ignoreDuplicates: true});
+}
+
 export function parseAbiStr(str: string) {
         const jsonArr = JSON.parse(str);
         const iFace = new Interface(jsonArr);
@@ -158,5 +178,5 @@ export async function saveAbiAnnounce(str: string, epoch:number) {
         console.log(`failed to parse abi at epoch ${epoch} for ${str}`, e);
         throw e;
     }
-    return saveAbiInfo(segments);
+    return saveAbiSigs(segments);
 }

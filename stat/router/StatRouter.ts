@@ -37,12 +37,11 @@ import {Errors} from "../service/common/LogicError";
 import {RateLimiterMemory} from "rate-limiter-flexible";
 import {LIMIT_MAX_STAT, paginateCore, paginateCoreStat} from "./ParamChecker";
 import * as bodyParser from "koa-bodyparser";
-import {ConfigInstance, NoCoreSpace} from "../config/StatConfig";
-import {AbiInfo, parseAbiStr, saveAbiInfo} from "../model/ContractInfo";
+import {NoCoreSpace} from "../config/StatConfig";
+import {AbiSignature, parseAbiStr, saveAbiSigs} from "../model/ContractInfo";
 import {AuthAction, getAuthActionInTx, listAuthAction} from "../model/EIP7702model";
 import {getAccountQuery} from "../service/AccountQuery";
 import {CONST} from "../service/common/constant";
-import axios from "axios";
 import {ContractQuery} from "../service/ContractQuery";
 
 const superagent = require('superagent');
@@ -153,7 +152,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         }
         try {
             const parsed = parseAbiStr(decodedBase64);
-            await saveAbiInfo(parsed, 0, true);
+            await saveAbiSigs(parsed, 0, true);
         } catch (e) {
             throw new Errors.ParameterError(`failed to parse abi: ${e}`);
         }
@@ -164,9 +163,9 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         if (!id || id.length != 10) {
             throw new Errors.ParameterError(`param <id> is invalid`);
         }
-        let list = await AbiInfo.findAll({
-            where: {hash: id, type: 'function', }, raw: true,
-            attributes: ['fullName', 'type', 'hash', 'formatWithArg']
+        const list = await AbiSignature.findAll({
+            where: {type: 'function', hash: id}, raw: true,
+            attributes: ['type', 'hash', ['signature', 'fullName'], ['fullFormat', 'formatWithArg']]
         });
         ContractQuery.listMethodABIBySourcify(id).then();
         ctx.body = {list};
@@ -177,9 +176,9 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             throw new Errors.ParameterError(`param <hash> is invalid`);
         }
         const arr = [...new Set(hash.split(',').filter(Boolean))];
-        const list = await Promise.all(arr.map(h=>AbiInfo.findOne({
-            where: {hash: h, type: 'event'}, raw: true,
-            attributes: ['fullName', 'type', 'hash', 'formatWithArg']
+        const list = await Promise.all(arr.map(h => AbiSignature.findOne({
+            where: {type: 'event', hash: h}, raw: true,
+            attributes: ['type', 'hash', ['signature', 'fullName'], ['fullFormat', 'formatWithArg']]
         })))
         ctx.body = {list};
     })
