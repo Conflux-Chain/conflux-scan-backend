@@ -37,3 +37,4 @@ stat/config/Prod-testnet-main.ts
 stat/config/Prod.ts
 stat/**/*.js
 stat/dist/
+tsconfig.tsbuildinfo

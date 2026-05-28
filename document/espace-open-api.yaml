@@ -1902,6 +1902,148 @@ paths:
             "application/json":
               schema:
                 $ref: "#/components/schemas/Auth7702"
+  /eip4337/bundle-txs:
+    get:
+      tags:
+        - 'EIP'
+      description: |
+        Returns a paginated list of EIP-4337 bundle transactions. Each bundle transaction is a
+        regular on-chain transaction submitted by a bundler to an EntryPoint contract, containing
+        one or more UserOperations (AA transactions).
+
+        Results can be filtered by bundler address and/or EntryPoint address (filters are combined with AND logic).
+        Results are ordered by epoch descending (newest first).
+
+        Each item includes the bundle hash, status (success/failure), transaction fee, value, number of
+        included UserOperations, failed UserOperation count, the called EntryPoint method, and the
+        execution error message (if the bundle failed).
+      parameters:
+        - name: bundler
+          in: query
+          required: false
+          description: "Filter by bundler address (the EOA that submitted the bundle to the EntryPoint)."
+          schema:
+            type: string
+        - name: entryPoint
+          in: query
+          required: false
+          description: "Filter by EntryPoint contract address."
+          schema:
+            type: string
+        - $ref: '#/components/parameters/skipParam'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/BundleTxResponse"
+  /eip4337/aa-txs:
+    get:
+      tags:
+        - 'EIP'
+      description: |
+        Returns a paginated list of EIP-4337 UserOperation (AA) transactions. Each record represents
+        a single UserOperation that was bundled into a bundle transaction and executed via an EntryPoint
+        contract.
+
+        Results can be filtered by sender (smart account address), bundler address, and/or EntryPoint
+        address (filters are combined with AND logic). Results are ordered by epoch descending (newest first).
+
+        Each item includes the user operation hash, execution success status, gas cost, methods called
+        (both the EIP-4337 inner call method and the EIP-7702 delegation method if applicable),
+        and the failure reason if the operation did not succeed.
+      parameters:
+        - name: sender
+          in: query
+          required: false
+          description: "Filter by sender address (the smart contract account that initiated the UserOperation)."
+          schema:
+            type: string
+        - name: bundler
+          in: query
+          required: false
+          description: "Filter by bundler address (the EOA that submitted the bundle to the EntryPoint)."
+          schema:
+            type: string
+        - name: entryPoint
+          in: query
+          required: false
+          description: "Filter by EntryPoint contract address."
+          schema:
+            type: string
+        - $ref: '#/components/parameters/skipParam'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/AATxResponse"
+  /eip4337/aa-tx:
+    get:
+      tags:
+        - 'EIP'
+      description: |
+        Returns the detail of a single EIP-4337 UserOperation (AA) transaction by its user operation hash.
+
+        Returns all fields from `AATxItem` (same as items in `/eip4337/aa-txs`) plus extra fields
+        from `AATxDetailExtra` — parsed live from the bundle tx: data (user op callData),
+        position, verificationGasLimit, preVerificationGas, maxFeePerGas, maxPriorityFeePerGas,
+        signature, txGasLimit, txGasUsed. Returns `null` if not found.
+      parameters:
+        - name: userOpHash
+          in: query
+          required: true
+          description: "User operation hash (0x-prefixed, 64 hex characters)."
+          schema:
+            type: string
+            pattern: '^0x[a-fA-F0-9]{64}$'
+            example: "0xabcfa8a60f7cc55ce51b321ada3135b9e79fd0a3b74b782f79bb818d10b08c9a"
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/AATxDetailResponse"
+  /eip4337/bundle-tx:
+    get:
+      tags:
+        - 'EIP'
+      description: |
+        Parse a single EIP-4337 bundle transaction by hash and return the breakdown of
+        all UserOperations it contains.
+
+        The response includes bundle-level metadata (bundler, entryPoint, status, fee,
+        block number, timestamp) and a list of per-user-op details parsed live from the
+        transaction input data and receipt event logs.
+
+        Each user op item includes: the user operation hash, the EIP-7702 execution
+        method, its zero-based position within the bundle, the sender (smart account)
+        address, ERC-20 token transfer count, NFT transfer count, gas fee paid, call
+        gas limit, success status, nonce, and paymaster address.
+
+        Returns an error if the transaction is not found or is not a recognised 4337
+        bundle transaction.
+      parameters:
+        - name: txHash
+          in: query
+          required: true
+          description: "Transaction hash of the bundle (0x-prefixed, 64 hex characters)."
+          schema:
+            type: string
+            pattern: '^0x[a-fA-F0-9]{64}$'
+            example: "0x7cdb4307680f46e75b4280d5424eb1002b3e3feadaa70543b4f11791c2006332"
+      responses:
+        200:
+          description: ''
+          content:
+            "application/json":
+              schema:
+                $ref: "#/components/schemas/BundleTxDetailResponse"
   /data/accounts:
     get:
       tags:
@@ -4362,6 +4504,10 @@ components:
           properties:
             total:
               type: integer
+            listLimit:
+              type: integer
+              description: "Maximum number of records this API returns in total. Only the latest listLimit records are accessible; requesting with skip >= listLimit returns an invalid parameter error."
+              example: 50000
             list:
               type: array
               items:
@@ -4389,6 +4535,459 @@ components:
                   txTime:
                     type: string
                     description: 'transaction time. example: 2025-07-07T03:41:34.000Z'
+    AATxResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          description: Response status code (1 for success, 0 for error)
+          example: "1"
+        message:
+          type: string
+          description: Response message
+          example: "OK"
+        result:
+          $ref: '#/components/schemas/AATxQueryResult'
+    # Main result schema
+    AATxQueryResult:
+      type: object
+      properties:
+        total:
+          type: integer
+          format: int64
+          description: Total number of records matching the query
+          minimum: 0
+          example: 5
+        listLimit:
+          type: integer
+          description: "Maximum number of records this API returns in total. Only the latest listLimit records are accessible; requesting with skip >= listLimit returns an invalid parameter error."
+          example: 50000
+        list:
+          type: array
+          description: Array of account abstraction transaction records
+          items:
+            $ref: '#/components/schemas/AATxItem'
+    # Individual AATx item schema
+    AATxItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique identifier for the AA transaction
+          example: 5
+        txHash:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{64}$'
+          description: Transaction hash of the bundle (64 hex characters with 0x prefix)
+          example: "0x756ecbdef50dc356372e061a334e72eff499b4a1ee2ef44cb13b026c8d6c5c3a"
+        method:
+          type: string
+          description: >
+            The method called on the smart account contract for this user op
+            (e.g. `execute`, `executeBatch`). Empty string if not resolved.
+          example: "executeBatch"
+        methods:
+          type: string
+          description: Raw method(s) string of the AA transaction (format "hex40mapId:methodHash,..."). Can be empty.
+          example: "503880:0xd0e30db0,503880:0x8a4068dd"
+        parsedMethods:
+          type: array
+          description: Resolved method info parsed from the `methods` field.
+          items:
+            type: object
+            properties:
+              to:
+                type: string
+                description: Contract address (checksummed hex)
+                example: "0x1234567890abcdef1234567890abcdef12345678"
+              method:
+                type: string
+                description: Resolved human-readable method name, if available
+                example: "deposit"
+              methodId:
+                type: string
+                description: Original 4-byte method selector
+                example: "0xd0e30db0"
+        userOpHash:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{64}$'
+          description: User operation hash (64 hex characters with 0x prefix)
+          example: "0xabcfa8a60f7cc55ce51b321ada3135b9e79fd0a3b74b782f79bb818d10b08c9a"
+        epoch:
+          type: integer
+          format: int64
+          description: Block epoch number when the transaction was created
+          example: 249033515
+        nonce:
+          type: string
+          pattern: '^\d+$'
+          description: Anti-replay counter (big integer as string)
+          example: "56621881160224303014452052690345518318535648048051400767399579939072347664222"
+        success:
+          type: boolean
+          description: Whether the transaction executed successfully
+          example: false
+        actualGasCost:
+          type: string
+          pattern: '^\d+\.\d+$'
+          description: Actual gas cost in ETH (decimal string)
+          example: "0.000000000000100000"
+        actualGasUsed:
+          type: string
+          pattern: '^\d+\.\d+$'
+          description: Actual gas used (decimal string)
+          example: "21000.000000000000000000"
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the transaction was created
+          example: "2026-04-15T03:20:36.000Z"
+        senderHex:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{40}$'
+          description: Ethereum address (hex format) of the transaction sender
+          example: "0xAbd527c17826FE0Ac1F7651511913Ba230B5dDfe"
+        bundlerHex:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{40}$'
+          description: Ethereum address (hex format) of the bundler who included this transaction
+          example: "0x487f1d870c7da2a5790c16ab6ee02279e0401c95"
+        entryPointHex:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{40}$'
+          description: Ethereum address (hex format) of the entry point contract
+          example: "0xbcb648b716206fdf1ede2715bf20a90e6b746a7e"
+        failedReason:
+          type: string
+          description: Reason the user operation failed. Empty string if the operation succeeded. Possible values include the revert reason string, "Bundle TX failed" (when the bundle transaction itself failed), or "unknown".
+          example: "AA23 reverted"
+    BundleTxResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          description: Response status code (1 for success, 0 for error)
+          example: "1"
+        message:
+          type: string
+          description: Response message
+          example: "OK"
+        result:
+          $ref: '#/components/schemas/BundleTxQueryResult'
+
+    # Main result schema
+    BundleTxQueryResult:
+      type: object
+      properties:
+        total:
+          type: integer
+          format: int64
+          description: Total number of records matching the query
+          example: 1
+        listLimit:
+          type: integer
+          description: "Maximum number of records this API returns in total. Only the latest listLimit records are accessible; requesting with skip >= listLimit returns an invalid parameter error."
+          example: 50000
+        list:
+          type: array
+          description: Array of bundle transaction records
+          items:
+            $ref: '#/components/schemas/BundleTxItem'
+    # Individual BundleTx item schema
+    BundleTxItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique identifier for the bundle transaction
+          example: 1
+        hash:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{64}$'
+          description: Transaction hash of the bundle (64 hex characters with 0x prefix)
+          example: "0x756ecbdef50dc356372e061a334e72eff499b4a1ee2ef44cb13b026c8d6c5c3a"
+        epoch:
+          type: integer
+          format: int64
+          description: Block epoch number when the bundle was created
+          example: 249033515
+        txCount:
+          type: integer
+          format: int32
+          description: Number of transactions included in this bundle
+          minimum: 0
+          example: 5
+        failedTxCount:
+          type: integer
+          format: int32
+          description: Number of failed transactions included in this bundle
+          minimum: 0
+          example: 2
+        status:
+          type: integer
+          format: int32
+          description: Status of this transaction. 0 for success, 1 for failure.
+          example: 0
+        value:
+          type: string
+          pattern: '^\d+\.\d+$'
+          description: Total value of the bundle in ETH (decimal string)
+          example: "1.230000000000000000"
+        txnFee:
+          type: string
+          pattern: '^\d+\.\d+$'
+          description: Transaction fee paid for this bundle in ETH (decimal string)
+          example: "0.023988577700662400"
+        createdAt:
+          type: string
+          format: date-time
+          description: Timestamp when the bundle was created
+          example: "2026-04-15T03:20:36.000Z"
+        bundlerHex:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{40}$'
+          description: Ethereum address (hex format) of the bundler who submitted this bundle
+          example: "0x487f1d870c7da2a5790c16ab6ee02279e0401c95"
+        entryPointHex:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{40}$'
+          description: Ethereum address (hex format) of the entry point contract
+          example: "0xbcb648b716206fdf1ede2715bf20a90e6b746a7e"
+        method:
+          type: string
+          description: Method of the tx call. Can be empty.
+          example: "handleOps"
+        errMsg:
+          type: string
+          nullable: true
+          description: Transaction execution error message. Only present when status is 1 (failure). Null or absent when the transaction succeeded.
+          example: "out of gas"
+    BundleTxDetailResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          description: Response status code (1 for success, 0 for error)
+          example: "1"
+        message:
+          type: string
+          description: Response message
+          example: "OK"
+        result:
+          $ref: '#/components/schemas/BundleTxParseResult'
+    BundleTxParseResult:
+      type: object
+      properties:
+        hash:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{64}$'
+          description: Transaction hash of the bundle
+          example: "0x7cdb4307680f46e75b4280d5424eb1002b3e3feadaa70543b4f11791c2006332"
+        method:
+          type: string
+          description: EntryPoint method name (e.g. handleOps)
+          example: "handleOps"
+        from:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{40}$'
+          description: Bundler address (checksummed hex)
+          example: "0x487f1d870c7da2a5790c16ab6ee02279e0401c95"
+        to:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{40}$'
+          description: EntryPoint contract address (checksummed hex)
+          example: "0x4337084d9e255ff0702461cf8895ce9e3b5ff108"
+        status:
+          type: integer
+          description: "Bundle transaction status. 0 = success, 1 = failure."
+          example: 0
+        txnFee:
+          type: string
+          description: Total gas fee paid for the bundle transaction, in ETH (decimal string)
+          example: "0.023988577700662400"
+        blockNumber:
+          type: integer
+          format: int64
+          description: Block/epoch number in which the bundle was included
+          example: 249033515
+        timestamp:
+          type: integer
+          format: int64
+          description: Block timestamp in Unix seconds
+          example: 1744687236
+        userOps:
+          type: array
+          description: List of UserOperations parsed from this bundle
+          items:
+            $ref: '#/components/schemas/AAOpDetail'
+    AAOpDetail:
+      type: object
+      properties:
+        userOpHash:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{64}$'
+          description: User operation hash
+          example: "0xabcfa8a60f7cc55ce51b321ada3135b9e79fd0a3b74b782f79bb818d10b08c9a"
+        method:
+          type: string
+          description: "EIP-7702 execution method (e.g. execute, executeBatch). Empty string if not applicable."
+          example: "executeBatch"
+        position:
+          type: integer
+          description: Zero-based index of this user op within the bundle
+          example: 0
+        from:
+          type: string
+          pattern: '^0x[a-fA-F0-9]{40}$'
+          description: Sender (smart account) address in checksummed hex format
+          example: "0xAbd527c17826FE0Ac1F7651511913Ba230B5dDfe"
+        internalTxnCount:
+          type: integer
+          description: >
+            Number of internal executions decoded from the user op callData.
+            `execute` always yields 1; `executeBatch` yields the actual call array length.
+            0 if the callData could not be decoded.
+          minimum: 0
+          example: 3
+        tokenTxnCount:
+          type: integer
+          description: Number of ERC-20 token transfer events attributed to this user op
+          minimum: 0
+          example: 1
+        nftTxnCount:
+          type: integer
+          description: Number of ERC-721 / ERC-1155 transfer events attributed to this user op
+          minimum: 0
+          example: 0
+        txnFee:
+          type: string
+          description: Actual gas cost paid for this user op, in ETH (decimal string). From the UserOperationEvent.
+          example: "0.000000000000100000"
+        gasLimit:
+          type: string
+          description: callGasLimit for this user op, as a decimal string
+          example: "82240"
+        success:
+          type: boolean
+          description: Whether this user op executed successfully
+          example: true
+        nonce:
+          type: string
+          description: User op nonce (big integer as decimal string)
+          example: "56621881160224303014452052690345518318535648048051400767399579939072347664222"
+        paymaster:
+          type: string
+          pattern: '^(0x[a-fA-F0-9]{40})?$'
+          description: Paymaster address in checksummed hex. Empty string if no paymaster was used.
+          example: "0x0000000000000000000000000000000000000000"
+        parsedMethods:
+          type: array
+          description: Resolved method info for calls made by this user op.
+          items:
+            type: object
+            properties:
+              to:
+                type: string
+                description: Contract address (checksummed hex)
+                example: "0x1234567890abcdef1234567890abcdef12345678"
+              method:
+                type: string
+                description: Resolved human-readable method name, if available
+                example: "deposit"
+              methodId:
+                type: string
+                description: Original 4-byte method selector
+                example: "0xd0e30db0"
+    AATxDetailExtra:
+      type: object
+      description: Extra fields returned only by the /eip4337/aa-tx detail endpoint, parsed live from the bundle tx.
+      properties:
+        data:
+          type: string
+          nullable: true
+          description: "Raw callData of this user op (hex string)."
+          example: "0xb61d27f6..."
+        initCode:
+          type: string
+          description: "initCode for account deployment — non-empty only on the first user op when the account is being deployed (hex string)."
+          example: "0x"
+        position:
+          type: integer
+          description: "Zero-based index of this user op within its bundle transaction."
+          example: 0
+        paymasterAndData:
+          type: string
+          description: "Raw paymasterAndData field from the user op (hex string)."
+          example: "0xabc123..."
+        paymasterDecoded:
+          type: object
+          nullable: true
+          description: "Decoded paymaster info. Null if no paymaster is present."
+          properties:
+            address:
+              type: string
+              description: "Checksummed paymaster contract address."
+              example: "0xAbCd..."
+        paymasterVerificationGasLimit:
+          type: string
+          nullable: true
+          description: "paymasterVerificationGasLimit from paymasterAndData (decimal string). Null if no paymaster."
+          example: "50000"
+        paymasterPostOpGasLimit:
+          type: string
+          nullable: true
+          description: "paymasterPostOpGasLimit from paymasterAndData (decimal string). Null if no paymaster."
+          example: "10000"
+        verificationGasLimit:
+          type: string
+          description: "verificationGasLimit for this user op (decimal string). High 128 bits of accountGasLimits."
+          example: "100000"
+        preVerificationGas:
+          type: string
+          description: "preVerificationGas for this user op (decimal string)."
+          example: "50000"
+        callGasLimit:
+          type: string
+          description: "callGasLimit for this user op — execution phase gas limit (decimal string). Low 128 bits of accountGasLimits."
+          example: "200000"
+        accountGasLimits:
+          type: string
+          description: "Raw packed accountGasLimits bytes32 field from the user op (hex string). High 128 bits = verificationGasLimit, low 128 bits = callGasLimit."
+          example: "0x00000000000000000000000000015745000000000000000000000000000326eb"
+        maxFeePerGas:
+          type: string
+          description: "maxFeePerGas in wei (decimal string). Low 128 bits of gasFees."
+          example: "1000000000"
+        maxPriorityFeePerGas:
+          type: string
+          description: "maxPriorityFeePerGas in wei (decimal string). High 128 bits of gasFees."
+          example: "1000000000"
+        signature:
+          type: string
+          description: "Raw signature bytes (hex string)."
+          example: "0xabcd..."
+        txGasLimit:
+          type: string
+          description: "Bundle tx gas limit (decimal string)."
+          example: "500000"
+        txGasUsed:
+          type: string
+          description: "Bundle tx gas used from receipt (decimal string)."
+          example: "420000"
+        actualGasUsed:
+          type: string
+          description: "Actual gas units consumed by this user op (decimal string), from UserOperationEvent."
+          example: "85000"
+        bundleEffectiveGasPrice:
+          type: string
+          description: "Effective gas price of the bundle tx in wei (decimal string)."
+          example: "1000000000"
+    AATxDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/AATxItem'
+        - $ref: '#/components/schemas/AATxDetailExtra'
     TxsByTypeStat:
       type: object
       properties:
