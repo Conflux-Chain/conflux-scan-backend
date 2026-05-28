@@ -198,13 +198,19 @@ export async function sync4337txOfEpoch({receipts, blocks, blockTime, txFn}:ISyn
 			}
 			const rawTx = blocks ? (blocks[blockIdx].transactions[txIdx]) as SdkTx : await txFn(rcpt.transactionHash);
 			const parsed4337call = parseAATxMethods(rawTx?.data || '0x', format.hexAddress(rcpt.to));
+			// Only treat as a bundle tx if the calldata decoded to a known bundling method (handleOps etc.)
+			// Calls like depositTo, addStake, balanceOf also go to EntryPoint but are not bundles.
+			if (!parsed4337call) {
+				console.log(`skip non-bundle EntryPoint tx epoch=${rcpt.epochNumber} hash=${rcpt.transactionHash}`);
+				continue;
+			}
 			const bundler:IBundleData = {
 				bundlerTxId: BigInt(0),
 				bundlerTx: null,
 				aaTxArr: [],
 				accountDeployedArr: [],
 				revertReasonArr: [],
-				hasData: isTxToEntrypoint,
+				hasData: true,
 				parsed4337call,
 			} as IBundleData;
 
@@ -257,23 +263,21 @@ export async function sync4337txOfEpoch({receipts, blocks, blockTime, txFn}:ISyn
 				// all failed
 				failedTxCount = bundler.aaTxArr.length;
 			}
-			if (bundler.hasData) {
-				bundler.bundlerTx = {
-					method: parsed4337call?.method || '',
-					failedTxCount: failedTxCount,
-					status: rcpt.outcomeStatus,
-					hash: rcpt.transactionHash,
-					epoch: BigInt(rcpt.epochNumber),
-					bundlerId: await makeIdV(rcpt.from, null, {dt: blockTime}).then(res => BigInt(res ?? 0)),
-					entryPointId: await makeIdV(rcpt.to, null, {dt: blockTime}).then(res => BigInt(res ?? 0)),
-					txCount: bundler.aaTxArr.length,
-					value: formatEther(rawTx?.value ?? 0),
-					txnFee: formatEther(rcpt.gasFee),
-					createdAt: blockTime,
-				} as IBundleTx;
+			bundler.bundlerTx = {
+				method: parsed4337call.method,
+				failedTxCount: failedTxCount,
+				status: rcpt.outcomeStatus,
+				hash: rcpt.transactionHash,
+				epoch: BigInt(rcpt.epochNumber),
+				bundlerId: await makeIdV(rcpt.from, null, {dt: blockTime}).then(res => BigInt(res ?? 0)),
+				entryPointId: await makeIdV(rcpt.to, null, {dt: blockTime}).then(res => BigInt(res ?? 0)),
+				txCount: bundler.aaTxArr.length,
+				value: formatEther(rawTx?.value ?? 0),
+				txnFee: formatEther(rcpt.gasFee),
+				createdAt: blockTime,
+			} as IBundleTx;
 
-				bundleArr.push(bundler);
-			}
+			bundleArr.push(bundler);
 		}
 	}
 	return {
