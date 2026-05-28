@@ -45,9 +45,7 @@ export class TransactionService {
     if (StatApp.isEVM && receipt.epochNumber && transaction.to) {
       const toHex = format.hexAddress(transaction.to)
       transaction['effectiveAuth'] = await getDelegatedAddrAtTx(toHex, receipt.epochNumber, hash)
-      .then(res=>{
-        return res ? service.accountQuery.patchAddressInfo([res], '', 'address').then(()=>res) : null;
-      }).catch(e=>{
+      .catch(e=>{
         transaction['effectiveAuthError'] = e;
         return null;
       });
