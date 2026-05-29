@@ -103,11 +103,16 @@ function toChecksumHex(addr: string): string {
 /**
  * Build IAAOpDetail entries for a failed bundle where no UserOperationEvent logs were emitted.
  * Falls back to the parsed calldata, marking all ops as failed with zero gas used.
+ * When targetUserOpHash is provided, the matching op is also populated with the same deep
+ * fields that the success path populates (gas limits, fee caps, signature, callData, etc.).
  */
 async function buildFailedUserOps(
 	cfx: Conflux,
 	entryPoint: string,
 	parsed4337call: ReturnType<typeof parseAATxMethods>,
+	targetUserOpHash?: string,
+	tx?: any,
+	receipt?: any,
 ): Promise<IAAOpDetail[]> {
 	const result: IAAOpDetail[] = [];
 	for (let i = 0; i < parsed4337call.userOps.length; i++) {
@@ -115,8 +120,9 @@ async function buildFailedUserOps(
 		const gasLimit = parsedOp.isV6
 			? parsedOp.callGasLimit?.toString() ?? '0'
 			: unpackBytes32(parsedOp.accountGasLimits).low;
-		result.push({
-			userOpHash: await readOpHash(cfx, entryPoint, parsedOp.rawData),
+		const opHash = await readOpHash(cfx, entryPoint, parsedOp.rawData);
+		const op: IAAOpDetail = {
+			userOpHash: opHash,
 			method: parsedOp.parsedUserOp?.method ?? '',
 			position: i,
 			from: toChecksumHex(parsedOp.sender),
@@ -129,7 +135,42 @@ async function buildFailedUserOps(
 			success: false,
 			nonce: parsedOp.nonce?.toString() ?? '',
 			paymaster: toChecksumHex(getPaymasterAddress(parsedOp.paymasterAndData)),
-		});
+		};
+
+		if (targetUserOpHash && opHash === targetUserOpHash) {
+			if (parsedOp.isV6) {
+				op.verificationGasLimit = parsedOp.verificationGasLimit?.toString() ?? '0';
+				op.preVerificationGas = parsedOp.preVerificationGas?.toString() ?? '0';
+				op.maxFeePerGas = parsedOp.maxFeePerGas?.toString() ?? '0';
+				op.maxPriorityFeePerGas = parsedOp.maxPriorityFeePerGas?.toString() ?? '0';
+			} else {
+				const accountGasLimitsParsed = unpackBytes32(parsedOp.accountGasLimits);
+				const gasFeesParsed = unpackBytes32(parsedOp.gasFees);
+				op.verificationGasLimit = accountGasLimitsParsed.high;
+				op.preVerificationGas = parsedOp.preVerificationGas?.toString() ?? '0';
+				op.maxFeePerGas = gasFeesParsed.low;
+				op.maxPriorityFeePerGas = gasFeesParsed.high;
+				op.accountGasLimits = parsedOp.accountGasLimits ?? '0x';
+			}
+			op.signature = parsedOp.signature ?? '';
+			op.txGasLimit = tx?.gas?.toString() ?? '0';
+			op.txGasUsed = receipt?.gasUsed?.toString() ?? '0';
+			op.callData = parsedOp.callData ?? '';
+			op.initCode = parsedOp.initCode ?? '0x';
+			op.paymasterAndData = parsedOp.paymasterAndData ?? '0x';
+			const paymasterAddr = getPaymasterAddress(parsedOp.paymasterAndData);
+			op.paymasterDecoded = paymasterAddr ? { address: ethers.getAddress(paymasterAddr) } : null;
+			if (!parsedOp.isV6 && paymasterAddr && parsedOp.paymasterAndData?.length >= 106) {
+				const pmData = parsedOp.paymasterAndData.startsWith('0x')
+					? parsedOp.paymasterAndData.slice(2)
+					: parsedOp.paymasterAndData;
+				op.paymasterVerificationGasLimit = BigInt('0x' + pmData.slice(40, 72)).toString();
+				op.paymasterPostOpGasLimit = BigInt('0x' + pmData.slice(72, 104)).toString();
+			}
+			op.bundleEffectiveGasPrice = (receipt?.effectiveGasPrice ?? tx?.gasPrice ?? BigInt(0)).toString();
+		}
+
+		result.push(op);
 	}
 	return result;
 }
@@ -321,7 +362,7 @@ export async function parseBundleTxByHash(
 
 	// Failed bundle: no UserOperationEvent logs emitted. Build ops from calldata.
 	if (userOps.length === 0 && receipt.outcomeStatus !== 0) {
-		const failed = await buildFailedUserOps(cfx, format.hexAddress(tx.to), parsed4337call);
+		const failed = await buildFailedUserOps(cfx, format.hexAddress(tx.to), parsed4337call, targetUserOpHash, tx, receipt);
 		userOps.push(...failed);
 	}
 
