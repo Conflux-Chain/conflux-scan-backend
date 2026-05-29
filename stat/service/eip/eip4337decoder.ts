@@ -114,7 +114,12 @@ export function parseHandleOps(callData: string, entryPoint?: string): I4337call
 	} else {
 		iface = ifaceV8;
 	}
-	const decoded = iface.parseTransaction({ data: callData });
+	let decoded;
+	try {
+		decoded = iface.parseTransaction({ data: callData });
+	} catch {
+		return null;
+	}
 	if (!decoded) {
 		return null;
 	}
