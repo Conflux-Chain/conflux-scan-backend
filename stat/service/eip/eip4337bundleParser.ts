@@ -374,7 +374,7 @@ export async function getAAOpPositionInBundle(cfx: Conflux, bundleTxHash: string
 	for (const log of logs) {
 		if ((log.topics as string[])?.[0] !== USER_OPERATION_EVENT_SIG) continue;
 		const event = parseUserOperationEvent(log);
-		if (event?.userOpHash === userOpHash) return position;
+		if (event?.userOpHash?.toLowerCase() === userOpHash.toLowerCase()) return position;
 		position++;
 	}
 	return -1;
