@@ -3,7 +3,7 @@ import {AATx, BundleTx, IAATx, IBundleTx, UserOperationRevertReason} from "../..
 import {Hex40Map, idHex40Map} from "../../model/HexMap";
 import {IPageParam} from "../../router/ParamChecker";
 import {ethers} from "ethers";
-import {Sequelize} from "sequelize";
+import {Sequelize, Op} from "sequelize";
 import {FailedTx, FullTransaction} from "../../model/FullBlock";
 import {Literal} from "sequelize/lib/utils";
 import {fillMethodInfo} from "../contract/contractTool";
@@ -297,6 +297,27 @@ export async function fillAATxMethodInfo(list: any[]): Promise<void> {
             return {to: entry.to, method: entry.method, methodId: entry.methodId};
         });
     });
+}
+
+/**
+ * Fetch the `methods` field for a batch of user ops by their userOpHash,
+ * returning a map of userOpHash → methods string.
+ * Hashes not found in the DB are omitted from the result.
+ */
+export async function fetchMethodsByUserOpHashes(
+    userOpHashes: string[],
+): Promise<Map<string, string>> {
+    if (!userOpHashes.length) return new Map();
+    const rows = await AATx.findAll({
+        where: { userOpHash: { [Op.in]: userOpHashes } },
+        attributes: ['userOpHash', 'methods'],
+        raw: true,
+    });
+    const result = new Map<string, string>();
+    for (const row of rows as any[]) {
+        result.set(row.userOpHash, row.methods ?? '');
+    }
+    return result;
 }
 
 /**

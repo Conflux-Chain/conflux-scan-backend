@@ -4,7 +4,7 @@ import {StatApp} from "../../stat/StatApp";
 import {listAuthAction} from "../../stat/model/EIP7702model";
 import {getAccountQuery} from "../../stat/service/AccountQuery";
 import {setBody} from "../router/middleware";
-import {queryAATx, queryBundleTx, fillAATxMethodInfo, getAATxDetail as fetchAATxDetail} from "../../stat/service/eip/eip4337query";
+import {queryAATx, queryBundleTx, fillAATxMethodInfo, getAATxDetail as fetchAATxDetail, fetchMethodsByUserOpHashes} from "../../stat/service/eip/eip4337query";
 import {getAddrId} from "../../stat/model/HexMap";
 import {parseBundleTxByHash} from "../../stat/service/eip/eip4337bundleParser";
 import {Errors} from "../../stat/service/common/LogicError";
@@ -80,6 +80,15 @@ export async function getBundleTxDetail(ctx) {
 
     if (!result) {
         throw new Errors.ParameterError(`Bundle tx not found or not a 4337 bundle: ${txHash}`);
+    }
+
+    // Enrich each user op with parsedMethods resolved from the DB.
+    const hashes = result.userOps.map(op => op.userOpHash).filter(Boolean);
+    if (hashes.length > 0) {
+        const methodsMap = await fetchMethodsByUserOpHashes(hashes);
+        const stubs = result.userOps.map(op => ({ userOpHash: op.userOpHash, methods: methodsMap.get(op.userOpHash) ?? '' }));
+        await fillAATxMethodInfo(stubs);
+        stubs.forEach((stub, i) => { result.userOps[i].parsedMethods = stub.parsedMethods ?? []; });
     }
 
     setBody(ctx, result);

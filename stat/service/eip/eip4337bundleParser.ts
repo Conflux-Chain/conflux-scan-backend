@@ -70,6 +70,8 @@ export interface IAAOpDetail {
 	bundleEffectiveGasPrice?: string;
 	/** Raw packed accountGasLimits bytes32 field from the user op (hex string). */
 	accountGasLimits?: string;
+	/** Resolved method info for calls made by this user op, enriched from the DB after parsing. */
+	parsedMethods?: { to: string; method: string; methodId: string }[];
 }
 
 export interface IBundleTxParseResult {
@@ -386,8 +388,10 @@ export async function parseBundleTxByHash(
 	};
 }
 
-/** 4-byte selector of EntryPoint.innerHandleOp */
-const INNER_HANDLE_OP_SELECTOR = '0x0042dc53';
+/** 4-byte selector of EntryPoint.innerHandleOp — v0.7/v0.8 */
+const INNER_HANDLE_OP_SELECTOR_V78 = '0x0042dc53';
+/** 4-byte selector of EntryPoint.innerHandleOp — v0.6 */
+const INNER_HANDLE_OP_SELECTOR_V6  = '0x1d732756';
 
 /**
  * Look up the bundle transaction hash for a given user op hash.
@@ -493,8 +497,9 @@ export async function getAAOpFlatTraces(cfx: Conflux, bundleTxHash: string, posi
  * Extract the trace subtree for the N-th user op from a bundle tx trace tree.
  *
  * EIP-4337: the EntryPoint calls innerHandleOp (from=EP, to=EP, input starts with
- * INNER_HANDLE_OP_SELECTOR) once per user op, in order, after all validation calls.
+ * the innerHandleOp selector) once per user op, in order, after all validation calls.
  * The N-th such self-call node corresponds to user op at position N.
+ * Both the v0.6 and v0.7/v0.8 selectors are recognised.
  *
  * @param traceTree  The traceTree array returned by ConfluxService.getTransactionTrace.
  * @param position   Zero-based index of the target user op in the bundle.
@@ -507,7 +512,10 @@ export function extractAAOpTraceNode(traceTree: any[], position: number): any | 
 		const from: string = call.action?.from ?? '';
 		const to: string   = call.action?.to ?? '';
 		const input: string = call.action?.input ?? '';
-		if (from.toLowerCase() === to.toLowerCase() && input.startsWith(INNER_HANDLE_OP_SELECTOR)) {
+		if (
+			from.toLowerCase() === to.toLowerCase() &&
+			(input.startsWith(INNER_HANDLE_OP_SELECTOR_V78) || input.startsWith(INNER_HANDLE_OP_SELECTOR_V6))
+		) {
 			if (count === position) return call;
 			count++;
 		}
