@@ -88,7 +88,7 @@ export async function getBundleTxDetail(ctx) {
         const methodsMap = await fetchMethodsByUserOpHashes(hashes);
         const stubs = result.userOps.map(op => ({ userOpHash: op.userOpHash, methods: methodsMap.get(op.userOpHash) ?? '' }));
         await fillAATxMethodInfo(stubs);
-        stubs.forEach((stub, i) => { result.userOps[i].parsedMethods = stub.parsedMethods ?? []; });
+        stubs.forEach((stub, i) => { result.userOps[i].parsedMethods = (stub as any).parsedMethods ?? []; });
     }
 
     setBody(ctx, result);
