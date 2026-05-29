@@ -314,7 +314,7 @@ export async function getAATxDetail(cfx: Conflux, userOpHash: string): Promise<A
     const bundleTxHash = aaTx.txHash;
     if (bundleTxHash) {
         const parsed = await parseBundleTxByHash(cfx, bundleTxHash, {targetUserOpHash: userOpHash});
-        const matchedOp = parsed?.userOps.find(op => op.userOpHash === userOpHash);
+        const matchedOp = parsed?.userOps.find(op => op.userOpHash.toLowerCase() === userOpHash.toLowerCase());
         if (matchedOp) {
             Object.assign(aaTx, {
                 verificationGasLimit:    matchedOp.verificationGasLimit,
