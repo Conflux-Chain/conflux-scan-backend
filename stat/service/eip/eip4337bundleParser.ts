@@ -217,6 +217,10 @@ export async function parseBundleTxByHash(
 		return null;
 	}
 
+	if (!tx.to) {
+		return null;
+	}
+
 	const parsed4337call = parseAATxMethods(tx.data || '0x', format.hexAddress(tx.to));
 	if (!parsed4337call) {
 		return null;
