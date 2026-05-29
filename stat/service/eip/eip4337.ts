@@ -339,21 +339,25 @@ async function fixMissingAATx(cfx: Conflux, fromEpoch?: number, toEpoch?: number
 	}
 	console.log(`Entrypoint DB ids: ${entrypointIds.join(', ')}`);
 
-	// Build where clause for epoch range.
-	const epochWhere: any = { toId: { [Op.in]: entrypointIds } };
-	if (fromEpoch != null) epochWhere.epoch = { ...(epochWhere.epoch ?? {}), [Op.gte]: fromEpoch };
-	if (toEpoch   != null) epochWhere.epoch = { ...(epochWhere.epoch ?? {}), [Op.lte]: toEpoch };
+	// Collect candidate epochs by querying address_tx once per entrypoint id.
+	const epochRange: any = {};
+	if (fromEpoch != null) epochRange[Op.gte] = fromEpoch;
+	if (toEpoch   != null) epochRange[Op.lte] = toEpoch;
 
-	// Fetch all distinct epochs from address_tx that point to an entrypoint.
-	const rows = await AddressTransactionIndex.findAll({
-		where: epochWhere,
-		attributes: ['epoch'],
-		group: ['epoch'],
-		order: [['epoch', 'ASC']],
-		raw: true,
-	}) as any[];
+	const candidateEpochSet = new Set<number>();
+	for (const toId of entrypointIds) {
+		const where: any = { toId };
+		if (Object.keys(epochRange).length > 0) where.epoch = epochRange;
+		const rows = await AddressTransactionIndex.findAll({
+			where,
+			attributes: ['epoch'],
+			group: ['epoch'],
+			raw: true,
+		}) as any[];
+		for (const r of rows) candidateEpochSet.add(Number(r.epoch));
+	}
 
-	const candidateEpochs: number[] = rows.map(r => Number(r.epoch));
+	const candidateEpochs = [...candidateEpochSet].sort((a, b) => a - b);
 	console.log(`Found ${candidateEpochs.length} candidate epoch(s) in address_tx.`);
 	if (candidateEpochs.length === 0) return;
 
