@@ -165,12 +165,12 @@ export async function saveContractAbiSigs(list: AbiSignature[], contractId: numb
 }
 
 export function parseAbiStr(str: string) {
-        const jsonArr = JSON.parse(str);
-        const iFace = new Interface(jsonArr);
-        return iFace.format();
+    const jsonArr = JSON.parse(str);
+    const iFace = new Interface(jsonArr);
+    return iFace.format();
 }
 
-export async function saveAbiAnnounce(str: string, epoch:number) {
+export async function saveAbiAnnounce(str: string, epoch: number, dryRun?: boolean) {
     let segments: string | Array<string>;
     try {
         segments = parseAbiStr(str);
@@ -178,5 +178,5 @@ export async function saveAbiAnnounce(str: string, epoch:number) {
         console.log(`failed to parse abi at epoch ${epoch} for ${str}`, e);
         throw e;
     }
-    return saveAbiSigs(segments);
+    return saveAbiSigs(segments, 0, dryRun);
 }
