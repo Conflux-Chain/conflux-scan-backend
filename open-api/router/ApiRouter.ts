@@ -21,7 +21,7 @@ import {
     checkVerifyStatus,
     getABI,
     getContractCreation,
-    getSourceCode,
+    getSourceCode, listAbiSignaturesByHashes, listAbiSignaturesByName,
     listVerifiedContracts,
     listVerifiedContractsLatest,
     verifyProxyContract,
@@ -177,6 +177,8 @@ function registerRouter(router: Router) {
     router.get('/contract/checkproxyverification', checkProxyVerification)
     router.get('/contract/verified', listVerifiedContracts)
     router.get('/contract/verified/latest', listVerifiedContractsLatest)
+    router.get('/contract/lookupAbi', listAbiSignaturesByHashes)
+    router.get('/contract/searchAbi', listAbiSignaturesByName)
 
     // token
     router.get('/token/tokeninfo', getTokenInfo);

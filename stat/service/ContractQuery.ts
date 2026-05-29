@@ -1,10 +1,4 @@
-import {
-    Hex40Map,
-    getAddrId,
-    formatToBase32,
-    makeId,
-    makeIdV,
-} from "../model/HexMap";
+import {formatToBase32, getAddrId, Hex40Map, makeId, makeIdV,} from "../model/HexMap";
 import {Op, QueryTypes} from "sequelize";
 import {fmtAddr, StatApp} from "../StatApp";
 import {Desensitizer} from "./Desensitizer";
@@ -14,34 +8,34 @@ import {Errors} from "./common/LogicError";
 import {CONST} from "./common/constant"
 import {SolidityJsonInput, VyperJsonInput} from "@ethereum-sourcify/compilers-types";
 import {
-    checkPresent,
     checkCodeFormat,
-    checkSolcVersion,
-    checkVyperVersion,
-    checkLibrary,
     checkEVMVersion,
+    checkLibrary,
     checkLicense,
-    splitFullyQualifiedName,
+    checkPresent,
     checkSolcOptimization,
+    checkSolcVersion,
     checkVyperOptimization,
-    convertVyperVersion
+    checkVyperVersion,
+    convertVyperVersion,
+    splitFullyQualifiedName
 } from "./common/utils";
 import {VerifiedContracts} from "../model/VerifiedContracts";
 import {ethers} from "ethers";
-import {AbiSignature, getSignature, saveAbiSigs, SignatureType} from "../model/ContractInfo";
+import {AbiSignature, ContractAbiSignature, getSignature, saveAbiSigs, SignatureType} from "../model/ContractInfo";
 import {sleep} from "./tool/ProcessTool";
 import {
     KEY_AUTO_VERIFY_TRACE_ID,
     KEY_AUTO_VERIFY_VERIFY_ID,
     KEY_EVM_VERSIONS,
     KEY_SOLC_VERSIONS,
-    KEY_VYPER_VERSIONS,
-    VERIFIED_COUNT_ALL,
-    KEY_STAT_TXNS_FOR_VERIFIED_CONTRACTS,
+    KEY_SOLC_VULNERABILITIES,
     KEY_STAT_ANNOUNCE_NAME_FOR_VERIFIED_CONTRACTS,
     KEY_STAT_NAME_TAG_FOR_VERIFIED_CONTRACTS,
-    KEY_SOLC_VULNERABILITIES,
+    KEY_STAT_TXNS_FOR_VERIFIED_CONTRACTS,
+    KEY_VYPER_VERSIONS,
     KV,
+    VERIFIED_COUNT_ALL,
 } from "../model/KV";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import axios from "axios";
@@ -1632,6 +1626,79 @@ export class ContractQuery {
 
         repeat().then();
         console.log(`[stat_withNametag_of_verified_contracts]schedule in ${interval / 1000}s interval`);
+    }
+
+    public async listAbiSignaturesByHashes(
+        functionHashes: string[],
+        errorHashes: string[],
+        eventHashes: string[]
+    ) {
+        const [functionResults, errorResults, eventResults] = await Promise.all([
+            this.queryAbiSignatures('function', functionHashes),
+            this.queryAbiSignatures('error', errorHashes),
+            this.queryAbiSignatures('event', eventHashes)
+        ]);
+
+        return {
+            function: functionResults,
+            error: errorResults,
+            event: eventResults
+        };
+    }
+
+    public async listAbiSignaturesByName() {
+
+    }
+
+    private async queryAbiSignatures(type: string, hashes: string[]) {
+        if (hashes.length === 0) {
+            return {};
+        }
+
+        const rows: any[] = await AbiSignature.sequelize.query(`
+            SELECT 
+                s.id,
+                s.hash,
+                s.signature,
+                s.fullFormat,
+                s.type
+            FROM abi_signatures s
+            WHERE s.type = ? AND s.hash IN (${hashes.map(() => '?').join(',')})
+        `, {
+            type: QueryTypes.SELECT,
+            replacements: [type, ...hashes],
+        });
+
+        const result = {};
+        for (const hash of hashes) {
+            result[hash] = [];
+        }
+
+        if (rows.length === 0) {
+            return result;
+        }
+
+        const ids = rows.map(s => s.id);
+        const contractAbiRefs = await ContractAbiSignature.sequelize.query(`
+            SELECT 
+                DISTINCT abiId 
+            FROM contract_abi_signatures 
+            WHERE abiId IN (${ids.map(() => '?').join(',')})
+        `, {
+            type: QueryTypes.SELECT,
+            replacements: [...ids],
+        });
+        const verifiedAbiIds = new Set(contractAbiRefs.map((r: any) => r.abiId));
+
+        for (const row of rows) {
+            result[row.hash].push({
+                signature: row.signature,
+                fullFormat: row.fullFormat,
+                hasVerifiedContract: verifiedAbiIds.has(row.id),
+            });
+        }
+
+        return result;
     }
 }
 

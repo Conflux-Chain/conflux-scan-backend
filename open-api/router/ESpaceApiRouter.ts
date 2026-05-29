@@ -31,6 +31,8 @@ import {
     getContractCreation,
     listVerifiedContracts,
     listVerifiedContractsLatest,
+    listAbiSignaturesByHashes,
+    listAbiSignaturesByName,
 } from "../service/OpenContractService";
 import {
     getToken,
@@ -1087,6 +1089,8 @@ export function registerRouter(router: Router) {
     // contract
     router.get('/contract/verified', listVerifiedContracts)
     router.get('/contract/verified/latest', listVerifiedContractsLatest)
+    router.get('/contract/lookupAbi', listAbiSignaturesByHashes)
+    router.get('/contract/searchAbi', listAbiSignaturesByName)
 
     // token
     router.get('/token/tokeninfos', listTokens);

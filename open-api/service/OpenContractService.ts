@@ -7,6 +7,7 @@ import {
     mustBeAddressArrayParamIfPresent,
     mustBeAddressParamIfPresent,
     mustBeEnumParamIfPresent,
+    mustBeHashArrayParamIfPresent,
     mustBeIntParamIfPresent,
     splitFullyQualifiedName
 } from "../../stat/service/common/utils";
@@ -345,4 +346,17 @@ export async function listVerifiedContractsLatest(ctx) {
     }, lodash.isNil));
 
     setBody(ctx, {...data, listLimit: LIST_LIMIT});
+}
+
+export async function listAbiSignaturesByHashes(ctx) {
+    mustBeHashArrayParamIfPresent(ctx.request.query, 10, "function", "error");
+    mustBeHashArrayParamIfPresent(ctx.request.query, 66, "event")
+    const {function: funcHashes, error: errHashes, event: evtHashes} = ctx.request.query;
+
+    const data = await getApiService().contractQuery.listAbiSignaturesByHashes(funcHashes, errHashes, evtHashes);
+
+    setBody(ctx, data);
+}
+
+export async function listAbiSignaturesByName(ctx) {
 }
