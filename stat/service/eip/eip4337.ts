@@ -246,7 +246,7 @@ export async function sync4337txOfEpoch({receipts, blocks, blockTime, txFn}:ISyn
 						epoch: BigInt(rcpt.epochNumber),
 						eventContractId: 0,
 						id: 0n,
-						method7702: op.parsedUserOp?.method,
+						method7702: op.parsedUserOp?.method ?? '',
 						methods: await build7702methodIds(op.parsedUserOp, blockTime),
 						nonce: op.nonce.toString(),
 						paymasterId: await makeIdV(getPaymasterAddress(op.paymasterAndData), null, {dt: blockTime}),
