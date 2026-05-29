@@ -16,8 +16,7 @@ import {
 } from "../../model/eip4337model";
 import {formatEther} from "ethers";
 import {makeIdV} from "../../model/HexMap";
-import {Op, Transaction} from "sequelize";
-import {Conflux, format} from "js-conflux-sdk";
+import {Transaction} from "sequelize";import {Conflux, format} from "js-conflux-sdk";
 import {init} from "../tool/FixDailyTokenStat";
 import {getCfxSdk, initCfxSdk} from "../common/utils";
 import {ContractQuery} from "../ContractQuery";
@@ -35,7 +34,6 @@ import {
 import {loadConfig} from "../../config/StatConfig";
 import {parseBundleTxByHash} from "./eip4337bundleParser";
 import {IS_EVM2, KV} from "../../model/KV";
-import {AddressTransactionIndex} from "../../model/FullBlock";
 
 export interface IBundleData {
 	parsed4337call: I4337call,
@@ -118,7 +116,7 @@ export async function saveBundleData(data: IBundleData, dbTx: Transaction) : Pro
 	});
 }
 
-async function syncEpoch(cfx: Conflux, ep: number, blockTime: Date) : Promise<void> {
+export async function syncEpoch(cfx: Conflux, ep: number, blockTime: Date) : Promise<void> {
 	if (!blockTime) {
 		const blockHashArr = await cfx.getBlocksByEpochNumber(ep);
 		const block = await cfx.getBlockByHash(blockHashArr.pop());
@@ -317,75 +315,6 @@ async function testBundleParser(cfx: Conflux, hash: string) {
 }
 
 
-/**
- * Find epochs that have transactions to any EntryPoint in address_tx but are absent
- * from bundleTx, then re-sync each missing epoch using syncEpoch.
- *
- * Usage:
- *   node stat/service/eip/eip4337.js fixMissing [fromEpoch] [toEpoch]
- *
- * fromEpoch / toEpoch are optional. If omitted the full history is scanned.
- */
-async function fixMissingAATx(cfx: Conflux, fromEpoch?: number, toEpoch?: number): Promise<void> {
-	// Resolve each entrypoint address to its DB id.
-	const entrypointIds: number[] = [];
-	for (const addr of entrypointAddrSet) {
-		const id = await makeIdV(addr, null, {dt: new Date()});
-		if (id != null) entrypointIds.push(id as number);
-	}
-	if (entrypointIds.length === 0) {
-		console.log('No entrypoint ids found in DB — nothing to fix.');
-		return;
-	}
-	console.log(`Entrypoint DB ids: ${entrypointIds.join(', ')}`);
-
-	// Collect candidate epochs by querying address_tx once per entrypoint id.
-	const epochRange: any = {};
-	if (fromEpoch != null) epochRange[Op.gte] = fromEpoch;
-	if (toEpoch   != null) epochRange[Op.lte] = toEpoch;
-
-	const candidateEpochSet = new Set<number>();
-	for (const toId of entrypointIds) {
-		const where: any = { toId };
-		if (Object.keys(epochRange).length > 0) where.epoch = epochRange;
-		const rows = await AddressTransactionIndex.findAll({
-			where,
-			attributes: ['epoch'],
-			group: ['epoch'],
-			raw: true,
-		}) as any[];
-		for (const r of rows) candidateEpochSet.add(Number(r.epoch));
-	}
-
-	const candidateEpochs = [...candidateEpochSet].sort((a, b) => a - b);
-	console.log(`Found ${candidateEpochs.length} candidate epoch(s) in address_tx.`);
-	if (candidateEpochs.length === 0) return;
-
-	// Find which of those epochs already have a bundleTx record.
-	const existing = await BundleTx.findAll({
-		where: { epoch: { [Op.in]: candidateEpochs } },
-		attributes: ['epoch'],
-		group: ['epoch'],
-		raw: true,
-	}) as any[];
-	const existingSet = new Set(existing.map(r => Number(r.epoch)));
-
-	const missing = candidateEpochs.filter(e => !existingSet.has(e));
-	console.log(`${missing.length} epoch(s) missing from bundleTx — will re-sync.`);
-
-	let fixed = 0;
-	for (const epoch of missing) {
-		try {
-			console.log(`[${fixed + 1}/${missing.length}] Syncing epoch ${epoch}...`);
-			await syncEpoch(cfx, epoch, null);
-			fixed++;
-		} catch (e) {
-			console.error(`  Failed epoch ${epoch}:`, e);
-		}
-	}
-	console.log(`Done. Fixed ${fixed}/${missing.length} epochs.`);
-}
-
 export async function setupEntrypointIds() {
 	const isEVM = await KV.getSwitch(IS_EVM2);
 	if (!isEVM) {
@@ -400,9 +329,6 @@ export async function setupEntrypointIds() {
 /*
 npx tsc && node stat/service/eip/eip4337.js syncEpoch 252704270
 npx tsc && node stat/service/eip/eip4337.js syncEpoch 250247030 // failed tx
-npx tsc && node stat/service/eip/eip4337.js fixMissing               // scan all history
-npx tsc && node stat/service/eip/eip4337.js fixMissing 250000000     // from epoch
-npx tsc && node stat/service/eip/eip4337.js fixMissing 250000000 252000000  // range
 npx tsc && node stat/service/eip/eip4337.js testQuery          // both
 npx tsc && node stat/service/eip/eip4337.js testQuery bundle   // bundle txs only
 npx tsc && node stat/service/eip/eip4337.js testQuery aa       // aa txs only
@@ -417,15 +343,6 @@ async function main() {
 		const cfx = await initCfxSdk(cfg.conflux);
 		await setupEntrypointIds();
 		await syncEpoch(cfx, parseInt(arg1), null);
-	} else if (cmd === 'fixMissing') {
-		const [,,,, fromEpochStr, toEpochStr] = process.argv;
-		const cfg = await init();
-		const cfx = await initCfxSdk(cfg.conflux);
-		await setupEntrypointIds();
-		const fromEpoch = fromEpochStr ? parseInt(fromEpochStr) : undefined;
-		const toEpoch   = toEpochStr   ? parseInt(toEpochStr)   : undefined;
-		console.log(`fixMissing fromEpoch=${fromEpoch ?? 'all'} toEpoch=${toEpoch ?? 'all'}`);
-		await fixMissingAATx(cfx, fromEpoch, toEpoch);
 	} else if (cmd === 'testQuery') {
 		const cfg = await init();
 		const cfx = await initCfxSdk(cfg.conflux);
