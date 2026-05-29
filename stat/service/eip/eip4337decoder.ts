@@ -176,7 +176,12 @@ const iface7702 = new ethers.Interface([
 ]);
 
 function parse7702execute(callData: string): IParsed7702Param {
-	const decode = iface7702.parseTransaction({ data: callData });
+	let decode;
+	try {
+		decode = iface7702.parseTransaction({ data: callData });
+	} catch {
+		return null;
+	}
 	if (!decode) {
 		return null;
 	}
