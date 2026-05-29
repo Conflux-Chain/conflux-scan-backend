@@ -281,7 +281,7 @@ export async function parseBundleTxByHash(
 		};
 
 		// Deep-parse extra fields only for the target user op.
-		if (targetUserOpHash && opHash === targetUserOpHash && parsedUserOp) {
+		if (targetUserOpHash && opHash.toLowerCase() === targetUserOpHash.toLowerCase() && parsedUserOp) {
 			if (parsedUserOp.isV6) {
 				op.verificationGasLimit = parsedUserOp.verificationGasLimit?.toString() ?? '0';
 				op.preVerificationGas = parsedUserOp.preVerificationGas?.toString() ?? '0';
