@@ -19,6 +19,7 @@ import {startMonitorContractCreated} from "./service/contract/PatchNoTraceContra
 import {safeAddErrorLog} from "./monitor/ErrorMonitor";
 import {listenPort} from "./monitor/serverApi";
 import {do7702AuthTask, initAuthRpc} from "./service/eip/eip7702";
+import {setupEntrypointIds} from "./service/eip/eip4337";
 
 function saveInternalIP() {
     try {
@@ -73,6 +74,7 @@ export async function run() {
     } else if(args[0] === 'syncEpoch') {
         const [,, cmd, epoch] = process.argv;
         svc.checkReOrg = false;
+        await setupEntrypointIds();
         await svc.syncBlockByEpoch(parseInt(epoch));
     } else if(args[0] === 'reward') {
         await svc.fillBlockRewardByPos()
