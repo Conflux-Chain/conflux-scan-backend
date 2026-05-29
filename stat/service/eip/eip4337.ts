@@ -162,7 +162,7 @@ async function buildRevertReason(log, bundler: IBundleData, blockTime: Date) {
 async function buildAATx(event: IUserOperationEvent, blockTime: Date, parsed4337call: I4337call, bundler: IBundleData) {
 	const userOp = await buildAATxDBModel(event, blockTime);
 	const parsed7702call = parsed4337call?.userOps?.[bundler.aaTxArr.length]?.parsedUserOp;
-	userOp.method7702 = parsed7702call?.method;
+	userOp.method7702 = parsed7702call?.method ?? '';
 	userOp.methods = await build7702methodIds(parsed7702call, blockTime);
 	bundler.hasData = true;
 	bundler.aaTxArr.push(userOp);
