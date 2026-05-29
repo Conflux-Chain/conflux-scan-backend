@@ -22,6 +22,7 @@ import {
     diffCount,
     KEY_FILL_BLOCK_PROPS_EPOCH,
     KEY_FILL_BLOCK_REWARD_EPOCH,
+    IS_EVM2,
     KEY_FULL_BLOCK_COUNT,
     KEY_FULL_TX_COUNT,
     KV
@@ -32,7 +33,7 @@ import {PowSidePosSync} from "./pos/PowSidePosSync";
 import {Contract} from "../model/Contract";
 import {sleep} from "./tool/ProcessTool";
 import {PosRegister} from "../model/PoS";
-import {Cfg_is_EVM, ConfigInstance, FirstBlockNo, NoCoreSpace} from "../config/StatConfig";
+import {ConfigInstance, FirstBlockNo, NoCoreSpace} from "../config/StatConfig";
 import {cfxSafeEpochReceipts} from "../TokenTransferSync";
 import {Block} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 import {incDailyAddressCount} from "../model/StatAddress";
@@ -88,6 +89,7 @@ export class FullBlockService {
     // sync metrics end
     private previousPivotHash:string
     public checkReOrg = true
+    public isEvm = false
 
     private async resetPreviousPivotHash(useWhichEpoch:number) {
         let maxAtDb = await FullBlock.findOne({
@@ -111,6 +113,7 @@ export class FullBlockService {
         await this.powSidePosSync.init()
         await this.updateEpochNumber();
         await setupEntrypointIds();
+        this.isEvm = await KV.getSwitch(IS_EVM2);
         if (this.latestStateEpoch - maxEpoch > this.batchBlockTx.safeCatchupGap) {
             this.preLoadMap.initTasks(maxEpoch + 1, this.batchBlockTx.initialTaskCount);
             // only enable it at startup
@@ -386,7 +389,7 @@ export class FullBlockService {
         start = Date.now();
         await this.buildBlockByEpoch(minEpochNumber, preLoadResult)
 
-        if (Cfg_is_EVM) {
+        if (this.isEvm) {
             const data4337 = await sync4337txOfEpoch({
                 receipts, blocks: blockList, blockTime: preLoadResult['blockTime'], txFn: null
             } as unknown as ISync4337txParam).catch(e=>{
