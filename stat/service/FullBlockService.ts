@@ -31,9 +31,7 @@ import {batchFetchBlock, HOUR, noVerboseAddr} from "./common/utils";
 import {PowSidePosSync} from "./pos/PowSidePosSync";
 import {Contract} from "../model/Contract";
 import {sleep} from "./tool/ProcessTool";
-import {StatApp} from "../StatApp";
 import {PosRegister} from "../model/PoS";
-import {CONST} from "./common/constant";
 import {Cfg_is_EVM, ConfigInstance, FirstBlockNo, NoCoreSpace} from "../config/StatConfig";
 import {cfxSafeEpochReceipts} from "../TokenTransferSync";
 import {Block} from "js-conflux-sdk/dist/types/rpc/types/formatter";
@@ -44,8 +42,7 @@ import {FullMinerBlock} from "../model/FullMinerBlock";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import {StuckChecker} from "../monitor/Monitor";
 import {saveAuthBlockStub} from "./eip/eip7702";
-import {ISync4337txParam, pop4337data, sync4337txOfEpoch} from "./eip/eip4337";
-import {entrypointAddrIdSet, entrypointAddrSet} from "../model/eip4337model";
+import {ISync4337txParam, pop4337data, setupEntrypointIds, sync4337txOfEpoch} from "./eip/eip4337";
 
 // Do not care the value
 const CODE_REWIND = 20201029
@@ -113,12 +110,7 @@ export class FullBlockService {
         await FullBlockService.adjustFirstBlockTime();
         await this.powSidePosSync.init()
         await this.updateEpochNumber();
-        if (Cfg_is_EVM) {
-            //setup 4337 addresses
-            for (const s of entrypointAddrSet) {
-                entrypointAddrIdSet.add(await makeIdV(s, null, {dt: new Date()}));
-            }
-        }
+        await setupEntrypointIds();
         if (this.latestStateEpoch - maxEpoch > this.batchBlockTx.safeCatchupGap) {
             this.preLoadMap.initTasks(maxEpoch + 1, this.batchBlockTx.initialTaskCount);
             // only enable it at startup

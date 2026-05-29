@@ -7,7 +7,7 @@ import {
 } from "./eip4337abi";
 import {
 	AATx, AccountDeployed,
-	BundleTx, entrypointAddrIdSet,
+	BundleTx, entrypointAddrIdSet, entrypointAddrSet,
 	IAATx,
 	IAccountDeployed,
 	IBundleTx,
@@ -34,6 +34,7 @@ import {
 } from "./eip4337decoder";
 import {loadConfig} from "../../config/StatConfig";
 import {parseBundleTxByHash} from "./eip4337bundleParser";
+import {IS_EVM2, KV} from "../../model/KV";
 
 export interface IBundleData {
 	parsed4337call: I4337call,
@@ -314,8 +315,20 @@ async function testBundleParser(cfx: Conflux, hash: string) {
 	}
 }
 
+
+export async function setupEntrypointIds() {
+	const isEVM = await KV.getSwitch(IS_EVM2);
+	if (!isEVM) {
+		return;
+	}
+	//setup 4337 addresses
+	for (const s of entrypointAddrSet) {
+		entrypointAddrIdSet.add(await makeIdV(s, null, {dt: new Date()}));
+	}
+}
+
 /*
-npx tsc && node stat/service/eip/eip4337.js syncEpoch 250759985
+npx tsc && node stat/service/eip/eip4337.js syncEpoch 252704270
 npx tsc && node stat/service/eip/eip4337.js syncEpoch 250247030 // failed tx
 npx tsc && node stat/service/eip/eip4337.js testQuery          // both
 npx tsc && node stat/service/eip/eip4337.js testQuery bundle   // bundle txs only
@@ -329,6 +342,7 @@ async function main() {
 	if (cmd === 'syncEpoch') {
 		const cfg = await init();
 		const cfx = await initCfxSdk(cfg.conflux);
+		await setupEntrypointIds();
 		await syncEpoch(cfx, parseInt(arg1), null);
 	} else if (cmd === 'testQuery') {
 		const cfg = await init();
