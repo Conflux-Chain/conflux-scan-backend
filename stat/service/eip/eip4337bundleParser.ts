@@ -139,7 +139,7 @@ async function buildFailedUserOps(
 			paymaster: toChecksumHex(getPaymasterAddress(parsedOp.paymasterAndData)),
 		};
 
-		if (targetUserOpHash && opHash === targetUserOpHash) {
+		if (targetUserOpHash && opHash.toLowerCase() === targetUserOpHash.toLowerCase()) {
 			if (parsedOp.isV6) {
 				op.verificationGasLimit = parsedOp.verificationGasLimit?.toString() ?? '0';
 				op.preVerificationGas = parsedOp.preVerificationGas?.toString() ?? '0';
