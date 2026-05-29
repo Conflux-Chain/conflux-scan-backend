@@ -140,7 +140,7 @@ export async function queryAATx(params: AATxQueryParams): Promise<{ list: AATxQu
     const whereClause: any = {};
 
     if (params.userOpHash !== undefined) {
-        whereClause.userOpHash = params.userOpHash;
+        whereClause.userOpHash = params.userOpHash.toLowerCase();
     }
     if (params.senderId !== undefined) {
         whereClause.senderId = params.senderId;
