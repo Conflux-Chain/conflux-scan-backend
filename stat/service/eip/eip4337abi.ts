@@ -357,18 +357,15 @@ export function parseUserOperationRevertReasonManual(log: any): IUserOperationRe
     const nonceHex = log.data.slice(0, 66); // 0x + 64 chars
     const nonce = ethers.toBigInt(nonceHex);
 
-    // Parse revertReason (bytes type)
-    // bytes encoding format: [length (uint256)] + [data]
-    const remainingData = '0x' + dataWithoutPrefix.slice(64);
-    const revertReasonBytes = ethers.getBytes(remainingData);
-
-    // The first 32 bytes of bytes are the length
-    if (revertReasonBytes.length < 32) {
+    // Parse revertReason (bytes type): [nonce][offset][length][data]
+    const offset = Number(ethers.toBigInt('0x' + dataWithoutPrefix.slice(64, 128)));
+    const lengthStart = offset * 2;
+    if (dataWithoutPrefix.length < lengthStart + 64) {
         throw new Error("Invalid revertReason encoding: missing length prefix");
     }
 
-    const dataLength = Number(ethers.toBigInt(revertReasonBytes.slice(0, 32)));
-    const actualData = revertReasonBytes.slice(32, 32 + dataLength);
+    const dataLength = Number(ethers.toBigInt('0x' + dataWithoutPrefix.slice(lengthStart, lengthStart + 64)));
+    const actualData = ethers.getBytes('0x' + dataWithoutPrefix.slice(lengthStart + 64, lengthStart + 64 + dataLength * 2));
 
     // Attempt to convert to string
     let revertReasonStr: string;
