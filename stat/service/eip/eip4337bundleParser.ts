@@ -399,7 +399,7 @@ const INNER_HANDLE_OP_SELECTOR_V6  = '0x1d732756';
  */
 export async function getBundleTxHashForUserOp(userOpHash: string): Promise<string | null> {
 	const aaTx = await AATx.findOne({
-		where: { userOpHash },
+		where: { userOpHash: userOpHash.toLowerCase() },
 		include: [{ model: BundleTx, as: 'bundleTx', attributes: ['hash'], required: true }],
 		raw: false,
 	});
