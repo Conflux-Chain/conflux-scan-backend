@@ -351,10 +351,17 @@ export async function listVerifiedContractsLatest(ctx) {
     setBody(ctx, {...data, listLimit: LIST_LIMIT});
 }
 
+const MAX_HASHES = 100;
+
 export async function batchGetSignaturesByHashes(ctx) {
     mustBeHashArrayParamIfPresent(ctx.request.query, 10, "function", "error");
     mustBeHashArrayParamIfPresent(ctx.request.query, 66, "event")
     const {function: funcHashes, error: errHashes, event: evtHashes} = ctx.request.query;
+
+    if (funcHashes.length > MAX_HASHES || errHashes.length > MAX_HASHES || evtHashes.length > MAX_HASHES) {
+        setBody(ctx, null, 1, `The max size of hashes per type is ${MAX_HASHES}`);
+        return
+    }
 
     const data = await getApiService().contractQuery.batchGetSignaturesByHashes(funcHashes, errHashes, evtHashes);
 

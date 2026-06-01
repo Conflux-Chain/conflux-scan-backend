@@ -54,7 +54,7 @@ if (type === 7) {
 }
 if (type === 8) {
     if (args[2] !== undefined) {
-        dryRun = Boolean(args[2])
+        dryRun = args[2] === 'true';
     }
 }
 
@@ -484,8 +484,8 @@ async function syncAnnouncedAbi() {
 
     console.log("Start to process announcement txs", txs.length);
 
-    for (const tx of txs) {
-        const epochNumber = tx.epoch;
+    const epochs = [...new Set(txs.map((t: any) => t.epoch))];
+    for (const epochNumber of epochs) {
         const epochReceipts = await cfx.getEpochReceipts(epochNumber);
 
         const announcements = [];

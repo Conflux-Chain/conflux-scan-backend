@@ -49,6 +49,7 @@ export class TokenQuoteSync {
 
         async function repeat() {
             await that.run().catch(err => {
+                safeAddErrorLog('token-x', 'quote-sync', err).then();
                 console.log(`Failed to sync token quote`, err);
             });
             setTimeout(repeat, delay)

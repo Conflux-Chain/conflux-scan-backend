@@ -376,7 +376,7 @@ export class ContractQuery {
             conditions.push({address: format.address(contractAddress, StatApp.networkId)});
         }
         if (deployerAddress !== undefined) {
-            conditions.push({deployer: ethers.getAddress(deployerAddress)});
+            conditions.push({deployer: fmtAddr(deployerAddress, StatApp.networkId)});
         }
         if (startEpoch !== undefined) {
             conditions.push({epochNumber: {[Op.gte]: startEpoch}});
@@ -590,7 +590,7 @@ export class ContractQuery {
             similarMatchChainId,
             similarMatchAddress,
             matchId,
-            verifiedAt: new Date(verifiedAt),
+            verifiedAt: new Date(verifiedAt.replace(/T$/, '')),
         } as VerifiedContracts;
 
         this.traceCreate.query(contractAddress).then(async item => {
@@ -1666,6 +1666,7 @@ export class ContractQuery {
     }
 
     private async listSignaturesByHashes(type: string, hashes: string[]) {
+        hashes = [...new Set(hashes)];
         if (hashes.length === 0) {
             return {};
         }
