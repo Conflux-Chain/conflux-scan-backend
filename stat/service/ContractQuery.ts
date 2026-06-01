@@ -1628,15 +1628,15 @@ export class ContractQuery {
         console.log(`[stat_withNametag_of_verified_contracts]schedule in ${interval / 1000}s interval`);
     }
 
-    public async listAbiSignaturesByHashes(
+    public async batchGetSignaturesByHashes(
         functionHashes: string[],
         errorHashes: string[],
         eventHashes: string[]
     ) {
         const [functionResults, errorResults, eventResults] = await Promise.all([
-            this.queryAbiSignatures('function', functionHashes),
-            this.queryAbiSignatures('error', errorHashes),
-            this.queryAbiSignatures('event', eventHashes)
+            this.listSignaturesByHashes('function', functionHashes),
+            this.listSignaturesByHashes('error', errorHashes),
+            this.listSignaturesByHashes('event', eventHashes)
         ]);
 
         return {
@@ -1646,11 +1646,26 @@ export class ContractQuery {
         };
     }
 
-    public async listAbiSignaturesByName() {
+    public async batchGetSignaturesByName(name: string, typeArray: string[]) {
+        const normalizedName = name
+            .trim()
+            .replace(/_/g, "\\_")
+            .replace(/\*/g, "%")
+            .replace(/\?/g, "_");
 
+        const types = typeArray && typeArray.length > 0
+            ? typeArray
+            : [SignatureType.Function, SignatureType.Error, SignatureType.Event];
+
+        const signatures = await Promise.all(types.map(type => this.listSignaturesByName(type, normalizedName)));
+
+        return Object.fromEntries(Object.values(types).map((type, index) => [
+            type,
+            signatures[index],
+        ]));
     }
 
-    private async queryAbiSignatures(type: string, hashes: string[]) {
+    private async listSignaturesByHashes(type: string, hashes: string[]) {
         if (hashes.length === 0) {
             return {};
         }
@@ -1674,6 +1689,35 @@ export class ContractQuery {
             result[hash] = [];
         }
 
+        return this.buildSignatures(result, rows);
+    }
+
+    private async listSignaturesByName(type: string, name: string, limit: number = 100) {
+        if (name.length === 0) {
+            return {};
+        }
+
+        const rows: any[] = await AbiSignature.sequelize.query(`
+            SELECT 
+                s.id,
+                s.hash,
+                s.signature,
+                s.fullFormat,
+                s.type
+            FROM abi_signatures s
+            WHERE s.type = ? AND BINARY s.signature Like ?
+            LIMIT ?
+        `, {
+            type: QueryTypes.SELECT,
+            replacements: [type, name, limit],
+        });
+
+        const result = {};
+
+        return this.buildSignatures(result, rows);
+    }
+
+    private async buildSignatures(result: any, rows: any[]) {
         if (rows.length === 0) {
             return result;
         }
@@ -1691,6 +1735,9 @@ export class ContractQuery {
         const verifiedAbiIds = new Set(contractAbiRefs.map((r: any) => r.abiId));
 
         for (const row of rows) {
+            if (!result[row.hash]) {
+                result[row.hash] = [];
+            }
             result[row.hash].push({
                 signature: row.signature,
                 fullFormat: row.fullFormat,

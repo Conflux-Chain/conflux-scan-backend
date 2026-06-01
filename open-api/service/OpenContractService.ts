@@ -6,6 +6,7 @@ import {
     checkPresent,
     mustBeAddressArrayParamIfPresent,
     mustBeAddressParamIfPresent,
+    mustBeEnumParamArrayIfPresent,
     mustBeEnumParamIfPresent,
     mustBeHashArrayParamIfPresent,
     mustBeIntParamIfPresent,
@@ -17,6 +18,8 @@ import {QueryTypes} from "sequelize";
 import {VerificationJob, VerifyInput} from "../../stat/service/ContractQuery";
 import {formatToBase32} from "../../stat/model/HexMap";
 import {paginateCore} from "../../stat/router/ParamChecker";
+import {Errors} from "../../stat/service/common/LogicError";
+import {SignatureType} from "../../stat/model/ContractInfo";
 
 const lodash = require('lodash');
 const util = require('util');
@@ -348,15 +351,29 @@ export async function listVerifiedContractsLatest(ctx) {
     setBody(ctx, {...data, listLimit: LIST_LIMIT});
 }
 
-export async function listAbiSignaturesByHashes(ctx) {
+export async function batchGetSignaturesByHashes(ctx) {
     mustBeHashArrayParamIfPresent(ctx.request.query, 10, "function", "error");
     mustBeHashArrayParamIfPresent(ctx.request.query, 66, "event")
     const {function: funcHashes, error: errHashes, event: evtHashes} = ctx.request.query;
 
-    const data = await getApiService().contractQuery.listAbiSignaturesByHashes(funcHashes, errHashes, evtHashes);
+    const data = await getApiService().contractQuery.batchGetSignaturesByHashes(funcHashes, errHashes, evtHashes);
 
     setBody(ctx, data);
 }
 
-export async function listAbiSignaturesByName(ctx) {
+export async function batchGetSignaturesByName(ctx) {
+    mustBeEnumParamArrayIfPresent(ctx.request.query, 'type', [
+        SignatureType.Function,
+        SignatureType.Error,
+        SignatureType.Event
+    ]);
+
+    const {signature: name = "", type: types} = ctx.request.query;
+    if (!/^[a-zA-Z0-9$_()[\],*?]+$/.test(name)) {
+        throw new Errors.ParameterError(`Invalid search pattern '${name}'. Query must be a valid signature name but may include '*' and '?' wildcards.`);
+    }
+
+    const data = await getApiService().contractQuery.batchGetSignaturesByName(name, types);
+
+    setBody(ctx, data);
 }
