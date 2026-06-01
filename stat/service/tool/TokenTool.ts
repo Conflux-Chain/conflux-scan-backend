@@ -21,9 +21,9 @@ const fs = require('fs');
 const path = require('path');
 const lodash = require('lodash');
 
-let _instance: TokenTool;
+let _instance: TokenTool | undefined;
 
-export function getTokenTool(): TokenTool {
+export function getTokenTool(): TokenTool | undefined {
   return _instance;
 }
 
