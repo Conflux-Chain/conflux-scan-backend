@@ -12,6 +12,20 @@ import {CallParams} from "../AccountQuery";
 const lodash = require('lodash');
 const {isValidCfxAddress, decodeCfxAddress} = require('js-conflux-sdk/src/util/address');
 
+/**
+ * Convert a base32 (Conflux-format) or plain hex address to EVM checksum hex.
+ * Pass-through if already a hex address.
+ */
+export function fmtEVMAddr(addr: string): string {
+    if (!addr) {
+        return addr;
+    }
+    if (addr.includes(':')) {
+        addr = sdk_format.hexAddress(addr);
+    }
+    return ethers.getAddress(addr);
+}
+
 export function pageParam(obj: object, skipKey: string, limitKey: string, defaultLimit: number) {
     const param = {
         skip: intParam(obj, skipKey, 0),

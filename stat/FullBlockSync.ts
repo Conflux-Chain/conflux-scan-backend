@@ -19,6 +19,7 @@ import {startMonitorContractCreated} from "./service/contract/PatchNoTraceContra
 import {safeAddErrorLog} from "./monitor/ErrorMonitor";
 import {listenPort} from "./monitor/serverApi";
 import {do7702AuthTask, initAuthRpc} from "./service/eip/eip7702";
+import {setupEntrypointIds} from "./service/eip/eip4337";
 
 function saveInternalIP() {
     try {
@@ -70,6 +71,11 @@ export async function run() {
         const fixedPos = await KV.getNumber(KEY_FILL_BLOCK_PROPS_EPOCH)
         console.log(`\n fillPropsBatch done. maxEpochInBlock ${maxEpochInBlock
         }, fixPos ${fixedPos}, ${fixedPos >= maxEpochInBlock ? 'ok, fixed' : 'need fix more.'}`);
+    } else if(args[0] === 'syncEpoch') {
+        const [,, cmd, epoch] = process.argv;
+        svc.checkReOrg = false;
+        await setupEntrypointIds();
+        await svc.syncBlockByEpoch(parseInt(epoch));
     } else if(args[0] === 'reward') {
         await svc.fillBlockRewardByPos()
     } else {
@@ -117,6 +123,10 @@ async function syncFullBlock(fullBlockService:FullBlockService) {
 }
 const args = process.argv.slice(2)
 let always = true;//Boolean(args[0])
+
+/*
+npx tsc && node stat/FullBlockSync.js syncEpoch 250247030
+ */
 if (module === require.main) {
     redirectLog()
     regExitHook()

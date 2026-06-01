@@ -137,6 +137,10 @@ export function initAuthRpc() {
 	}
 }
 
+/**
+ * Save the block hash here and let another thread process these blocks one by one.
+ * In case of a chain reorg, it will track all blocks that appear.
+ */
 export function saveAuthBlockStub(blockNumber: number, blockHash: string) {
 	function failed(e) {
 		safeAddErrorLog(`eip7702`, `saveStub`, e);
@@ -295,8 +299,7 @@ async function main() {
 }
 async function testLoadAuth() {
 	let url = '';
-	url = 'http://194.233.87.244/8889cfx'
-	url = 'http://194.233.94.75:8545'
+	url = ''
 	const { ethers } = require("ethers");
 
 // 替换为你的 JSON-RPC 节点 URL
