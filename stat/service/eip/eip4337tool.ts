@@ -1,6 +1,6 @@
 process.env.TZ = 'UTC';
 
-import {Op} from "sequelize";
+import {Op, QueryTypes} from "sequelize";
 import {Conflux} from "js-conflux-sdk";
 import {init} from "../tool/FixDailyTokenStat";
 import {initCfxSdk} from "../common/utils";
@@ -90,7 +90,64 @@ async function fixMissingAATx(cfx: Conflux, fromEpoch?: number, toEpoch?: number
 npx tsc && node stat/service/eip/eip4337tool.js fixMissing                        # scan all history
 npx tsc && node stat/service/eip/eip4337tool.js fixMissing 250000000              # from epoch
 npx tsc && node stat/service/eip/eip4337tool.js fixMissing 250000000 252000000    # range
+npx tsc && node stat/service/eip/eip4337tool.js fixPositions                      # backfill position field
  */
+
+const BUNDLE_BATCH = 500;
+
+/**
+ * Backfill the `position` column for all existing aaTx rows.
+ *
+ * For every bundle tx, the userOps were inserted in log-event order, so
+ * ranking each aaTx row by `id ASC` within its `bundleTxId` gives the
+ * correct 0-based position.
+ *
+ * Processes BUNDLE_BATCH bundle txs at a time using a raw SQL window-function
+ * UPDATE to avoid row-by-row overhead.
+ */
+async function fixAATxPositions(): Promise<void> {
+	let cursor = BigInt(0);
+	let totalBundles = 0;
+	let batchNum = 0;
+
+	while (true) {
+		const bundles = await BundleTx.findAll({
+			where: { id: { [Op.gt]: cursor } },
+			attributes: ['id'],
+			order: [['id', 'ASC']],
+			limit: BUNDLE_BATCH,
+			raw: true,
+		}) as any[];
+
+		if (bundles.length === 0) break;
+
+		batchNum++;
+		const bundleIds = bundles.map((b: any) => BigInt(b.id));
+		cursor = bundleIds[bundleIds.length - 1];
+
+		// Assign position = (row rank - 1) within each bundleTxId, ordered by id
+		await AATx.sequelize.query(`
+			UPDATE aaTx a
+			JOIN (
+				SELECT id,
+				       ROW_NUMBER() OVER (PARTITION BY bundleTxId ORDER BY id) - 1 AS rn
+				FROM aaTx
+				WHERE bundleTxId IN (:ids)
+			) AS ranked ON a.id = ranked.id
+			SET a.position = ranked.rn
+		`, {
+			replacements: { ids: bundleIds.map(String) },
+			type: QueryTypes.UPDATE,
+		});
+
+		totalBundles += bundles.length;
+		console.log(`Batch ${batchNum}: processed ${bundles.length} bundle txs (total ${totalBundles})`);
+
+		if (bundles.length < BUNDLE_BATCH) break;
+	}
+
+	console.log(`Done. Fixed positions for ${totalBundles} bundle txs.`);
+}
 async function main() {
 	const [,, cmd, fromEpochStr, toEpochStr] = process.argv;
 	if (cmd === 'fixMissing') {
@@ -101,6 +158,10 @@ async function main() {
 		const cfx = await initCfxSdk(cfg.conflux);
 		await setupEntrypointIds();
 		await fixMissingAATx(cfx, fromEpoch, toEpoch);
+	} else if (cmd === 'fixPositions') {
+		console.log('fixPositions: backfilling position field for all aaTx rows...');
+		await init();
+		await fixAATxPositions();
 	} else {
 		console.log(`unknown cmd: ${cmd}`);
 	}
