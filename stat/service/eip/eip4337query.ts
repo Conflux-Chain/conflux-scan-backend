@@ -362,3 +362,16 @@ export async function getAATxDetail(cfx: Conflux, userOpHash: string): Promise<A
     return aaTx;
 }
 
+/**
+ * Look up the position of a userOp within its bundle tx from the DB.
+ * Returns -1 if not found.
+ */
+export async function getAAOpPosition(userOpHash: string): Promise<number> {
+    const row = await AATx.findOne({
+        where: { userOpHash },
+        attributes: ['position'],
+        raw: true,
+    }) as any;
+    return row != null ? Number(row.position) : -1;
+}
+

@@ -408,24 +408,6 @@ export async function getBundleTxHashForUserOp(userOpHash: string): Promise<stri
 }
 
 /**
- * Find the position (0-based index) of a user op in its bundle by scanning
- * the UserOperationEvent logs in the receipt.
- * Returns -1 if not found.
- */
-export async function getAAOpPositionInBundle(cfx: Conflux, bundleTxHash: string, userOpHash: string, cachedReceipt?: any): Promise<number> {
-	const receipt = cachedReceipt ?? await cfx.getTransactionReceipt(bundleTxHash);
-	const logs: any[] = (receipt as any)?.logs ?? [];
-	let position = 0;
-	for (const log of logs) {
-		if ((log.topics as string[])?.[0] !== USER_OPERATION_EVENT_SIG) continue;
-		const event = parseUserOperationEvent(log);
-		if (event?.userOpHash?.toLowerCase() === userOpHash.toLowerCase()) return position;
-		position++;
-	}
-	return -1;
-}
-
-/**
  * Return the transactionLogIndex range (startExclusive, endInclusive] for the
  * user op at the given position within a bundle tx.
  *

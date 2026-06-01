@@ -26,7 +26,8 @@ import {fmtAddr} from "../../stat/StatApp";
 import {Errors} from "../../stat/service/common/LogicError";
 import {HomepageDashboard} from "../../stat/service/HomepageDashboard";
 import {ConfigInstance} from "../../stat/config/StatConfig";
-import {getBundleTxHashForUserOp, getAAOpPositionInBundle, extractAAOpTraceNode, getAAOpLogRange} from "../../stat/service/eip/eip4337bundleParser";
+import {getBundleTxHashForUserOp, extractAAOpTraceNode, getAAOpLogRange} from "../../stat/service/eip/eip4337bundleParser";
+import {getAAOpPosition} from "../../stat/service/eip/eip4337query";
 import {handleAATxDetail} from "./handler";
 
 const lodash = require('lodash');
@@ -1047,7 +1048,7 @@ let realTxHash = transactionHash;
     if (txType === 'aa') {
       realTxHash = await getBundleTxHashForUserOp(transactionHash);
       if (!realTxHash) return {};
-      aaOpPosition = await getAAOpPositionInBundle(cfx, realTxHash, transactionHash);
+      aaOpPosition = await getAAOpPosition(transactionHash);
       if (aaOpPosition < 0) return {};
     }
 
@@ -1129,7 +1130,7 @@ router_get(router,'/eventLog',
       if (!bundleTxHash) {
         return { total: 0, list: [], debug: `no bundle tx found for userOpHash=${userOpHash}` };
       }
-      const position = await getAAOpPositionInBundle(cfx, bundleTxHash, userOpHash);
+      const position = await getAAOpPosition(userOpHash);
       if (position < 0) {
         return { total: 0, list: [], debug: `userOpHash=${userOpHash} not found in bundle tx=${bundleTxHash} logs` };
       }
