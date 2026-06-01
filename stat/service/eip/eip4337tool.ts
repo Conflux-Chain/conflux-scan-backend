@@ -38,7 +38,10 @@ async function fixMissingAATx(cfx: Conflux, fromEpoch?: number, toEpoch?: number
 	for (const toId of entrypointIds) {
 		let cursor = fromEpoch ?? 0;
 		while (true) {
-			const where: any = { toId, epoch: { [Op.gte]: cursor } };
+			const where: any = {
+				addressId: toId,
+				toId, epoch: { [Op.gte]: cursor }
+			};
 			if (toEpoch != null) where.epoch[Op.lte] = toEpoch;
 			const rows = await AddressTransactionIndex.findAll({
 				where,
