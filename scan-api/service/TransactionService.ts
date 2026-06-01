@@ -15,9 +15,9 @@ const {hexToUtf8, utf8ToHex} = require("../../stat/service/tool/CensorTool");
 const {extractActualGasCost} = require("../../stat/service/common/utils");
 const BigFixed = require('bigfixed');
 
-let _instance: TransactionService;
+let _instance: TransactionService | undefined;
 
-export function getTransactionService(): TransactionService {
+export function getTransactionService(): TransactionService | undefined {
   return _instance;
 }
 
