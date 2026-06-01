@@ -4986,10 +4986,8 @@ components:
           example: "1000000000"
     AATxDetailResponse:
       type: object
-      properties:
         status:
-          type: integer
-        message:
+          type: string
           type: string
         result:
           allOf:
