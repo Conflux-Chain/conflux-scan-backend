@@ -45,7 +45,7 @@ export interface IBundleData {
 	hasData: boolean;
 }
 
-export async function buildAATxDBModel(op: IUserOperationEvent, blockTime: Date) : Promise<IAATx> {
+export async function buildAATxDBModel(op: IUserOperationEvent, blockTime: Date, position: number) : Promise<IAATx> {
 	return {
 		actualGasCost: formatEther(op.actualGasCost),
 		actualGasUsed: op.actualGasUsed.toString(),
@@ -59,6 +59,7 @@ export async function buildAATxDBModel(op: IUserOperationEvent, blockTime: Date)
 		senderId: await makeIdV(op.sender, null, {dt: blockTime}),
 		bundlerId: 0,
 		entryPointId: 0,
+		position,
 		success: op.success,
 		userOpHash: op.userOpHash,
 		methods: '',
@@ -160,8 +161,9 @@ async function buildRevertReason(log, bundler: IBundleData, blockTime: Date) {
 }
 
 async function buildAATx(event: IUserOperationEvent, blockTime: Date, parsed4337call: I4337call, bundler: IBundleData) {
-	const userOp = await buildAATxDBModel(event, blockTime);
-	const parsed7702call = parsed4337call?.userOps?.[bundler.aaTxArr.length]?.parsedUserOp;
+	const position = bundler.aaTxArr.length;
+	const userOp = await buildAATxDBModel(event, blockTime, position);
+	const parsed7702call = parsed4337call?.userOps?.[position]?.parsedUserOp;
 	userOp.method7702 = parsed7702call?.method ?? '';
 	userOp.methods = await build7702methodIds(parsed7702call, blockTime);
 	bundler.hasData = true;
@@ -251,6 +253,7 @@ export async function sync4337txOfEpoch({receipts, blocks, blockTime, txFn}:ISyn
 						nonce: op.nonce.toString(),
 						paymasterId: await makeIdV(getPaymasterAddress(op.paymasterAndData), null, {dt: blockTime}),
 						senderId: await makeIdV(op.sender, null, {dt: blockTime}),
+						position: i,
 						success: false,
 						userOpHash: await readOpHash(
 							getCfxSdk(),

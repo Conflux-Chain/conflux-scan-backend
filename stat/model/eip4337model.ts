@@ -65,6 +65,8 @@ export interface IAATx {
 	bundleTxId: bigint;
 	paymasterId: number;
 	nonce: string;
+	/** 0-based index of this userOp within its bundle tx */
+	position: number;
 	success: boolean;
 	actualGasCost: string;
 	actualGasUsed: string;
@@ -88,6 +90,7 @@ export class AATx extends Model<IAATx> implements IAATx {
 	bundleTxId: bigint;
 	paymasterId: number;
 	nonce: string;
+	position: number;
 	success: boolean;
 	actualGasCost: string;
 	actualGasUsed: string;
@@ -107,6 +110,7 @@ export class AATx extends Model<IAATx> implements IAATx {
 			bundleTxId: {type: DataTypes.BIGINT, allowNull: false},
 			paymasterId: {type: DataTypes.BIGINT, allowNull: false},
 			nonce: {type: DataTypes.STRING(78), allowNull: false},
+			position: {type: DataTypes.INTEGER, allowNull: false, defaultValue: 0},
 			success: {type: DataTypes.BOOLEAN, allowNull: false},
 			actualGasCost: {type: DataTypes.DECIMAL(36,18), allowNull: false},
 			actualGasUsed: {type: DataTypes.BIGINT, allowNull: false},
@@ -243,4 +247,5 @@ alter table bundleTx add column failedTxCount int default 0;
 alter table bundleTx add column method varchar(32) default '';
 alter table aaTx add column method7702 varchar(32) default '';
 alter table aaTx modify column actualGasUsed bigint not null default 0;
+alter table aaTx add column position int not null default 0;
  */
