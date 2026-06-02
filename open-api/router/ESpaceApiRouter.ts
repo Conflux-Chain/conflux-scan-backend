@@ -39,7 +39,7 @@ import {
 } from "../service/OpenTokenService";
 import {
     listAccountNFTs,
-    listNFTTokensPro,
+    listNFTTokens,
     getNFTPreview,
     listNFTTokensByFts,
     listNFTOwners,
@@ -787,7 +787,7 @@ async function listAddressTokenInventory(ctx) {
         }
     }
 
-    const result = await getApiService().nftCheckerService.listNftTokensForOpenApiPro({owner, contract, skip,
+    const result = await getApiService().nftCheckerService.listNftTokensForOpenApi({owner, contract, skip,
         limit: offset, type: CONST.TRANSFER_TYPE.ERC721 as NFTType});
 
     result.list = result.list.map((nft: any) => ({
@@ -1022,7 +1022,7 @@ export function registerRouter(router: Router) {
 
     // nft assets
     router.get('/nft/balances', listAccountNFTs);
-    router.get('/nft/tokens', listNFTTokensPro);
+    router.get('/nft/tokens', listNFTTokens);
     router.get('/nft/preview', getNFTPreview);
     router.get('/nft/fts', listNFTTokensByFts);
     router.get('/nft/owners', listNFTOwners);

@@ -1,5 +1,4 @@
 import {DataTypes, Model, Op, Sequelize} from "sequelize";
-import {AbortController} from "node-abort-controller";
 import {createTable} from "../DBProvider";
 import {Hex40Map} from "../../model/HexMap";
 import {Token} from "../../model/Token";
@@ -14,15 +13,15 @@ import {format} from "js-conflux-sdk";
 import {regExitHook} from "../tool/ProcessTool";
 import {listenPort} from "../../monitor/serverApi";
 import {StuckChecker} from "../../monitor/Monitor";
+import {getNFTMeta, replaceMetaAttributes} from "./NFTPreviewService";
 
 const lodash = require('lodash');
-const {NFTMetaParser} = require('@confluxfans/nft-utils');
 
 // ---------------------------- db domain --------------------------------
 export const T_NFT_META = "nft_metadata"
 
 export interface INftMeta {
-    contractId: bigint
+    contractId: number
     tokenId: string
     epochNumber: number
     status: number
@@ -35,7 +34,7 @@ export interface INftMeta {
 }
 
 export class NftMeta extends Model<INftMeta> implements INftMeta {
-    contractId: bigint
+    contractId: number
     tokenId: string
     epochNumber: number
     status: number
@@ -54,7 +53,7 @@ export class NftMeta extends Model<INftMeta> implements INftMeta {
             status: {type: DataTypes.INTEGER, allowNull: false, defaultValue: 20},
             censorStatus: {type: DataTypes.INTEGER, allowNull: false, defaultValue: CENSOR_STATUS.TO_CENSOR},
             retry: {type: DataTypes.INTEGER, allowNull: false, defaultValue: 0},
-            errorType: {type: DataTypes.INTEGER, allowNull: false, defaultValue: 0, comment: getMetaTypeComment()},
+            errorType: {type: DataTypes.INTEGER, allowNull: false, defaultValue: 0},
             error: {type: DataTypes.STRING(1024), allowNull: true},
             uri: {type: DataTypes.TEXT({length: "medium"}), allowNull: true},
             content: {type: DataTypes.TEXT({length: "medium"}), allowNull: true},
@@ -148,20 +147,6 @@ export enum MetaStatus {
     INIT = 20, PROCESSING = 21, SUCCESS = 22, FAILURE = 23,
 }
 
-const ERROR_CALL_NFT_CONTRACT = new Set<number>([-32015])
-const ERROR_QUERY_NFT_METADATA_REQ = new Set<string>(['ECONNABORTED', 'ECONNREFUSED', 'ECONNRESET', 'ENOTFOUND',
-    'EHOSTUNREACH', 'EPROTO', 'EAI_AGAIN', 'ERR_TLS_CERT_ALTNAME_INVALID'])
-const ERROR_QUERY_NFT_METADATA_RESP = new Set<number>([400, 403, 404, 405, 429, 500, 502, 503])
-const ERROR_PARSE_NFT_METADATA = new Set<string>(['SyntaxError'])
-
-const ErrorType = {
-    CALL_NFT_CONTRACT: {code: 101, desc: 'call nft contract error', errors: ERROR_CALL_NFT_CONTRACT},
-    QUERY_NFT_METADATA_REQ: {code: 102, desc: 'query nft metadata req error', errors: ERROR_QUERY_NFT_METADATA_REQ},
-    QUERY_NFT_METADATA_RESP: {code: 103, desc: 'query nft metadata resp error', errors: ERROR_QUERY_NFT_METADATA_RESP},
-    PARSE_NFT_METADATA: {code: 104, desc: 'parse nft metadata error', errors: ERROR_PARSE_NFT_METADATA},
-    OTHERS: {code: 105, desc: 'other error'},
-}
-
 const context: any = {
     cfx: null,
     gateway: "",
@@ -174,10 +159,6 @@ const rateInfo = {
     targetQps: 10,
     limit: 4,
     maxLimit: 10,
-}
-
-function getMetaTypeComment() {
-    return Object.keys(ErrorType).map(k => `${ErrorType[k].code}:${ErrorType[k].desc}`).join(',\n')
 }
 
 // ----------------------- fetch once command ----------------------------
@@ -261,7 +242,6 @@ async function syncNFTMetaOnce() {
         order: [['epochNumber', 'asc']],
         limit: rateInfo.limit,
         raw: true,
-        /*logging: sql => console.log(`NftMeta.findAll ${sql}`),*/
     })
     if (!tasks.length) {
         return Code.NO_TASK
@@ -349,49 +329,23 @@ async function fetchNFTMeta(contract: string, tokenId: string, is1155: boolean, 
 
     const logBasic = `${contract} ${is1155 ? '1155' : '721'} tokenId ${tokenId} tokenURI`
     try {
-        const metaParser = new NFTMetaParser(context.cfx, ipfsGateway)
-        tokenURI = await metaParser.getTokenURI(contract, tokenId, is1155)
-        const controller = new AbortController()
-        timer = setTimeout(() => {
-            console.log(`cancel request ${logBasic} ${tokenURI}`)
-            controller.abort()
-        }, 11_000)
-        json = await metaParser.getMetaByURI(tokenURI, {timeout: 10_000, signal: controller.signal})
+        const {rawURI, meta} = await getNFTMeta(context.cfx, contract, tokenId, ipfsGateway, is1155 ? "uri": "tokenURI");
+        replaceMetaAttributes(contract, meta);
+        tokenURI = rawURI;
+        json = meta;
         jsonStr = JSON.stringify(json) || ''
-        name = json['name'] || ''
+        name = meta['name'] || ''
     } catch (e) {
-        let errorType: number
-        if (e?.code && ErrorType.CALL_NFT_CONTRACT.errors.has(e.code)) {
-            errorType = ErrorType.CALL_NFT_CONTRACT.code
-        }
-        if (e?.code && ErrorType.QUERY_NFT_METADATA_REQ.errors.has(e.code)) {
-            errorType = ErrorType.QUERY_NFT_METADATA_REQ.code
-        }
-        if (e?.status && ErrorType.QUERY_NFT_METADATA_RESP.errors.has(e.status)) {
-            errorType = ErrorType.QUERY_NFT_METADATA_RESP.code
-        }
-        if (`${e}`.startsWith('SyntaxError')) {
-            errorType = ErrorType.PARSE_NFT_METADATA.code
-        }
-        if (errorType) {
-            console.log(`known error, ${logBasic} ${tokenURI}, ${errorType}---${e.message || ''}`)
-            return {uri: tokenURI, content: '', name: '', error: `${e.message || ''}`, errorType}
-        }
-
-        console.log(`fetch fail, ${logBasic} ${tokenURI}, ${e.message}`)
         if(context.debug) {
             console.error(`${JSON.stringify(e)}---${e}`)
             console.error(`${JSON.stringify(Object.getOwnPropertyNames(e))}---${e?.code}---${e.message}`)
         }
-        return {uri: tokenURI, content: '', name: '', error: `${e.message}`, errorType: ErrorType.OTHERS.code}
+        // code refers to LogicError.ts
+        const errorType = (e.code && e.code >= 50601 && e.code <= 50605) ? e.code : 50600;
+        console.log(`fetch fail, ${logBasic} ${tokenURI}, ${e.message}`)
+        return {uri: tokenURI, content: '', name: '', error: `${e.message}`, errorType}
     } finally {
         timer && clearTimeout(timer)
-    }
-
-    const isJsonBroken = tokenURI.length > 2 && jsonStr.length <= 2
-    if (isJsonBroken) {
-        console.log(`known error, ${logBasic} ${tokenURI}, ${jsonStr}`)
-        return {uri: tokenURI, content: jsonStr, name: '', error: 'Not a json', errorType: ErrorType.PARSE_NFT_METADATA.code}
     }
 
     console.log(`ok ${logBasic} ${tokenURI}`)

@@ -39,7 +39,7 @@ export async function listAccountNFTs(ctx) {
     setBody(ctx, result);
 }
 
-export async function listNFTTokensPro(ctx) {
+export async function listNFTTokens(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'owner');
     mustBeAddressArrayParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contract');
     mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC'])
@@ -55,7 +55,7 @@ export async function listNFTTokensPro(ctx) {
         throw new Errors.ParameterError(`At least one of the parameters 'contract' and 'owner' is required.`);
     }
 
-    const data = await getApiService().nftCheckerService.listNftTokensForOpenApiPro({
+    const data = await getApiService().nftCheckerService.listNftTokensForOpenApi({
         owner, contract, tokenId: tokenId?.toString(), sort, sortField, cursor, skip, limit});
     if(withBrief === 'true' || withMetadata === 'true') {
         const externalMs = await batchGetNFTInfoList({nftList: data?.list, withBrief, withMetadata, suppressMetadataError});
@@ -76,7 +76,7 @@ export async function listNFTTokensByFts(ctx) {
     const {contract, name: nftName} = ctx.request.query;
     checkPresent({nftName}, ['nftName']);
 
-    const data = await getApiService().nftCheckerService.getNftTokensByFtsForOpenApi({contract, name: nftName});
+    const data = await getApiService().nftCheckerService.listNftTokensByFtsForOpenApi({contract, name: nftName});
 
     delete data.total;
     if (StatApp.isEVM) {
@@ -93,7 +93,12 @@ export async function listNFTOwners(ctx) {
     const {limit} = paginateCore(ctx.request.query);
     checkPresent({contract}, ['contract']);
 
-    const data = await getApiService().nftCheckerService.getNftOwnersForOpenApi({contract, tokenId: tokenId?.toString(), cursor, limit});
+    const data = await getApiService().nftCheckerService.listNftOwnersForOpenApi({
+        contract,
+        tokenId: tokenId?.toString(),
+        cursor,
+        limit
+    });
 
     if (StatApp.isEVM) {
         data?.list?.forEach(row => {

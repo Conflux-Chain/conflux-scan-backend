@@ -1,4 +1,4 @@
-import { NFTMap, NFTNames } from './NFTInfo';
+import {LEGACY_NFT_IMAGES, LEGACY_NFT_NAMES, LEGACY_NFT_URIS, LEGACY_NFTS} from './NFTInfo';
 import {Desensitizer} from "../Desensitizer";
 import {NftMint, Token} from "../../model/Token";
 import {formatToBase32, Hex40Map} from "../../model/HexMap";
@@ -10,24 +10,17 @@ import {CONST} from "../common/constant"
 import {IPFSGatewaySync} from "../IPFSGatewaySync";
 import {fmtAddr, StatApp} from "../../StatApp";
 import {TokenQuery} from "../TokenQuery";
-import {MetaStatus, NftMeta} from "./NftMetaStorage";
+import {MetaStatus, NftMeta} from "./NFTIndexer";
+import {safeFetch} from "../common/security/safeFetch";
 
 const lodash = require('lodash');
-const superagent = require('superagent');
 const {abi} = require('../abi/Crc1155Core');
-const legacyNFTs = new Set(Object.values(NFTMap).map(item => item.address));
 
 export class NFTPreviewService {
-    private app;
     private cfx;
-    // set a deadline for the entire request (including all uploads, redirects, server processing time) to complete
-    private TIMEOUT_OVERALL = 3000;
-    // set maximum time to wait for the first byte to arrive from the server
-    private TIMEOUT_RESP = 3000;
 
-    constructor(app: any) {
-        this.app = app;
-        this.cfx = app.cfx;
+    constructor({cfx}) {
+        this.cfx = cfx;
         new IPFSGatewaySync();
     }
 
@@ -44,154 +37,136 @@ export class NFTPreviewService {
     }): Promise<NFTInfoType> {
         const address = formatToBase32(contractAddress) as string;
         let token = await Token.findOne({attributes: ['hex40id', 'type', 'ipfsGateway'], where: {base32: address}});
-        if(!token) {
+        if (!token) {
             token = await TokenQuery.detectTokenType({base32: address}) as Token;
         }
         if (token.type !== CONST.TRANSFER_TYPE.ERC1155 && token.type !== CONST.TRANSFER_TYPE.ERC721) {
             throw new Errors.ParameterError(`The contract ${contractAddress} not a NFT contract`);
         }
 
-        let detail;
-        if(withDetail){
-            detail = await this.getNFTDetail0({address, hex40id: token.hex40id, tokenId, type: token.type});
+        let nftInfo;
+        if (LEGACY_NFTS[address]) {
+            nftInfo = LEGACY_NFTS[address];
+        } else {
+            const {hex40id, type, ipfsGateway: gateway} = token;
+            const method = LEGACY_NFT_URIS[address] || (type === CONST.TRANSFER_TYPE.ERC1155 ? "uri" : "tokenURI");
+            nftInfo = await this.getNFTMeta({address, hex40id, tokenId, gateway, method, forceFlush});
         }
 
-        let nftInfo;
-        try{
-            const start = Date.now();
-            nftInfo = await this.getNFTInfo0({address, hex40id: token.hex40id, tokenId, type: token.type,
-                gateway: token.ipfsGateway, forceFlush});
-            nftInfo.externalMs = Date.now() - start;
-            lodash.assign(nftInfo, detail);
-        } catch(e){
-            e.partialData = lodash.assign(e.partialData, detail);
-            throw e;
+        let ownerInfo;
+        if (withDetail) {
+            ownerInfo = await this.getNFTOwnerInfo({address, hex40id: token.hex40id, tokenId, type: token.type});
         }
+
+        const imageUri = nftInfo.imageUri;
+        const imageGateway = imageUri?.startsWith('http') ? imageUri.substring(0, imageUri.indexOf('/ipfs/')) : '';
+
+        lodash.assign(nftInfo, ownerInfo, {imageGateway});
 
         nftInfo.imageName.zh = Desensitizer.mosaicStr(address, nftInfo.imageName.zh);
         nftInfo.imageName.en = Desensitizer.mosaicStr(address, nftInfo.imageName.en);
         nftInfo.imageUri = Desensitizer.mosaicUri(address, nftInfo.imageUri);
+
         return nftInfo;
     }
 
-    public async getNFTInfoForScan ({
-                                 contractAddress,
-                                 tokenId,
-                                 withDetail = false,
-                                 forceFlush = false,
-                             }: {
-        contractAddress: string;
-        tokenId: BigInt;
-        withDetail?: boolean;
-        forceFlush?: boolean;
-    }): Promise<NFTInfoType> {
-        const nftInfo = await this.getNFTInfo ({contractAddress, tokenId, withDetail , forceFlush});
-        const imageUri = nftInfo.imageUri;
-
-        let imageGateway = '';
-        const index = imageUri?.indexOf('/ipfs/');
-        if(imageUri?.startsWith('http') && index) {
-            imageGateway = `${imageUri.substring(0, index)}`;
-        }
-
-        return lodash.defaults(nftInfo, {imageGateway});
-    }
-
-    public async getNFTDetail ({
-         contractAddress,
-         tokenId,
-         forceFlush = false,
-    }: {
-        contractAddress: string;
-        tokenId: BigInt;
-        forceFlush?: boolean;
-    }): Promise<NFTInfoType> {
-        return this.getNFTInfoForScan({contractAddress, tokenId, withDetail: true, forceFlush});
-    }
-
-    private async getNFTInfo0 ({
+    private async getNFTMeta({
         address,
         hex40id,
         tokenId,
-        type,
         gateway,
-        forceFlush = false,
+        method = 'uri',
+        forceFlush = false
     }: {
         address: string,
         hex40id: number,
         tokenId: BigInt,
-        type: string,
-        gateway: string,
-        forceFlush?: boolean,
+        gateway?: string,
+        method?: string,
+        forceFlush?: boolean
     }): Promise<NFTInfoType> {
-        const tokenBasic = { address, hex40id, tokenId, gateway, forceFlush };
-        switch (address) {
-            case NFTMap.confluxGuardian.address:
-                return { imageMinHeight: 200, imageName: await this.getNFTName({ address }),
-                    imageUri: 'https://cdn.image.htlm8.top/guardian/nft.png'};
-            case NFTMap.conDragonStone.address:
-                return { imageMinHeight: 200, imageName: await this.getNFTName({ address }),
-                    imageUri: 'https://cdn.image.htlm8.top/dragon-stone/dragon-stone.png' };
-            case NFTMap.satoshiGift.address:
-                return { imageMinHeight: 282, imageName: await this.getNFTName({ address }),
-                    imageUri: 'https://cdn.image.htlm8.top/pizza-day/nft.png' };
-            case NFTMap.shanhaichingSeriesCard.address:
-                return { imageMinHeight: 267, imageName: await this.getNFTName({ address }),
-                    imageUri: 'https://metadata.boxnft.io/nftbox.gif' };
-            case NFTMap.shuttleflowBscNft.address:
-                return { imageMinHeight: 200, imageName: await this.getNFTName({ address }),
-                    imageUri: 'https://cdn.image.htlm8.top/bsc-shuttleflow-nft/nft.png' };
-            case NFTMap.crossChainNftGloryEdition.address:
-                return { imageMinHeight: 200, imageName: await this.getNFTName({ address }),
-                    imageUri: 'https://cdn.image.htlm8.top/flux-shuttleflow-nft/nft.jpg' };
-            case NFTMap.happyBirthdayToConfi.address:
-                return { imageMinHeight: 50, imageName: await this.getNFTName({ address }),
-                    imageUri: 'https://cdn.image.htlm8.top/confi-birthday-nft/nft.png' };
-            case NFTMap.OKExNft.address:
-                return { imageMinHeight: 200, imageName: await this.getNFTName({ address }),
-                    imageUri: 'https://cdn.image.htlm8.top/okex-listing-nft/okex-listing-nft.gif' };
-            case NFTMap.honorOfPractitioner.address:
-                return { imageMinHeight: 288, imageName: await this.getNFTName({ address }),
-                    imageUri: 'https://cdn.image.htlm8.top/practitioner/nft.png' };
-            case NFTMap.confiOfSchrodinger.address:
-                return { imageMinHeight: 150, imageName: await this.getNFTName({ address }),
-                    imageUri: 'https://cj.yzbbanban.com/purplerr.jpeg' };
-
-            case NFTMap.conDragon.address:
-                return this.getNFTImage(tokenBasic);
-            case NFTMap.confiCard.address:
-                return this.getNFTImage(lodash.defaults(tokenBasic, { height: 328 }));
-            case NFTMap.ancientChineseGod.address:
-            case NFTMap.ancientChineseGodGenesis.address:
-                return this.getNFTImage(lodash.defaults(tokenBasic, { height: 377 }));
-            case NFTMap.moonswapGenesis.address:
-                return this.getNFTImage(lodash.defaults(tokenBasic, { height: 150 }));
-            case NFTMap.conHero.address:
-                return this.getNFTImage(lodash.defaults(tokenBasic, { height: 267 }));
-            case NFTMap.shanhaijing.address:
-                return this.getNFTImage(lodash.defaults(tokenBasic, { height: 267 }));
-            case NFTMap.threeKingdoms.address:
-                return this.getNFTImage(lodash.defaults(tokenBasic, { height: 286 }));
-
-            case NFTMap.TREAGenesisFeitian.address:
-                return this.getNFTImage(lodash.defaults(tokenBasic, { height: 200, method: 'uris',
-                    uriFormatter: meta => meta.image }));
-            case NFTMap.confi.address:
-                return this.getNFTImage(lodash.defaults(tokenBasic, { method: 'uris',
-                    uriFormatter: meta => 'http://cdn.tspace.online/image/finish/' + meta.url }));
-            default:
-                let result;
-                if(type === CONST.TRANSFER_TYPE.ERC721){
-                    result = await this.getNFTImage(lodash.defaults(tokenBasic, { method: 'tokenURI'}));
+        try {
+            if (!forceFlush) {
+                const cache = await this.getCache(hex40id, String(tokenId));
+                if (cache) {
+                    const nft = this.buildNFTMeta(address, method, tokenId, gateway, cache.uri, JSON.parse(cache.content));
+                    return nft;
                 }
-                if(type === CONST.TRANSFER_TYPE.ERC1155){
-                    result =  await this.getNFTImage(tokenBasic);
-                }
-                return result;
+            }
+
+            const {rawURI, meta} = await getNFTMeta(this.cfx, address, tokenId, gateway, method);
+
+            replaceMetaAttributes(address, meta);
+
+            this.setCache(hex40id, String(tokenId), rawURI, meta);
+
+            const nft = this.buildNFTMeta(address, method, tokenId, gateway, rawURI, meta);
+            return nft;
+        } catch (e) {
+            if (e.code === undefined) {
+                e = new Errors.QueryNFTError(e?.message?.substr(0, 255));
+            }
+            throw e;
         }
     };
 
-    private async getNFTDetail0({address, hex40id, tokenId, type}){
+    private async buildNFTMeta(address, method, tokenId, gateway, rawTokenURI, meta) {
+        const gatewayTokenURI = normalizeIpfsURI(rawTokenURI, gateway);
+        const legacyName = LEGACY_NFT_NAMES[address] && LEGACY_NFT_NAMES[address](meta);
+        const legacyImage = LEGACY_NFT_IMAGES[address] && LEGACY_NFT_IMAGES[address](meta);
+        return {
+            imageName: legacyName || await this.getNFTName(meta) || {},
+            imageUri: legacyImage || normalizeIpfsURI(meta.image, gateway),
+            imageDesc: meta.description,
+            detail: {
+                funcCall: `${method}(${tokenId})`,
+                tokenUri: {raw: rawTokenURI, gateway: gatewayTokenURI !== rawTokenURI ? gatewayTokenURI : ''},
+                metadata: meta,
+            }
+        }
+    }
+
+    private async getNFTName(meta) {
+        try {
+            const nftName = {
+                en: meta.name
+            };
+            if (meta?.localization?.uri) { // try 1155
+                const zhUri = meta.localization.uri.replace('{locale}', 'zh-cn');
+                const data = await safeFetch(zhUri);
+                const json = JSON.parse(data);
+                const zh = json.name;
+                lodash.assign(nftName, {zh: zh ? zh : meta.name});
+            }
+            return nftName;
+        } catch (e) {
+            throw new Errors.QueryNFTLocalNameError(`${meta?.localization?.uri} ${e.message}`)
+        }
+    };
+
+    private async getCache(contractId: number, tokenId: string) {
+        const nftMeta = await NftMeta.findOne({where: {contractId, tokenId}, raw: true});
+        if (!nftMeta || nftMeta.status !== MetaStatus.SUCCESS || !nftMeta.content) {
+            return null;
+        }
+        return nftMeta;
+    }
+
+    private setCache(contractId: number, tokenId: string, uri: string, metadata: string) {
+        NftMeta.upsert({
+            contractId: contractId,
+            tokenId,
+            epochNumber: 0,
+            status: MetaStatus.SUCCESS,
+            retry: 0,
+            errorType: 0,
+            error: '',
+            uri,
+            content: JSON.stringify(metadata)
+        }).then();
+    }
+
+    private async getNFTOwnerInfo({address, hex40id, tokenId, type}) {
         const hex = format.hexAddress(address);
 
         const sql = `select * from hex40 where id = (select \`from\` from trace_create_contract where \`to\` = (select
@@ -207,7 +182,7 @@ export class NFTPreviewService {
         const minter = await NftMint.sequelize
             .query(sql1, {type: QueryTypes.SELECT, replacements: [hex.substr(2), `${tokenId}`]})
             .then(async nftMinterArray => {
-                if(!nftMinterArray?.length) return undefined;
+                if (!nftMinterArray?.length) return undefined;
                 const nftMinter = nftMinterArray[0];
                 const ownerHex = await Hex40Map.findOne({where: {id: nftMinter['toId']}});
                 const owner = formatToBase32(`0x${ownerHex['hex']}`);
@@ -216,7 +191,7 @@ export class NFTPreviewService {
             });
 
         let owner;
-        if(type === CONST.TRANSFER_TYPE.ERC721){
+        if (type === CONST.TRANSFER_TYPE.ERC721) {
             const ownerId = await Erc721Transfer.findOne({
                 where: {contractId: hex40id, tokenId: `${tokenId}`},
                 order: [['epoch', 'DESC']],
@@ -227,346 +202,7 @@ export class NFTPreviewService {
             owner = formatToBase32(`0x${ownerHex['hex']}`);
         }
 
-        return {creator, ... minter, owner, type};
-    }
-
-    private async getNFTName ({
-         address,
-         meta,
-    }: {
-         address: string;
-         meta?: any;
-    }) {
-        let nftName;
-        try {
-            switch (address) {
-                case NFTMap.confi.address:
-                    nftName = NFTNames.confi[meta.title.split('_')[0]];
-                    break;
-                case NFTMap.confiCard.address:
-                    nftName = {
-                        zh: meta.name,
-                        en: meta.name,
-                    };
-                    break;
-                case NFTMap.conDragon.address:
-                    nftName = {
-                        zh: meta.name,
-                        en: meta.name_en,
-                    };
-                    break;
-                case NFTMap.confluxGuardian.address:
-                    nftName = {
-                        zh: '守护者勋章',
-                        en: 'Guardian',
-                    };
-                    break;
-                case NFTMap.ancientChineseGod.address:
-                case NFTMap.ancientChineseGodGenesis.address:
-                    const zhUri = meta.localization.uri.replace(
-                        '{locale}',
-                        'zh-cn',
-                    );
-                    const response = await superagent.get(zhUri);
-                    const responseObj = JSON.parse(response.text);
-                    nftName = {
-                        zh: responseObj.name,
-                        en: meta.name,
-                    };
-                    break;
-                case NFTMap.moonswapGenesis.address:
-                    nftName = {
-                        zh: '创世 NFT',
-                        en: 'Genesis NFT',
-                    };
-                    break;
-                case NFTMap.conHero.address:
-                    nftName = {
-                        zh: meta.name,
-                        en: meta.name_en,
-                    };
-                    break;
-                case NFTMap.conDragonStone.address:
-                    nftName = {
-                        zh: '龙石',
-                        en: 'Dragon Stone NFT',
-                    };
-                    break;
-                case NFTMap.satoshiGift.address:
-                    nftName = {
-                        zh: "Satoshi's gift",
-                        en: "Satoshi's gift",
-                    };
-                    break;
-                case NFTMap.shanhaijing.address:
-                    nftName = {
-                        zh: meta.name,
-                        en: meta.name,
-                    };
-                    break;
-                case NFTMap.shanhaichingSeriesCard.address:
-                    nftName = {
-                        zh: '山海经卡包',
-                        en: 'Shanhaiching Series Card Pack',
-                    };
-                    break;
-                case NFTMap.shuttleflowBscNft.address:
-                    nftName = {
-                        zh: 'ShuttleFlow-BSC NFT',
-                        en: 'ShuttleFlow-BSC NFT',
-                    };
-                    break;
-                case NFTMap.crossChainNftGloryEdition.address:
-                    nftName = {
-                        zh: '荣耀版跨链NFT',
-                        en: 'Cross-Chain NFT / Glory Edition',
-                    };
-                    break;
-                case NFTMap.happyBirthdayToConfi.address:
-                    nftName = {
-                        zh: 'Happy Birthday to ConFi',
-                        en: 'Happy Birthday to ConFi',
-                    };
-                    break;
-                case NFTMap.TREAGenesisFeitian.address:
-                    nftName = {
-                        zh: 'TREA 创世飞天',
-                        en: 'TREA Genesis Feitian',
-                    };
-                    break;
-                case NFTMap.OKExNft.address:
-                    nftName = {
-                        zh: 'OKEx NFT',
-                        en: 'OKEx NFT',
-                    };
-                    break;
-                case NFTMap.honorOfPractitioner.address:
-                    nftName = {
-                        zh: '践行者计划',
-                        en: 'Honor of Practitioner',
-                    };
-                    break;
-                case NFTMap.confiOfSchrodinger.address:
-                    nftName = {
-                        zh: '薛定谔的盒',
-                        en: 'Confi of Schrodinger',
-                    };
-                    break;
-                case NFTMap.threeKingdoms.address:
-                    nftName = {
-                        zh: meta.name,
-                        en: meta.name,
-                    };
-                    break;
-                case NFTMap.epiKProtocolKnowledgeBadge.address:
-                    nftName = {
-                        zh: meta.data.title,
-                        en: meta.data.title,
-                    };
-                    break;
-                default:
-                    if (meta?.name) {
-                        nftName = { en: meta.name };
-                        let zh;
-                        if (meta?.localization?.uri) { // try 1155
-                            const zhUri = meta.localization.uri.replace('{locale}', 'zh-cn');
-                            const response = await superagent.get(zhUri)
-                                .timeout({response: this.TIMEOUT_RESP, deadline: this.TIMEOUT_OVERALL})
-                                .catch(e => {throw new Errors.QueryNFTLocalNameError(`${zhUri} ${e.message}`)});
-                            const responseObj = JSON.parse(response.text);
-                            zh = responseObj.name;
-                        }
-                        nftName = lodash.assign(nftName, {zh: zh ? zh : meta.name});
-                    }
-            }
-        } catch (e) {
-        }
-        return nftName;
-    };
-
-    private async getNFTImage({
-        address,
-        hex40id,
-        tokenId,
-        gateway,
-        method = 'uri',
-        height = 200,
-        uriFormatter,
-        forceFlush = false
-    }: {
-        address: string,
-        hex40id: number,
-        tokenId: BigInt,
-        gateway?: string,
-        method?: string,
-        height?: number,
-        uriFormatter?: any,
-        forceFlush?: boolean
-    }): Promise<NFTInfoType> {
-        const err = {contract: StatApp.isEVM ? format.hexAddress(address) : address, tokenId};
-        let rawUrl;
-        let gatewayUrl;
-        let rawMeta;
-        let meta;
-        let imageUri;
-        let imageName;
-        let imageDesc;
-
-        try {
-            const nftObj = await this.getCache(address, hex40id, String(tokenId), {method, gateway});
-            if (!forceFlush && nftObj && !legacyNFTs.has(address)) {
-                const cacheInfo = {imageMinHeight: height};
-                return lodash.assign(cacheInfo, lodash.pick(nftObj, ['imageUri', 'imageName', 'imageDesc', 'detail']));
-            }
-
-            // get uri
-            const contract = await this.cfx.Contract({abi, address});
-            rawUrl = await contract[method](tokenId)
-            .catch(e => { throw new Errors.CallNFTContractError(
-                JSON.stringify(lodash.assign(err, { message: `call contract method ${method}(${tokenId}) occurs ${e.message}`}))
-            )});
-            rawUrl = rawUrl.indexOf('{id}') > -1 ? rawUrl.replace('{id}', tokenId.toString(16).padStart(64, '0')) : rawUrl;
-            gatewayUrl = this.replaceGateway({gateway, rawUrl});
-
-            // get metadata
-            if (uriFormatter) {
-                rawMeta = gatewayUrl;
-            } else if ((typeof gatewayUrl === 'string') && gatewayUrl.startsWith('data:application/json;base64')) {
-                rawMeta = Buffer.from(gatewayUrl.substr(29), 'base64').toString();
-            } else {
-                const resp = await superagent.get(gatewayUrl)
-                .timeout({response: this.TIMEOUT_RESP, deadline: this.TIMEOUT_OVERALL})
-                .catch(e => {throw new Errors.QueryNFTMetadataError(
-                    JSON.stringify(lodash.assign(err, {message: `request third-party tokenURI ${gatewayUrl} occurs ${e.message}, try again later`}))
-                )});
-                rawMeta = resp.text;
-            }
-            try{
-                rawMeta = JSON.parse(rawMeta);
-            }catch (e) {
-                throw new Errors.ParseNFTMetadataError(
-                    JSON.stringify(lodash.assign(err, {message: `parse metadata of NFT occurs ${e.message}`}))
-                );
-            }
-            this.replaceMetaAttributes(address, rawMeta);
-            meta = {...rawMeta};
-
-            // build resp
-            imageUri = uriFormatter ? uriFormatter(meta) : meta.image;
-            imageUri = this.replaceGateway({gateway, rawUrl: imageUri});
-            imageName = await this.getNFTName({address, meta}) || {};
-            imageDesc = meta.description;
-            if(!forceFlush && !imageUri && !rawMeta.image_data) throw new Errors.MetadataPropertyError(
-                JSON.stringify(lodash.assign(err, {message: `no image field in metadata of NFT,  meta is ${JSON.stringify(meta)}`}))
-            );
-            if(!forceFlush && !imageName) throw new Errors.MetadataPropertyError(
-                JSON.stringify(lodash.assign(err, {message: `no name field in metadata of NFT,  meta is ${JSON.stringify(meta)}`}))
-            );
-
-        } catch (e) {
-            if(e.code === undefined) {
-                e = new Errors.QueryNFTError(e?.message?.substr(0, 255));
-            }
-            e.partialData = this.buildNFTPreview({imageUri, imageName, imageDesc,
-                method, tokenId, rawUrl, gatewayUrl, rawMeta});
-            throw e;
-        }
-
-        await this.setCache(hex40id, String(tokenId), rawUrl, rawMeta);
-        return this.buildNFTPreview({imageUri, imageName, imageDesc, imageHeight: height,
-            method, tokenId, rawUrl, gatewayUrl, rawMeta});
-    };
-
-    private replaceGateway({gateway, rawUrl}){
-        const {
-            app: {config},
-        } = this;
-
-        if (!rawUrl?.startsWith('ipfs://')) {
-            return rawUrl;
-        }
-
-        const cid = rawUrl.substr(7);
-        let uri = `https://ipfs.io/ipfs/${cid}`;
-
-        if (gateway) {
-            const userGateway = IPFSGatewaySync.tmplFromGateway(gateway);
-            if (userGateway) {
-                return `${userGateway}/ipfs/${cid}`
-            }
-        }
-
-        const sysGateway = IPFSGatewaySync.fastest;
-        if (sysGateway) {
-            uri = `${sysGateway}/ipfs/${cid}`
-        }
-
-        return uri;
-    }
-
-    private replaceMetaAttributes(address, meta) {
-        const addr = fmtAddr(address, StatApp.networkId);
-
-        const nfts = CONST.SWAPPI_NFT_POSITION_LIST[StatApp.networkId];
-        if (!nfts?.length || !nfts.includes(addr)) {
-            return;
-        }
-
-        for (const [search, replace] of Object.entries(CONST.SWAPPI_NFT_POSITION_NAME_REPLACES)) {
-            const regex = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
-            if (meta?.name) {
-                meta.name = meta.name.replace(regex, replace);
-            }
-            if (meta?.description) {
-                meta.description = meta.description.replace(regex, replace);
-            }
-        }
-    }
-
-    private buildNFTPreview({imageUri, imageName, imageDesc, imageHeight = undefined,
-        method, tokenId, rawUrl, gatewayUrl, rawMeta}){
-        const  detail = {
-            funcCall: `${method}(${tokenId})`,
-            tokenUri: {raw: rawUrl, gateway: gatewayUrl !== rawUrl ? gatewayUrl : ''},
-            metadata: rawMeta
-        };
-
-        return { imageUri, imageName, imageDesc,imageMinHeight: imageHeight, detail};
-    }
-
-    private async getCache(address: string, contractId: number, tokenId: string,
-        options: {method: string, gateway: string}) {
-        const nftMeta = await NftMeta.findOne({where: {contractId, tokenId}, raw: true});
-        if (!nftMeta || nftMeta.status !== MetaStatus.SUCCESS || !nftMeta.content) {
-            return null;
-        }
-
-        const {uri: tokenUri, content: metadataJson} = nftMeta;
-        const metadata = JSON.parse(metadataJson);
-        const gatewayTokenUri = this.replaceGateway({gateway: options.gateway, rawUrl: tokenUri});
-        const gatewayImageUri = this.replaceGateway({gateway: options.gateway, rawUrl: metadata['image']});
-
-        return {
-            imageUri: gatewayImageUri,
-            imageName: await this.getNFTName({address, meta: metadata}) || {},
-            imageDesc: metadata['description'],
-            detail: {
-                funcCall: `${options.method}(${tokenId})`,
-                tokenUri: {raw: tokenUri, gateway: gatewayTokenUri !== tokenUri ? gatewayTokenUri : ''},
-                metadata
-            }
-        }
-    }
-
-    private async setCache(contractId: number, tokenId: string, uri: string, metadata: string) {
-        NftMeta.update({
-            status: MetaStatus.SUCCESS,
-            retry: 0,
-            errorType: 0,
-            error: '',
-            uri,
-            content: JSON.stringify(metadata)
-        }, {where: {contractId, tokenId}}).then();
+        return {creator, ...minter, owner, type};
     }
 }
 
@@ -575,8 +211,104 @@ export type NFTInfoType = {
     imageUri?: string;
     imageName?: any;
     imageDesc?: any;
-    detail?:any;
+    detail?: any;
     code?: number;
     error?: any;
     externalMs?: number;
 } | null;
+
+export async function getNFTMeta(cfx, address, tokenId, userGateway, method) {
+    const rawURI = await getTokenURI(cfx, address, tokenId, method);
+    const gatewayURI = normalizeIpfsURI(rawURI, userGateway);
+    const rawMeta = await getMetadataByURI(gatewayURI);
+
+    let meta;
+    try {
+        meta = typeof rawMeta === "object" ? rawMeta : JSON.parse(rawMeta);
+    } catch (e) {
+        throw new Errors.ParseNFTMetadataError(`parse metadata of NFT occurs ${e.message}`);
+    }
+
+    if (!LEGACY_NFT_NAMES[address] && !LEGACY_NFT_IMAGES[address]) {
+        assertRequiredMetadataFields(meta);
+    }
+
+    return {
+        rawURI,
+        gatewayURI,
+        meta,
+    }
+}
+
+async function getTokenURI(cfx, address, tokenId, method) {
+    try {
+        const contract = cfx.Contract({address, abi});
+        const tokenURI = await contract[method](tokenId);
+        return tokenURI.replace('{id}', tokenId.toString(16).padStart(64, '0'));
+    } catch (e) {
+        throw new Errors.CallNFTContractError(`call contract method ${method}(${tokenId}) occurs ${e.message}`);
+    }
+}
+
+function normalizeIpfsURI(rawURI: string, userGateway: string): string {
+    if (!rawURI || typeof rawURI !== 'string') {
+        throw new Errors.QueryNFTMetadataError('invalid metadata uri');
+    }
+
+    const trimmed = rawURI.trim();
+
+    if (trimmed.startsWith('ipfs://')) {
+        const gateway = IPFSGatewaySync.tmplFromGateway(userGateway) || IPFSGatewaySync.fastest || "https://ipfs.io";
+        const path = trimmed
+            .slice('ipfs://'.length)
+            .replace(/^ipfs\//, '');
+        return `${gateway.replace(/\/+$/, '')}/ipfs/${path}`;
+    }
+
+    return trimmed;
+}
+
+async function getMetadataByURI(tokenURI: string) {
+    try {
+        if (tokenURI.startsWith("{")) {
+            return tokenURI
+        }
+
+        if (tokenURI.startsWith('data:application/json;base64')) {
+            return Buffer.from(tokenURI.substring(29), 'base64').toString();
+        }
+
+        const meta = await safeFetch(tokenURI);
+        return meta;
+    } catch (e) {
+        throw new Errors.QueryNFTMetadataError(`request third-party tokenURI ${tokenURI} occurs ${e.message}, try again later`);
+    }
+}
+
+function assertRequiredMetadataFields(meta: any): void {
+    if (!meta.image && !meta.image_data)
+        throw new Errors.MetadataPropertyError("invalid nft metadata, missing field image");
+    if (!meta.name)
+        throw new Errors.MetadataPropertyError("invalid nft metadata, missing field name");
+}
+
+export function replaceMetaAttributes(address, meta) {
+    const addr = fmtAddr(address, StatApp.networkId);
+
+    const nfts = CONST.SWAPPI_NFT_POSITION_LIST[StatApp.networkId];
+    if (!nfts?.length || !nfts.includes(addr)) {
+        return;
+    }
+
+    for (const [search, replace] of Object.entries(CONST.SWAPPI_NFT_POSITION_NAME_REPLACES)) {
+        const regex = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+        if (meta?.name) {
+            meta.name = meta.name.replace(regex, replace);
+        }
+        if (meta?.description) {
+            meta.description = meta.description.replace(regex, replace);
+        }
+    }
+}
+
+

@@ -19,7 +19,7 @@ import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {TraceCreateContract, ContractDestroy, IContractDestroy} from "../model/TraceCreateContract";
 import {CONST} from "./common/constant"
 import {AddressTransfer, EpochAddressIds} from "../model/AddrTransfer";
-import {NftMeta} from "./nftchecker/NftMetaStorage";
+import {NftMeta} from "./nftchecker/NFTIndexer";
 import {CensorItem, ICensorItem} from "../model/CensorItem";
 import {CENSOR_TYPE} from "./censor/CensorService";
 import {NameTag} from "../model/NameTag";

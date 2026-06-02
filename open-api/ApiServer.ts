@@ -113,7 +113,7 @@ export class ApiServer {
         apiService.statsQuery = new StatsQuery(apiApp)
         apiService.rankService = new RankService(apiApp)
         apiService.homepageDashboard = new HomepageDashboard(apiApp);
-        apiService.nftCheckerService = new NFTCheckerService(apiApp);
+        apiService.nftCheckerService = new NFTCheckerService();
         apiService.nftPreviewService = new NFTPreviewService(apiApp);
         apiService.ensCheckerQuery = new ENSCheckerQuery(cfx);
         const accountQuery = new AccountQuery(apiApp);
