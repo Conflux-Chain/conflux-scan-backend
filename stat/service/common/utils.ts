@@ -252,6 +252,35 @@ export function mustBeAddressArrayParamIfPresent(obj, netId, isEVM, ...keys:stri
     }
 }
 
+export function mustBeHashArrayParamIfPresent(obj, expectedLength, ...keys: string[]) {
+    for (const k of keys) {
+        let hashArray = obj[k];
+        if (hashArray === undefined || hashArray === null) {
+            obj[k] = [];
+            continue;
+        }
+
+        if (!lodash.isArray(hashArray)) {
+            hashArray = hashArray.split(',').map(h => h.trim());
+        }
+
+        function validateHash(hash: string, expectedLength: number): boolean {
+            if (!hash || typeof hash !== 'string') return false;
+            if (!hash.startsWith('0x')) return false;
+            if (hash.length !== expectedLength) return false;
+            return /^[0-9a-fA-F]+$/.test(hash.slice(2));
+        }
+
+        for (const hash of hashArray) {
+            if (!validateHash(hash, expectedLength)) {
+                throw new Errors.ParameterError(`Invalid hash '${hash}'. Hash must be 0x-prefixed and be a ${(expectedLength - 2) / 2} byte hex string.`);
+            }
+        }
+
+        obj[k] = hashArray.map(h => h.toLowerCase());
+    }
+}
+
 export function mustBeHex64ParamIfPresent(obj, ...keys:string[]) {
     for (const k of keys) {
         const v = obj[k];

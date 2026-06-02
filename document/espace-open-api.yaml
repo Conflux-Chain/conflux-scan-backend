@@ -1159,7 +1159,6 @@ paths:
     get:
       tags:
         - Contracts
-      summary: List verified contracts with cursor pagination
       description: >
         Returns a cursor-paginated list of verified contracts.
         Rules:
@@ -1182,7 +1181,6 @@ paths:
     get:
       tags:
         - Contracts
-      summary: List verified contracts with filter pagination
       description: >
         Returns a filter-paginated list of verified contracts.
       parameters:
@@ -1265,6 +1263,77 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/VerificationListByFilter'
+  '/contract/lookupAbi':
+    get:
+      tags:
+        - Contracts
+      description: Look up one or more function, error or event signatures by hash.
+      parameters:
+        - in: query
+          name: function
+          description: A comma-delimited list of function or error hashes with leading 0x prefix. Must be exactly 10 characters (0x + 8 hex chars). Supports up to 100 hashes at a time.
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: error
+          description: A comma-delimited list of function or error hashes with leading 0x prefix. Must be exactly 10 characters (0x + 8 hex chars). Supports up to 100 hashes at a time.
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: event
+          description: A comma-delimited list of event hashes with leading 0x prefix. Must be exactly 66 characters (0x + 64 hex chars). Supports up to 100 hashes at a time.
+          required: false
+          schema:
+            type: string
+      responses:
+        200:
+          description: The resulting signatures
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  message:
+                    type: string
+                  result:
+                    $ref: "#/components/schemas/SignatureResponse"
+              examples:
+                successful_lookup:
+                  $ref: "#/components/examples/SignatureSearchResults"
+  '/contract/searchAbi':
+    get:
+      tags:
+        - Contracts
+      description: Search signatures by name (case sensitive) with wildcards, limited to the first 100 unordered results per type.
+      parameters:
+        - in: query
+          name: signature
+          description: The signature of the function, error or event to search for. Case sensitive. Use '*' and '?' for wildcards.
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/signatureTypeParam'
+      responses:
+        200:
+          description: The resulting signatures
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  message:
+                    type: string
+                  result:
+                    $ref: "#/components/schemas/SignatureResponse"
+              examples:
+                successful_lookup:
+                  $ref: "#/components/examples/SignatureSearchResults"
   '/token/tokeninfos':
     get:
       tags:
@@ -3536,6 +3605,51 @@ components:
               example: 5000
             list:
               $ref: '#/components/schemas/VerificationList'
+    SignatureResponse:
+      type: object
+      properties:
+        function:
+          type: object
+          description: Function signatures by hash.
+          additionalProperties:
+              type: array
+              items:
+                type: object
+                properties:
+                  signature:
+                    type: string
+                  fullFormat:
+                    type: string
+                  hasVerifiedContract:
+                    type: boolean
+        error:
+          type: object
+          description: Error signatures by hash.
+          additionalProperties:
+            type: array
+            items:
+              type: object
+              properties:
+                signature:
+                  type: string
+                fullFormat:
+                  type: string
+                hasVerifiedContract:
+                  type: boolean
+        event:
+          type: object
+          description: Event signatures by hash.
+          additionalProperties:
+            type: array
+            items:
+              type: object
+              properties:
+                signature:
+                  type: string
+                fullFormat:
+                  type: string
+                hasVerifiedContract:
+                  type: boolean
     TransferListWithCursor:
       type: object
       properties:
@@ -5450,6 +5564,13 @@ components:
       required: false
       schema:
         type: string
+    signatureTypeParam:
+      description: "Abi type, includes function、error or event. Multiple types separated by commas. If not set, all types will be returned."
+      name: type
+      in: query
+      required: false
+      schema:
+        type: string
     sortParam:
       description: "Sort in ASC or DESC order by timestamp"
       name: sort
@@ -5579,6 +5700,40 @@ components:
       required: false
       schema:
         type: string
+  examples:
+    SignatureSearchResults:
+      summary: Successful lookup with results
+      value:
+        status: "1"
+        message: OK
+        result:
+          function:
+            "0xa9059cbb":
+              - signature: "transfer(address,uint256)"
+                fullFormat: "function transfer(address to, uint256 amount) returns (bool)"
+                hasVerifiedContract: true
+            "0x095ea7b3":
+              - signature: "approve(address,uint256)"
+                fullFormat: "function approve(address spender, uint256 amount) returns (bool)"
+                hasVerifiedContract: true
+          error:
+            "0xfe34a6d3":
+              - signature: "NotFromEntryPoint(address,address,address)"
+                fullFormat: "error NotFromEntryPoint(address msgSender, address entity, address entryPoint)"
+                hasVerifiedContract: true
+            "0x5a154675":
+              - signature: "ExecuteError(uint256,bytes)"
+                fullFormat: "error ExecuteError(uint256 index, bytes error)"
+                hasVerifiedContract: true
+          event:
+            "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef":
+              - signature: "Transfer(address,address,uint256)"
+                fullFormat: "event Transfer(address indexed from,address indexed to,uint256 value)"
+                hasVerifiedContract: true
+            "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925":
+              - signature: "Approval(address,address,uint256)"
+                fullFormat: "event Approval(address indexed owner,address indexed spender,uint256 value)"
+                hasVerifiedContract: true
 externalDocs:
   description: 'Conflux JSON RPC Docs'
   url: 'https://developer.confluxnetwork.org/conflux-doc/docs/json_rpc'

@@ -18,12 +18,14 @@ import {NameTag} from "../../model/NameTag";
 import {
     AbiSignature,
     IAbiSignature,
+    saveAbiAnnounce,
     saveAbiSigs,
     saveContractAbiSigs,
 } from "../../model/ContractInfo";
 import {ContractTraceCreateQuery} from "../ContractTraceCreateQuery";
 import {AddressTransactionIndex} from "../../model/FullBlock";
 import {PruneInfo, PruneType} from "../../model/PruneInfo";
+import {TokenTool} from "./TokenTool";
 
 const fs = require('fs');
 const path = require('path');
@@ -36,6 +38,7 @@ StatApp.networkId = Number(args[0])
 const type = Number(args[1])
 let lastId = -1
 let compiler
+let dryRun = false;
 if (type === 2) {
     compiler = args[2]
 }
@@ -47,6 +50,11 @@ if (type === 3) {
 if (type === 7) {
     if (args[2] !== undefined) {
         lastId = Number(args[2])
+    }
+}
+if (type === 8) {
+    if (args[2] !== undefined) {
+        dryRun = args[2] === 'true';
     }
 }
 
@@ -79,12 +87,16 @@ async function run() {
     if (type === 7) {
         await extractContractAbi()
     }
+    if (type === 8) {
+        await syncAnnouncedAbi()
+    }
     await close();
 }
 
 let cfx: Conflux;
 let contractQuery: ContractQuery;
 let traceCreate: ContractTraceCreateQuery;
+let tokenTool: TokenTool;
 
 async function init() {
     const config: StatConfig = await initialize()
@@ -94,6 +106,7 @@ async function init() {
     cfx = await initCfxSdk(config.conflux);
     contractQuery = new ContractQuery({cfx, config: config.verification});
     traceCreate = new ContractTraceCreateQuery(cfx);
+    tokenTool = new TokenTool(cfx);
 }
 
 async function close() {
@@ -443,3 +456,61 @@ async function extractContractAbi() {
     console.log(`done! ${processedCount} contracts processed`);
 }
 
+async function syncAnnouncedAbi() {
+    const chainInfo = CONST.CHAIN_INFO[StatApp.networkId];
+    if (!chainInfo.C_ANNOUNCE) {
+        console.log("Failed to find announcement contract");
+        return;
+    }
+
+    const addressInfo = await Hex40Map.findOne({
+        where: {hex: format.hexAddress(chainInfo.C_ANNOUNCE).slice(2)},
+        raw: true
+    });
+    if (!addressInfo) {
+        console.log("Failed to find announcement address");
+        return;
+    }
+
+    const txs = await AddressTransactionIndex.findAll({
+        attributes: ["epoch"],
+        where: {addressId: addressInfo.id},
+        raw: true
+    });
+    if (!txs?.length) {
+        console.log("Failed to find announcement txs");
+        return;
+    }
+
+    console.log("Start to process announcement txs", txs.length);
+
+    const epochs = [...new Set(txs.map((t: any) => t.epoch))];
+    for (const epochNumber of epochs) {
+        const epochReceipts = await cfx.getEpochReceipts(epochNumber);
+
+        const announcements = [];
+        for (let blockReceipts of epochReceipts) {
+            for (let txReceipt of blockReceipts) {
+                if (txReceipt.outcomeStatus !== 0) {
+                    continue;
+                }
+                for (let log of txReceipt.logs) {
+                    let transfer;
+                    if ((transfer = tokenTool.decodeAnnouncePlus(log))) {
+                        announcements.push(transfer);
+                    }
+                }
+            }
+        }
+
+        for (const announcement of announcements) {
+            const key = Buffer.from(announcement.key, 'base64').toString();
+            if (key === 'contract/abi') {
+                const plain = Buffer.from(announcement.value, 'base64').toString();
+                await saveAbiAnnounce(plain, epochNumber, dryRun);
+            }
+        }
+    }
+
+    console.log(`done! ${txs.length} txs processed`);
+}

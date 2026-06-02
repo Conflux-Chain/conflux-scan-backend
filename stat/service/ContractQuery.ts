@@ -1,10 +1,4 @@
-import {
-    Hex40Map,
-    getAddrId,
-    formatToBase32,
-    makeId,
-    makeIdV,
-} from "../model/HexMap";
+import {formatToBase32, getAddrId, Hex40Map, makeId, makeIdV,} from "../model/HexMap";
 import {Op, QueryTypes} from "sequelize";
 import {fmtAddr, StatApp} from "../StatApp";
 import {Desensitizer} from "./Desensitizer";
@@ -14,34 +8,34 @@ import {Errors} from "./common/LogicError";
 import {CONST} from "./common/constant"
 import {SolidityJsonInput, VyperJsonInput} from "@ethereum-sourcify/compilers-types";
 import {
-    checkPresent,
     checkCodeFormat,
-    checkSolcVersion,
-    checkVyperVersion,
-    checkLibrary,
     checkEVMVersion,
+    checkLibrary,
     checkLicense,
-    splitFullyQualifiedName,
+    checkPresent,
     checkSolcOptimization,
+    checkSolcVersion,
     checkVyperOptimization,
-    convertVyperVersion
+    checkVyperVersion,
+    convertVyperVersion,
+    splitFullyQualifiedName
 } from "./common/utils";
 import {VerifiedContracts} from "../model/VerifiedContracts";
 import {ethers} from "ethers";
-import {AbiSignature, getSignature, saveAbiSigs, SignatureType} from "../model/ContractInfo";
+import {AbiSignature, ContractAbiSignature, getSignature, saveAbiSigs, SignatureType} from "../model/ContractInfo";
 import {sleep} from "./tool/ProcessTool";
 import {
     KEY_AUTO_VERIFY_TRACE_ID,
     KEY_AUTO_VERIFY_VERIFY_ID,
     KEY_EVM_VERSIONS,
     KEY_SOLC_VERSIONS,
-    KEY_VYPER_VERSIONS,
-    VERIFIED_COUNT_ALL,
-    KEY_STAT_TXNS_FOR_VERIFIED_CONTRACTS,
+    KEY_SOLC_VULNERABILITIES,
     KEY_STAT_ANNOUNCE_NAME_FOR_VERIFIED_CONTRACTS,
     KEY_STAT_NAME_TAG_FOR_VERIFIED_CONTRACTS,
-    KEY_SOLC_VULNERABILITIES,
+    KEY_STAT_TXNS_FOR_VERIFIED_CONTRACTS,
+    KEY_VYPER_VERSIONS,
     KV,
+    VERIFIED_COUNT_ALL,
 } from "../model/KV";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import axios from "axios";
@@ -382,7 +376,7 @@ export class ContractQuery {
             conditions.push({address: format.address(contractAddress, StatApp.networkId)});
         }
         if (deployerAddress !== undefined) {
-            conditions.push({deployer: ethers.getAddress(deployerAddress)});
+            conditions.push({deployer: fmtAddr(deployerAddress, StatApp.networkId)});
         }
         if (startEpoch !== undefined) {
             conditions.push({epochNumber: {[Op.gte]: startEpoch}});
@@ -596,7 +590,7 @@ export class ContractQuery {
             similarMatchChainId,
             similarMatchAddress,
             matchId,
-            verifiedAt: new Date(verifiedAt),
+            verifiedAt: new Date(verifiedAt.replace(/T$/, '')),
         } as VerifiedContracts;
 
         this.traceCreate.query(contractAddress).then(async item => {
@@ -1632,6 +1626,127 @@ export class ContractQuery {
 
         repeat().then();
         console.log(`[stat_withNametag_of_verified_contracts]schedule in ${interval / 1000}s interval`);
+    }
+
+    public async batchGetSignaturesByHashes(
+        functionHashes: string[],
+        errorHashes: string[],
+        eventHashes: string[]
+    ) {
+        const [functionResults, errorResults, eventResults] = await Promise.all([
+            this.listSignaturesByHashes('function', functionHashes),
+            this.listSignaturesByHashes('error', errorHashes),
+            this.listSignaturesByHashes('event', eventHashes)
+        ]);
+
+        return {
+            function: functionResults,
+            error: errorResults,
+            event: eventResults
+        };
+    }
+
+    public async batchGetSignaturesByName(name: string, typeArray: string[]) {
+        const normalizedName = name
+            .trim()
+            .replace(/_/g, "\\_")
+            .replace(/\*/g, "%")
+            .replace(/\?/g, "_");
+
+        const types = typeArray && typeArray.length > 0
+            ? typeArray
+            : [SignatureType.Function, SignatureType.Error, SignatureType.Event];
+
+        const signatures = await Promise.all(types.map(type => this.listSignaturesByName(type, normalizedName)));
+
+        return Object.fromEntries(Object.values(types).map((type, index) => [
+            type,
+            signatures[index],
+        ]));
+    }
+
+    private async listSignaturesByHashes(type: string, hashes: string[]) {
+        hashes = [...new Set(hashes)];
+        if (hashes.length === 0) {
+            return {};
+        }
+
+        const rows: any[] = await AbiSignature.sequelize.query(`
+            SELECT 
+                s.id,
+                s.hash,
+                s.signature,
+                s.fullFormat,
+                s.type
+            FROM abi_signatures s
+            WHERE s.type = ? AND s.hash IN (${hashes.map(() => '?').join(',')})
+        `, {
+            type: QueryTypes.SELECT,
+            replacements: [type, ...hashes],
+        });
+
+        const result = {};
+        for (const hash of hashes) {
+            result[hash] = [];
+        }
+
+        return this.buildSignatures(result, rows);
+    }
+
+    private async listSignaturesByName(type: string, name: string, limit: number = 100) {
+        if (name.length === 0) {
+            return {};
+        }
+
+        const rows: any[] = await AbiSignature.sequelize.query(`
+            SELECT 
+                s.id,
+                s.hash,
+                s.signature,
+                s.fullFormat,
+                s.type
+            FROM abi_signatures s
+            WHERE s.type = ? AND BINARY s.signature Like ?
+            LIMIT ?
+        `, {
+            type: QueryTypes.SELECT,
+            replacements: [type, name, limit],
+        });
+
+        const result = {};
+
+        return this.buildSignatures(result, rows);
+    }
+
+    private async buildSignatures(result: any, rows: any[]) {
+        if (rows.length === 0) {
+            return result;
+        }
+
+        const ids = rows.map(s => s.id);
+        const contractAbiRefs = await ContractAbiSignature.sequelize.query(`
+            SELECT 
+                DISTINCT abiId 
+            FROM contract_abi_signatures 
+            WHERE abiId IN (${ids.map(() => '?').join(',')})
+        `, {
+            type: QueryTypes.SELECT,
+            replacements: [...ids],
+        });
+        const verifiedAbiIds = new Set(contractAbiRefs.map((r: any) => r.abiId));
+
+        for (const row of rows) {
+            if (!result[row.hash]) {
+                result[row.hash] = [];
+            }
+            result[row.hash].push({
+                signature: row.signature,
+                fullFormat: row.fullFormat,
+                hasVerifiedContract: verifiedAbiIds.has(row.id),
+            });
+        }
+
+        return result;
     }
 }
 
