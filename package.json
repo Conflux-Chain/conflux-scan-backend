@@ -27,7 +27,7 @@
     "pos": "node ./stat/service/pos/PosSync.js",
     "epoch": "node ./stat/FullEpochSync.js",
     "stat_task": "node ./stat/StatTask.js",
-    "nft_meta": "node ./stat/service/nftchecker/NftMetaStorage.js metadata",
+    "nft_meta": "node ./stat/service/nftchecker/NFTIndexer.js metadata",
     "prune": "node ./stat/service/prune/PruneService.js all 0"
   },
   "dependencies": {

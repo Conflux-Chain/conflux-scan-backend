@@ -647,7 +647,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         mustBeIntParamIfPresent(ctx.request.query, 'tokenId');
 
         const { contractAddress, tokenId} = ctx.request.query
-        ctx.body = await statApp.nftPreviewService.getNFTInfoForScan({contractAddress, tokenId: BigInt(tokenId)});
+        ctx.body = await statApp.nftPreviewService.getNFTInfo({contractAddress, tokenId: BigInt(tokenId)});
     })
 
     router.get('/nft/checker/detail', async function (ctx) {
@@ -655,9 +655,11 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         mustBeIntParamIfPresent(ctx.request.query, 'tokenId');
 
         const {contractAddress, tokenId} = ctx.request.query
-        const nftDetail = await statApp.nftPreviewService.getNFTDetail({contractAddress, tokenId: BigInt(tokenId)});
-        ctx.set('external-ms', (nftDetail?.externalMs || 0) as any)
-        ctx.body = nftDetail;
+        ctx.body = await statApp.nftPreviewService.getNFTInfo({
+            contractAddress,
+            tokenId: BigInt(tokenId),
+            withDetail: true
+        });
     })
 
     const refreshRateLimiter = new RateLimiterMemory({ points: 1, duration: 600 });
@@ -675,9 +677,12 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             return;
         }
 
-        const nftDetail = await statApp.nftPreviewService.getNFTDetail({contractAddress, tokenId: BigInt(tokenId), forceFlush: true});
-        ctx.set('external-ms', (nftDetail?.externalMs || 0) as any)
-        ctx.body = nftDetail;
+        ctx.body = await statApp.nftPreviewService.getNFTInfo({
+            contractAddress,
+            tokenId: BigInt(tokenId),
+            withDetail: true,
+            forceFlush: true
+        });
     })
 
     router.get('/nft/list1155inventory', async function (ctx) {
@@ -686,7 +691,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const {skip, limit} = paginateCore(ctx.request.query, {skipMax: undefined});
 
         const {contractAddr, userAddr, tokenId} = ctx.request.query;
-        const result = await statApp.nftCheckerService.listNftTokensForOpenApiPro({
+        const result = await statApp.nftCheckerService.listNftTokensForOpenApi({
             owner: userAddr, contract: contractAddr, tokenId: tokenId?.toString(), skip, limit});
 
         const addresses = result.list.map(item => item.owner);

@@ -108,7 +108,7 @@ export class StatApp{
         this.contractQuery = new ContractQuery({cfx, config: this.config.verification});
         this.statsQuery = new StatsQuery(this);
         this.nftPreviewService = new NFTPreviewService(this);
-        this.nftCheckerService = new NFTCheckerService(this);
+        this.nftCheckerService = new NFTCheckerService();
         this.desensitizer = new Desensitizer();
         this.rankService = new RankService(this)
         this.rankService.repeatUpdateTxnCache(); // scheduleCache

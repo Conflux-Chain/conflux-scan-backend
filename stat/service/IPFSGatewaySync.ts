@@ -32,13 +32,16 @@ export class IPFSGatewaySync {
   }
 
   public static tmplFromGateway(userGateway) {
-    let target = userGateway;
+    if (!userGateway || typeof userGateway !== "string") {
+      return undefined;
+    }
 
-    if(target.endsWith('/')) {
+    let target = userGateway;
+    if (target.endsWith('/')) {
       target = target.substr(0, target.length - 1);
     }
 
-    if(!IPFSGatewaySync.GATEWAY_SET.has(target)) {
+    if (!IPFSGatewaySync.GATEWAY_SET.has(target)) {
       return undefined;
     }
 

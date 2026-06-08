@@ -83,7 +83,7 @@ services:
     restart: always
     volumes:
       - ./:/stat-root
-    command: node /stat-root/stat/service/nftchecker/NftMetaStorage.js metadata
+    command: node /stat-root/stat/service/nftchecker/NFTIndexer.js metadata
   prune:
     image: node:20.11.1
     network_mode: host

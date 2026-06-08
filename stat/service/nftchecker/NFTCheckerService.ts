@@ -4,12 +4,11 @@ import {
     convert2base32map,
     getAddrId,
     getAddrIdArray,
-    getAddrIdBase32Map,
     idHex40Map
 } from "../../model/HexMap";
 import {TokenBalance} from "../../model/Balance";
 import {CONST} from "../common/constant"
-import {NftMetaFts} from "./NftMetaStorage";
+import {NftMetaFts} from "./NFTIndexer";
 import {TokenQuery} from "../TokenQuery";
 import {emptyField} from "../common/utils";
 import {getNFTOwnerCount} from "../../model/TransferCount";
@@ -23,13 +22,8 @@ import {checkAccount1155balance} from "../watcher/AccountChecker";
 const lodash = require('lodash');
 
 export class NFTCheckerService {
-    private app;
 
-    constructor(app: any) {
-        this.app = app;
-    }
-
-    public async listNftTokensForOpenApiPro(
+    public async listNftTokensForOpenApi(
         {
             owner,
             contract,
@@ -122,7 +116,7 @@ export class NFTCheckerService {
         return {total, list, next: rows?.length ? rows[rows.length - 1][cursorField] : 0};
     }
 
-    public async getNftTokensByFtsForOpenApi({contract, name}: {contract?: string, name: string}) {
+    public async listNftTokensByFtsForOpenApi({contract, name}: {contract?: string, name: string}) {
         const RESULT_LIMIT_BY_FTS = 10;
         if(!name) {
             return {total: 0, list: []};
@@ -130,15 +124,18 @@ export class NFTCheckerService {
 
         const cid = contract ? await getAddrId(contract): contract;
         let sql;
+        let params;
         if(cid) {
-            sql = `select contractId, tokenId from nft_metadata_fts where contractId = ${cid} and match(name) against('${name}') limit 500;`;
+            sql = `select contractId, tokenId from nft_metadata_fts where contractId = ? and match(name) against(?) limit 500;`;
+            params= [cid, name];
         } else{
-            sql = `select contractId, tokenId from nft_metadata_fts where match(name) against('${name}') limit 500;`;
+            sql = `select contractId, tokenId from nft_metadata_fts where match(name) against(?) limit 500;`;
+            params= [name];
         }
-        let nftFtsList = await NftMetaFts.sequelize.query(sql, {
+        const nftFtsList = await NftMetaFts.sequelize.query(sql, {
             type: QueryTypes.SELECT,
+            replacements: params,
             raw: true,
-            logging: sql => console.log(`NftMeta group sql ${sql}`)
         }) as any[];
         if(!nftFtsList?.length) {
             return {total: 0, list: []};
@@ -175,7 +172,7 @@ export class NFTCheckerService {
         return {total, list};
     }
 
-    public async getNftOwnersForOpenApi({contract, tokenId, cursor = 0, limit = 10}
+    public async listNftOwnersForOpenApi({contract, tokenId, cursor = 0, limit = 10}
         : {contract: string, tokenId?: string, cursor: number, limit: number}) {
         const contractId = contract ? await getAddrId(contract) : contract;
         const byCollection = tokenId === undefined;

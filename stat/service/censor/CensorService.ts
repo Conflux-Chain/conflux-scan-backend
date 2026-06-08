@@ -1,7 +1,7 @@
 import {CensorItem} from "../../model/CensorItem";
 import {Op, QueryTypes} from "sequelize";
 import {Token} from "../../model/Token";
-import {NftMeta} from "../nftchecker/NftMetaStorage";
+import {NftMeta} from "../nftchecker/NFTIndexer";
 import {hexToUtf8} from "../tool/CensorTool";
 import {Contract} from "../../model/Contract";
 import {Conflux, format} from "js-conflux-sdk";

@@ -38,7 +38,7 @@ import {
     listAccountNFTs,
     listNFTOwners,
     listNFTTokensByFts,
-    listNFTTokensPro,
+    listNFTTokens,
 } from "../service/OpenNFTService";
 import {
     getSupplyStat,
@@ -188,7 +188,7 @@ function registerRouter(router: Router) {
 
     // nft assets
     router.get('/nft/balances', listAccountNFTs);
-    router.get('/nft/tokens', checkRateByAddr, listNFTTokensPro);
+    router.get('/nft/tokens', checkRateByAddr, listNFTTokens);
     router.get('/nft/preview', getNFTPreview);
     router.get('/nft/fts', listNFTTokensByFts);
     router.get('/nft/owners', listNFTOwners);
