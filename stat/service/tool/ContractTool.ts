@@ -157,6 +157,10 @@ async function initContracts() {
         c.website && (contract.website = c.website);
 
         await Contract.upsert(contract);
+
+        if (c.abi) {
+            saveAbiSigs(c.abi, hex40id).then();
+        }
     }
 }
 

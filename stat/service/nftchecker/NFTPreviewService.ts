@@ -137,13 +137,17 @@ export class NFTPreviewService {
             const nftName = {
                 en: meta.name
             };
+
+            let zh;
             if (meta?.localization?.uri) { // try 1155
                 const zhUri = meta.localization.uri.replace('{locale}', 'zh-cn');
                 const data = await safeFetch(zhUri);
                 const json = JSON.parse(data);
-                const zh = json.name;
-                lodash.assign(nftName, {zh: zh ? zh : meta.name});
+                zh = json.name;
+
             }
+            lodash.assign(nftName, {zh: zh ? zh : meta.name});
+
             return nftName;
         } catch (e) {
             throw new Errors.QueryNFTLocalNameError(`${meta?.localization?.uri} ${e.message}`)
