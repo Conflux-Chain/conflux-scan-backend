@@ -159,7 +159,7 @@ async function initContracts() {
         await Contract.upsert(contract);
 
         if (c.abi) {
-            saveAbiSigs(c.abi, hex40id).then();
+            await saveAbiSigs(c.abi, hex40id);
         }
     }
 }

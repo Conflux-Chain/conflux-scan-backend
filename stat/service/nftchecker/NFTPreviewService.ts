@@ -138,7 +138,7 @@ export class NFTPreviewService {
                 en: meta.name
             };
 
-            let zh;
+            let zh: string | undefined;
             if (meta?.localization?.uri) { // try 1155
                 const zhUri = meta.localization.uri.replace('{locale}', 'zh-cn');
                 const data = await safeFetch(zhUri);
