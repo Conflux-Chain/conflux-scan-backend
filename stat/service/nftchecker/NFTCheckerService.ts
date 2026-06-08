@@ -124,15 +124,18 @@ export class NFTCheckerService {
 
         const cid = contract ? await getAddrId(contract): contract;
         let sql;
+        let params;
         if(cid) {
-            sql = `select contractId, tokenId from nft_metadata_fts where contractId = ${cid} and match(name) against('${name}') limit 500;`;
+            sql = `select contractId, tokenId from nft_metadata_fts where contractId = ? and match(name) against(?) limit 500;`;
+            params= [cid, name];
         } else{
-            sql = `select contractId, tokenId from nft_metadata_fts where match(name) against('${name}') limit 500;`;
+            sql = `select contractId, tokenId from nft_metadata_fts where match(name) against(?) limit 500;`;
+            params= [name];
         }
-        let nftFtsList = await NftMetaFts.sequelize.query(sql, {
+        const nftFtsList = await NftMetaFts.sequelize.query(sql, {
             type: QueryTypes.SELECT,
+            replacements: params,
             raw: true,
-            logging: sql => console.log(`NftMeta group sql ${sql}`)
         }) as any[];
         if(!nftFtsList?.length) {
             return {total: 0, list: []};

@@ -13,7 +13,7 @@ import {format} from "js-conflux-sdk";
 import {regExitHook} from "../tool/ProcessTool";
 import {listenPort} from "../../monitor/serverApi";
 import {StuckChecker} from "../../monitor/Monitor";
-import {getNFTMeta, replaceMetaAttributes} from "./NFTPreviewService";
+import {getNFTMeta, replaceMetaAttributes} from "./NFTMetaUtil";
 
 const lodash = require('lodash');
 
@@ -359,7 +359,7 @@ async function getIPFSGateway(gateway) {
         return context.cmdGateway
     }
 
-    const userGateway = gateway && IPFSGatewaySync.tmplFromGateway(gateway)
+    const userGateway = IPFSGatewaySync.tmplFromGateway(gateway)
     if(userGateway) {
         return userGateway
     }
