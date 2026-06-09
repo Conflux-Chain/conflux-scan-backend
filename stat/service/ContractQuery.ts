@@ -145,7 +145,7 @@ export class ContractQuery {
 
         // verified info
         let verified: any
-        if(this.isInternalContract(address)) {
+        if (!StatApp.isEVM && this.isInternalContract(address)) {
             verified = await Contract.findOne({
                 attributes: [['base32', 'address'], 'sourceCode', 'name', 'abi'],
                 where: {base32: format.address(address, StatApp.networkId)},
@@ -739,25 +739,25 @@ export class ContractQuery {
     public async queryDestroyInfo(address) {
         const hex = format.hexAddress(address);
 
-        if(lodash.includes(CONST.INTERNAL_CONTRACT, hex)){
+        if (!StatApp.isEVM && lodash.includes(CONST.INTERNAL_CONTRACT, hex)) {
             return CONST.DEPLOY_STATUS.DEPLOYED;
         }
         const {codeHash} = await this.cfx.getAccount(hex);
-        if(codeHash !== CONST.CODEHASH_NO_BYTECODE){
+        if (codeHash !== CONST.CODEHASH_NO_BYTECODE) {
             return CONST.DEPLOY_STATUS.DEPLOYED;
         }
 
         const hex40Bean = await Hex40Map.findOne({where: {hex: hex.substr(2)}});
-        if(hex40Bean === null){
+        if (hex40Bean === null) {
             return CONST.DEPLOY_STATUS.NOT_DEPLOYED;
         }
         const trace = await TraceCreateContract.findOne({where: {to: hex40Bean.id}});
-        if(trace === null){
+        if (trace === null) {
             return CONST.DEPLOY_STATUS.NOT_DEPLOYED;
         }
 
         const adminDestroy = await ContractDestroy.findOne({where: {contract: hex.substr(2)}});
-        if(adminDestroy !== null){
+        if (adminDestroy !== null) {
             return CONST.DEPLOY_STATUS.ADMIN_DESTROYED;
         }
 
