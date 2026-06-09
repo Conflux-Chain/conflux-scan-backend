@@ -27,6 +27,7 @@ export class TokenQuoteSync {
     private cfx: Conflux;
     private readonly tokenTool: TokenTool;
     private tick = -1; // 1 sec per tick by default
+    private readonly IS_BJ_REGION: boolean;
 
     constructor(cfx: Conflux, config: QuoteOptions) {
         if(config.enable && (!config.binanceAccessToken || !config.coinMarketCapAccessToken)) {
@@ -36,6 +37,7 @@ export class TokenQuoteSync {
         this.config = config;
         this.cfx = cfx;
         this.tokenTool = new TokenTool(cfx);
+        this.IS_BJ_REGION = ConfigInstance.serverTag.includes("bj");
 
         this.schedule().then();
     }
@@ -112,7 +114,7 @@ export class TokenQuoteSync {
 
     //======================================================================
     private async updateByBN(tokenList) {
-        if(!tokenList?.length) return;
+        if (!tokenList?.length || this.IS_BJ_REGION) return;
 
         const tokenArray = tokenList?.filter((token) => token.bnId);
         if (!tokenArray?.length) {
@@ -148,7 +150,7 @@ export class TokenQuoteSync {
 
     //======================================================================
     private async updateByCMC(tokenList) {
-        if(!tokenList?.length) return;
+        if (!tokenList?.length || this.IS_BJ_REGION) return;
 
         const tokenArray = tokenList?.filter((token) => token.cmcId);
         if (tokenArray.length === 0) {
@@ -294,7 +296,7 @@ export class TokenQuoteSync {
         if (
             !url ||
             !tokenList?.length ||
-            !ConfigInstance.serverTag.includes("bj")
+            !this.IS_BJ_REGION
         ) {
             return;
         }
