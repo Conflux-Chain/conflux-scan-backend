@@ -43,9 +43,13 @@ export class NFTPreviewService {
     }): Promise<NFTInfoType> {
         const address = formatToBase32(contractAddress) as string;
         let token = await Token.findOne({attributes: ['hex40id', 'type', 'ipfsGateway'], where: {base32: address}});
+        const typeInfo = await TokenQuery.detectTokenType({base32: address}) as Token;
         if (!token) {
-            token = await TokenQuery.detectTokenType({base32: address}) as Token;
+            token = typeInfo;
+        } else {
+            token.type = typeInfo.type; // support hybrid nft
         }
+
         if (token.type !== CONST.TRANSFER_TYPE.ERC1155 && token.type !== CONST.TRANSFER_TYPE.ERC721) {
             throw new Errors.ParameterError(`The contract ${contractAddress} not a NFT contract`);
         }
