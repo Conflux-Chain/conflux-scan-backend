@@ -8,6 +8,8 @@ import {ConsortiumConflux} from "./ConsortiumConflux";
 import {useFastFormat} from "./fastFormatter";
 import {CONST} from "./constant";
 import {CallParams} from "../AccountQuery";
+import {IToken} from "../../model/Token";
+import {IContract} from "../../model/Contract";
 
 const lodash = require('lodash');
 const {isValidCfxAddress, decodeCfxAddress} = require('js-conflux-sdk/src/util/address');
@@ -840,4 +842,23 @@ export function formatBlockNumber(blockNumber: ethers.BlockTag): string {
         return ethers.toQuantity(blockNumber);
     }
     return blockNumber;
+}
+
+export function safeString(str, len) {
+    if (typeof str !== "string") {
+        return undefined;
+    }
+    return str.trim().slice(0, len);
+}
+
+export function sanitizeToken(token: IToken) {
+    token.name = safeString(token.name, 64);
+    token.symbol = safeString(token.symbol, 64);
+    token.website = safeString(token.website, 200);
+    token.ipfsGateway = safeString(token.ipfsGateway, 200);
+}
+
+export function sanitizeContract(contract: IContract) {
+    contract.name = safeString(contract.name, 64);
+    contract.website = safeString(contract.website, 200);
 }

@@ -660,7 +660,7 @@ export class ContractQuery {
     }
 
     async getImpl(address: string): Promise<ImplInfo | undefined> {
-        const impl = await this._getImpl(address);
+        const impl = await ContractQuery._getImpl(this.cfx, address);
         if (!impl) {
             return;
         }
@@ -678,7 +678,7 @@ export class ContractQuery {
         return impl;
     }
 
-    private async _getImpl(address: string): Promise<ImplInfo | undefined>{
+    static async _getImpl(cfx: Conflux, address: string): Promise<ImplInfo | undefined>{
         const hex = format.hexAddress(address);
         const validSlotValue = (value: string) => value && value !== CONST.ZERO_VALUE_IN_SLOT;
 
@@ -686,7 +686,7 @@ export class ContractQuery {
             CONST.IMPLEMENTATION_SLOT_OZ, // ZeppelinOS Proxy
             CONST.IMPLEMENTATION_SLOT_EIP1822, // PROXIABLE Proxy (EIP-1822)
             CONST.POSITION_IMPLEMENTATION_SLOT, // EIP1967 Proxy (EIP-1967)
-        ].map(slot => this.cfx.getStorageAt(hex, slot))).then(values => {
+        ].map(slot => cfx.getStorageAt(hex, slot))).then(values => {
             const value = values.find(validSlotValue);
             return value ? `0x${value.substr(26)}` : undefined;
         });
@@ -698,7 +698,7 @@ export class ContractQuery {
             };
         }
 
-        const beacon = await this.cfx.getStorageAt(hex, CONST.POSITION_BEACON_SLOT).then(value => {
+        const beacon = await cfx.getStorageAt(hex, CONST.POSITION_BEACON_SLOT).then(value => {
             return validSlotValue(value) ? `0x${value.substr(26)}` : ZERO_LABS_PROXY_BEACON_MAP[hex];
         });
 
@@ -706,7 +706,7 @@ export class ContractQuery {
             return;
         }
 
-        const beaconImpl = await this.cfx.Contract({abi}).implementation()
+        const beaconImpl = await cfx.Contract({abi}).implementation()
             .call({to: beacon}, undefined)
             .then(format.hexAddress)
             .catch(() => undefined);
