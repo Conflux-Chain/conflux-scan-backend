@@ -841,3 +841,10 @@ export function formatBlockNumber(blockNumber: ethers.BlockTag): string {
     }
     return blockNumber;
 }
+
+export function safeString(str, len) {
+    if (typeof str !== "string") {
+        return undefined;
+    }
+    return str.trim().slice(0, len);
+}

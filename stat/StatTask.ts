@@ -45,6 +45,7 @@ import {TokenQuoteSync} from "./service/TokenQuoteSync";
 import {ContractDappNameSync} from "./service/ContractDappNameSync";
 import {VerifiedContracts} from "./model/VerifiedContracts";
 import {StatDailyContractVerified} from "./service/timerstat/StatDailyContractVerified";
+import {TokenAutoDetect} from "./service/TokenAutoDetect";
 
 async function runTools() {
     const [,, cmd, arg1] = process.argv;
@@ -100,6 +101,7 @@ async function main() {
     new ContractDappNameSync({cfx});
     new TokenSecurityAuditSync({cfx});
     new TokenQuoteSync(cfx, config.quote);
+    new TokenAutoDetect(cfx);
     new CensorService(cfx, config.censor, {tx: 10, token: 10, nft: 10});
 
     const contractQuery = new ContractQuery({cfx, config: config.verification});

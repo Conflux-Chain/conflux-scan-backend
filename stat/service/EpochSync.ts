@@ -5,7 +5,6 @@ import {
     formatToBase32,
     formatToHex,
     Hex40Map,
-    idHex40Map,
     makeId,
     makeIdV
 } from "../model/HexMap";
@@ -42,9 +41,6 @@ import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import {saveAbiAnnounce} from "../model/ContractInfo";
 const lodash = require('lodash');
 const zlib = require('zlib');
-const NodeCache = require( "node-cache" );
-
-const cacheTtl = 60 * 10
 
 const FIELDS_TOKEN_BASIC = ['name', 'symbol', 'decimals', 'granularity', 'totalSupply'];
 const FIELDS_TOKEN_REGISTER = ['icon', 'website', 'ipfsGateway', 'quoteUrl'];
@@ -63,7 +59,6 @@ export class EpochSync extends SyncBase {
     private transferTypeMap: object
     private latestVoteParams: VoteParams
     private statOnRealtime: StatOnRealtime
-    private nodeCache: any
     private adminContractId: number;
 
     constructor(app: IEpochSyncCtx) {
@@ -71,7 +66,6 @@ export class EpochSync extends SyncBase {
         this.statOnRealtime = new StatOnRealtime()
         this.transferTypeMap = lodash.keyBy(Object.values(CONST.ADDRESS_TRANSFER_TYPE), 'name')
 	    this.transferTypeMap['internal_transfer_action'] = CONST.ADDRESS_TRANSFER_TYPE.CFX_IN_INTERNAL_BY_BALANCE;
-        this.nodeCache = new NodeCache({ maxKeys: 1000,  stdTTL: cacheTtl, checkperiod: 60})
     }
 
     public async mustInit() {
@@ -133,12 +127,11 @@ export class EpochSync extends SyncBase {
                     StatApp.isEVM ? undefined : await this.getVoteParams(epochNumber),
             ])
 
-            let [announceInfo, nameTagArray, bytes32NameTagArray, tokenArray,
+            let [announceInfo, nameTagArray, bytes32NameTagArray,
                 cfxTransferArray, tokenTransferArray] = await Promise.all([
                 this.getAnnounceInfo(epochNumber, eventLogInfo.announcementArray),
                 this.getNameTagInfo(epochNumber, epochTimestamp, eventLogInfo.nameTagArray, eventLogInfo.labelArray),
                 this.getBytes32NameTagInfo(epochNumber, eventLogInfo.byte32NameTagArray),
-                this.getTokensAutoDetected(tokenLogs),
                 this.getCFXTransferArrayDB(pivotHash, epochNumber),
                 this.getTokenTransferArrayDB(tokenLogs),
             ])
@@ -177,7 +170,6 @@ export class EpochSync extends SyncBase {
                 announcedContractArray,
                 adminDestroyTxArray,
                 transferredNftArray,
-                tokenArray,
                 nameTagArray,
                 bytes32NameTagArray,
 
@@ -266,7 +258,7 @@ export class EpochSync extends SyncBase {
                 AddressNftTransfer.bulkCreate(modelData.addrNftTransferArray, {transaction: dbTx}),
                 VoteParams.bulkCreate(voteParamArray, {transaction: dbTx}),
 
-                Token.bulkCreate([...modelData.announcedTokenArray, ...modelData.tokenArray], {transaction: dbTx,
+                Token.bulkCreate(modelData.announcedTokenArray, {transaction: dbTx,
                     updateOnDuplicate: FIELDS_TOKEN as any}),
                 Contract.bulkCreate(modelData.announcedContractArray, {transaction: dbTx,
                     updateOnDuplicate: FIELDS_CONTRACT as any}),
@@ -326,8 +318,6 @@ export class EpochSync extends SyncBase {
 
         this.statOnRealtime.popGasInfo(epochNumber);
     }
-
-
 
     //---------------- business method for admin destroy tx ------------------
     async getAdminDestroyTxArray(txArray:FullTransaction[], cfx: Conflux) {
@@ -504,93 +494,6 @@ export class EpochSync extends SyncBase {
     }
 
     // ----------------------- business method for token ------------------------
-    private async getTokensAutoDetected({transfer20Array, transfer721Array, transfer1155Array}) {
-        let tokenArray = []
-
-        try {
-            const [token20Task, token721Task, token1155Task] = await Promise.all([
-                this.getTokenTask(transfer20Array, CONST.TRANSFER_TYPE.ERC20),
-                this.getTokenTask(transfer721Array, CONST.TRANSFER_TYPE.ERC721),
-                this.getTokenTask(transfer1155Array, CONST.TRANSFER_TYPE.ERC1155),
-            ]);
-
-            const tokenTasks = [...token20Task, ...token721Task, ...token1155Task]
-            tokenArray = await Promise.all(tokenTasks)
-            tokenArray = tokenArray.filter(Boolean)
-        } catch (e) {
-            console.log(`epoch-sync.getTokensAutoDetected fail`, e);
-            throw e;
-        }
-
-        return tokenArray;
-    }
-
-    private async getTokenTask(transferArray, transferType) {
-        const ids = [...new Set(transferArray.map(transfer => transfer.contractId))] as number[];
-        const hexMap = await idHex40Map(ids, true);
-        const tasks = []
-        for (const id of hexMap.keys()) {
-            tasks.push(this.getToken(id, hexMap.get(id), transferType));
-        }
-        return tasks;
-    }
-
-    private async getToken(hex40id, hexAddress, transferType) {
-        const {
-            app: {tokenTool},
-        } = this;
-
-        const cacheToken = this.nodeCache.get(hexAddress)
-        if (cacheToken) {
-            return cacheToken
-        }
-
-        const tokenDb = await Token.findOne({where: {hex40id}, raw: true});
-        if (tokenDb && tokenDb.type) {
-            return undefined;
-        }
-
-        const base32 = formatToBase32(hexAddress);
-        const [totalSupply, tokenInfo, erc721Interface, erc1155Interface] = await Promise.all([
-            tokenTool.getTokenTotalSupply(base32),
-            tokenTool.getToken(base32),
-            tokenTool.supportsInterface(base32, CONST.EIP165_INTERFACE_ID.ERC721),
-            tokenTool.supportsInterface(base32, CONST.EIP165_INTERFACE_ID.ERC1155),
-        ]);
-        if ((transferType === CONST.TRANSFER_TYPE.ERC721 && erc721Interface === false) ||
-            (transferType === CONST.TRANSFER_TYPE.ERC1155 && erc1155Interface === false)) {
-            return undefined;
-        }
-
-        let token = lodash.defaults({}, {
-            hex40id, base32, name: tokenInfo.name, symbol: tokenInfo.symbol,
-            decimals: tokenInfo.decimals, granularity: tokenInfo.granularity, totalSupply,
-            type: transferType
-        });
-        checkTokenPropLength(token);
-
-        const transferCount = (await EpochSync.countTransfer(hex40id, transferType)) || 1;
-        const auditResult = (token?.name?.trim()?.length > 0) && (token?.symbol?.trim()?.length > 0);
-        token = lodash.defaults(token, {transfer: transferCount, auditResult, fetchBalance: auditResult});
-
-        try {
-            this.nodeCache.set(hexAddress, token, cacheTtl)
-        } catch (e){
-            //error: Cache max keys amount exceeded
-        }
-
-        return token;
-    }
-
-    private static async countTransfer(addressId, transferType) {
-        if (transferType === CONST.TRANSFER_TYPE.ERC20)
-            return Erc20Transfer.count({where: {contractId: addressId}});
-        if (transferType === CONST.TRANSFER_TYPE.ERC721)
-            return Erc721Transfer.count({where: {contractId: addressId}});
-        if (transferType === CONST.TRANSFER_TYPE.ERC1155)
-            return Erc1155Transfer.count({where: {contractId: addressId}});
-    }
-
     private async getTokenLogs(pivotHash: string, epoch: number) {
         while(true) {
             const [pb, t20, t721, t1155, maxPos] =
