@@ -9,7 +9,6 @@ import {
     makeIdV
 } from "../model/HexMap";
 import {Contract} from "../model/Contract";
-import {checkTokenPropLength, Token} from "../model/Token";
 import {Op, QueryTypes} from "sequelize";
 import {base64ToPNG, getImageDir, saveOssUrl, uploadOss} from "./tool/TokenTool";
 import {Erc20Transfer} from "../model/Erc20Transfer";
@@ -39,15 +38,17 @@ import {sleep} from "./tool/ProcessTool";
 import {FullBlock, FullTransaction} from "../model/FullBlock";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import {saveAbiAnnounce} from "../model/ContractInfo";
+import {sanitizeContract, sanitizeToken} from "./common/utils";
+import {Token} from "../model/Token";
 const lodash = require('lodash');
 const zlib = require('zlib');
 
 const FIELDS_TOKEN_BASIC = ['name', 'symbol', 'decimals', 'granularity', 'totalSupply'];
-const FIELDS_TOKEN_REGISTER = ['icon', 'website', 'ipfsGateway', 'quoteUrl'];
-const FIELDS_TOKEN = [...['hex40id', 'base32'], ...FIELDS_TOKEN_BASIC, ...FIELDS_TOKEN_REGISTER];
+const FIELDS_TOKEN_REGISTER = ['icon', 'website', 'ipfsGateway'];
+const FIELDS_TOKEN = ['hex40id', 'base32', 'epoch', 'updatedAt', ...FIELDS_TOKEN_BASIC, ...FIELDS_TOKEN_REGISTER];
 
-const FIELDS_CONTRACT_REGISTER = ['name', 'website', 'abi', 'sourceCode'];
-const FIELDS_CONTRACT = [...['hex40id', 'base32', 'epoch'], ...FIELDS_CONTRACT_REGISTER];
+const FIELDS_CONTRACT_REGISTER = ['name', 'website'];
+const FIELDS_CONTRACT = ['hex40id', 'base32', 'epoch', 'updatedAt', ...FIELDS_CONTRACT_REGISTER];
 
 const SELECTOR_DESTROY = '0x00f55d9d';
 
@@ -138,11 +139,11 @@ export class EpochSync extends SyncBase {
             eventLogInfo = null
             tokenLogs = null
 
-            let [announcedTokenArray, announcedContractArray,
-                {transfers: addrTransferArray, epochAddrIdArray}, nftTransferArray,
-                addrNftTransferArray] = await Promise.all([
-                this.getAnnouncedTokens(epochNumber, announceInfo.tokenArray),
-                this.getAnnouncedContracts(epochNumber, announceInfo.contractArray),
+            let [
+                {transfers: addrTransferArray, epochAddrIdArray},
+                nftTransferArray,
+                addrNftTransferArray
+            ] = await Promise.all([
                 this.getAddrTransferArrayDB(epochNumber, epochTimestamp, tokenTransferArray, cfxTransferArray, txArray),
                 this.getNftTransferArray(epochNumber, tokenTransferArray),
                 this.getAddrNftTransferArray(epochNumber, tokenTransferArray),
@@ -166,8 +167,8 @@ export class EpochSync extends SyncBase {
                 addressNfts,
                 voteParamArray,
 
-                announcedTokenArray,
-                announcedContractArray,
+                announcedTokenArray: announceInfo.tokenArray,
+                announcedContractArray: announceInfo.contractArray,
                 adminDestroyTxArray,
                 transferredNftArray,
                 nameTagArray,
@@ -247,8 +248,7 @@ export class EpochSync extends SyncBase {
 
     async saveOnce(modelData, voteParamArray) {
         const epochArray = modelData.epochArray?.length ? modelData.epochArray : [modelData.epoch]
-        modelData.tokenArray?.forEach(checkTokenPropLength);
-        modelData.announcedTokenArray?.forEach(checkTokenPropLength);
+
         await Epoch.sequelize.transaction(async (dbTx) => {
             await Promise.all([
                 Epoch.bulkCreate(epochArray, {transaction: dbTx}),
@@ -286,6 +286,7 @@ export class EpochSync extends SyncBase {
                 }): undefined as any,
             ])
         })
+        
         modelData = null
         voteParamArray = null
     }
@@ -356,20 +357,6 @@ export class EpochSync extends SyncBase {
     }
 
     //--------------------- business method for announce ---------------------
-    private getAnnouncedTokens(epochNumber, tokenArray) {
-        return tokenArray.map(t => lodash.defaults({
-            epoch: epochNumber,
-            updatedAt: new Date()
-        }, lodash.pick(t, FIELDS_TOKEN)))
-    }
-
-    private getAnnouncedContracts(epochNumber, contractArray) {
-        return contractArray.map(c => lodash.defaults({
-            epoch: epochNumber,
-            updatedAt: new Date()
-        }, lodash.pick(c, FIELDS_CONTRACT)))
-    }
-
     private async getAnnounceInfo(epochNumber, announceArray) {
         const {
             app: {tokenTool},
@@ -381,16 +368,19 @@ export class EpochSync extends SyncBase {
             const key = Buffer.from(announce.key, 'base64').toString();
             if (key === 'contract/abi') {
                 const decodedBase64 = Buffer.from(announce.value, 'base64').toString();
-                saveAbiAnnounce(decodedBase64, epochNumber).catch(e=>{
+                saveAbiAnnounce(decodedBase64, epochNumber).catch(e => {
                     e.epochNumber = epochNumber;
                     safeAddErrorLog(`epoch-sync`, `save-abi-announce-${epochNumber}`, e);
                 })
                 continue;
             }
+
             const params = key.split('/');
+
             if (params[0] === 'token') {
                 await this.parseAnnounce(epochNumber, params, announce, tokenMap);
             }
+
             if (params[0] === 'contract') {
                 await this.parseAnnounce(epochNumber, params, announce, contractMap);
             }
@@ -402,20 +392,25 @@ export class EpochSync extends SyncBase {
             let token = tokenMap[hex];
             token.hex40id = (await makeId(hex)).id;
             token.base32 = formatToBase32(hex);
-            const totalSupply = await tokenTool.getTokenTotalSupply(token.base32);
-            const tokenInfo = await tokenTool.getToken(token.base32);
             token = lodash.defaults(token, {
-                totalSupply, name: tokenInfo.name, symbol: tokenInfo.symbol,
-                decimals: tokenInfo.decimals, granularity: tokenInfo.granularity
+                totalSupply: await tokenTool.getTokenTotalSupply(token.base32),
+                ...(await tokenTool.getToken(token.base32)),
+                epoch: epochNumber, updatedAt: new Date()
             });
+            sanitizeToken(token);
             tokenArray.push(token);
         }
+
         const contractArray = [];
         const contractHexArray = Object.keys(contractMap);
         for (const hex of contractHexArray) {
             let contract = contractMap[hex];
             contract.hex40id = (await makeId(hex)).id;
             contract.base32 = formatToBase32(hex);
+            contract = lodash.defaults(contract, {
+                epoch: epochNumber, updatedAt: new Date()
+            });
+            sanitizeContract(contract);
             contractArray.push(contract);
         }
 
@@ -434,8 +429,13 @@ export class EpochSync extends SyncBase {
             map[hex] = map[hex] || {};
             console.log(`announce---epoch:${epochNumber}---${params}`);
         } else {
-            const [, hex, field] = params;
-            if (!/0x[0-9a-fA-F]{40}/.test(hex)) {
+            const [type, hex, field] = params;
+
+            if (
+                (type === "token" && !lodash.includes(FIELDS_TOKEN_REGISTER, field))
+                || (type === "contract" && !lodash.includes(FIELDS_CONTRACT_REGISTER, field))
+                || !/0x[0-9a-fA-F]{40}/.test(hex)
+            ) {
                 console.log(`announce---epoch:${epochNumber}---${params}`);
                 return map;
             }
@@ -456,13 +456,10 @@ export class EpochSync extends SyncBase {
                 item[field] = decodedBase64.toString();
             }
 
-            if (field === 'name' && item[field].length >= 255) {
-                item[field] = item[field].substr(0, 255);
-            }
-            console.log(`announce---epoch:${epochNumber}---${params}---${isBlob ? (item[field])?.length : item[field]}`);
-
             map[hex] = item;
+            console.log(`announce---epoch:${epochNumber}---${params}---${isBlob ? (item[field])?.length : item[field]}`);
         }
+
         return map;
     }
 
@@ -484,7 +481,9 @@ export class EpochSync extends SyncBase {
         }).then(array => {
             return array?.length ? array[0]['hex'] : undefined;
         });
+
         const hexAnnouncer = formatToHex(announcer).substr(2)
+
         if (hexAnnouncer !== creator) {
             console.log(`checkAnnounce epoch ${epochNumber} announcer ${hexAnnouncer} not match with creator ${creator}`)
             return false

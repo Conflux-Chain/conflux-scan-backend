@@ -356,10 +356,3 @@ export class DailyToken extends Model<IDailyToken> implements IDailyToken {
         return [0, d1, d2]
     }
 }
-
-export function checkTokenPropLength(token: IToken) {
-    if (token?.name?.length > 64) token.name = token.name.substr(0, 64)
-    if (token?.symbol?.length > 64) token.symbol = token.symbol.substr(0, 64)
-    if (token?.website?.length > 200) token.website = token.website.substr(0, 200)
-    if (token?.ipfsGateway?.length > 200) token.ipfsGateway = token.ipfsGateway.substr(0, 200)
-}

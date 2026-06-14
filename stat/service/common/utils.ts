@@ -8,6 +8,8 @@ import {ConsortiumConflux} from "./ConsortiumConflux";
 import {useFastFormat} from "./fastFormatter";
 import {CONST} from "./constant";
 import {CallParams} from "../AccountQuery";
+import {IToken} from "../../model/Token";
+import {IContract} from "../../model/Contract";
 
 const lodash = require('lodash');
 const {isValidCfxAddress, decodeCfxAddress} = require('js-conflux-sdk/src/util/address');
@@ -847,4 +849,12 @@ export function safeString(str, len) {
         return undefined;
     }
     return str.trim().slice(0, len);
+}
+
+export function sanitizeToken(token: IToken) {
+
+}
+
+export function sanitizeContract(contract: IContract) {
+
 }

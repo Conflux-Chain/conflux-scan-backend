@@ -8,7 +8,7 @@ import {Hex40Map} from "../model/HexMap";
 import {CONST} from "./common/constant";
 import {KEY_AUTO_DETECT_TOKEN_TRACE_ID, KV} from "../model/KV";
 import {TraceCreateContract} from "../model/TraceCreateContract";
-import {safeString} from "./common/utils";
+import {sanitizeToken} from "./common/utils";
 import {ethers} from "ethers";
 import {Erc20Transfer} from "../model/Erc20Transfer";
 import {Erc721Transfer} from "../model/Erc721Transfer";
@@ -97,6 +97,8 @@ export class TokenAutoDetect {
                 fetchBalance: auditResult
             });
 
+            sanitizeToken(token);
+
             await Token.upsert(token);
         }
 
@@ -163,10 +165,7 @@ export class TokenAutoDetect {
         const token = {
             base32: addr,
             totalSupply,
-            name: safeString(tokenInfo.name, MAX_LEN_TOKEN_NAME),
-            symbol: safeString(tokenInfo.symbol, MAX_LEN_TOKEN_SYMBOL),
-            decimals: tokenInfo.decimals,
-            granularity: tokenInfo.granularity,
+            ...tokenInfo,
         };
 
         if (
