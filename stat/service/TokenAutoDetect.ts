@@ -1,12 +1,12 @@
-import {Token} from "../model/Token";
-import {Op} from 'sequelize'
+import {IToken, Token} from "../model/Token";
+import {Op, QueryTypes} from 'sequelize'
 import {fmtAddr, StatApp} from "../StatApp";
 import {Conflux, format} from "js-conflux-sdk";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import {TokenTool} from "./tool/TokenTool";
 import {Hex40Map} from "../model/HexMap";
 import {CONST} from "./common/constant";
-import {KEY_AUTO_DETECT_TOKEN_TRACE_ID, KV} from "../model/KV";
+import {KEY_AUTO_DETECT_TOKEN_EPOCH, KEY_AUTO_DETECT_TOKEN_TRACE_ID, KV} from "../model/KV";
 import {TraceCreateContract} from "../model/TraceCreateContract";
 import {sanitizeToken} from "./common/utils";
 import {ethers} from "ethers";
@@ -14,6 +14,7 @@ import {Erc20Transfer} from "../model/Erc20Transfer";
 import {Erc721Transfer} from "../model/Erc721Transfer";
 import {Erc1155Transfer} from "../model/Erc1155Transfer";
 import {ContractQuery, ImplInfo} from "./ContractQuery";
+import {EpochHashTokenTransfer} from "../TokenTransferSync";
 
 const lodash = require('lodash');
 
@@ -41,13 +42,17 @@ export class TokenAutoDetect {
         this.schedule().then();
     }
 
-    public async schedule(delay: number = 1_000) {
+    private async schedule(delay: number = 1_000) {
         const that = this
 
         async function repeat() {
-            await that.run().catch(err => {
+            await that.batchDetect().catch(err => {
                 safeAddErrorLog('token-x', 'detect-token', err).then();
                 console.log(`Failed to detect token`, err);
+            });
+            await that.batchDetectByTransfer().catch(err => {
+                safeAddErrorLog('token-x', 'detect-token', err).then();
+                console.log(`Failed to detect token by transfer`, err);
             });
             setTimeout(repeat, delay)
         }
@@ -56,7 +61,7 @@ export class TokenAutoDetect {
         console.log(`Succeed to schedule detect token in ${delay / 1000}s interval`)
     }
 
-    private async run() {
+    private async batchDetect() {
         const lastId = await KV.getNumber(KEY_AUTO_DETECT_TOKEN_TRACE_ID, 0);
 
         const traces = await TraceCreateContract.findAll({
@@ -73,43 +78,31 @@ export class TokenAutoDetect {
             return;
         }
 
-        for (const trace of traces) {
-            const addressId = trace.to;
-            const hex = await Hex40Map.findOne({where: {id: addressId}, raw: true});
-            const address = format.address(`0x${hex.hex}`, StatApp.networkId);
+        for (const {to: id} of traces) {
+            const address = await Hex40Map.findOne({where: {id}, raw: true}).then(item => `0x${item.hex}`);
 
-            const {implementation} = await TokenAutoDetect.getImpl(address, this.cfx) || {};
-
-            let token = await TokenAutoDetect.detectToken(address, implementation, this.cfx, this.tokenTool);
+            let token = await TokenAutoDetect.detect(address, this.cfx, this.tokenTool);
             if (token === undefined) {
                 continue;
             }
 
-            const transferCount = (await this.countTransfer(addressId, token.type)) || 0;
-            const auditResult = typeof token.name === "string" && token.name.trim().length > 0
-                && typeof token.name === "string" && token.symbol.trim().length > 0;
+            token = await this.buildToken(id, token);
 
-            token = lodash.defaults(token, {
-                hex40id: addressId,
-                transfer: transferCount,
-                auditResult,
-                fetchBalance: auditResult
-            });
-
-            sanitizeToken(token);
             await Token.upsert(token);
         }
 
-        await KV.upsert({key: KEY_AUTO_DETECT_TOKEN_TRACE_ID, value: `${traces[traces.length - 1].id}`})
+        await KV.upsert({key: KEY_AUTO_DETECT_TOKEN_TRACE_ID, value: `${traces[traces.length - 1].id}`});
     }
 
-    static async detectToken(
-        addr: string,
-        impl: string | undefined,
+    static async detect(
+        address: string,
         cfx: Conflux,
         tokenTool: TokenTool,
         debug?: boolean
     ) {
+        const addr = fmtAddr(address, StatApp.networkId);
+        const {implementation: impl, proxyPattern} = await TokenAutoDetect.getImpl(addr, cfx) || {};
+
         const code = await cfx.getCode(impl || addr);
         if (!code || code === "0x") {
             return;
@@ -151,6 +144,7 @@ export class TokenAutoDetect {
             impl,
             tokenInfo,
             totalSupply,
+            proxyPattern,
             supportSelectors: selectors,
             supportErc721Interface: erc721Interface === true,
             supportErc1155Interface: erc1155Interface === true,
@@ -161,9 +155,9 @@ export class TokenAutoDetect {
         }
 
         const token = {
-            base32: addr,
-            totalSupply,
+            base32: format.address(addr, StatApp.networkId),
             ...tokenInfo,
+            totalSupply,
         };
 
         if (
@@ -188,11 +182,124 @@ export class TokenAutoDetect {
         ) {
             return lodash.assign(token, {type: CONST.TRANSFER_TYPE.ERC20});
         }
-
-        return;
     }
 
-    static detectSelectors(code, selectors) {
+    private async batchDetectByTransfer() {
+        const lastEpoch = await KV.getNumber(KEY_AUTO_DETECT_TOKEN_EPOCH, 0);
+        const epochRange: any = await this.nextEpochRange(lastEpoch);
+        if (!epochRange) {
+            return;
+        }
+
+        const sql = [
+            [CONST.TRANSFER_TYPE.ERC20, Erc20Transfer],
+            [CONST.TRANSFER_TYPE.ERC721, Erc721Transfer],
+            [CONST.TRANSFER_TYPE.ERC1155, Erc1155Transfer]]
+            .map(([type, model]: [string, any]) => `
+                select distinct(contractId) as id, "${type}" as type
+                from ${model.getTableName()} 
+                where epoch between :minEpoch and :maxEpoch`)
+            .join("\nunion\n");
+        const transfers: any[] = await Erc20Transfer.sequelize.query(sql, {
+            type: QueryTypes.SELECT,
+            replacements: {minEpoch: epochRange.min, maxEpoch: epochRange.max},
+            raw: true
+        });
+
+        if (transfers.length === 0) {
+            return;
+        }
+
+        for (const {id, type} of transfers) {
+            const address = await Hex40Map.findOne({where: {id}, raw: true}).then(item => `0x${item.hex}`);
+
+            let token = await TokenAutoDetect.detectByTransfer(address, type, this.tokenTool);
+            if (token === undefined) {
+                continue;
+            }
+
+            const {type: existType} = await Token.findOne({where: {hex40id: id}, raw: true}) || {};
+            if (
+                existType === undefined ||
+                (
+                    (
+                        existType === CONST.TRANSFER_TYPE.ERC20
+                        || existType === CONST.TRANSFER_TYPE.ERC721
+                        || existType === CONST.TRANSFER_TYPE.ERC1155
+                    )
+                    && Number(token.type.slice(3)) > Number(existType.slice(3))
+                )
+            ) {
+                token = await this.buildToken(id, token);
+                await Token.upsert(token);
+            }
+        }
+
+        await KV.upsert({key: KEY_AUTO_DETECT_TOKEN_EPOCH, value: `${epochRange.max}`});
+    }
+
+    static async detectByTransfer(
+        address: string,
+        type: string,
+        tokenTool: TokenTool,
+        debug?: boolean
+    ) {
+        const addr = fmtAddr(address, StatApp.networkId);
+
+        const [tokenInfo, totalSupply, erc721Interface, erc1155Interface] = await Promise.all([
+            tokenTool.getToken(addr),
+            tokenTool.getTokenTotalSupply(addr),
+            tokenTool.supportsInterface(addr, CONST.EIP165_INTERFACE_ID.ERC721),
+            tokenTool.supportsInterface(addr, CONST.EIP165_INTERFACE_ID.ERC1155),
+        ]);
+
+        debug && console.log(`detectTokenByType`, {
+            addr,
+            tokenInfo,
+            totalSupply,
+            supportErc721Interface: erc721Interface === true,
+            supportErc1155Interface: erc1155Interface === true,
+        })
+
+        const token = {
+            base32: format.address(addr, StatApp.networkId),
+            ...tokenInfo,
+            totalSupply,
+        };
+
+        if (type === CONST.TRANSFER_TYPE.ERC1155) {
+            return erc1155Interface === true ? lodash.assign(token, {type: CONST.TRANSFER_TYPE.ERC1155}) : undefined;
+        }
+
+        if (type === CONST.TRANSFER_TYPE.ERC721) {
+            return erc721Interface === true ? lodash.assign(token, {type: CONST.TRANSFER_TYPE.ERC721}) : undefined;
+        }
+
+        if (type === CONST.TRANSFER_TYPE.ERC20) {
+            return lodash.assign(token, {type: CONST.TRANSFER_TYPE.ERC20});
+        }
+    }
+
+    private DETECT_EPOCHS_PER_TIME = 1000;
+
+    private async nextEpochRange(cur: number) {
+        const min = cur + 1;
+        const max = min + this.DETECT_EPOCHS_PER_TIME - 1;
+
+        const maxSynced: number | null = await EpochHashTokenTransfer.max("epoch");
+        if (maxSynced === null) {
+            return;
+        }
+
+        if (min <= maxSynced) {
+            return {min, max: Math.min(max, maxSynced)};
+        }
+
+        // reorg occurs
+        return {min: Math.max(0, maxSynced - this.DETECT_EPOCHS_PER_TIME), max: maxSynced};
+    }
+
+    private static detectSelectors(code, selectors) {
         const hex = code.toLowerCase();
 
         const supportSelectors = {};
@@ -212,12 +319,11 @@ export class TokenAutoDetect {
             return Erc1155Transfer.count({where: {contractId: addressId}});
     }
 
-    static async getImpl(address, cfx: Conflux): Promise<ImplInfo | undefined> {
+    private static async getImpl(address, cfx: Conflux): Promise<ImplInfo | undefined> {
         const implInfo = await ContractQuery._getImpl(cfx, address);
         if (implInfo) {
             return implInfo;
         }
-
 
         const code = await cfx.getCode(address);
         if (CONST.REGEX_EIP1167_BYTECODE.test(code)) {
@@ -226,7 +332,23 @@ export class TokenAutoDetect {
                 proxyPattern: CONST.PROXY_PATTERN.MINIMAL_PROXY,
             }
         }
+    }
 
-        return;
+    private async buildToken(addressId: number, token: IToken) {
+        const transferCount = (await this.countTransfer(addressId, token.type)) || 0;
+
+        const auditResult = typeof token.name === "string" && token.name.trim().length > 0
+            && typeof token.name === "string" && token.symbol.trim().length > 0;
+
+        token = lodash.defaults(token, {
+            hex40id: addressId,
+            transfer: transferCount,
+            auditResult,
+            fetchBalance: auditResult
+        });
+
+        sanitizeToken(token);
+
+        return token;
     }
 }

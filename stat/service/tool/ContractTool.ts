@@ -98,9 +98,8 @@ async function run() {
         await syncAnnouncedAbi()
     }
     if (type === 9) {
-        const {implementation, proxyPattern} = await TokenAutoDetect.getImpl(addr, cfx) || {};
-        const t = await TokenAutoDetect.detectToken(addr, implementation, cfx, tokenTool, true);
-        console.log(`detect result ====== ${addr}`, {...t, proxyPattern});
+        const t = await TokenAutoDetect.detect(addr, cfx, tokenTool, true);
+        console.log(`detect result ====== ${addr}`, t);
     }
     await close();
 }
