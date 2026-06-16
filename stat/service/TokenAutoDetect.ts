@@ -196,7 +196,7 @@ export class TokenAutoDetect {
             [CONST.TRANSFER_TYPE.ERC721, Erc721Transfer],
             [CONST.TRANSFER_TYPE.ERC1155, Erc1155Transfer]]
             .map(([type, model]: [string, any]) => `
-                select distinct(contractId) as id, "${type}" as type
+                select distinct(contractId) as id, '${type}' as type
                 from ${model.getTableName()} 
                 where epoch between :minEpoch and :maxEpoch`)
             .join("\nunion\n");
@@ -281,22 +281,26 @@ export class TokenAutoDetect {
     }
 
     private DETECT_EPOCHS_PER_TIME = 1000;
+    private DETECT_EPOCHS_REORG_OCCURS = 100;
 
     private async nextEpochRange(cur: number) {
-        const min = cur + 1;
-        const max = min + this.DETECT_EPOCHS_PER_TIME - 1;
-
         const maxSynced: number | null = await EpochHashTokenTransfer.max("epoch");
         if (maxSynced === null) {
             return;
         }
 
-        if (min <= maxSynced) {
-            return {min, max: Math.min(max, maxSynced)};
+        if (cur === maxSynced) {
+            return;
         }
 
-        // reorg occurs
-        return {min: Math.max(0, maxSynced - this.DETECT_EPOCHS_PER_TIME), max: maxSynced};
+        if (cur > maxSynced) {
+            return {min: Math.max(0, maxSynced - this.DETECT_EPOCHS_REORG_OCCURS), max: maxSynced};
+        }
+
+        const min = cur + 1;
+        const max = min + this.DETECT_EPOCHS_PER_TIME - 1;
+
+        return {min, max: Math.min(max, maxSynced)};
     }
 
     private static detectSelectors(code, selectors) {
@@ -338,7 +342,7 @@ export class TokenAutoDetect {
         const transferCount = (await this.countTransfer(addressId, token.type)) || 0;
 
         const auditResult = typeof token.name === "string" && token.name.trim().length > 0
-            && typeof token.name === "string" && token.symbol.trim().length > 0;
+            && typeof token.symbol === "string" && token.symbol.trim().length > 0;
 
         token = lodash.defaults(token, {
             hex40id: addressId,

@@ -45,10 +45,10 @@ const zlib = require('zlib');
 
 const FIELDS_TOKEN_BASIC = ['name', 'symbol', 'decimals', 'granularity', 'totalSupply'];
 const FIELDS_TOKEN_REGISTER = ['icon', 'website', 'ipfsGateway'];
-const FIELDS_TOKEN = ['hex40id', 'base32', 'epoch', 'updatedAt', ...FIELDS_TOKEN_BASIC, ...FIELDS_TOKEN_REGISTER];
+const FIELDS_TOKEN = ['hex40id', 'base32', 'updatedAt', ...FIELDS_TOKEN_BASIC, ...FIELDS_TOKEN_REGISTER];
 
 const FIELDS_CONTRACT_REGISTER = ['name', 'website'];
-const FIELDS_CONTRACT = ['hex40id', 'base32', 'epoch', 'updatedAt', ...FIELDS_CONTRACT_REGISTER];
+const FIELDS_CONTRACT = ['hex40id', 'base32', 'updatedAt', 'epoch', ...FIELDS_CONTRACT_REGISTER];
 
 const SELECTOR_DESTROY = '0x00f55d9d';
 
