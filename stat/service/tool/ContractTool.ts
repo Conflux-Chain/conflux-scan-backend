@@ -26,6 +26,7 @@ import {ContractTraceCreateQuery} from "../ContractTraceCreateQuery";
 import {AddressTransactionIndex} from "../../model/FullBlock";
 import {PruneInfo, PruneType} from "../../model/PruneInfo";
 import {TokenTool} from "./TokenTool";
+import {TokenAutoDetect} from "../TokenAutoDetect";
 
 const fs = require('fs');
 const path = require('path');
@@ -39,6 +40,7 @@ const type = Number(args[1])
 let lastId = -1
 let compiler
 let dryRun = false;
+let addr;
 if (type === 2) {
     compiler = args[2]
 }
@@ -55,6 +57,11 @@ if (type === 7) {
 if (type === 8) {
     if (args[2] !== undefined) {
         dryRun = args[2] === 'true';
+    }
+}
+if (type === 9) {
+    if (args[2] !== undefined) {
+        addr = args[2];
     }
 }
 
@@ -89,6 +96,10 @@ async function run() {
     }
     if (type === 8) {
         await syncAnnouncedAbi()
+    }
+    if (type === 9) {
+        const t = await TokenAutoDetect.detect(addr, cfx, tokenTool, true);
+        console.log(`detect result ====== ${addr}`, t);
     }
     await close();
 }

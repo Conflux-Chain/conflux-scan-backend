@@ -647,6 +647,7 @@ export const CONST = {
   PROXY_PATTERN: {
     BEACON_PROXY: "EIP-1967 Transparent Proxy",
     PROXY: "OpenZeppelin's Unstructured Storage",
+    MINIMAL_PROXY: "Minimal Proxy"
   },
 
   FRONTEND_CONFIG: frontendConstant,
