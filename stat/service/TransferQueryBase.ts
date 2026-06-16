@@ -1,7 +1,7 @@
 // @ts-ignore
 import {format} from "js-conflux-sdk";
 import {IndexHints, Op} from "sequelize"
-import {hex40IdMap, idHex40Map, Hex40Map} from "../model/HexMap";
+import {idHex40Map, Hex40Map} from "../model/HexMap";
 import {FailedTx, FullTransaction} from "../model/FullBlock";
 import {PruneInfo} from "../model/PruneInfo";
 import {CONST} from "./common/constant"
@@ -12,6 +12,7 @@ import {Token} from "../model/Token";
 import {detectFishingAddress} from "./tool/phishingAddress";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import {fillMethodInfo} from "./contract/contractTool";
+
 const lodash = require('lodash');
 
 export abstract class TransferQueryBase {
@@ -33,9 +34,13 @@ export abstract class TransferQueryBase {
     public async buildQueryOptions({minEpochNumber, maxEpochNumber, txParas, minTimestamp, maxTimestamp, accountAddressId,
         addressId, fromAddressId, toAddressId, opponentAddressId, tokenAddressIdArray, tokenId, transferType = undefined,
         txType, skip, limit, sort='DESC', cursor = undefined, cursorField = undefined}){
-        sort = (sort === 'DESC' || sort === 'desc') ? 'DESC' : 'ASC'
         // page
         const queryOptions: any = {offset: skip, limit, raw: true};
+
+        // order
+        sort = (sort === 'DESC' || sort === 'desc') ? 'DESC' : 'ASC'
+        queryOptions.order = [['epoch', sort], ['blockIndex', sort], ['txIndex', sort],['txLogIndex', sort]];
+
         // condition
         const conditionArray = [];
         if(accountAddressId){
@@ -77,7 +82,6 @@ export abstract class TransferQueryBase {
             conditionArray.push({epoch: txParas.epoch, blockIndex: txParas.blockIndex, txIndex: txParas.txIndex});
         }
         if(tokenId !== undefined) {
-            // conditionArray.push({tokenId: tokenId.toString()});
             this.buildTokenIdOption(conditionArray, tokenId);
         }
         if(accountAddressId) {
@@ -89,8 +93,6 @@ export abstract class TransferQueryBase {
                 conditionArray.push({toId: accountAddressId});
             } else if (txType === CONST.TX_TYPE.OUT) {
                 conditionArray.push({fromId: accountAddressId});
-            } else {
-                // conditionArray.push({[Op.or]: [{toId: accountAddressId}, {fromId: accountAddressId}]});
             }
         }
         if(cursor !== undefined && cursor !== 0) {
@@ -104,8 +106,6 @@ export abstract class TransferQueryBase {
             queryOptions.where = {};
             queryOptions.where[Op.and] = conditionArray;
         }
-        // order
-        queryOptions.order = [['epoch', sort], ['blockIndex', sort], ['txIndex', sort],['txLogIndex', sort]];
 
         return queryOptions;
     }
@@ -190,23 +190,19 @@ export abstract class TransferQueryBase {
         } else{
             queryOptions.attributes.push(['id', 'transactionLogIndex']);
         }
-        let phishingInfo: any = {};
+
         // query
         const page = await this.doQuery(options, queryOptions);
         const list = [];
         const toIdArr = [];
         if(page?.rows){
             const hex40IdSet = new Set<number>();
-            // const txHashQueryCondition = []
             const mapTx = new Map<string, FullTransaction>()
             const txTasks = []
             page.rows.forEach( row => {
                 hex40IdSet.add(row['from']);
                 hex40IdSet.add(row['to']);
                 hex40IdSet.add(row['address']);
-                // txHashQueryCondition.push({[Op.and]:[{epoch: row['epochNumber'],
-                //         blockPosition:row['blockIndex'], txPosition:row['txIndex']
-                //     }]})
                 txTasks.push(
                     FullTransaction.findOne({
                         attributes: ['epoch', 'blockPosition', 'txPosition', 'hash', 'nonce', 'method', 'status', 'gas'],
@@ -223,13 +219,6 @@ export abstract class TransferQueryBase {
             await Promise.all(txTasks)
             const [hex40Map, txMap] = await Promise.all([
                 idHex40Map(Array.from(hex40IdSet)),
-                // this query is very slow if there are more than 1K rows
-                // FullTransaction.findAll({attributes: ['epoch','blockPosition','txPosition','hash', 'nonce', 'method', 'status', 'gas'],
-                //     where: {[Op.or]: txHashQueryCondition}}).then(list=>{
-                //     const map = new Map<string, FullTransaction>()
-                //     list.forEach(tx=>map.set(`${tx.epoch}_${tx.blockPosition}_${tx.txPosition}`, tx))
-                //     return map
-                // })
                 Promise.resolve(mapTx)
             ]);
 
@@ -250,6 +239,7 @@ export abstract class TransferQueryBase {
         }
 
         // add tx info
+        let phishingInfo: any = {};
         if(this.getTransferType() === CONST.TRANSFER_TYPE.ALL) {
             await fillMethodInfo(list, toIdArr, true).catch(error=>{
                 safeAddErrorLog('open-api', 'list-transfer-fill-method', error);
@@ -292,15 +282,17 @@ export abstract class TransferQueryBase {
                 }
             }
         }
+
+        // get next cursor
         let next;
         if(cursor !== undefined) {
             next = list?.length ? list[list.length - 1]['cursor'] : 0;
         }
-        const result = {total: (page?.count || 0) + prunedCntr, next, list, accountId: accountAddressId,
+
+        return {total: (page?.count || 0) + prunedCntr, next, list, accountId: accountAddressId,
             queryWithCache: page.queryWithCache, hitCache: page.hitCache,
             phishingInfo,
         };
-        return result;
     }
 
     protected async queryWithCache(queryOptions, options) {
@@ -313,7 +305,6 @@ export abstract class TransferQueryBase {
                 if (sort === 'DESC') {
                     r(undefined);
                 } else {
-                    // options.order = [['epoch', sort], ['blockPosition', sort], ['txPosition', sort]];
                     queryOptions.order.forEach(o=>o[1] = 'DESC');
                     const queryParam = {...queryOptions, limit: 1}
                     delete queryParam.offset;
@@ -351,34 +342,6 @@ export abstract class TransferQueryBase {
     }
 
     public abstract doQueryAccountAddress(options: any, queryOptions: any): Promise<any>;
-
-    /**
-     * address: contract address
-     * @param options
-     */
-    public async listAccountAddress(options) {
-        const {address, skip = 0, limit = 10} = options;
-
-        const addressHex = address && format.hexAddress(address).substr(2);
-        const addressMap = await hex40IdMap([addressHex]);
-        const addressId = addressMap?.get(addressHex);
-        if(address !== undefined && addressId === undefined){
-            return {total: 0, list: [], addressId, addressHex};
-        }
-
-        const queryOptions: any = {where: {contractId: addressId}, offset: skip, limit, raw: true};
-        const page = await this.doQueryAccountAddress(options, queryOptions);
-        let list ;
-        if(page?.rows){
-            const hex40IdSet = new Set<number>();
-            page.rows.forEach( row => {
-                hex40IdSet.add(row['addressId']);
-            });
-            const hex40Map = await idHex40Map(Array.from(hex40IdSet));
-            list = [...hex40Map.values()];
-        }
-        return {total: list?.length || 0, list: list || [], addressId, addressHex};
-    }
 
     protected async queryByCursor(model, queryOptions) {
         const list = await model.findAll(queryOptions);

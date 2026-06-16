@@ -142,6 +142,9 @@ export interface QuoteOptions {
     enable: true;
     binanceAccessToken: string;
     coinMarketCapAccessToken: string;
+    binanceFetchIntervalSec?: number;
+    coinMarketCapFetchIntervalSec?: number;
+    disableAlertPullPeer?: boolean,
 }
 
 export interface VerificationOptions{
