@@ -712,7 +712,7 @@ async function getTokenInfo(ctx) {
     checkPresent({contractaddress}, ['contractaddress']);
 
     const token = await getToken(contractaddress);
-    if(!token){
+    if (!token) {
         throw new Errors.ParameterError(`Token ${contractaddress} not found.`);
     }
 

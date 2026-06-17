@@ -851,9 +851,12 @@ export function safeString(str, len) {
     return str.trim().slice(0, len);
 }
 
+export const TOKEN_NAME_MAX_LEN = 64;
+export const TOKEN_SYMBOL_MAX_LEN = 64;
+
 export function sanitizeToken(token: IToken) {
-    token.name = safeString(token.name, 64);
-    token.symbol = safeString(token.symbol, 64);
+    token.name = safeString(token.name, TOKEN_NAME_MAX_LEN);
+    token.symbol = safeString(token.symbol, TOKEN_SYMBOL_MAX_LEN);
     token.website = safeString(token.website, 200);
     token.ipfsGateway = safeString(token.ipfsGateway, 200);
 }

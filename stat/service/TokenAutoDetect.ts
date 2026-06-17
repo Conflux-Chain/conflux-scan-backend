@@ -81,7 +81,7 @@ export class TokenAutoDetect {
         for (const {to: id} of traces) {
             const address = await Hex40Map.findOne({where: {id}, raw: true}).then(item => `0x${item.hex}`);
 
-            let token = await TokenAutoDetect.detect(address, this.cfx, this.tokenTool);
+            let token = await TokenAutoDetect.detect(address, this.tokenTool, false);
             if (token === undefined) {
                 continue;
             }
@@ -96,19 +96,19 @@ export class TokenAutoDetect {
 
     static async detect(
         address: string,
-        cfx: Conflux,
         tokenTool: TokenTool,
+        detectBytecode: boolean,
         debug?: boolean
     ) {
         const addr = fmtAddr(address, StatApp.networkId);
-        const {implementation: impl, proxyPattern} = await TokenAutoDetect.getImpl(addr, cfx) || {};
+        const {implementation: impl, proxyPattern} = await TokenAutoDetect.getImpl(addr, tokenTool.cfx) || {};
 
-        const code = await cfx.getCode(impl || addr);
+        const code = await tokenTool.cfx.getCode(impl || addr);
         if (!code || code === "0x") {
             return;
         }
 
-        const selectors: any = TokenAutoDetect.detectSelectors(code, SELECTORS);
+        const selectors: any = TokenAutoDetect.detectSelectors(code, SELECTORS, detectBytecode);
 
         const [tokenInfo, totalSupply, erc721Interface, erc1155Interface] = await Promise.all([
             tokenTool.getToken(addr),
@@ -139,7 +139,7 @@ export class TokenAutoDetect {
             }
         }
 
-        debug && console.log(`detectToken`, {
+        debug && console.log("detect token ==\n", {
             addr,
             impl,
             tokenInfo,
@@ -213,7 +213,7 @@ export class TokenAutoDetect {
         for (const {id, type} of transfers) {
             const address = await Hex40Map.findOne({where: {id}, raw: true}).then(item => `0x${item.hex}`);
 
-            let token = await TokenAutoDetect.detectByTransfer(address, type, this.tokenTool);
+            let token = await TokenAutoDetect.detectByTransfer(address, this.tokenTool, type);
             if (token === undefined) {
                 continue;
             }
@@ -240,8 +240,8 @@ export class TokenAutoDetect {
 
     static async detectByTransfer(
         address: string,
-        type: string,
         tokenTool: TokenTool,
+        type: string,
         debug?: boolean
     ) {
         const addr = fmtAddr(address, StatApp.networkId);
@@ -303,12 +303,12 @@ export class TokenAutoDetect {
         return {min, max: Math.min(max, maxSynced)};
     }
 
-    private static detectSelectors(code, selectors) {
+    private static detectSelectors(code, selectors, required: boolean) {
         const hex = code.toLowerCase();
 
         const supportSelectors = {};
         for (const [name, selector] of Object.entries(selectors)) {
-            supportSelectors[name] = hex.includes((selector as string).toLowerCase());
+            supportSelectors[name] = required ? hex.includes((selector as string).toLowerCase()) : true;
         }
 
         return supportSelectors;

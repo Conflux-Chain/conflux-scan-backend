@@ -71,6 +71,10 @@ export class ENSCheckerQuery {
             return {};
         }
 
+        if (!addresses?.length) {
+            return {}
+        }
+
         const hexes = [...new Set(addresses.filter(item => item?.trim()).map(item => format.hexAddress(item)))];
 
         const names = await this.reverseRecords.getNames(hexes).catch(err => {

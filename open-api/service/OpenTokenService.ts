@@ -13,6 +13,10 @@ const lodash = require('lodash');
 
 export async function getToken(address) {
     const token = await getApiService().tokenQuery.query({address});
+    if (!token) {
+        return null;
+    }
+
     const result = {
         contractAddress: token.address,
         tokenName: token.name,
@@ -26,8 +30,8 @@ export async function getToken(address) {
     if (StatApp.isEVM) {
         result.contractAddress = result.contractAddress ? format.hexAddress(result.contractAddress) :
             result.contractAddress;
-    } else{
-        result['tokenType']= result?.tokenType?.replace('ERC', 'CRC');
+    } else {
+        result['tokenType'] = result?.tokenType?.replace('ERC', 'CRC');
     }
 
     return result;
