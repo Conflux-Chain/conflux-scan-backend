@@ -28,6 +28,10 @@ export class TokenQuoteSync {
     private readonly tokenTool: TokenTool;
     private tick = -1; // 1 sec per tick by default
     private readonly IS_BJ_REGION: boolean;
+    private readonly bnIntervalSec: number;
+    private readonly cmcIntervalSec: number;
+    private readonly resetIntervalSec: number;
+    private readonly disableAlertPullPeer: boolean;
 
     constructor(cfx: Conflux, config: QuoteOptions) {
         if(config.enable && (!config.binanceAccessToken || !config.coinMarketCapAccessToken)) {
@@ -38,6 +42,10 @@ export class TokenQuoteSync {
         this.cfx = cfx;
         this.tokenTool = new TokenTool(cfx);
         this.IS_BJ_REGION = ConfigInstance.serverTag.includes("bj");
+        this.bnIntervalSec = config.binanceFetchIntervalSec || 5;
+        this.cmcIntervalSec = config.coinMarketCapFetchIntervalSec || 720;
+        this.resetIntervalSec = this.bnIntervalSec * this.cmcIntervalSec;
+        this.disableAlertPullPeer = Boolean(config.disableAlertPullPeer);
 
         this.schedule().then();
     }
@@ -82,7 +90,9 @@ export class TokenQuoteSync {
         });
 
         await this.pullPrice(tokenList).catch(e => {
-            safeAddErrorLog('stat-task', 'token-quote-peer', e).then();
+            if (!this.disableAlertPullPeer) {
+                safeAddErrorLog('stat-task', 'token-quote-peer', e).then();
+            }
             console.log(`Failed to sync token quote from peer`, e);
         });
         await this.updateByMoonswap().catch(e => {
@@ -93,23 +103,22 @@ export class TokenQuoteSync {
             safeAddErrorLog('stat-task', 'token-quote-swappi', e).then();
             console.log(`Failed to sync token quote from swappi`, e);
         });
-        // every 5 sec
-        if (this.tick % 5 === 0) {
+
+        if (this.tick % this.bnIntervalSec === 0) {
             await this.updateByBN(tokenList).catch(e => {
                 safeAddErrorLog('stat-task', 'token-quote-bn', e).then();
                 console.log(`Failed to sync token quote from BN`, e);
             });
         }
 
-        // every 60 sec
-        if (this.tick % 60 === 0) {
+        if (this.tick % this.cmcIntervalSec === 0) {
             await this.updateByCMC(tokenList).catch(e => {
                 safeAddErrorLog('stat-task', 'quote-sync-cmc', e).then();
                 console.log(`Failed to sync token quote from CMC`, e);
             });
         }
 
-        this.tick = this.tick % 60 === 0 ? 0 : this.tick;
+        this.tick = this.tick % this.resetIntervalSec === 0 ? 0 : this.tick;
     }
 
     //======================================================================

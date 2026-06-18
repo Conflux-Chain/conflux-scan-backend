@@ -321,9 +321,8 @@ export const jsonrpc_queryContract = jsonrpc.method_('queryContract',
 
     const result = await service.contract.query({ address, fields });
     if (lodash.includes(fields, 'token')) {
-      result.token = await service.token.query({ address });
+      result.token = await service.tokenQuery.query({ address });
     }
-
     return { ...result, isRegistered: result?.name !== undefined };
   },
 
@@ -331,9 +330,6 @@ export const jsonrpc_queryContract = jsonrpc.method_('queryContract',
     address: app.type.simpleAddress,
     from: app.type.simpleAddress.$or(type.any),
     admin: app.type.simpleAddress,
-    token: {
-      address: app.type.simpleAddress,
-    },
     sponsor: {
       sponsorForCollateral: app.type.simpleAddress.$or(type.any),
       sponsorForGas: app.type.simpleAddress.$or(type.any),

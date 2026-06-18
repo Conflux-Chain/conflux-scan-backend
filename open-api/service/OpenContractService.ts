@@ -158,7 +158,7 @@ export async function getContractCreation(ctx) {
     for (let addr of contractaddresses) {
         const trace: any = await getApiService().traceCreateQuery.query(format.hexAddress(addr));
         if(trace.msg) {
-            console.log(`No trace found for contract ${addr}`)
+            console.log(`No trace create found for contract ${addr}`)
             continue
         }
 

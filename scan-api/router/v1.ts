@@ -749,15 +749,7 @@ router_get(router,'/contract/:address',
           sponsorForGas: 'string',
           sponsorForCollateral: 'string',
         },
-        token: {
-          name: 'string',
-          symbol: 'string',
-          icon: 'string',
-          iconUrl: 'string',
-          website: 'string',
-          ipfsGateway: 'string',
-          transferType: 'string',
-        },
+        token: 'object',
         verify: 'object',
         proxy: 'object',
         beacon: 'object',
@@ -841,7 +833,6 @@ router_get(router,'/contract-and-token',
 );
 
 // ---------------------------------- Token ---------------------------------
-
 router_get(router,'/token/:address',
   OpenAPI.flow({
     tags: ['token'],
@@ -883,10 +874,9 @@ router_get(router,'/token/:address',
     },
   }),
   async function(option) {
-    const addr = this.app.parseParam(()=>this.app.type.address(option.address));
-    const result = await (this as ScanCtx).app.service.token.query({address: addr});
-    this.app.formatAddrObj(result, ['address']);
-    return result;
+    const address = this.app.parseParam(() => this.app.type.address(option.address));
+    const result = await (this as ScanCtx).app.service.tokenQuery.query({address});
+    return result || {};
   }
 );
 

@@ -10,13 +10,12 @@ import {Erc721Transfer, T_ADDRESS_ERC721_TRANSFER} from "../model/Erc721Transfer
 import {Erc1155Transfer, T_ADDRESS_ERC1155_TRANSFER} from "../model/Erc1155Transfer";
 import {TokenSecurityAudit} from "../model/TokenSecurityAudit";
 import {TokenBalance} from "../model/Balance";
-import {StatApp} from "../StatApp";
+import {fmtAddr, StatApp} from "../StatApp";
 import {Desensitizer} from "./Desensitizer";
 import {CONST} from "./common/constant"
 import {NAME_TAG_SPLIT} from "./EpochSync";
 import {Errors} from "./common/LogicError";
 import {NameTag} from "../model/NameTag";
-import {ScanCtx} from "../../scan-api/service/index";
 import {ConfigInstance, NoCoreSpace} from "../config/StatConfig";
 import {BatchBalanceWatcher} from "./watcher/BatchBalanceWatcher";
 
@@ -35,15 +34,18 @@ export class TokenQuery {
     }
 
     public async query({address}) {
-        const response = await this.list({addresses: [address]});
-        const token = (response.list)[0] || {};
+        const {list} = await this.list({addresses: [address]});
+        if (!list?.length) {
+            return null;
+        }
+
+        const token = list[0];
 
         if (token.isRegistered) {
-            const [increaseRatio] = await DailyToken.calcRecentIncrease(token.hex40id).catch(() => {
-                return [0]
-            });
+            const [increaseRatio] = await DailyToken.calcRecentIncrease(token.hex40id).catch(() => [0]);
             token.holderIncreasePercent = increaseRatio;
         }
+
         return token;
     }
 
@@ -115,7 +117,7 @@ export class TokenQuery {
         } else {
             if (orderBy) {
                 if (NoCoreSpace) {
-                    if(orderBy !== 'holderCount') {
+                    if (orderBy !== 'holderCount') {
                         orderBy = 'transferCount';
                     }
                 }
@@ -133,7 +135,7 @@ export class TokenQuery {
 
         //query
         let rawList;
-        let count;
+        let total;
         if (addresses?.length) {
             delete options.where['auditResult'];
             if (ConfigInstance.onlyStatActiveContract) {
@@ -142,34 +144,38 @@ export class TokenQuery {
                 options.limit = Math.min(100, options.limit ?? 100);
             }
             rawList = await Token.findAll(options);
-            count = rawList?.length || 0;
+            total = rawList?.length || 0;
         } else {
             options.offset = skip;
             options.limit = limit;
             const page = await Token.findAndCountAll(options);
             rawList = page?.rows;
-            count = page?.count;
+            total = page?.count || 0;
         }
+
+        // check result size
         if (rawList.length > 200) {
             const msg = `token list with bad size ${rawList.length}`;
             console.log(msg);
             console.log(`addresses`, addresses, 'name', name, 'limit', limit)
             throw new Errors.BizError(msg)
         }
+
+        // build result
         let list = [];
-        let registeredTokens;
+        let detectedTokens;
         if (rawList) {
-            registeredTokens = rawList.map(item => item.address);
-            const contractSrv = contractQuery || service.contractQuery;
-            const verifiedTokens = await contractSrv.listVerifyInBatch(registeredTokens)
-                .then(arr => arr.map(t => t.address));
+            detectedTokens = rawList.map(item => item.address);
+            const verifiedTokens = await (contractQuery || service.contractQuery).listVerifyInBatch(detectedTokens)
+                .then(list => list.map(item => fmtAddr(item.address, StatApp.networkId)));
             rawList.forEach(row => {
+                row['address'] = fmtAddr(row['address'], StatApp.networkId);
                 row['transferType'] = lodash.toUpper(row['transferType']);
+                row['verified'] = lodash.includes(verifiedTokens, row['address']);
+                row['isRegistered'] = true;
                 if (lodash.includes(fields, 'icon')) {
                     row['icon'] = row['icon'] ? decodeTokenIcon(row['icon']) : undefined;
                 }
-                row['isRegistered'] = true;
-                row['verified'] = lodash.includes(verifiedTokens, row['address']);
                 list.push(row);
             });
         }
@@ -177,16 +183,22 @@ export class TokenQuery {
         // add additional info
         let contractList;
         let eoaList;
-        if(name){// add contracts for unmatched token
+        if (name) {
             const where: any = {name: {[Op.like]: `%${name}%`}};
-            if(registeredTokens?.length) where.base32 = {[Op.notIn]: registeredTokens};
-            if (!showDestroyed) {
-                where.destroyed = false;
-            }
-            contractList = await Contract.findAll({ offset: 0, limit: 10, raw: true,
+            if (detectedTokens?.length) where.base32 = {[Op.notIn]: detectedTokens};
+            if (!showDestroyed) where.destroyed = false;
+
+            // get contract info
+            contractList = await Contract.findAll({
+                offset: 0, limit: 10, raw: true,
                 attributes: [['base32', 'address'], 'name', 'epoch'], where,
-                order: [['epoch', 'ASC']]
+                order: [['epoch', 'ASC']],
             });
+            contractList?.forEach(contract => {
+                contract["address"] = fmtAddr(contract['address'], StatApp.networkId);
+            });
+
+            // get name tag info
             eoaList = await NameTag.findAll({
                 attributes: [['base32', 'address'], 'nameTag', 'labels'],
                 where: {nameTag: {[Op.like]: `%${name}%`}, eoa: true},
@@ -195,31 +207,24 @@ export class TokenQuery {
                 limit: 100,
                 raw: true,
             });
-            const accountSrv = accountQuery || service.accountQuery;
             eoaList?.forEach(nameTag => {
-                if(nameTag?.labels) {
-                    nameTag.labels = nameTag.labels.split(NAME_TAG_SPLIT);
-                    const caution = nameTag.labels.find(label => accountSrv?.cautionLabels.has(label));
+                nameTag["address"] = fmtAddr(nameTag['address'], StatApp.networkId);
+                if (nameTag?.labels) {
+                    const hasCautionLabel = nameTag.labels.split(NAME_TAG_SPLIT)
+                        .find(label => (accountQuery || service.accountQuery)?.cautionLabels.has(label));
+                    nameTag.caution = hasCautionLabel ? 1 : 0;
                     delete nameTag.labels;
-                    nameTag.caution = caution ? 1 : 0;
                 }
             })
-        } else if (addresses) {// add unregistered tokens
-            const tokens = (await Promise.all(addresses
-                .filter(address => !registeredTokens.includes(address))
-                .map(this.getTokenInfo, this)
-            )).filter(Boolean);
-
-            list = [...list, ...tokens].filter(item => item.transferType);
+        } else {
             list.forEach(TokenQuery.mosaicToken);
-            count = list.length;
         }
 
-        // add security audit
+        // add security audit info
         await this.addSecurityAuditInfo(list);
 
         return {
-            total: count,
+            total,
             list,
             contractTotal: contractList?.length,
             contractList,
@@ -422,32 +427,6 @@ export class TokenQuery {
         return {balanceMap, tokenArray};
     }
 
-    private async getTokenInfo(base32) {
-        const {
-            app: {tokenTool, service},
-        } = this as unknown as ScanCtx;
-
-        const {type} = await TokenQuery.detectTokenType({base32});
-
-        if (!type) {
-            return;
-        }
-
-        const toolkit = tokenTool || service.tokenTool;
-
-        const [basicInfo, totalSupply] = await Promise.all([
-            toolkit.getToken(base32, undefined, true),
-            toolkit.getTokenTotalSupply(base32, undefined, false),
-        ]);
-
-        return lodash.defaults(basicInfo, {totalSupply}, {
-            transferType: type,
-            transferCount: 0,
-            holderIncreasePercent: 0,
-            isRegistered: false,
-        });
-    }
-
     private async addSecurityAuditInfo(tokenArray) {
         const addressArray = tokenArray?.map(item => item.address);
         if (!addressArray?.length) {
@@ -480,51 +459,6 @@ export class TokenQuery {
                 item.securityAudit.officialLabels = securityAudit.officialLabels?.split(NAME_TAG_SPLIT);
             }
         });
-    }
-
-    public async detectToken(base32){
-        const {
-            app: {tokenTool, service},
-        } = this as unknown as ScanCtx;
-
-        const toolkit = tokenTool || service.tokenTool
-        let [tokenInfo, interface721, interface1155, typeInfo] = await Promise.all([
-            toolkit.getToken(base32),
-            toolkit.supportsInterface(base32, CONST.EIP165_INTERFACE_ID.ERC721),
-            toolkit.supportsInterface(base32, CONST.EIP165_INTERFACE_ID.ERC1155),
-            TokenQuery.detectTokenType({base32}),
-        ]);
-
-        const hex40 = await Hex40Map.findOne({where: {hex: format.hexAddress(base32).substr(2)}});
-        let type = typeInfo?.type;
-
-        const result = {base32, hex: hex40?.hex, type};
-        const tokenCondition = `
-        Prerequisites for a token: 
-        1. The contract has name(256 characters at max) and symbol(128 characters at max);
-        2. At least one token transfer record; 
-        3. The ERC721 or ERC1155 token need comply with the ERC165 standard;
-        `;
-        if(!tokenInfo?.name){
-            return lodash.defaults(result, {reason: `token name not exist. ${tokenCondition}`});
-        }
-        if(tokenInfo?.name?.length > 256){
-            return lodash.defaults(result, {reason: `token name too long. ${tokenCondition}`});
-        }
-        if(!tokenInfo?.symbol){
-            return lodash.defaults(result, {reason: `token symbol not exist. ${tokenCondition}`});
-        }
-        if(tokenInfo?.symbol?.length > 128){
-            return lodash.defaults(result, {reason: `token symbol too long. ${tokenCondition}`});
-        }
-        if(!type){
-            return lodash.defaults(result, {reason: `token transfer record not exist. ${tokenCondition}`});
-        }
-        if(!interface721 && !interface1155){
-            return lodash.defaults(result, {reason: `not support ERC165. ${tokenCondition}`});
-        }
-
-        return result;
     }
 
     public static async detectTokenType({base32 = undefined, hex40id = undefined}){

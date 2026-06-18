@@ -29,6 +29,8 @@ import {
     mustBeAddressParamIfPresent,
     mustBeEnumParamIfPresent,
     mustBeIntParamIfPresent,
+    TOKEN_NAME_MAX_LEN,
+    TOKEN_SYMBOL_MAX_LEN,
 } from "../service/common/utils";
 import {limitListOnBody} from "../service/pos/PosStat";
 import {checkRate, getClientIP, loadRateConfig} from "./RateLimiter";
@@ -39,7 +41,6 @@ import * as bodyParser from "koa-bodyparser";
 import {NoCoreSpace} from "../config/StatConfig";
 import {AbiSignature, parseAbiStr, saveAbiSigs} from "../model/ContractInfo";
 import {AuthAction, getAuthActionInTx, listAuthAction} from "../model/EIP7702model";
-import {getAccountQuery} from "../service/AccountQuery";
 import {CONST} from "../service/common/constant";
 import {ContractQuery} from "../service/ContractQuery";
 
@@ -101,36 +102,37 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         }
     })
 
-    router.get('/tokens/by-address', async (ctx)=>{
+    router.get('/tokens/by-address', async (ctx) => {
         mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address');
 
         const {address} = ctx.request.query;
-        const result = await statApp.tokenQuery.query({address});
-        if(!result?.isRegistered){
-            const token = await statApp.tokenQuery.detectToken(address);
-            // remove at least transfer restriction on token detail page
-            if(token?.reason && !token.reason.includes('token transfer record not exist')){
-                throw new Errors.NotTokenError(
-                    JSON.stringify({
-                        contract: StatApp.isEVM? token.hex : token.base32,
-                        message: `contract not detected as a token, ${token.reason}`,
-                    })
-                );
-            }
+        const trace = await statApp.traceCreateQuery.query(address);
+        if (trace.msg) {
+            throw new Errors.NotTokenError(`No trace create found for token ${fmtAddr(address, StatApp.networkId)}`);
         }
-        if (result?.address) {
-            result.address = fmtAddr(result.address, StatApp.networkId);
+
+        const cond = `
+        Conditions for a token: 
+        1. An ERC20 token needs to implement name, symbol, decimals, and totalSupply methods; 
+        2. An ERC721/ERC1155 token needs to implement the name and symbol methods, and conform to the ERC165 standard;
+        3. A token name should be non-empty, max ${TOKEN_NAME_MAX_LEN} chars, longer names will be truncated;
+        4. A token symbol should be non-empty, max ${TOKEN_SYMBOL_MAX_LEN} chars, longer symbols will be truncated;
+        `;
+
+        const token: any = await statApp.tokenQuery.query({address});
+        if (!token) {
+            ctx.body = {msg: cond};
+            return
         }
-        ctx.body = result || {};
-    })
 
-    router.get('/tokens/detect', async (ctx)=>{
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'address');
+        if (!token.name) {
+            throw new Errors.NotTokenError(`token name should be non-empty. ${cond}`);
+        }
+        if (!token.symbol) {
+            throw new Errors.NotTokenError(`token symbol should be non-empty. ${cond}`);
+        }
 
-        const {address} = ctx.request.query;
-        const result = await statApp.tokenQuery.detectToken(address);
-
-        ctx.body = result || {};
+        ctx.body = token;
     })
 
     router.get('/contract/by-address', async (ctx)=>{
@@ -245,7 +247,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const addresses = result.list.map(item => item.address);
         const ensInfos = await statApp.ensCheckerQuery.nameBatch(addresses);
         result.list.forEach(item => {
-            item.ensInfo = ensInfos[format.address(item.address, StatApp.networkId)];
+            item.ensInfo = ensInfos[format.hexAddress(item.address)];
         });
 
         ctx.body = result;
@@ -262,15 +264,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     // token by name
     router.get('/tokens/name', async (ctx)=>{
         const {name} = ctx.request.query;
-        const result = await statApp.tokenQuery.list({name, showDestroyed: false});
-
-        if (StatApp.isEVM) {
-            result?.list?.forEach(item => item.address = format.hexAddress(item.address));
-            result?.contractList?.forEach(item => item.address = format.hexAddress(item.address));
-            result?.eoaList?.forEach(item => item.address = format.hexAddress(item.address));
-        }
-
-        ctx.body = result;
+        ctx.body = await statApp.tokenQuery.list({name, showDestroyed: false});
     })
 
     // stat overview
@@ -421,7 +415,6 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         data.list.forEach(row=>{
             s.push(row.rank); s.push(',') // rank
             s.push(StatApp.isEVM ? row.hex : row.base32address); s.push(',') // base32
-            // s.push(row.contractInfo?.name || row.tokenInfo?.name); s.push(',') // name
             const nameInfo = nameMap[fmtAddr(row.hex, StatApp.networkId)];
             s.push(nameInfo?.token?.name || nameInfo?.contract?.name); s.push(',') // name
             s.push(row.value2); s.push(',') // balance
@@ -633,14 +626,6 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const {address} = ctx.request.query
         ctx.body = await statApp.statsQuery.listDailyContractTransferStat({address, skip, limit, sort: 'desc'});
     })
-
-    router.get('/trace/create', async function (ctx) {
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contract');
-
-        const {contract} = ctx.request.query
-        const createTrace = await statApp.traceCreateQuery.query(contract);
-        ctx.body = createTrace;
-    });
 
     router.get('/nft/checker/preview', async function (ctx) {
         mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contractAddress');

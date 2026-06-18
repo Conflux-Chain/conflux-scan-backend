@@ -18,11 +18,8 @@ export class TokenService {
     addressArray,
     fields,
   } = {} as any) {
-    const {
-      app: { tool },
-    } = this as ScanCtx;
-
     let list = [];
+
     if (accountAddress !== undefined) {
       list = await this.listByAccount(accountAddress, addressArray);
       list = this.sortCustomized(list);
@@ -69,14 +66,6 @@ export class TokenService {
   }
 
   // --------------------------------------------------------------------------
-  async query({ address }) {
-    const {
-      app: { service },
-    } = this as ScanCtx;
-
-    return service.tokenQuery.query({ address });
-  }
-
   async listByAddressArray(addressArray, fields) {
     const {
       app: { service },
