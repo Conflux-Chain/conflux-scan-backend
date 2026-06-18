@@ -167,7 +167,7 @@ export class TokenQuery {
         if (rawList) {
             detectedTokens = rawList.map(item => item.address);
             const verifiedTokens = await (contractQuery || service.contractQuery).listVerifyInBatch(detectedTokens)
-                .then(list => list.map(item => item.address));
+                .then(list => list.map(item => fmtAddr(item.address, StatApp.networkId)));
             rawList.forEach(row => {
                 row['address'] = fmtAddr(row['address'], StatApp.networkId);
                 row['transferType'] = lodash.toUpper(row['transferType']);

@@ -30,6 +30,7 @@ export class TokenQuoteSync {
     private readonly IS_BJ_REGION: boolean;
     private readonly bnIntervalSec: number;
     private readonly cmcIntervalSec: number;
+    private readonly resetIntervalSec: number;
     private readonly disableAlertPullPeer: boolean;
 
     constructor(cfx: Conflux, config: QuoteOptions) {
@@ -43,6 +44,7 @@ export class TokenQuoteSync {
         this.IS_BJ_REGION = ConfigInstance.serverTag.includes("bj");
         this.bnIntervalSec = config.binanceFetchIntervalSec || 5;
         this.cmcIntervalSec = config.coinMarketCapFetchIntervalSec || 720;
+        this.resetIntervalSec = this.bnIntervalSec * this.cmcIntervalSec;
         this.disableAlertPullPeer = Boolean(config.disableAlertPullPeer);
 
         this.schedule().then();
@@ -116,7 +118,7 @@ export class TokenQuoteSync {
             });
         }
 
-        this.tick = this.tick % Math.max(this.bnIntervalSec, this.cmcIntervalSec) === 0 ? 0 : this.tick;
+        this.tick = this.tick % this.resetIntervalSec === 0 ? 0 : this.tick;
     }
 
     //======================================================================

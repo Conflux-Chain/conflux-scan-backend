@@ -111,12 +111,6 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             throw new Errors.NotTokenError(`No trace create found for token ${fmtAddr(address, StatApp.networkId)}`);
         }
 
-        const token: any = await statApp.tokenQuery.query({address});
-        if (!token) {
-            ctx.body = {};
-            return
-        }
-
         const cond = `
         Conditions for a token: 
         1. An ERC20 token needs to implement name, symbol, decimals, and totalSupply methods; 
@@ -124,6 +118,13 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         3. A token name should be non-empty, max ${TOKEN_NAME_MAX_LEN} chars, longer names will be truncated;
         4. A token symbol should be non-empty, max ${TOKEN_SYMBOL_MAX_LEN} chars, longer symbols will be truncated;
         `;
+
+        const token: any = await statApp.tokenQuery.query({address});
+        if (!token) {
+            ctx.body = {msg: cond};
+            return
+        }
+
         if (!token.name) {
             throw new Errors.NotTokenError(`token name should be non-empty. ${cond}`);
         }
@@ -625,14 +626,6 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const {address} = ctx.request.query
         ctx.body = await statApp.statsQuery.listDailyContractTransferStat({address, skip, limit, sort: 'desc'});
     })
-
-    router.get('/trace/create', async function (ctx) {
-        mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contract');
-
-        const {contract} = ctx.request.query
-        const createTrace = await statApp.traceCreateQuery.query(contract);
-        ctx.body = createTrace;
-    });
 
     router.get('/nft/checker/preview', async function (ctx) {
         mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contractAddress');

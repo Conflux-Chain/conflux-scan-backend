@@ -28,8 +28,8 @@ export function getTokenTool(): TokenTool | undefined {
 }
 
 export class TokenTool {
-    cfx;
-    contract;
+    public readonly cfx: Conflux;
+    public readonly contract: any;
 
     constructor(cfx:Conflux) {
         this.cfx = cfx;
