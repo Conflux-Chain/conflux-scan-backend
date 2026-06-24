@@ -632,6 +632,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TokenInfos'
+  '/token/tokeninfo/refresh':
+    get:
+      tags:
+        - 'Tokens'
+      description: 'Refresh Token Info by contract address only when token name/symbol is empty.'
+      parameters:
+        - $ref: '#/components/parameters/contractParamMust'
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshedTokenInfo'
   /nft/balances:
     get:
       tags:
@@ -1883,6 +1897,33 @@ components:
               error:
                 description: 'A string describing a particular reason that we were unable to get token info.'
                 type: 'string'
+    RefreshedTokenInfo:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: array
+          items:
+            properties:
+              contract:
+                description: 'Contract address of the token.'
+                type: string
+              name:
+                description: 'Name of the token.'
+                type: string
+              symbol:
+                description: 'Symbol of the token.'
+                type: string
+                example: 'CFX'
+              decimals:
+                description: 'Decimal of the token, omit if empty.'
+                type: integer
+              type:
+                description: 'Token type, ERC20、ERC721、ERC1155.'
+                type: string
     TokenInfo:
       type: object
       properties:

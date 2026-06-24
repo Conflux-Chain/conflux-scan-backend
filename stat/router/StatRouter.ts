@@ -56,6 +56,14 @@ const cacheTtl = 60 // 1 minutes
 
 export const ROUTER_PREFIX = '/stat'
 
+export const tokenCond = `
+        Conditions for a token: 
+        1. An ERC20 token needs to implement name, symbol, decimals, and totalSupply methods; 
+        2. An ERC721/ERC1155 token needs to implement the name and symbol methods, and conform to the ERC165 standard;
+        3. A token name should be non-empty, max ${TOKEN_NAME_MAX_LEN} chars, longer names will be truncated;
+        4. A token symbol should be non-empty, max ${TOKEN_SYMBOL_MAX_LEN} chars, longer symbols will be truncated;
+        `;
+
 function addRoute(router: Router<any, {}>, statApp: StatApp) {
     let startTime = new Date().toLocaleTimeString();
     router.get('/server-info', async (ctx: Context) => {
@@ -111,25 +119,9 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
             throw new Errors.NotTokenError(`No trace create found for token ${fmtAddr(address, StatApp.networkId)}`);
         }
 
-        const cond = `
-        Conditions for a token: 
-        1. An ERC20 token needs to implement name, symbol, decimals, and totalSupply methods; 
-        2. An ERC721/ERC1155 token needs to implement the name and symbol methods, and conform to the ERC165 standard;
-        3. A token name should be non-empty, max ${TOKEN_NAME_MAX_LEN} chars, longer names will be truncated;
-        4. A token symbol should be non-empty, max ${TOKEN_SYMBOL_MAX_LEN} chars, longer symbols will be truncated;
-        `;
-
         const token: any = await statApp.tokenQuery.query({address});
         if (!token) {
-            ctx.body = {msg: cond};
-            return
-        }
-
-        if (!token.name) {
-            throw new Errors.NotTokenError(`token name should be non-empty. ${cond}`);
-        }
-        if (!token.symbol) {
-            throw new Errors.NotTokenError(`token symbol should be non-empty. ${cond}`);
+            throw new Errors.NotTokenError(tokenCond);
         }
 
         ctx.body = token;

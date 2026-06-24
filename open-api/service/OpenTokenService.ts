@@ -1,13 +1,21 @@
 import {getApiService} from "../ApiServer";
-import {StatApp} from "../../stat/StatApp";
+import {fmtAddr, StatApp} from "../../stat/StatApp";
 import {format} from "js-conflux-sdk";
 import {Op} from "sequelize";
 import {Token} from "../../stat/model/Token";
-import {checkPresent, formatPrice, mustBeAddressArrayParamIfPresent} from "../../stat/service/common/utils";
+import {
+    checkPresent,
+    formatPrice,
+    mustBeAddressArrayParamIfPresent,
+    mustBeAddressParamIfPresent
+} from "../../stat/service/common/utils";
 import {setBody} from "../router/middleware";
 import {fixIconUrl} from "./OpenAccountService";
 import {CONST} from "../../stat/service/common/constant";
 import {Errors} from "../../stat/service/common/LogicError";
+import {TokenAutoDetect} from "../../stat/service/TokenAutoDetect";
+import {Hex40Map} from "../../stat/model/HexMap";
+import {tokenCond} from "../../stat/router/StatRouter";
 
 const lodash = require('lodash');
 
@@ -87,4 +95,34 @@ export async function listTokens(ctx) {
     })
 
     setBody(ctx, data)
+}
+
+export async function refreshTokenInfo(ctx) {
+    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contract');
+    const {contract} = ctx.request.query;
+    checkPresent({contract}, ['contract']);
+
+    const trace = await getApiService().traceCreateQuery.query(contract);
+    if (trace.msg) {
+        setBody(ctx, null, 1, `No trace create found for token ${fmtAddr(contract, StatApp.networkId)}`);
+        return;
+    }
+
+    const validToken = await Token.findOne({where: {base32: format.address(contract, StatApp.networkId)}, raw: true});
+    if (validToken) {
+        setBody(ctx, null, 1, 'Token has valid info, cat not refresh again');
+        return;
+    }
+
+    let token = await TokenAutoDetect.detect(contract, getApiService().tokenTool, false, true);
+    if (token === undefined) {
+        setBody(ctx, null, 1, `Contract Error, does not meet the token standard. ${tokenCond}`);
+        return;
+    }
+
+    const id = (await Hex40Map.findOne({where: {hex: format.hexAddress(contract).substr(2)}})).id;
+    token = await TokenAutoDetect.buildToken(id, token);
+    await Token.upsert(token);
+
+    setBody(ctx, token)
 }
