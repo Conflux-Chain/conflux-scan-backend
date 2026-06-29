@@ -98,13 +98,13 @@ export async function listTokens(ctx) {
 }
 
 export async function refreshTokenInfo(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contract');
-    const {contract} = ctx.request.query;
+    mustBeAddressParamIfPresent(ctx.request.body, StatApp.networkId, StatApp.isEVM, 'contract');
+    const {contract} = ctx.request.body;
     checkPresent({contract}, ['contract']);
 
     const trace = await getApiService().traceCreateQuery.query(contract);
     if (trace.msg) {
-        setBody(ctx, null, 1, `No trace create found for token ${fmtAddr(contract, StatApp.networkId)}`);
+        setBody(ctx, null, 1, 'No trace create found for token');
         return;
     }
 
@@ -120,9 +120,15 @@ export async function refreshTokenInfo(ctx) {
         return;
     }
 
-    const id = (await Hex40Map.findOne({where: {hex: format.hexAddress(contract).substr(2)}})).id;
+    const id = (await Hex40Map.findOne({where: {hex: format.hexAddress(contract).slice(2)}})).id;
     token = await TokenAutoDetect.buildToken(id, token);
     await Token.upsert(token);
 
-    setBody(ctx, token)
+    setBody(ctx, {
+        contract: fmtAddr(contract, StatApp.networkId),
+        name: token.name,
+        symbol: token.symbol,
+        decimals: token.decimals || undefined,
+        type: StatApp.isEVM ? token.type : token.type?.replace('ERC', 'CRC'),
+    });
 }

@@ -1349,12 +1349,20 @@ paths:
               schema:
                 $ref: '#/components/schemas/TokenInfos'
   '/token/tokeninfo/refresh':
-    get:
+    post:
       tags:
         - 'Tokens'
       description: 'Refresh Token Info by contract address only when token name/symbol is empty.'
-      parameters:
-        - $ref: '#/components/parameters/contractParamMust'
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+                type: object
+                properties:
+                  contract:
+                    type: string
+                    required: true
+                    description: "Contract address, it's like 0x672158893ce87d812befd2209bc1b7818fe48b2a"
       responses:
         200:
           description: ''
@@ -2582,25 +2590,24 @@ components:
         message:
           type: string
         result:
-          type: array
-          items:
-            properties:
-              contract:
-                description: 'Contract address of the token.'
-                type: string
-              name:
-                description: 'Name of the token.'
-                type: string
-              symbol:
-                description: 'Symbol of the token.'
-                type: string
-                example: 'CFX'
-              decimals:
-                description: 'Decimal of the token, omit if empty.'
-                type: integer
-              type:
-                description: 'Token type, ERC20、ERC721、ERC1155.'
-                type: string
+          type: object
+          properties:
+            contract:
+              description: 'Contract address of the token.'
+              type: string
+            name:
+              description: 'Name of the token.'
+              type: string
+            symbol:
+              description: 'Symbol of the token.'
+              type: string
+              example: 'CFX'
+            decimals:
+              description: 'Decimal of the token, omit if empty.'
+              type: integer
+            type:
+              description: 'Token type, ERC20、ERC721、ERC1155.'
+              type: string
     AccountInfos:
       type: object
       additionalProperties:
