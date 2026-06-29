@@ -2582,25 +2582,24 @@ components:
         message:
           type: string
         result:
-          type: array
-          items:
-            properties:
-              contract:
-                description: 'Contract address of the token.'
-                type: string
-              name:
-                description: 'Name of the token.'
-                type: string
-              symbol:
-                description: 'Symbol of the token.'
-                type: string
-                example: 'CFX'
-              decimals:
-                description: 'Decimal of the token, omit if empty.'
-                type: integer
-              type:
-                description: 'Token type, ERC20、ERC721、ERC1155.'
-                type: string
+          type: object
+          properties:
+            contract:
+              description: 'Contract address of the token.'
+              type: string
+            name:
+              description: 'Name of the token.'
+              type: string
+            symbol:
+              description: 'Symbol of the token.'
+              type: string
+              example: 'CFX'
+            decimals:
+              description: 'Decimal of the token, omit if empty.'
+              type: integer
+            type:
+              description: 'Token type, ERC20、ERC721、ERC1155.'
+              type: string
     AccountInfos:
       type: object
       additionalProperties:
