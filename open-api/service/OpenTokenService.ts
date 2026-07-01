@@ -98,8 +98,8 @@ export async function listTokens(ctx) {
 }
 
 export async function refreshTokenInfo(ctx) {
-    mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contract');
-    const {contract} = ctx.request.query;
+    mustBeAddressParamIfPresent(ctx.request.body, StatApp.networkId, StatApp.isEVM, 'contract');
+    const {contract} = ctx.request.body;
     checkPresent({contract}, ['contract']);
 
     const trace = await getApiService().traceCreateQuery.query(contract);

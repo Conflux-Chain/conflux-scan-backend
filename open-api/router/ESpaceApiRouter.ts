@@ -1095,7 +1095,7 @@ export function registerRouter(router: Router) {
 
     // token
     router.get('/token/tokeninfos', listTokens);
-    router.get('/token/tokeninfo/refresh', refreshTokenInfo);
+    router.post('/token/tokeninfo/refresh', refreshTokenInfo);
 
     //eip7702
     router.get('/eip7702/auths', listGlobalAuthAction);

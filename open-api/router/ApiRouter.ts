@@ -192,7 +192,7 @@ function registerRouter(router: Router) {
     // token
     router.get('/token/tokeninfo', getTokenInfo);
     router.get('/token/tokeninfos', listTokens);
-    router.get('/token/tokeninfo/refresh', refreshTokenInfo);
+    router.post('/token/tokeninfo/refresh', refreshTokenInfo);
 
     // nft assets
     router.get('/nft/balances', listAccountNFTs);
