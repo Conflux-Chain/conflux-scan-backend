@@ -84,41 +84,41 @@ export class Token extends Model<IToken> implements IToken{
     portalSupport?:boolean
     fetchBalance?:boolean
 
-    static register(seq:Sequelize) {
+    static register(seq: Sequelize) {
         Token.init({
             id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
             // basic info
             hex40id: {type: DataTypes.BIGINT, allowNull: false, unique: true},
             base32: {type: DataTypes.CHAR(64), allowNull: false, unique: true},
-            name: {type: DataTypes.STRING(255), allowNull: true},
-            symbol: {type: DataTypes.STRING(255), allowNull: true },
-            decimals: {type: DataTypes.BIGINT, allowNull: true, },
-            granularity: {type: DataTypes.BIGINT, allowNull: true, },
-            totalSupply: {type: DataTypes.STRING({length: 78}), allowNull: true, },
+            name: {type: DataTypes.STRING(255)},
+            symbol: {type: DataTypes.STRING(255)},
+            decimals: {type: DataTypes.BIGINT},
+            granularity: {type: DataTypes.BIGINT},
+            totalSupply: {type: DataTypes.STRING({length: 78})},
             // advance info
             type: {type: DataTypes.CHAR(16), allowNull: false, defaultValue: ''},
-            transfer: {type: DataTypes.BIGINT, allowNull: true, },
-            transferLatest: {type: DataTypes.BIGINT, allowNull: true, },
-            holder: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0 },
+            transfer: {type: DataTypes.BIGINT},
+            transferLatest: {type: DataTypes.BIGINT},
+            holder: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0},
             // price info
-            price: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
-            totalPrice: {type: DataTypes.DECIMAL(36, 18), allowNull: true, },
-            quoteUrl: {type: DataTypes.CHAR(255), allowNull: true, },
-            cmcId: {type: DataTypes.INTEGER, allowNull: true, },
-            bnId: {type: DataTypes.CHAR(20), allowNull: true, },
+            price: {type: DataTypes.DECIMAL(36, 18)},
+            totalPrice: {type: DataTypes.DECIMAL(36, 18)},
+            quoteUrl: {type: DataTypes.CHAR(255)},
+            cmcId: {type: DataTypes.INTEGER},
+            bnId: {type: DataTypes.CHAR(20)},
             // security info
-            securityCredits: {type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+            securityCredits: {type: DataTypes.INTEGER, allowNull: false, defaultValue: 0},
             auditResult: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
             censorStatus: {type: DataTypes.INTEGER, allowNull: false, defaultValue: CENSOR_STATUS.TO_CENSOR},
             destroyed: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
             // extra info
-            icon: {type: DataTypes.BLOB('medium'), allowNull: true, },
-            iconUrl: {type: DataTypes.STRING(128), allowNull: true, },
-            website: {type: DataTypes.CHAR(255), allowNull: true},
-            ipfsGateway: {type: DataTypes.CHAR(255), allowNull: true},
+            icon: {type: DataTypes.BLOB('medium')},
+            iconUrl: {type: DataTypes.STRING(128)},
+            website: {type: DataTypes.STRING(255)},
+            ipfsGateway: {type: DataTypes.STRING(255)},
             portalSupport: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
             fetchBalance: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
-        },{
+        }, {
             tableName: 'token',
             indexes: [
                 {name: 'idx_transfer', fields: ['transfer']},

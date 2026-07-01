@@ -632,6 +632,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TokenInfos'
+  '/token/tokeninfo/refresh':
+    post:
+      tags:
+        - 'Tokens'
+      description: 'Refresh Token Info by contract address only when token name/symbol is empty.'
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                contract:
+                  type: string
+                  required: true
+                  description: "Contract address, on testnet, it's like cfxtest:acepe88unk7fvs18436178up33hb4zkuf62a9dk1gv,
+                  on mainnet it's like cfx:acf2rcsh8payyxpg6xj7b0ztswwh81ute60tsw35j7"
+      responses:
+        200:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshedTokenInfo'
   /nft/balances:
     get:
       tags:
@@ -1883,6 +1906,32 @@ components:
               error:
                 description: 'A string describing a particular reason that we were unable to get token info.'
                 type: 'string'
+    RefreshedTokenInfo:
+      type: object
+      properties:
+        status:
+          type: string
+        message:
+          type: string
+        result:
+          type: object
+          properties:
+            contract:
+              description: 'Contract address of the token.'
+              type: string
+            name:
+              description: 'Name of the token.'
+              type: string
+            symbol:
+              description: 'Symbol of the token.'
+              type: string
+              example: 'CFX'
+            decimals:
+              description: 'Decimal of the token, omit if empty.'
+              type: integer
+            type:
+              description: 'Token type, CRC20、CRC721、CRC1155.'
+              type: string
     TokenInfo:
       type: object
       properties:

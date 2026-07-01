@@ -32,6 +32,7 @@ import {
 import {
     getToken,
     listTokens,
+    refreshTokenInfo,
 } from "../service/OpenTokenService";
 import {
     getNFTPreview,
@@ -191,6 +192,7 @@ function registerRouter(router: Router) {
     // token
     router.get('/token/tokeninfo', getTokenInfo);
     router.get('/token/tokeninfos', listTokens);
+    router.post('/token/tokeninfo/refresh', refreshTokenInfo);
 
     // nft assets
     router.get('/nft/balances', listAccountNFTs);

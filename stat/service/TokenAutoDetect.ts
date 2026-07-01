@@ -86,7 +86,7 @@ export class TokenAutoDetect {
                 continue;
             }
 
-            token = await this.buildToken(id, token);
+            token = await TokenAutoDetect.buildToken(id, token);
 
             await Token.upsert(token);
         }
@@ -98,7 +98,7 @@ export class TokenAutoDetect {
         address: string,
         tokenTool: TokenTool,
         detectBytecode: boolean,
-        debug?: boolean
+        printDetail?: boolean
     ) {
         const addr = fmtAddr(address, StatApp.networkId);
         const {implementation: impl, proxyPattern} = await TokenAutoDetect.getImpl(addr, tokenTool.cfx) || {};
@@ -139,7 +139,7 @@ export class TokenAutoDetect {
             }
         }
 
-        debug && console.log("detect token ==\n", {
+        printDetail && console.log("detect token ==\n", {
             addr,
             impl,
             tokenInfo,
@@ -154,11 +154,10 @@ export class TokenAutoDetect {
             return;
         }
 
-        const token = {
-            base32: format.address(addr, StatApp.networkId),
-            ...tokenInfo,
-            totalSupply,
-        };
+        const token = TokenAutoDetect.validateToken(tokenInfo, totalSupply);
+        if (!token) {
+            return;
+        }
 
         if (
             supportsInterface(CONST.TRANSFER_TYPE.ERC1155)
@@ -230,7 +229,7 @@ export class TokenAutoDetect {
                     && Number(token.type.slice(3)) > Number(existType.slice(3))
                 )
             ) {
-                token = await this.buildToken(id, token);
+                token = await TokenAutoDetect.buildToken(id, token);
                 await Token.upsert(token);
             }
         }
@@ -242,7 +241,7 @@ export class TokenAutoDetect {
         address: string,
         tokenTool: TokenTool,
         type: string,
-        debug?: boolean
+        printDetail?: boolean
     ) {
         const addr = fmtAddr(address, StatApp.networkId);
 
@@ -253,7 +252,7 @@ export class TokenAutoDetect {
             tokenTool.supportsInterface(addr, CONST.EIP165_INTERFACE_ID.ERC1155),
         ]);
 
-        debug && console.log(`detectTokenByType`, {
+        printDetail && console.log(`detectTokenByType`, {
             addr,
             tokenInfo,
             totalSupply,
@@ -261,11 +260,10 @@ export class TokenAutoDetect {
             supportErc1155Interface: erc1155Interface === true,
         })
 
-        const token = {
-            base32: format.address(addr, StatApp.networkId),
-            ...tokenInfo,
-            totalSupply,
-        };
+        const token = TokenAutoDetect.validateToken(tokenInfo, totalSupply);
+        if (!token) {
+            return;
+        }
 
         if (type === CONST.TRANSFER_TYPE.ERC1155) {
             return erc1155Interface === true ? lodash.assign(token, {type: CONST.TRANSFER_TYPE.ERC1155}) : undefined;
@@ -314,7 +312,7 @@ export class TokenAutoDetect {
         return supportSelectors;
     }
 
-    private async countTransfer(addressId, transferType) {
+    private static async countTransfer(addressId, transferType) {
         if (transferType === CONST.TRANSFER_TYPE.ERC20)
             return Erc20Transfer.count({where: {contractId: addressId}});
         if (transferType === CONST.TRANSFER_TYPE.ERC721)
@@ -338,17 +336,29 @@ export class TokenAutoDetect {
         }
     }
 
-    private async buildToken(addressId: number, token: IToken) {
-        const transferCount = (await this.countTransfer(addressId, token.type)) || 0;
+    private static validateToken(tokenInfo, totalSupply) {
+        const auditResult = typeof tokenInfo.name === "string" && tokenInfo.name.trim().length > 0
+            && typeof tokenInfo.symbol === "string" && tokenInfo.symbol.trim().length > 0;
 
-        const auditResult = typeof token.name === "string" && token.name.trim().length > 0
-            && typeof token.symbol === "string" && token.symbol.trim().length > 0;
+        if (!auditResult) {
+            return;
+        }
+
+        return {
+            base32: format.address(tokenInfo.address, StatApp.networkId),
+            ...tokenInfo,
+            totalSupply,
+            auditResult,
+            fetchBalance: auditResult
+        };
+    }
+
+    static async buildToken(addressId: number, token: IToken) {
+        const transferCount = (await TokenAutoDetect.countTransfer(addressId, token.type)) || 0;
 
         token = lodash.defaults(token, {
             hex40id: addressId,
             transfer: transferCount,
-            auditResult,
-            fetchBalance: auditResult
         });
 
         sanitizeToken(token);

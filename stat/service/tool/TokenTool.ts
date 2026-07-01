@@ -37,7 +37,7 @@ export class TokenTool {
         _instance = this;
     }
 
-    async getToken(address/*base32*/: string, epochNumber = undefined, useCache = false): Promise<{
+    async getToken(address: string, epochNumber = undefined, useCache = false): Promise<{
         address: string, name: string, symbol: string, decimals: number, granularity: number,
     }> {
         if (useCache) {

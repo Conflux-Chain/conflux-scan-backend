@@ -37,6 +37,7 @@ import {
 import {
     getToken,
     listTokens,
+    refreshTokenInfo,
     validERC20Token,
 } from "../service/OpenTokenService";
 import {
@@ -1094,6 +1095,7 @@ export function registerRouter(router: Router) {
 
     // token
     router.get('/token/tokeninfos', listTokens);
+    router.post('/token/tokeninfo/refresh', refreshTokenInfo);
 
     //eip7702
     router.get('/eip7702/auths', listGlobalAuthAction);
