@@ -53,7 +53,7 @@ export class AuthBlockStub extends Model<IAuthBlockStub> implements IAuthBlockSt
 	}
 }
 
-export async function getDelegatedAddrAtTx(eoa: string, blockNumber:number, txHash: string): Promise<IAuthAction> {
+export async function getDelegatedAddrAtTx(eoa: string, blockNumber:number, txHash: string, debug=false): Promise<IAuthAction> {
 	const accType = await detectAccountType(eoa);
 	if (accType.isContract) {
 		return null;
@@ -67,10 +67,20 @@ export async function getDelegatedAddrAtTx(eoa: string, blockNumber:number, txHa
 	const bean = await AuthAction.findOne({
 		where: {
 			author: eoa,
-			blockNumber: {[Op.lte]: blockNumber},
-			transactionPosition: {[Op.lte]: txBean.txPosition},
+			[Op.or]: [
+				{
+					blockNumber: { [Op.lt]: blockNumber }  // blockNumber 小于
+				},
+				{
+					[Op.and]: [
+						{ blockNumber: blockNumber },      // blockNumber 相等
+						{ transactionPosition: { [Op.lte]: txBean.txPosition } }  // 且 transactionPosition 小于等于
+					]
+				}
+			],
 			result: 'success',
 		}, raw: true,
+		logging: debug ? sql=>console.log(sql) : false,
 		order: [['blockNumber', 'desc'], ['transactionPosition', 'desc'], ['authIndex', 'desc']],
 	});
 	if (bean?.address) {

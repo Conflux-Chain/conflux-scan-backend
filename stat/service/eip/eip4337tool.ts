@@ -1,3 +1,5 @@
+import {getDelegatedAddrAtTx} from "../../model/EIP7702model";
+
 process.env.TZ = 'UTC';
 
 import {Op, QueryTypes} from "sequelize";
@@ -148,6 +150,10 @@ async function fixAATxPositions(): Promise<void> {
 
 	console.log(`Done. Fixed positions for ${totalBundles} bundle txs.`);
 }
+
+/*
+node stat/service/eip/eip4337tool.js debugEffectiveAuth
+ */
 async function main() {
 	const [,, cmd, fromEpochStr, toEpochStr] = process.argv;
 	if (cmd === 'fixMissing') {
@@ -158,6 +164,15 @@ async function main() {
 		const cfx = await initCfxSdk(cfg.conflux);
 		await setupEntrypointIds();
 		await fixMissingAATx(cfx, fromEpoch, toEpoch);
+	} else if (cmd === 'debugEffectiveAuth') {
+		const cfg = await init();
+		const cfx = await initCfxSdk(cfg.conflux);
+		const [,,,arg1, arg2, arg3] = process.argv;
+		const eoa = arg1 || "0xE5545c5B806e5d426136eb3D118A2bDaB47DCa55";
+		const blockNumber = arg2 ? parseInt(arg2) : 255656710;
+		const txHash = arg3 || "0x1857a44af138ef04cc16778dcf4397ec6231036037c086cfbcb3bf0f0029d731";
+		const info = await getDelegatedAddrAtTx(eoa, blockNumber, txHash, true);
+		console.log(`that is `, info);
 	} else if (cmd === 'fixPositions') {
 		console.log('fixPositions: backfilling position field for all aaTx rows...');
 		await init();
