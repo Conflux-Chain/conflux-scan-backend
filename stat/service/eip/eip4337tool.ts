@@ -167,9 +167,10 @@ async function main() {
 	} else if (cmd === 'debugEffectiveAuth') {
 		const cfg = await init();
 		const cfx = await initCfxSdk(cfg.conflux);
-		const eoa = "0xE5545c5B806e5d426136eb3D118A2bDaB47DCa55";
-		const blockNumber = 255656710;
-		const txHash = "";
+		const [,,,arg1, arg2, arg3] = process.argv;
+		const eoa = arg1 || "0xE5545c5B806e5d426136eb3D118A2bDaB47DCa55";
+		const blockNumber = arg2 ? parseInt(arg2) : 255656710;
+		const txHash = arg3 || "0x1857a44af138ef04cc16778dcf4397ec6231036037c086cfbcb3bf0f0029d731";
 		const info = await getDelegatedAddrAtTx(eoa, blockNumber, txHash, true);
 		console.log(`that is `, info);
 	} else if (cmd === 'fixPositions') {
