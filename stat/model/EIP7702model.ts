@@ -67,8 +67,17 @@ export async function getDelegatedAddrAtTx(eoa: string, blockNumber:number, txHa
 	const bean = await AuthAction.findOne({
 		where: {
 			author: eoa,
-			blockNumber: {[Op.lte]: blockNumber},
-			transactionPosition: {[Op.lte]: txBean.txPosition},
+			[Op.or]: [
+				{
+					blockNumber: { [Op.lt]: blockNumber }  // blockNumber 小于
+				},
+				{
+					[Op.and]: [
+						{ blockNumber: blockNumber },      // blockNumber 相等
+						{ transactionPosition: { [Op.lte]: txBean.txPosition } }  // 且 transactionPosition 小于等于
+					]
+				}
+			],
 			result: 'success',
 		}, raw: true,
 		logging: debug ? sql=>console.log(sql) : false,
