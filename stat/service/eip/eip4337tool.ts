@@ -1,3 +1,5 @@
+import {getDelegatedAddrAtTx} from "../../model/EIP7702model";
+
 process.env.TZ = 'UTC';
 
 import {Op, QueryTypes} from "sequelize";
@@ -158,6 +160,13 @@ async function main() {
 		const cfx = await initCfxSdk(cfg.conflux);
 		await setupEntrypointIds();
 		await fixMissingAATx(cfx, fromEpoch, toEpoch);
+	} else if (cmd === 'debugEffectiveAuth') {
+		await init();
+		const eoa = "0xE5545c5B806e5d426136eb3D118A2bDaB47DCa55";
+		const blockNumber = 255656710;
+		const txHash = "";
+		const info = await getDelegatedAddrAtTx(eoa, blockNumber, txHash, true);
+		console.log(`that is `, info);
 	} else if (cmd === 'fixPositions') {
 		console.log('fixPositions: backfilling position field for all aaTx rows...');
 		await init();
