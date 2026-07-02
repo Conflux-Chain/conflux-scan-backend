@@ -150,6 +150,10 @@ async function fixAATxPositions(): Promise<void> {
 
 	console.log(`Done. Fixed positions for ${totalBundles} bundle txs.`);
 }
+
+/*
+node stat/service/eip/eip4337tool.js debugEffectiveAuth
+ */
 async function main() {
 	const [,, cmd, fromEpochStr, toEpochStr] = process.argv;
 	if (cmd === 'fixMissing') {
@@ -161,7 +165,8 @@ async function main() {
 		await setupEntrypointIds();
 		await fixMissingAATx(cfx, fromEpoch, toEpoch);
 	} else if (cmd === 'debugEffectiveAuth') {
-		await init();
+		const cfg = await init();
+		const cfx = await initCfxSdk(cfg.conflux);
 		const eoa = "0xE5545c5B806e5d426136eb3D118A2bDaB47DCa55";
 		const blockNumber = 255656710;
 		const txHash = "";
