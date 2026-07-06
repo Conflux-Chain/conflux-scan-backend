@@ -337,7 +337,7 @@ export class TokenAutoDetect {
         }
     }
 
-    private static validateToken(tokenInfo, totalSupply) {
+    static validateToken(tokenInfo, totalSupply) {
         const auditResult = typeof tokenInfo.name === "string" && tokenInfo.name.trim().length > 0
             && typeof tokenInfo.symbol === "string" && tokenInfo.symbol.trim().length > 0;
 

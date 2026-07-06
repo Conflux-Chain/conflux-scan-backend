@@ -40,6 +40,7 @@ import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import {saveAbiAnnounce} from "../model/ContractInfo";
 import {sanitizeContract, sanitizeToken} from "./common/utils";
 import {Token} from "../model/Token";
+import {TokenAutoDetect} from "./TokenAutoDetect";
 const lodash = require('lodash');
 const zlib = require('zlib');
 
@@ -393,13 +394,16 @@ export class EpochSync extends SyncBase {
             let token = tokenMap[hex];
             token.hex40id = (await makeId(hex)).id;
             token.base32 = formatToBase32(hex);
-            token = lodash.defaults(token, {
-                totalSupply: await tokenTool.getTokenTotalSupply(token.base32),
-                ...(await tokenTool.getToken(token.base32)),
-                epoch: epochNumber, updatedAt: new Date()
-            });
-            sanitizeToken(token);
-            tokenArray.push(token);
+            const [tokenInfo, totalSupply] = await Promise.all([
+                tokenTool.getToken(token.base32),
+                tokenTool.getTokenTotalSupply(token.base32)
+            ]);
+            const basicToken = TokenAutoDetect.validateToken(tokenInfo, totalSupply);
+            if (basicToken) {
+                token = lodash.defaults(basicToken, token);
+                sanitizeToken(token);
+                tokenArray.push(token);
+            }
         }
 
         const contractArray = [];
