@@ -3,13 +3,14 @@ import {readFileSync} from "fs";
 import {URL} from "url";
 import {post} from "./http";
 import {ConfluxOption, } from "../../config/StatConfig";
+import {sleep} from "../tool/ProcessTool";
 
 const HttpProvider = require("js-conflux-sdk/src/provider/HttpProvider")
 const superagent = require('superagent');
 const Agent = require('agentkeepalive');
 const pLimit = require('p-limit');
 
-const limit = pLimit(100); // could increase it when connection issues are fixed completely.
+const limit = pLimit(10); // could increase it when connection issues are fixed completely.
 
 export class ScanHttpProvider extends HttpProvider {
     tag: string
@@ -26,11 +27,29 @@ export class ScanHttpProvider extends HttpProvider {
             'Connection': 'keep-alive',
             'Content-type': 'application/json'
         }
+        // expect one true, one false
+        if (Boolean(super._request) == Boolean(super._doRequest)) {
+            throw new Error(`http provider mismatch, _request: ${super._request} , _doRequest: ${super._doRequest}`);
+        }
         this.conf = conf;
     }
 
+    async _request(data) {
+        return this._doRequest(data);
+    }
     async _doRequest(data) {
-        return limit(()=>this.request0(data))
+        do {
+            try {
+                return limit(() => this.request0(data))
+            } catch (error) {
+                if (error.message?.includes("Too many requests")) {
+                    console.log(`${data.method} , ${data.url} , ${error.message}`);
+                    await sleep(100);
+                } else {
+                    throw error;
+                }
+            }
+        } while (true);
     }
     async request0(data) {
         // await new Promise(r=>setTimeout(r, 2000))
