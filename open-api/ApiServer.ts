@@ -69,6 +69,7 @@ export class ApiService {
     balanceService: BalanceService;
     cfx: Conflux;
     eth;
+    confuraRpc;
     logger: any
     moduleSet: Set<string>;
     actionSet: Set<string>;
@@ -90,6 +91,7 @@ export class ApiServer {
 
         const cfx = await initCfxSdk(config.conflux);
         const eth = initEthSdk(config.ether?.url)
+        const confuraRpc = initEthSdk(config.confuraRpc?.url)
         StatApp.networkId = cfx.networkId;
 
         StatApp.readonly = config.database.readonly
@@ -127,6 +129,7 @@ export class ApiServer {
         apiService.balanceService = new BalanceService(this, StatApp.networkId)
         apiService.cfx = cfx;
         apiService.eth = eth;
+        apiService.confuraRpc = confuraRpc;
         apiService.logger = logger;
 
         this.initModule();
