@@ -27,8 +27,7 @@ export class ScanHttpProvider extends HttpProvider {
             'Connection': 'keep-alive',
             'Content-type': 'application/json'
         }
-        // expect one true, one false
-        if (Boolean(super._request) == Boolean(super._doRequest)) {
+        if (!Boolean(super._request) && !Boolean(super._doRequest)) {
             throw new Error(`http provider mismatch, _request: ${super._request} , _doRequest: ${super._doRequest}`);
         }
         this.conf = conf;
