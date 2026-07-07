@@ -39,10 +39,11 @@ export class ScanHttpProvider extends HttpProvider {
     async _doRequest(data) {
         do {
             try {
-                return limit(() => this.request0(data))
+                return await limit(() => this.request0(data))
             } catch (error) {
-                if (error.message?.includes("Too many requests")) {
-                    console.log(`${data.method} , ${data.url} , ${error.message}`);
+                const status = error?.status ?? error?.response?.status;
+                if (status === 429 || error.message?.includes("Too many requests")) {
+                    console.log(`${data.method} , ${this.url} , ${error.message}`);
                     await sleep(100);
                 } else {
                     throw error;
