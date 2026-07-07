@@ -206,6 +206,7 @@ export class TokenAutoDetect {
         });
 
         if (transfers.length === 0) {
+            await KV.upsert({key: KEY_AUTO_DETECT_TOKEN_EPOCH, value: `${epochRange.max}`});
             return;
         }
 

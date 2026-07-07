@@ -493,7 +493,6 @@ export class ModelData{
     announcedContractArray = []
     adminDestroyTxArray = []
     transferredNftArray = []
-    tokenArray = []
     nameTagArray = []
     bytes32NameTagArray = []
 
@@ -512,7 +511,6 @@ export class ModelData{
         this.announcedContractArray = []
         this.adminDestroyTxArray = []
         this.transferredNftArray = []
-        this.tokenArray = []
         this.nameTagArray = []
         this.bytes32NameTagArray = []
 
@@ -539,7 +537,6 @@ export class BatchData extends ModelData {
         this.announcedContractArray.push(...data.announcedContractArray)
         this.adminDestroyTxArray.push(...data.adminDestroyTxArray)
         this.transferredNftArray.push(...data.transferredNftArray)
-        this.tokenArray.push(...data.tokenArray)
         this.nameTagArray.push(...data.nameTagArray)
         this.bytes32NameTagArray.push(...data.bytes32NameTagArray)
 
@@ -562,8 +559,7 @@ export class BatchData extends ModelData {
 
     // merge in asc order by epoch number
     private merge() {
-        this.tokenArray = this.mergeItems([...this.announcedTokenArray, ...this.tokenArray])
-        this.announcedTokenArray = []
+        this.announcedTokenArray = this.mergeItems(this.announcedTokenArray)
 
         this.announcedContractArray = this.mergeItems(this.announcedContractArray)
 
