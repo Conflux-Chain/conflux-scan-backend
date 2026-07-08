@@ -17,6 +17,7 @@ export interface StatConfig {
     conflux: ConfluxOption; // chain rpc node
     conflux2?: ConfluxOption; // get cross space info in eSpace, needless in coreSpace
     ether?: EtherOption;
+    confuraRpc?: EtherOption;
     blockSyncRpc?: ConfluxOption; // chain rpc node
     cfxTransferRpc?: ConfluxOption; // for cfx transfer sync
     tokenTransferRpc?: ConfluxOption; // for token transfer sync
@@ -83,6 +84,7 @@ export interface ConfluxOption {
 
 export interface EtherOption {
     url: string,
+    timeout?: number,
 }
 
 export interface ConsortiumBridgeOption {

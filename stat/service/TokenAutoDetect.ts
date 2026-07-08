@@ -206,6 +206,7 @@ export class TokenAutoDetect {
         });
 
         if (transfers.length === 0) {
+            await KV.upsert({key: KEY_AUTO_DETECT_TOKEN_EPOCH, value: `${epochRange.max}`});
             return;
         }
 
@@ -336,7 +337,7 @@ export class TokenAutoDetect {
         }
     }
 
-    private static validateToken(tokenInfo, totalSupply) {
+    static validateToken(tokenInfo, totalSupply) {
         const auditResult = typeof tokenInfo.name === "string" && tokenInfo.name.trim().length > 0
             && typeof tokenInfo.symbol === "string" && tokenInfo.symbol.trim().length > 0;
 

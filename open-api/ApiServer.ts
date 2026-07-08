@@ -36,6 +36,7 @@ import {TxnSync} from "../stat/service/TxnSync";
 import {scheduleSwaggerReporter} from "../stat/monitor/swaggerMetrics";
 import {ContractTraceCreateQuery} from "../stat/service/ContractTraceCreateQuery";
 import {BalanceService} from "../stat/service/watcher/BalanceService";
+import {checkConfura} from "./router/middleware";
 
 const Koa = require('koa');
 const app = new Koa();
@@ -69,6 +70,7 @@ export class ApiService {
     balanceService: BalanceService;
     cfx: Conflux;
     eth;
+    confuraRpc;
     logger: any
     moduleSet: Set<string>;
     actionSet: Set<string>;
@@ -88,18 +90,20 @@ export class ApiServer {
         const logger = createLogger('apiServer', 'open-api', './log/open-api', 'info');
         console.log(`-------- start api server, port ${config.apiPort} --------`);
 
-        const cfx = await initCfxSdk(config.conflux);
-        const eth = initEthSdk(config.ether?.url)
-        StatApp.networkId = cfx.networkId;
-
         StatApp.readonly = config.database.readonly
         const sequelize = createDB(config.database)
         await initModel(sequelize)
         await sequelize.sync({})
 
-        await initRateLimiters();
-
         StatApp.isEVM = await KV.getSwitch(IS_EVM2);
+
+        checkConfura(config.confuraRpc);
+        const cfx = await initCfxSdk(config.conflux);
+        const eth = initEthSdk(config.ether?.url)
+        const confuraRpc = initEthSdk(config.confuraRpc?.url)
+        StatApp.networkId = cfx.networkId;
+
+        await initRateLimiters();
 
         apiService = new ApiService()
         const apiApp = {networkId: cfx.networkId, cfx, service: apiService, config};
@@ -127,6 +131,7 @@ export class ApiServer {
         apiService.balanceService = new BalanceService(this, StatApp.networkId)
         apiService.cfx = cfx;
         apiService.eth = eth;
+        apiService.confuraRpc = confuraRpc;
         apiService.logger = logger;
 
         this.initModule();
