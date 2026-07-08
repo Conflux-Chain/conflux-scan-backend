@@ -286,6 +286,11 @@ const CODE_FORMAT = {
   VYPER_JSON: {code: 'vyper-json', desc: 'Vyper (Standard-json-input)'},
 }
 
+export const SECOND = 1000;
+export const MINUTE = 60 * SECOND;
+export const HOUR = 60 * MINUTE;
+export const DAY = 24 * HOUR;
+
 export const CONST = {
   CL: '\u001b[2K', // CLEAR line, https://www.lihaoyi.com/post/BuildyourownCommandLinewithANSIescapecodes.html
   LIST_LIMIT: 1000,

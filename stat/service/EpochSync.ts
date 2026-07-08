@@ -400,7 +400,7 @@ export class EpochSync extends SyncBase {
             ]);
             const basicToken = TokenAutoDetect.validateToken(tokenInfo, totalSupply);
             if (basicToken) {
-                token = lodash.defaults(basicToken, token);
+                token = lodash.defaults(basicToken, token, {epoch: epochNumber, updatedAt: new Date()});
                 sanitizeToken(token);
                 tokenArray.push(token);
             }

@@ -5,25 +5,16 @@ import {InvalidParamError} from "../../stat/service/common/utils";
 import {StatApp} from "../../stat/StatApp";
 import {saveApiLog} from "../../stat/monitor/ApiLog";
 import {CODE_PARAMETER_ERROR, CODE_PARAMETER_ERROR_MSG, CODE_RATE_LIMITED} from "../common/Def";
-import {getClientIP} from "../../stat/router/RateLimiter";
 import {safeAddErrorLog} from "../../stat/monitor/ErrorMonitor";
 import {EtherOption} from "../../stat/config/StatConfig";
+import {DAY} from "../../stat/service/common/constant";
 
 const superagent = require('superagent');
 const yamljs = require('yamljs');
 const swStats = require('swagger-stats');
 const e2k = require('express-to-koa');
-const Limiter = require('ratelimiter')
 const swsProcessor = require('swagger-stats/lib/swsProcessor.js');
 
-let db
-
-export function setRateControlDB(db0) {
-    db = db0;
-}
-function getDB() {
-    return db;
-}
 export async function executionTime(ctx, next) {
     const start = Date.now()
     return next().finally(()=>{
@@ -35,41 +26,7 @@ export async function executionTime(ctx, next) {
         getApiService().metrics.metric({ctx, elapsed}).then().catch(e => console.log(`metrics error:`, e))
     });
 }
-export async function rateControl(ctx, next) {
-    // https://www.npmjs.com/package/ratelimiter
-    const ip = getClientIP(ctx);
-    // duration - of limit in milliseconds [3600000]
-    const max = 100, duration = 10_000
-    const limit = new Limiter({ id: ip, db: getDB(), max, duration });
-    const res = ctx
-    await new Promise(resolve => {
-        limit.get(function(err, limit){
-            if (err) {
-                next(err).then(resolve);
-                return
-            }
 
-            res.set('X-RateLimit-Limit', limit.total);
-            res.set('X-RateLimit-Remaining', limit.remaining - 1);
-            res.set('X-RateLimit-Duration', duration);
-
-            // all good
-            // debug('remaining %s/%s %s', limit.remaining - 1, limit.total, id);
-            if (limit.remaining) {
-                next().then(resolve);
-                return;
-            }
-
-            // not good
-            const delta = (limit.reset * 1000) - Date.now() | 0;
-            // const after = limit.reset - (Date.now() / 1000) | 0;
-            res.set('Retry-After-ms', delta);
-            ctx.body = { code: CODE_RATE_LIMITED, message: `Rate limit exceeded, retry in ${delta}ms`, retryAfterMs: delta  };
-            resolve(CODE_RATE_LIMITED)
-        });
-    })
-
-}
 export async function handleException(ctx, next) {
     await next().catch(err => {
         if (err?.message?.includes('path="", not match "hex40"')) {
@@ -91,15 +48,16 @@ export async function handleException(ctx, next) {
         console.log(`api error ${ctx.request.url}`, err)
     })
 }
+
 export function setBody(ctx, data: any, code = 0, message = 'OK') {
-    if(StatApp.isEVM){
+    if (StatApp.isEVM) {
         const status = code === 0 ? '1' : '0';
         ctx.body = {status, message, result: data};
         return;
     }
-
     ctx.body = {code, message, data};
 }
+
 function patchStatsLib() {
     const sFn = swsProcessor.apiStats.countResponse;
     let skipCount = 0;
@@ -115,19 +73,20 @@ function patchStatsLib() {
         }
     }
 }
+
 // https://swaggerstats.io/guide/conf.html#options
 export function addSwagger(app: Koa, prefix, swaggerYaml, tld) {
-    console.log(` loading swaggerYaml:${swaggerYaml}`)
+    console.log(`loading swaggerYaml:${swaggerYaml}`)
     const spec = yamljs.load(swaggerYaml);
     spec.info.description = spec.info.description.replace(/__tld__/gi, tld)
-    console.log(` loading swaggerYaml:${swaggerYaml} done`)
+    console.log(`loading swaggerYaml:${swaggerYaml} done`)
     // metrics
     patchStatsLib();
     app.use(e2k(swStats.getMiddleware({
         uriPath: `${prefix}/swagger-stats`,
         hostname: 'OpenApi', // Prevent exposure of server ip
         basePath: prefix,
-        swaggerSpec:spec,
+        swaggerSpec: spec,
     })));
     // swagger
     app.use(
@@ -144,7 +103,7 @@ export function addSwagger(app: Koa, prefix, swaggerYaml, tld) {
     );
 }
 
-export async function checkConfura(config: EtherOption) {
+export async function checkConfura(config?: EtherOption) {
     if (!StatApp.isEVM) {
         return;
     }
@@ -187,9 +146,9 @@ export async function checkConfura(config: EtherOption) {
 
     function checkExpiration(expireAt) {
         const preAlertDays = 7; // 7 days
-        const alertDaysAgo = new Date(expireAt.getTime() - preAlertDays * 24 * 60 * 60 * 1000);
+        const alertTime = new Date(expireAt.getTime() - preAlertDays * DAY);
 
-        if ((new Date()) <= alertDaysAgo) {
+        if ((new Date()) <= alertTime) {
             return;
         }
 
@@ -206,11 +165,9 @@ export async function checkConfura(config: EtherOption) {
 
         checkExpiration(expireAt);
 
-        const checkIntervalMs = 10 * 60 * 1000; // 10 minutes
-
         setInterval(() => {
             checkExpiration(expireAt)
-        }, checkIntervalMs);
+        }, DAY);
     } catch (e) {
         safeAddErrorLog("openapi", "confura-key", e).then();
         console.log("Failed to get confura key expireAt", e);
