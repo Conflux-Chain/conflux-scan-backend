@@ -28,6 +28,7 @@ import {
     KEY_AUTO_VERIFY_TRACE_ID,
     KEY_AUTO_VERIFY_VERIFY_ID,
     KEY_EVM_VERSIONS,
+    KEY_FE_VERSIONS,
     KEY_SOLC_VERSIONS,
     KEY_SOLC_VULNERABILITIES,
     KEY_STAT_ANNOUNCE_NAME_FOR_VERIFIED_CONTRACTS,
@@ -818,6 +819,11 @@ export class ContractQuery {
                 console.log('Schedule update compiler versions fail', e);
             });
 
+            await that.updateFeVersions().catch(e => {
+                safeAddErrorLog('ContractQuery', 'updateFeVersions', e).then();
+                console.log('Schedule update compiler versions fail', e);
+            });
+
             setTimeout(repeat, delay);
         }
 
@@ -876,7 +882,7 @@ export class ContractQuery {
             if (!list?.length) {
                 break;
             } else {
-                list.filter(v => v.name.startsWith('v')).forEach(v => {
+                list.filter(v => /^v\d+\.\d+\.\d+.*$/.test(v.name)).forEach(v => {
                     const ver = v.name.substring(1);
                     versions[ver] = {
                         desc: `vyper:${ver}`,
@@ -892,6 +898,50 @@ export class ContractQuery {
         }
     }
 
+    // shortVersion => {desc, name}
+    private async updateFeVersions() {
+        const versions = {};
+        let page = 1;
+
+        while (true) {
+            const resp = await ContractQuery._getJsonRequest({
+                url: `https://api.github.com/repos/argotorg/fe/tags?page=${page}&per_page=100`,
+                headers: {
+                    'User-Agent': 'Fe-Version-Checker'
+                },
+                handleError: false,
+            }).catch(e => {
+                if (e.status === 429) {
+                    return null;
+                }
+                throw e;
+            });
+
+            if (!resp) {
+                continue;
+            }
+
+            const {data: list} = resp;
+
+            if (!list?.length) {
+                break;
+            } else {
+                list.filter(v => /^v\d+\.\d+\.\d+.*$/.test(v.name)).forEach(v => {
+                    const ver = v.name.substring(1);
+                    versions[ver] = {
+                        desc: `fe:${ver}`,
+                        commit: v.commit.sha.substring(0, 8)
+                    };
+                });
+                page++;
+            }
+        }
+
+        if (Object.keys(versions).length) {
+            await KV.upsert({key: KEY_FE_VERSIONS, value: JSON.stringify(versions)});
+        }
+    }
+
     async listSolcVersions(): Promise<{ [shortVersion: string]: string }> {
         return this.listCompilerVersions(KEY_SOLC_VERSIONS);
     }
@@ -902,6 +952,10 @@ export class ContractQuery {
 
     async listVyperVersions(): Promise<{ [shortVersion: string]: { desc: string, commit: string } }> {
         return this.listCompilerVersions(KEY_VYPER_VERSIONS);
+    }
+
+    async listFeVersions(): Promise<{ [shortVersion: string]: { desc: string, commit: string } }> {
+        return this.listCompilerVersions(KEY_FE_VERSIONS);
     }
 
     private async listCompilerVersions(key: string): Promise<any> {

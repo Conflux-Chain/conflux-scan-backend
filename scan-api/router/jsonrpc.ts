@@ -360,6 +360,18 @@ export const jsonrpc_listVyperCompilers = jsonrpc.method_('listVyperCompilers',
     },
 );
 
+export const jsonrpc_listFeCompilers = jsonrpc.method_('listFeCompilers',
+    cacheFlow(60 * 1000),
+    async function () {
+        const {
+            app: {service},
+        } = this as ScanCtx
+
+        const versions = await service.contractQuery.listFeVersions()
+        return lodash.mapValues(versions, v => v.desc)
+    },
+);
+
 export const jsonrpc_verifyContract = jsonrpc.method_('verifyContract',
   serializeByIP(),
   buildFlow((app) => parameter({
