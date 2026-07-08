@@ -1,7 +1,7 @@
 import {ethers, formatEther} from "ethers";
 import {Conflux, format} from "js-conflux-sdk";
 import {parseAATxMethods, getPaymasterAddress, readOpHash} from "./eip4337decoder";
-import {parseUserOperationEvent} from "./eip4337abi";
+import {parseUserOperationEvent, parseUserOperationRevertReason} from "./eip4337abi";
 import {AATx, BundleTx} from "../../model/eip4337model";
 
 const {tracesInTree} = require('js-conflux-sdk/src/util/trace');
@@ -34,6 +34,8 @@ export interface IAAOpDetail {
 	gasLimit: string;
 	/** Actual gas units consumed by this user op (decimal string), from UserOperationEvent. */
 	actualGasUsed: string;
+	/** Failure reason from UserOperationRevertReason event; empty for success. */
+	failedReason?: string;
 	success: boolean;
 	nonce: string;
 	/** Paymaster address. Empty string if none. */
@@ -135,6 +137,7 @@ async function buildFailedUserOps(
 			gasLimit,
 			actualGasUsed: '0',
 			success: false,
+			failedReason: 'Bundle TX failed',
 			nonce: parsedOp.nonce?.toString() ?? '',
 			paymaster: toChecksumHex(getPaymasterAddress(parsedOp.paymasterAndData)),
 		};
@@ -199,6 +202,17 @@ function countTransfers(logs: any[]): {tokenTxnCount: number; nftTxnCount: numbe
 		}
 	}
 	return {tokenTxnCount, nftTxnCount};
+}
+
+function parseFailedReasonFromLogs(logs: any[], userOpHash: string): string {
+       for (const log of logs) {
+               const rr = parseUserOperationRevertReason(log);
+               if (!rr) continue;
+               if (rr.userOpHash?.toLowerCase() === userOpHash.toLowerCase()) {
+                       return rr.revertReason || 'unknown';
+               }
+       }
+       return 'unknown';
 }
 
 
@@ -319,6 +333,7 @@ export async function parseBundleTxByHash(
 			gasLimit,
 			actualGasUsed: event?.actualGasUsed?.toString() ?? '0',
 			success: event?.success ?? false,
+			failedReason: event?.success ? '' : parseFailedReasonFromLogs(innerLogs, opHash),
 			nonce: event?.nonce?.toString() ?? '',
 			paymaster,
 		};
