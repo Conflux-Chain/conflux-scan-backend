@@ -7,7 +7,9 @@ import {saveApiLog} from "../../stat/monitor/ApiLog";
 import {CODE_PARAMETER_ERROR, CODE_PARAMETER_ERROR_MSG, CODE_RATE_LIMITED} from "../common/Def";
 import {getClientIP} from "../../stat/router/RateLimiter";
 import {safeAddErrorLog} from "../../stat/monitor/ErrorMonitor";
+import {EtherOption} from "../../stat/config/StatConfig";
 
+const superagent = require('superagent');
 const yamljs = require('yamljs');
 const swStats = require('swagger-stats');
 const e2k = require('express-to-koa');
@@ -140,4 +142,77 @@ export function addSwagger(app: Koa, prefix, swaggerYaml, tld) {
             },
         }),
     );
+}
+
+export async function checkConfura(config: EtherOption) {
+    if (!StatApp.isEVM) {
+        return;
+    }
+
+    if (!config || !config.url || typeof config.url !== "string") {
+        console.log("Failed to load config for confura rpc!");
+        process.exit(9);
+    }
+
+    async function fetchExpireAt(config) {
+        const requestBody = {
+            jsonrpc: "2.0",
+            method: "diagnostic_getRateLimitStatus",
+            params: [],
+            id: 1,
+        };
+
+        const response = await superagent
+            .post(config.url)
+            .set({
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            })
+            .timeout(config.timeout || 3000)
+            .send(JSON.stringify(requestBody));
+
+        const expireAtStr = response?.body?.result?.info?.web3payInfo?.expireAt;
+        if (!expireAtStr) {
+            throw new Error("field expireAt not found in confura response");
+        }
+
+        const expireAt = new Date(expireAtStr);
+        if (isNaN(expireAt.getTime())) {
+            throw new Error("field expireAt is invalid date");
+        }
+
+        console.log(`Succeed to get confura key expireAt ${expireAt.toISOString()}`);
+        return expireAt;
+    }
+
+    function checkExpiration(expireAt) {
+        const preAlertDays = 7; // 7 days
+        const alertDaysAgo = new Date(expireAt.getTime() - preAlertDays * 24 * 60 * 60 * 1000);
+
+        if ((new Date()) <= alertDaysAgo) {
+            return;
+        }
+
+        safeAddErrorLog(
+            "openapi",
+            "confura-key",
+            new Error(`The confura key has entered the ${preAlertDays}-day pre-alert window, expireAt=${expireAt.toISOString()}`)
+        ).then();
+        console.log("Succeed to alert confura key expiration");
+    }
+
+    try {
+        const expireAt = await fetchExpireAt(config);
+
+        checkExpiration(expireAt);
+
+        const checkIntervalMs = 10 * 60 * 1000; // 10 minutes
+
+        setInterval(() => {
+            checkExpiration(expireAt)
+        }, checkIntervalMs);
+    } catch (e) {
+        safeAddErrorLog("openapi", "confura-key", e).then();
+        console.log("Failed to get confura key expireAt", e);
+    }
 }

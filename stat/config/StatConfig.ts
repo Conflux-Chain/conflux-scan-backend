@@ -84,6 +84,7 @@ export interface ConfluxOption {
 
 export interface EtherOption {
     url: string,
+    timeout?: number,
 }
 
 export interface ConsortiumBridgeOption {
