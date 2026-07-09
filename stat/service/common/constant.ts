@@ -426,7 +426,9 @@ export const CONST = {
 
   LANGUAGE: {
     SOLIDITY: "Solidity",
-    VYPER: "Vyper"
+    YUL: "Yul",
+    VYPER: "Vyper",
+    FE: "Fe"
   },
 
   VYPER_SETTING_OPTIMIZE: ['gas', 'codesize', 'none', true, false],

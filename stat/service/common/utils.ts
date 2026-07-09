@@ -555,7 +555,7 @@ export function checkVyperVersion(requestVersion, versions) {
     return `${requestVersion.substring(6)}+commit.${verInfo.commit}`
 }
 
-export function convertVyperVersion(versionWithCommit, versions) {
+export function convertCompilerVersion(versionWithCommit, versions) {
     return versions[versionWithCommit.split('+')[0]].desc
 }
 

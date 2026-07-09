@@ -17,7 +17,7 @@ import {
     checkSolcVersion,
     checkVyperOptimization,
     checkVyperVersion,
-    convertVyperVersion,
+    convertCompilerVersion,
     splitFullyQualifiedName
 } from "./common/utils";
 import {VerifiedContracts} from "../model/VerifiedContracts";
@@ -564,10 +564,22 @@ export class ContractQuery {
             sourceCode = JSON.stringify(stdJsonInput);
         }
 
-        if(language === CONST.LANGUAGE.VYPER) {
-            const versions = await this.listVyperVersions();
-            compilerVersion = convertVyperVersion(compilerVersion, versions);
-            fullyQualifiedName = contractLabel;
+        switch (language) {
+            case CONST.LANGUAGE.SOLIDITY:
+            case CONST.LANGUAGE.YUL:
+                if (!compilerVersion.startsWith("v")) {
+                    compilerVersion = `v${compilerVersion}`;
+                }
+                break;
+            case CONST.LANGUAGE.VYPER:
+                const vyperVersions = await this.listVyperVersions();
+                compilerVersion = convertCompilerVersion(compilerVersion, vyperVersions);
+                fullyQualifiedName = contractLabel;
+                break;
+            case CONST.LANGUAGE.FE:
+                const feVersions = await this.listFeVersions();
+                compilerVersion = convertCompilerVersion(compilerVersion, feVersions);
+                break;
         }
 
         const addressId = await makeIdV(address);
