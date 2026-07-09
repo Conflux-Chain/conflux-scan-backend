@@ -561,7 +561,8 @@ router_get(router,'/contract/code-format',
     }),
 
     async () => {
-      return Object.values(CONST.CONTRACT_CODE_FORMAT_INFO).filter(format => format.code.endsWith('single-file'))
+      return Object.values(CONST.CONTRACT_CODE_FORMAT_INFO)
+          .filter(format => format.code.endsWith('single-file') && !format.code.startsWith('fe'))
     }
 );
 

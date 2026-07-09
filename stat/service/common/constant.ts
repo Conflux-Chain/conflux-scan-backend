@@ -284,6 +284,8 @@ const CODE_FORMAT = {
   SOLIDITY_STANDARD_JSON_INPUT: {code: 'solidity-standard-json-input', desc: 'Solidity (Standard-json-input)'},
   VYPER_SINGLE_FILE: {code: 'vyper-single-file', desc: 'Vyper (Single file)'},
   VYPER_JSON: {code: 'vyper-json', desc: 'Vyper (Standard-json-input)'},
+  FE_SINGLE_FILE: {code: 'fe-single-file', desc: 'Fe (Single file)'},
+  FE_JSON: {code: 'fe-json', desc: 'Fe (Standard-json-input)'},
 }
 
 export const SECOND = 1000;

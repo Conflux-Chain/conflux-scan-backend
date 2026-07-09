@@ -10,6 +10,7 @@ import {SolidityJsonInput, VyperJsonInput} from "@ethereum-sourcify/compilers-ty
 import {
     checkCodeFormat,
     checkEVMVersion,
+    checkFeVersion,
     checkLibrary,
     checkLicense,
     checkPresent,
@@ -1018,7 +1019,7 @@ export class ContractQuery {
             contractPath = fqn.contractPath;
             contractName = fqn.contractName;
             contractLabel = '';
-        } else {
+        } else if (CONST.CONTRACT_CODE_FORMATS_VYPER.includes(codeFormat)){
             const versions = await this.listVyperVersions();
             compilerVersion = checkVyperVersion(compilerVersion, versions);
             if(codeFormat === CONST.CONTRACT_CODE_FORMAT_INFO.VYPER_JSON.code) {
@@ -1035,6 +1036,13 @@ export class ContractQuery {
                 contractName = path.parse(fqn.contractPath).name;
             }
             contractLabel = fqn.contractName || 'Vyper_contract';
+        } else{
+            const versions = await this.listFeVersions();
+            compilerVersion = checkFeVersion(compilerVersion, versions);
+            const fqn = splitFullyQualifiedName(fullQualifiedName);
+            contractPath = fqn.contractPath;
+            contractName = fqn.contractName;
+            contractLabel = '';
         }
 
         const librariesInfo: Record<string, {name: any; address: any;}> = {};
@@ -1081,6 +1089,19 @@ export class ContractQuery {
                     evmVersion,
                     optimize: optimizationUsed,
                 },
+            };
+        }
+
+        if(codeFormat === CONST.CONTRACT_CODE_FORMAT_INFO.FE_SINGLE_FILE.code) {
+            jsonInput = {
+                language: CONST.LANGUAGE.FE,
+                sources: {
+                    [contractPath]: {
+                        content: sourceCode,
+                    },
+                },
+                // Fe alpha has no configurable settings; pass an empty object or omit entirely
+                settings: {},
             };
         }
 

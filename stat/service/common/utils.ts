@@ -493,29 +493,29 @@ export function list2map(arr:any[], key:string) {
 }
 
 export function checkCodeFormat(codeFormat) {
-    if(!codeFormat) {
+    if (!codeFormat) {
         throw new Error('code format required')
     }
-    if(!CONST.CONTRACT_CODE_FORMATS.includes(codeFormat)) {
+    if (!CONST.CONTRACT_CODE_FORMATS.includes(codeFormat)) {
         throw new Error(`code format ${codeFormat} not supported`)
     }
 }
 
 export function checkSolcVersion(requestVersion, versions) {
-    if(!requestVersion) {
+    if (!requestVersion) {
         throw new Error('solc version required')
     }
 
-    if(!requestVersion.startsWith('v')) {
+    if (!requestVersion.startsWith('v')) {
         const version = versions[requestVersion]
-        if(!version) {
+        if (!version) {
             throw new Error(`solc version ${requestVersion} not supported`)
         }
         return version
     }
 
     const version = Object.values(versions).find(version => requestVersion === version)
-    if(!version) {
+    if (!version) {
         throw new Error(`solc version ${requestVersion} not supported`)
     }
     return version
@@ -524,10 +524,10 @@ export function checkSolcVersion(requestVersion, versions) {
 export function checkSolcOptimization(optimizationUsed, runs) {
     optimizationUsed = optimizationUsed === undefined || optimizationUsed === null ? 0 : Number(optimizationUsed);
     runs = runs === undefined || runs === null ? 200 : Number(runs);
-    if(optimizationUsed !== 0 && optimizationUsed !== 1){
+    if (optimizationUsed !== 0 && optimizationUsed !== 1) {
         throw new Error(`Invalid parameter <optimizationUsed> with value [${optimizationUsed}], expect 0 or 1`);
     }
-    if(optimizationUsed === 1 && (!Number.isInteger(runs) || runs < 0)){
+    if (optimizationUsed === 1 && (!Number.isInteger(runs) || runs < 0)) {
         throw new Error(`Invalid parameter <runs> with value [${runs}], expect runs >= 0`);
     }
     return {optimizationUsed, runs}
@@ -536,23 +536,45 @@ export function checkSolcOptimization(optimizationUsed, runs) {
 // requestVersion: 0.3.10
 // requestVersion: vyper:0.3.10
 export function checkVyperVersion(requestVersion, versions) {
-    if(!requestVersion) {
+    if (!requestVersion) {
         throw new Error('vyper version required')
     }
 
-    if(!requestVersion.startsWith('vyper')) {
+    if (!requestVersion.startsWith('vyper')) {
         const verInfo = versions[requestVersion]
-        if(!verInfo) {
+        if (!verInfo) {
             throw new Error(`vyper version ${requestVersion} not supported`)
         }
         return `${requestVersion}+commit.${verInfo.commit}`
     }
 
     const verInfo: any = Object.values(versions).find((version: any) => requestVersion === version.desc)
-    if(!verInfo) {
+    if (!verInfo) {
         throw new Error(`vyper version ${requestVersion} not supported`)
     }
-    return `${requestVersion.substring(6)}+commit.${verInfo.commit}`
+    return `${requestVersion.slice("vyper:".length)}+commit.${verInfo.commit}`
+}
+
+// requestVersion: 26.0.0-alpha.12
+// requestVersion: fe:26.0.0-alpha.12
+export function checkFeVersion(requestVersion, versions) {
+    if (!requestVersion) {
+        throw new Error('fe version required')
+    }
+
+    if (!requestVersion.startsWith('fe')) {
+        const verInfo = versions[requestVersion]
+        if (!verInfo) {
+            throw new Error(`fe version ${requestVersion} not supported`)
+        }
+        return `${requestVersion}+commit.${verInfo.commit}`
+    }
+
+    const verInfo: any = Object.values(versions).find((version: any) => requestVersion === version.desc)
+    if (!verInfo) {
+        throw new Error(`fe version ${requestVersion} not supported`)
+    }
+    return `${requestVersion.slice("fe:".length)}+commit.${verInfo.commit}`
 }
 
 export function convertCompilerVersion(versionWithCommit, versions) {
@@ -565,11 +587,11 @@ export function convertCompilerVersion(versionWithCommit, versions) {
  * >= 0.3.0 undefined
  */
 export function checkVyperOptimization(optimizationUsed) {
-    if(!optimizationUsed) {
+    if (!optimizationUsed) {
         return undefined
     }
 
-    if(!CONST.VYPER_SETTING_OPTIMIZE.includes(optimizationUsed)){
+    if (!CONST.VYPER_SETTING_OPTIMIZE.includes(optimizationUsed)) {
         throw new Error(`Invalid parameter <optimiz> with value [${optimizationUsed}], expect one of ${CONST.VYPER_SETTING_OPTIMIZE.join(',')}`);
     }
     return optimizationUsed
@@ -590,11 +612,11 @@ export function checkLibrary(libMap) {
 }
 
 export async function checkEVMVersion(version: string, set: string[]) {
-    if(!version) {
+    if (!version) {
         return undefined
     }
 
-    if(!lodash.includes(set, version)) {
+    if (!lodash.includes(set, version)) {
         throw new Error(`EVM version ${version} not supported`)
     }
 
@@ -607,20 +629,19 @@ export function checkLicense(licenseType) {
     const max = Math.max(...types)
 
     licenseType = licenseType === undefined || licenseType === null ? min : Number(licenseType);
-    if(licenseType< min || licenseType > max){
+    if (licenseType < min || licenseType > max) {
         throw new Error(`Invalid parameter <licenseType> with value [${licenseType}], expect licenseType between ${min} and ${max}`);
     }
 
     return licenseType
 }
 
-export function splitFullyQualifiedName(fullyQualifiedName){
+export function splitFullyQualifiedName(fullyQualifiedName) {
     const splitIdentifier = fullyQualifiedName.split(':');
     const contractName = splitIdentifier[splitIdentifier.length - 1];
     const contractPath = splitIdentifier.slice(0, -1).join(':');
-    return { contractPath, contractName };
+    return {contractPath, contractName};
 }
-
 
 export function emptyField(data) {
     Object.keys(data).forEach(key => (data[key] === null || data[key] === undefined) && (delete data[key]));
