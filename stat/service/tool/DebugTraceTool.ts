@@ -1,6 +1,6 @@
 import {ethers} from 'ethers';
 import {formatBlockNumber, formatCallParams, sendRpc} from "../common/utils";
-import {CallParams, TracerOptions} from "../AccountQuery";
+import {CallParams, TracerOptions} from "../../../scan-api/service/ConfluxService";
 
 export class DebugTraceClient {
     private provider: ethers.JsonRpcProvider;

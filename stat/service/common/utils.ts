@@ -1,4 +1,4 @@
-import {Conflux, format as sdk_format, sign} from "js-conflux-sdk";
+import {Conflux, format as sdk_format} from "js-conflux-sdk";
 import {Errors} from "./LogicError";
 import {ScanHttpProvider} from "./ScanHttpProvider";
 import {ConfluxOption} from "../../config/StatConfig";
@@ -7,9 +7,9 @@ import {ethers} from "ethers";
 import {ConsortiumConflux} from "./ConsortiumConflux";
 import {useFastFormat} from "./fastFormatter";
 import {CONST} from "./constant";
-import {CallParams} from "../AccountQuery";
 import {IToken} from "../../model/Token";
 import {IContract} from "../../model/Contract";
+import {CallParams} from "../../../scan-api/service/ConfluxService";
 
 const lodash = require('lodash');
 const {isValidCfxAddress, decodeCfxAddress} = require('js-conflux-sdk/src/util/address');
@@ -806,14 +806,14 @@ export async function sendRpc(provider: any, method: string, rpcParams: any[], o
     throw lastError || new Errors.RPCError(`Failed to get response by sdk: retry ${opts.retries} times`);
 }
 
-export async function sendRpcRaw(provider: any, method: string, params: any[]): Promise<any> {
+export async function sendRpcRaw(provider: any, method: string, params: any[], printLog?: boolean): Promise<any> {
     let result;
     try {
         result = await provider.send(method, params);
     } catch (error: any) {
         throw new Errors.RPCError(`Failed to get response by sdk: ${error}`);
     } finally {
-        console.log("RPC", JSON.stringify({method, params, result}));
+        printLog && console.log("RPC", JSON.stringify({method, params, result}));
     }
     return result;
 }
