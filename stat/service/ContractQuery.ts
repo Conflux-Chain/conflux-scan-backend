@@ -844,31 +844,31 @@ export class ContractQuery {
         console.log(`[contract_compiler_version]schedule in ${delay/1000}s interval`);
     }
 
-    // shortVersion => fullVersion
     private async updateSolcVersions() {
         const resp = await ContractQuery._getJsonRequestByAxios({
             url: 'https://binaries.soliditylang.org/bin/list.json',
             handleError: false,
         });
         const {data} = resp;
+        // shortVersion => fullVersion, eg: 0.5.16 => v0.5.16+commit.9c3226ce
         const versions = lodash.mapValues(data.releases, solcName => solcName.substring(8, solcName.length - 3));
         await KV.upsert({key: KEY_SOLC_VERSIONS, value: JSON.stringify(versions)});
     }
 
-    // shortVersion => vulnerabilities
     private async updateSolcVulnerabilities() {
         const resp = await ContractQuery._getJsonRequestByAxios({
             url: 'https://raw.githubusercontent.com/argotorg/solidity/refs/heads/develop/docs/bugs_by_version.json',
             handleError: false,
         });
         const {data} = resp;
+        // shortVersion => vulnerabilities, eg: 0.5.9 => 16
         const vulnerabilities = Object.fromEntries(Object.entries(data)
             .map(([shortVer, bugInfo]: [string, any]) => [shortVer, bugInfo.bugs.length]));
         await KV.upsert({key: KEY_SOLC_VULNERABILITIES, value: JSON.stringify(vulnerabilities)});
     }
 
-    // shortVersion => {desc, commit}
     private async updateVyperVersions() {
+        // shortVersion => {desc, commit}, eg: 0.3.10 => {"desc": "vyper:0.3.10", "commit": "91361694"}
         const versions = {};
         let page = 1;
 
@@ -911,8 +911,8 @@ export class ContractQuery {
         }
     }
 
-    // shortVersion => {desc, name}
     private async updateFeVersions() {
+        // shortVersion => {desc, commit}, 26.2.0 => {"desc": "fe:26.2.0", "commit": "1fffb9e7"}
         const versions = {};
         let page = 1;
 
@@ -1004,10 +1004,10 @@ export class ContractQuery {
         checkCodeFormat(codeFormat);
 
         let jsonInput, contractPath, contractName, contractLabel;
-        if(CONST.CONTRACT_CODE_FORMATS_SOLIDITY.includes(codeFormat)) {
+        if (CONST.CONTRACT_CODE_FORMATS_SOLIDITY.includes(codeFormat)) {
             const versions = await this.listSolcVersions();
             compilerVersion = checkSolcVersion(compilerVersion, versions);
-            if(codeFormat === CONST.CONTRACT_CODE_FORMAT_INFO.SOLIDITY_STANDARD_JSON_INPUT.code){
+            if (codeFormat === CONST.CONTRACT_CODE_FORMAT_INFO.SOLIDITY_STANDARD_JSON_INPUT.code) {
                 jsonInput = JSON.parse(sourceCode);
                 optimizationUsed = jsonInput.settings.optimizer.enabled;
                 runs = jsonInput.settings.optimizer.runs;
@@ -1019,34 +1019,37 @@ export class ContractQuery {
             contractPath = fqn.contractPath;
             contractName = fqn.contractName;
             contractLabel = '';
-        } else if (CONST.CONTRACT_CODE_FORMATS_VYPER.includes(codeFormat)){
+        } else if (CONST.CONTRACT_CODE_FORMATS_VYPER.includes(codeFormat)) {
             const versions = await this.listVyperVersions();
             compilerVersion = checkVyperVersion(compilerVersion, versions);
-            if(codeFormat === CONST.CONTRACT_CODE_FORMAT_INFO.VYPER_JSON.code) {
+            if (codeFormat === CONST.CONTRACT_CODE_FORMAT_INFO.VYPER_JSON.code) {
                 jsonInput = JSON.parse(sourceCode);
                 optimizationUsed = jsonInput.settings.optimize;
             }
             optimizationUsed = checkVyperOptimization(optimizationUsed);
             const fqn = splitFullyQualifiedName(fullQualifiedName);
-            if(codeFormat === CONST.CONTRACT_CODE_FORMAT_INFO.VYPER_SINGLE_FILE.code) {
+            if (codeFormat === CONST.CONTRACT_CODE_FORMAT_INFO.VYPER_SINGLE_FILE.code) {
                 contractPath = ".";
                 contractName = "";
-            } else{
+            } else {
                 contractPath = fqn.contractPath;
                 contractName = path.parse(fqn.contractPath).name;
             }
             contractLabel = fqn.contractName || 'Vyper_contract';
-        } else{
+        } else {
             const versions = await this.listFeVersions();
             compilerVersion = checkFeVersion(compilerVersion, versions);
+            if (codeFormat === CONST.CONTRACT_CODE_FORMAT_INFO.FE_JSON.code) {
+                jsonInput = JSON.parse(sourceCode);
+            }
             const fqn = splitFullyQualifiedName(fullQualifiedName);
             contractPath = fqn.contractPath;
             contractName = fqn.contractName;
             contractLabel = '';
         }
 
-        const librariesInfo: Record<string, {name: any; address: any;}> = {};
-        for(let i = 1; i <= 10; i++) {
+        const librariesInfo: Record<string, { name: any; address: any; }> = {};
+        for (let i = 1; i <= 10; i++) {
             librariesInfo[`library${i}`] = {
                 name: verifyInput[`libraryName${i}` as keyof typeof verifyInput],
                 address: verifyInput[`libraryAddress${i}` as keyof typeof verifyInput]
@@ -1058,7 +1061,7 @@ export class ContractQuery {
 
         licenseType = checkLicense(licenseType);
 
-        if(codeFormat === CONST.CONTRACT_CODE_FORMAT_INFO.SOLIDITY_SINGLE_FILE.code) {
+        if (codeFormat === CONST.CONTRACT_CODE_FORMAT_INFO.SOLIDITY_SINGLE_FILE.code) {
             jsonInput = {
                 language: CONST.LANGUAGE.SOLIDITY,
                 sources: {
@@ -1072,12 +1075,12 @@ export class ContractQuery {
                         enabled: !!optimizationUsed,
                         runs,
                     },
-                    libraries: Object.keys(libraries).length ? { [contractPath]: libraries } : undefined,
+                    libraries: Object.keys(libraries).length ? {[contractPath]: libraries} : undefined,
                 },
             };
         }
 
-        if(codeFormat === CONST.CONTRACT_CODE_FORMAT_INFO.VYPER_SINGLE_FILE.code) {
+        if (codeFormat === CONST.CONTRACT_CODE_FORMAT_INFO.VYPER_SINGLE_FILE.code) {
             jsonInput = {
                 language: CONST.LANGUAGE.VYPER,
                 sources: {
@@ -1092,7 +1095,7 @@ export class ContractQuery {
             };
         }
 
-        if(codeFormat === CONST.CONTRACT_CODE_FORMAT_INFO.FE_SINGLE_FILE.code) {
+        if (codeFormat === CONST.CONTRACT_CODE_FORMAT_INFO.FE_SINGLE_FILE.code) {
             jsonInput = {
                 language: CONST.LANGUAGE.FE,
                 sources: {
@@ -1109,8 +1112,10 @@ export class ContractQuery {
             "select concat('0x',txHash) as txHash from trace_create_contract where `to` = (select id from hex40 where hex=?)",
             {
                 type: QueryTypes.SELECT,
-                replacements:[contractAddress.substr(2)]
-            }).then(traces => {return traces?.length ? traces[0] : undefined});
+                replacements: [contractAddress.substr(2)]
+            }).then(traces => {
+            return traces?.length ? traces[0] : undefined
+        });
 
         const input: VerifyFromJsonInput = {
             chainId: StatApp.networkId,
