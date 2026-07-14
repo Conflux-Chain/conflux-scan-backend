@@ -291,21 +291,19 @@ async function main() {
 		const arr = await listAuthAction({author: arg1, skip: 0, limit: 10});
 		console.log(JSON.stringify(arr, null, 4));
 		await AuthAction.sequelize.close();
+	} else if (cmd === 'loadAuth') {
+		const {conflux} = await init();
+		const [,,,epoch] = process.argv;
+		await testLoadAuth(conflux.url, parseInt(epoch));
 	} else if (cmd === 'recover-auth') {
 		const sig = buildSignature(authExample);
 		const author = recoverEIP7702Author({...authExample, signature: sig});
 		console.log(`author: ${author}`);
 	}
 }
-async function testLoadAuth() {
-	let url = '';
-	url = ''
-	const { ethers } = require("ethers");
-
-// 替换为你的 JSON-RPC 节点 URL
+async function testLoadAuth(url: string, epoch: number = 53098075) {
 	const provider = new JsonRpcProvider(url);
-	// '0xa37384c0646a682bd0e206232572af91b75e6735ab30b658854222546f76ffbc'
-	await loadSetAuth(provider, 53098075);
+	await loadSetAuth(provider, epoch);
 }
 
 if(module == require.main) {
