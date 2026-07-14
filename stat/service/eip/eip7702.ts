@@ -178,14 +178,16 @@ export async function process7702AuthStub() {
 	const actionWithMaxRefId = await AuthAction.findOne({
 		order: [['refBlockStubId', 'desc']], raw: true,
 	});
+	const idFilter = actionWithMaxRefId?.refBlockStubId || 0;
 	const stub = await AuthBlockStub.findOne({
 		order: [['id', 'asc']], raw: true,
-		where: {id: {[Op.gt]: actionWithMaxRefId?.refBlockStubId || 0}}
+		where: {id: {[Op.gt]: idFilter}}
 	})
 	if (!stub) {
+		console.log(`no auth block stub, id condition [${idFilter}]`);
 		return {code: NOT_FOUND};
 	}
-	// console.log(`process block `, stub.blockNumber, ' stub id ', stub.id);
+	console.log(`process block `, stub.blockNumber, ' stub id ', stub.id);
 	const rpcResult = await loadSetAuth(ctx.netProvider, stub.blockNumber) as any[];
 	const dbBeanArr = [];
 	let authIndex = -1;
@@ -299,11 +301,15 @@ async function main() {
 		const sig = buildSignature(authExample);
 		const author = recoverEIP7702Author({...authExample, signature: sig});
 		console.log(`author: ${author}`);
+	} else {
+		console.log(`unknown cmd: ${cmd}`);
 	}
+	await AuthAction.sequelize?.close();
 }
 async function testLoadAuth(url: string, epoch: number = 53098075) {
 	const provider = new JsonRpcProvider(url);
-	await loadSetAuth(provider, epoch);
+	const result = await loadSetAuth(provider, epoch);
+	console.log(`loaded auth`, result);
 }
 
 if(module == require.main) {
