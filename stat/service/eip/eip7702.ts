@@ -243,7 +243,7 @@ export async function process7702AuthStub() {
 			author: ''
 		});
 		setTimeout(()=>{
-			AuthAction.destroy({where: {refBlockStubId: stub.id}}).catch(e=>{
+			AuthAction.destroy({where: {refBlockStubId: stub.id, author: ''}}).catch(e=>{
 				return safeAddErrorLog('eip7702', 'destroy-placeholder', e);
 			})
 		}, 10 * SECOND);
