@@ -54,6 +54,8 @@ export async function run() {
     if (StatApp.isEVM && !NoCoreSpace) {
         initAuthRpc();
         do7702AuthTask();
+    } else {
+        console.log(`do not support 7702 feature.`)
     }
 
     await mustInit()

@@ -1,4 +1,4 @@
-import {AuthAction, AuthBlockStub, listAuthAction} from "../../model/EIP7702model";
+import {AuthAction, AuthBlockStub, IAuthAction, listAuthAction} from "../../model/EIP7702model";
 import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
 import {getCfxSdk, initEthSdk, mustBeAddressParamIfPresent, SECOND} from "../common/utils";
 import {ConfigInstance} from "../../config/StatConfig";
@@ -8,7 +8,7 @@ import {init} from "../tool/FixDailyTokenStat";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
 import {getAddrId, Hex40Map, makeId, makeIdV} from "../../model/HexMap";
 import {Errors} from "../common/LogicError";
-import {ethers, JsonRpcProvider} from "ethers";
+import {ethers, JsonRpcProvider, ZeroAddress} from "ethers";
 
 type AccountType = {
 	isContract: boolean,
@@ -125,6 +125,7 @@ export async function loadSetAuth(netProvider: JsonRpcProvider, blockNumber: num
 
 const ctx = {
 	netProvider: null as JsonRpcProvider,
+	lastIdFilter: 0,
 }
 const NOT_FOUND = 404;
 
@@ -178,16 +179,21 @@ export async function process7702AuthStub() {
 	const actionWithMaxRefId = await AuthAction.findOne({
 		order: [['refBlockStubId', 'desc']], raw: true,
 	});
+	const idFilter = actionWithMaxRefId?.refBlockStubId || 0;
 	const stub = await AuthBlockStub.findOne({
 		order: [['id', 'asc']], raw: true,
-		where: {id: {[Op.gt]: actionWithMaxRefId?.refBlockStubId || 0}}
+		where: {id: {[Op.gt]: idFilter}}
 	})
 	if (!stub) {
+		if (ctx.lastIdFilter !== idFilter) {
+			console.log(`no auth block stub, id condition [${idFilter}]`);
+			ctx.lastIdFilter = idFilter;
+		}
 		return {code: NOT_FOUND};
 	}
-	// console.log(`process block `, stub.blockNumber, ' stub id ', stub.id);
+	console.log(`process block `, stub.blockNumber, ' stub id ', stub.id);
 	const rpcResult = await loadSetAuth(ctx.netProvider, stub.blockNumber) as any[];
-	const dbBeanArr = [];
+	const dbBeanArr: IAuthAction[] = [];
 	let authIndex = -1;
 	for (const entry of rpcResult) {
 		authIndex ++;
@@ -218,6 +224,31 @@ export async function process7702AuthStub() {
 		action['result'] = result;
 		await makeIdV(action['author'], null, {dt: stub['createdAt']})
 		dbBeanArr.push(action);
+	}
+	if (dbBeanArr.length === 0) {
+		safeAddErrorLog('eip7702', 'no-auth-in-block',
+			new Error(`no auth tx in block ${stub.blockNumber}`));
+		dbBeanArr.push({
+			address: ZeroAddress,
+			authIndex: 0,
+			chainId: 0,
+			nonce: 0,
+			r: "",
+			result: "",
+			s: "",
+			transactionPosition: 0,
+			yParity: "",
+			blockNumber: stub.blockNumber,
+			refBlockStubId: stub.id,
+			author: ''
+		});
+		setTimeout(()=>{
+			AuthAction.destroy({where: {
+				refBlockStubId: stub.id, author: '', address: ZeroAddress, nonce: 0, chainId: 0,
+			}}).catch(e=>{
+				return safeAddErrorLog('eip7702', 'destroy-placeholder', e);
+			})
+		}, 10 * SECOND);
 	}
 	await AuthAction.bulkCreate(dbBeanArr, {
 		updateOnDuplicate: ['refBlockStubId', 'result', 'updatedAt'] as any,
@@ -290,22 +321,23 @@ async function main() {
 		await init();
 		const arr = await listAuthAction({author: arg1, skip: 0, limit: 10});
 		console.log(JSON.stringify(arr, null, 4));
-		await AuthAction.sequelize.close();
+	} else if (cmd === 'loadAuth') {
+		const {conflux} = await init();
+		const [,,,epoch] = process.argv;
+		await testLoadAuth(conflux.url, parseInt(epoch));
 	} else if (cmd === 'recover-auth') {
 		const sig = buildSignature(authExample);
 		const author = recoverEIP7702Author({...authExample, signature: sig});
 		console.log(`author: ${author}`);
+	} else {
+		console.log(`unknown cmd: ${cmd}`);
 	}
+	await AuthAction.sequelize?.close();
 }
-async function testLoadAuth() {
-	let url = '';
-	url = ''
-	const { ethers } = require("ethers");
-
-// 替换为你的 JSON-RPC 节点 URL
+async function testLoadAuth(url: string, epoch: number = 53098075) {
 	const provider = new JsonRpcProvider(url);
-	// '0xa37384c0646a682bd0e206232572af91b75e6735ab30b658854222546f76ffbc'
-	await loadSetAuth(provider, 53098075);
+	const result = await loadSetAuth(provider, epoch);
+	console.log(`loaded auth`, result);
 }
 
 if(module == require.main) {
