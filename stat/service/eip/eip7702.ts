@@ -8,7 +8,7 @@ import {init} from "../tool/FixDailyTokenStat";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
 import {getAddrId, Hex40Map, makeId, makeIdV} from "../../model/HexMap";
 import {Errors} from "../common/LogicError";
-import {ethers, JsonRpcProvider} from "ethers";
+import {ethers, JsonRpcProvider, ZeroAddress} from "ethers";
 
 type AccountType = {
 	isContract: boolean,
@@ -229,7 +229,7 @@ export async function process7702AuthStub() {
 		safeAddErrorLog('eip7702', 'no-auth-in-block',
 			new Error(`no auth tx in block ${stub.blockNumber}`));
 		dbBeanArr.push({
-			address: "",
+			address: ZeroAddress,
 			authIndex: 0,
 			chainId: 0,
 			nonce: 0,
@@ -243,7 +243,9 @@ export async function process7702AuthStub() {
 			author: ''
 		});
 		setTimeout(()=>{
-			AuthAction.destroy({where: {refBlockStubId: stub.id, author: ''}}).catch(e=>{
+			AuthAction.destroy({where: {
+				refBlockStubId: stub.id, author: '', address: ZeroAddress, nonce: 0, chainId: 0,
+			}}).catch(e=>{
 				return safeAddErrorLog('eip7702', 'destroy-placeholder', e);
 			})
 		}, 10 * SECOND);
@@ -319,7 +321,6 @@ async function main() {
 		await init();
 		const arr = await listAuthAction({author: arg1, skip: 0, limit: 10});
 		console.log(JSON.stringify(arr, null, 4));
-		await AuthAction.sequelize.close();
 	} else if (cmd === 'loadAuth') {
 		const {conflux} = await init();
 		const [,,,epoch] = process.argv;
