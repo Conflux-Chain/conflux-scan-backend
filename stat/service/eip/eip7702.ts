@@ -1,4 +1,4 @@
-import {AuthAction, AuthBlockStub, listAuthAction} from "../../model/EIP7702model";
+import {AuthAction, AuthBlockStub, IAuthAction, listAuthAction} from "../../model/EIP7702model";
 import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
 import {getCfxSdk, initEthSdk, mustBeAddressParamIfPresent, SECOND} from "../common/utils";
 import {ConfigInstance} from "../../config/StatConfig";
@@ -189,7 +189,7 @@ export async function process7702AuthStub() {
 	}
 	console.log(`process block `, stub.blockNumber, ' stub id ', stub.id);
 	const rpcResult = await loadSetAuth(ctx.netProvider, stub.blockNumber) as any[];
-	const dbBeanArr = [];
+	const dbBeanArr: IAuthAction[] = [];
 	let authIndex = -1;
 	for (const entry of rpcResult) {
 		authIndex ++;
@@ -220,6 +220,29 @@ export async function process7702AuthStub() {
 		action['result'] = result;
 		await makeIdV(action['author'], null, {dt: stub['createdAt']})
 		dbBeanArr.push(action);
+	}
+	if (dbBeanArr.length === 0) {
+		safeAddErrorLog('eip7702', 'no-auth-in-block',
+			new Error(`no auth tx in block ${stub.blockNumber}`));
+		dbBeanArr.push({
+			address: "",
+			authIndex: 0,
+			chainId: 0,
+			nonce: 0,
+			r: "",
+			result: "",
+			s: "",
+			transactionPosition: 0,
+			yParity: "",
+			blockNumber: stub.blockNumber,
+			refBlockStubId: stub.id,
+			author: ''
+		});
+		setTimeout(()=>{
+			AuthAction.destroy({where: {refBlockStubId: stub.id}}).catch(e=>{
+				return safeAddErrorLog('eip7702', 'destroy-placeholder', e);
+			})
+		}, 10 * SECOND);
 	}
 	await AuthAction.bulkCreate(dbBeanArr, {
 		updateOnDuplicate: ['refBlockStubId', 'result', 'updatedAt'] as any,
