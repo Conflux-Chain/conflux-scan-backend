@@ -125,6 +125,7 @@ export async function loadSetAuth(netProvider: JsonRpcProvider, blockNumber: num
 
 const ctx = {
 	netProvider: null as JsonRpcProvider,
+	lastIdFilter: 0,
 }
 const NOT_FOUND = 404;
 
@@ -184,7 +185,10 @@ export async function process7702AuthStub() {
 		where: {id: {[Op.gt]: idFilter}}
 	})
 	if (!stub) {
-		console.log(`no auth block stub, id condition [${idFilter}]`);
+		if (ctx.lastIdFilter !== idFilter) {
+			console.log(`no auth block stub, id condition [${idFilter}]`);
+			ctx.lastIdFilter = idFilter;
+		}
 		return {code: NOT_FOUND};
 	}
 	console.log(`process block `, stub.blockNumber, ' stub id ', stub.id);
