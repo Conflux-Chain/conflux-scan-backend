@@ -567,14 +567,14 @@ export function checkFeVersion(requestVersion, versions) {
         if (!verInfo) {
             throw new Error(`fe version ${requestVersion} not supported`)
         }
-        return `${requestVersion}+commit.${verInfo.commit}`
+        return requestVersion
     }
 
     const verInfo: any = Object.values(versions).find((version: any) => requestVersion === version.desc)
     if (!verInfo) {
         throw new Error(`fe version ${requestVersion} not supported`)
     }
-    return `${requestVersion.slice("fe:".length)}+commit.${verInfo.commit}`
+    return `${requestVersion.slice("fe:".length)}`
 }
 
 export function convertCompilerVersion(versionWithCommit, versions) {
