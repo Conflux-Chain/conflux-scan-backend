@@ -1029,9 +1029,10 @@ router_get(router,'/transfer',
   },
 );
 
+// TODO rename to /traceTxView
 router_get(router,'/transferTree/:transactionHash',
   OpenAPI.flow({
-    tags: ['transfer'],
+    tags: ['trace'],
     input: {
       transactionHash: { in: 'path', type: 'string', required: true },
       txType: { in: 'query', type: 'string' },
@@ -1043,9 +1044,9 @@ router_get(router,'/transferTree/:transactionHash',
   }),
 
   async function ({transactionHash, txType}) {
-    const {app: {cfx,service: {accountQuery, conflux}},} = this as ScanCtx;
+    const {app: {service: {accountQuery, conflux}}} = this as ScanCtx;
 
-let realTxHash = transactionHash;
+    let realTxHash = transactionHash;
     let aaOpPosition = -1;
 
     if (txType === 'aa') {
@@ -1073,6 +1074,39 @@ let realTxHash = transactionHash;
 
     return result;
   },
+);
+
+router_post(router, '/traceCallView',
+    OpenAPI.flow({
+      tags: ['trace'],
+      input: {
+        id: { type: 'integer', required: false },
+        jsonrpc: { type: 'string', required: false },
+        method: { type: 'string', required: false },
+        params: { type: 'array', required: true },
+      },
+      output: {
+        200: 'object',
+        600: {code: 'integer', message: 'string'},
+      },
+    }),
+
+    async function ({params}) {
+      const {app: {service: {accountQuery, conflux}},} = this as ScanCtx;
+
+      const result = await conflux.getCallTrace(params, true);
+      if (result.addressArray === undefined) {
+        return result;
+      }
+
+      result.nameMap = await accountQuery.list(result.addressArray, {
+        withContractInfo: true,
+        withENSInfo: true,
+        withNameTagInfo: true
+      });
+
+      return result;
+    },
 );
 
 // ----------------------------------- AA Tx Detail ---------------------------------

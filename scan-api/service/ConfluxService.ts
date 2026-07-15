@@ -9,7 +9,10 @@ import {ContractImpl} from "../../stat/model/ContractImpl";
 import {Op, QueryTypes} from "sequelize";
 import {TraceCreateContract} from "../../stat/model/TraceCreateContract";
 import {AuthAction} from "../../stat/model/EIP7702model";
+import {Errors} from "../../stat/service/common/LogicError";
+import {formatBlockNumber, formatCallParams, sendRpc} from "../../stat/service/common/utils";
 
+const crypto = require('crypto');
 const _ = require('lodash');
 const { tracesInTree } = require('js-conflux-sdk/src/util/trace');
 const { withoutCfxTransferType } = require('../../common/utils');
@@ -545,115 +548,310 @@ export class ConfluxService {
     }
 
     return ttlMap.cache(`ConfluxService.getTransactionTrace(${transactionHash})_${convertTree ? 1 : 0}`,
-      async () => {
-        let traceArray;
-        try {
-          traceArray = await cfx.traceTransaction(transactionHash);
-        } catch (err) {
-          throw new error.ResponseDataParsingError(`Failed to get traceTransaction by sdk: ${err}`);
-        }
-
-        if (!traceArray || traceArray.length === 0) {
-          return {};
-        }
-
-        const addressSet = new Set();
-        const toAddressSet = new Set();
-        const methodList: { index: number; to: string; method: string; methodId?: string;}[] = [];
-
-        traceArray.forEach((trace: any, index: number) => {
-          const type = trace.type;
-          const {from, to, init, input, addr, outcome, returnData} = trace.action;
-          if (init) {
-            trace.action.init = undefined;
+        async () => {
+          let traceArray;
+          try {
+            traceArray = await cfx.traceTransaction(transactionHash);
+          } catch (err) {
+            throw new error.ResponseDataParsingError(`Failed to get traceTransaction by sdk: ${err}`);
           }
-          if (input) {
-            if(input.length >= 10 && to) {
-              const precompiled = CONST.PRECOMPILED_ADDR_CONTRACT_MAP[format.hexAddress(to)];
-              if (precompiled) {
-                methodList.push({index, to, method: precompiled.methodId});
-                if ((input.length - 2) % 64 === 0) {
-                  trace.action.input = precompiled.methodId + input.substring(2);
+
+          if (!traceArray || traceArray.length === 0) {
+            return {};
+          }
+
+          const addressSet = new Set<string>();
+          const toAddressSet = new Set<string>();
+          const methodList: { to: string; method: string; methodId?: string; }[] = [];
+          traceArray.forEach((trace: any) => {
+            const type = trace.type;
+            const {from, to, init, input, addr, outcome, returnData} = trace.action;
+            if (init) {
+              trace.action.init = undefined;
+            }
+            if (type === CONST.TRACE_TYPE.CREATE_RESULT) {
+              if (outcome === 'success') {
+                if (returnData) {
+                  trace.action.returnData = undefined;
                 }
-              } else {
-                methodList.push({index, to, method: input.substring(0, 10)});
               }
             }
-          }
-          if (type === CONST.TRACE_TYPE.CREATE_RESULT) {
-            if (outcome === 'success') {
-              if (returnData) {
-                trace.action.returnData = undefined;
+            if (from) {
+              trace.action.from = fmtAddr(from, StatApp.networkId);
+              addressSet.add(from);
+            }
+            if (to) {
+              trace.action.to = fmtAddr(to, StatApp.networkId);
+              addressSet.add(to);
+              toAddressSet.add(to)
+            }
+            if (input && input.length >= 10 && to) {
+              const {method, inputPrecompiled} = ConfluxService.getMethodInfo(input, to);
+              methodList.push(method);
+              if (inputPrecompiled) {
+                trace.action.input = inputPrecompiled;
               }
             }
-          }
-          if (from) {
-            trace.action.from = fmtAddr(from, cfx.networkId);
-            addressSet.add(from);
-          }
-          if (to) {
-            trace.action.to = fmtAddr(to, cfx.networkId);
-            addressSet.add(to);
-            toAddressSet.add(to)
-          }
-          if (addr) {
-            trace.action.addr = fmtAddr(addr, cfx.networkId);
-            addressSet.add(addr);
-          }
-        });
+            if (addr) {
+              trace.action.addr = fmtAddr(addr, StatApp.networkId);
+              addressSet.add(addr);
+            }
+          });
 
-        const authMap = {};
-        if (StatApp.isEVM && methodList?.length) {
-          const idToHexMap = await Hex40Map.findAll({
-            where: {hex: {[Op.in]: methodList.map(item => format.hexAddress(item.to).slice(2))}},
-          }).then(list => Object.fromEntries(list.map(item => [item.id, `0x${item.hex}`.toLowerCase()])));
-          const ids = await TraceCreateContract.findAll({
-            where: {to: {[Op.in]: Object.keys(idToHexMap)}}
-          }).then(list => list.map(item => String(item.to)));
-          const hexes = Object.entries(idToHexMap)
-              .filter(([key]) => !ids.includes(key))
-              .map(([, value]) => value);
-          if (hexes?.length) {
-            const {epochNumber, index} = await this.getTransactionReceipt(transactionHash).catch(() => undefined) || {};
-            if (_.isNil(index)) {
-              throw new error.RPCError("Failed to get tx index by sdk");
+          const {
+            authMap,
+            methodMap,
+            proxyMap
+          } = await this.getAdditionalInfo(transactionHash, toAddressSet, methodList);
+
+          const result = {} as any;
+          try {
+            if (convertTree) {
+              result.traceTree = tracesInTree(traceArray);
+            } else {
+              result.traceArray = traceArray;
             }
-            const tasks = hexes.map(hex => AuthAction.sequelize.query(`
+            result.authMap = authMap;
+            result.methodMap = methodMap;
+            result.proxyMap = proxyMap;
+            Object.values(authMap).forEach((delegatedAddr: string) => addressSet.add(delegatedAddr));
+            result.addressArray = [...addressSet];
+          } catch (err) {
+            throw new error.ResponseDataParsingError(`Failed to parse traces by sdk: ${err}`);
+          }
+
+          return result;
+        },
+        {ttl: 5},
+    );
+  }
+
+  async getCallTrace(params, formatParams) {
+    const {
+      app: {error, ttlMap, eth},
+    } = this;
+
+    if (this.app.config?.traceNotAvailable) {
+      return {};
+    }
+
+    if (!eth) {
+      throw new Errors.RPCError('ETH RPC provider not configured');
+    }
+
+    const paramsHash = crypto
+        .createHash('sha256')
+        .update(JSON.stringify(params))
+        .digest('hex');
+
+    return ttlMap.cache(`ConfluxService.getCallTrace(${paramsHash}, ${formatParams})`,
+        async () => {
+          const len = params?.length || 0;
+          if (len < 1) {
+            throw new error.ParameterError("Provide the first parameter at least. [callParams, blockNumber?, tracerOptions?].");
+          }
+          if (len > 3) {
+            throw new error.ParameterError("Accepts maximum 3 parameters. [callParams, blockNumber?, tracerOptions?].");
+          }
+
+          const [callParams, blockNumber, tracerOptions] = params;
+          if (!Object.keys(callParams)?.length) {
+            throw new error.ParameterError("The first parameter is an empty object. [callParams, blockNumber?, tracerOptions?].");
+          }
+
+          const rpcParams: any[] = [formatParams ? formatCallParams(callParams) : callParams];
+          if (blockNumber) {
+            rpcParams.push(formatParams ? formatBlockNumber(blockNumber) : blockNumber)
+          }
+          if (tracerOptions) {
+            rpcParams.push(tracerOptions)
+          }
+
+          const traceCall = await sendRpc(eth, "debug_traceCall", rpcParams);
+
+          const {addressSet, toAddressSet, methodList} = ConfluxService.extractTraceCall(traceCall);
+
+          const {authMap, methodMap, proxyMap} = await this.getAdditionalInfo(undefined, toAddressSet, methodList);
+
+          const result = {} as any;
+          result.traceCall = traceCall;
+          result.authMap = authMap;
+          result.methodMap = methodMap;
+          result.proxyMap = proxyMap;
+          Object.values(authMap).forEach((delegatedAddr: string) => addressSet.add(delegatedAddr));
+          result.addressArray = [...addressSet];
+
+          return result;
+        },
+        {ttl: 5},
+    );
+  }
+
+  static extractTraceCall(traceResponse: any) {
+    const addressSet = new Set<string>();
+    const toAddressSet = new Set<string>();
+    const methodMap = new Map<string, Set<string>>(); // methodId => set(address)
+
+    function traverseCall(call: any): void {
+      if (!call) {
+        return;
+      }
+
+      const {from, to, input} = call;
+
+      if (from) {
+        call.from = fmtAddr(from, StatApp.networkId);
+        addressSet.add(from);
+      }
+
+      if (to) {
+        call.to = fmtAddr(to, StatApp.networkId);
+        addressSet.add(to);
+        toAddressSet.add(to)
+      }
+
+      if (input && input.length >= 10 && to) {
+        const {method, inputPrecompiled} = ConfluxService.getMethodInfo(input, to);
+
+        let set = methodMap.get(method.method);
+        if (!set) {
+          set = new Set<string>();
+          methodMap.set(method.method, set);
+        }
+        set.add(to);
+
+        if (inputPrecompiled) {
+          call.input = inputPrecompiled;
+        }
+      }
+
+      if (call.calls && Array.isArray(call.calls)) {
+        for (const subCall of call.calls) {
+          traverseCall(subCall);
+        }
+      }
+    }
+
+    const topCall = traceResponse?.result ? traceResponse.result : traceResponse;
+    const {structLogs, type} = topCall;
+    if (structLogs) { // structLogs
+      return {addressSet, toAddressSet, methodList: []};
+    } else if (type) { // callTracer
+      traverseCall(topCall);
+    } else { // prestateTracer
+      Object.keys(topCall).forEach(address => addressSet.add(address));
+    }
+
+    const methodList = _.flatten(
+        [...methodMap.keys()].map(
+            method => [...methodMap.get(method)].map(
+                to => ({method, to})
+            )
+        )
+    );
+
+    if (topCall?.logs?.length) {
+      for (const log of topCall.logs) {
+        const addr = fmtAddr(log.address, StatApp.networkId);
+        log.address = addr;
+        addressSet.add(addr);
+        toAddressSet.add(addr);
+      }
+    }
+
+    return {
+      addressSet,
+      toAddressSet,
+      methodList,
+    };
+  }
+
+  static getMethodInfo(input, to) {
+    const precompiled = CONST.PRECOMPILED_ADDR_CONTRACT_MAP[format.hexAddress(to)];
+    if (precompiled) {
+      return {
+        method: {to, method: precompiled.methodId},
+        inputPrecompiled: (input.length - 2) % 64 === 0 ? (precompiled.methodId + input.substring(2)) : undefined
+      };
+    } else {
+      return {
+        method: {to, method: input.substring(0, 10)}
+      };
+    }
+  }
+
+  private async getAdditionalInfo(
+      transactionHash: string,
+      toAddressSet: Set<string>,
+      methodList: { to: string; method: string; methodId?: string; }[]
+  ) {
+    const authMap = {};
+    if (StatApp.isEVM && methodList?.length) {
+      const idToHexMap = await Hex40Map.findAll({
+        where: {hex: {[Op.in]: methodList.map(item => format.hexAddress(item.to).slice(2))}},
+      }).then(list => Object.fromEntries(list.map(item => [item.id, `0x${item.hex}`.toLowerCase()])));
+      const ids = await TraceCreateContract.findAll({
+        where: {to: {[Op.in]: Object.keys(idToHexMap)}}
+      }).then(list => list.map(item => String(item.to)));
+      const hexes = Object.entries(idToHexMap)
+          .filter(([key]) => !ids.includes(key))
+          .map(([, value]) => value);
+
+      if (hexes?.length) {
+        let tasks;
+        if (transactionHash) {
+          const {epochNumber, index} = await this.getTransactionReceipt(transactionHash).catch(() => undefined) || {};
+          if (_.isNil(index)) {
+            throw new Errors.RPCError("Failed to get tx index by sdk");
+          }
+          tasks = hexes.map(hex => AuthAction.sequelize.query(`
               select * from auth_action 
               where author = ? and result = 'success' and (blockNumber < ? or (blockNumber = ? and transactionPosition <= ?))
               order by blockNumber desc, transactionPosition desc
               limit 1
-            `, {
-              type: QueryTypes.SELECT,
-              replacements: [hex, epochNumber, epochNumber, index]
-            }).then(items => items?.length ? items[0] : null));
-            const auths = await Promise.all(tasks);
-            auths.filter((auth: any) => auth && auth.address !== CONST.ZERO_ADDRESS).forEach((auth: any) =>
-                authMap[fmtAddr(auth.author, StatApp.networkId)] = fmtAddr(auth.address, StatApp.networkId)
-            )
-          }
+              `, {
+            type: QueryTypes.SELECT,
+            replacements: [hex, epochNumber, epochNumber, index]
+          }).then(items => items?.length ? items[0] : null));
+        } else {
+          tasks = hexes.map(hex => AuthAction.sequelize.query(`
+              select * from auth_action 
+              where author = ? and result = 'success'
+              order by blockNumber desc, transactionPosition desc
+              limit 1
+              `, {
+            type: QueryTypes.SELECT,
+            replacements: [hex]
+          }).then(items => items?.length ? items[0] : null));
         }
 
-        const methodMap = {};
-        if (methodList?.length) {
-          methodList.forEach(item => {
-            const delegatedAddr = authMap[fmtAddr(item.to, StatApp.networkId)];
-            if (delegatedAddr) {
-              item.to = delegatedAddr;
-            }
-          })
-          const ids = await getAddrIdArray(methodList.map(item => item.to));
-          await fillMethodInfo(methodList, ids, true, true);
-          methodList.forEach(({to, method, methodId}) => {
-            methodMap[methodId] ||= {};
-            methodMap[methodId][fmtAddr(to, cfx.networkId)] = method;
-          });
-        }
+        const auths = await Promise.all(tasks);
+        auths.filter((auth: any) => auth && auth.address !== CONST.ZERO_ADDRESS).forEach((auth: any) =>
+            authMap[fmtAddr(auth.author, StatApp.networkId)] = fmtAddr(auth.address, StatApp.networkId)
+        )
+      }
+    }
 
-        const proxyMap = {};
-        Object.values(authMap).forEach(delegatedAddr => toAddressSet.add(delegatedAddr));
-        if (toAddressSet.size) {
-          const impls: any[] = await ContractImpl.sequelize.query(`
+    const methodMap = {};
+    if (methodList?.length) {
+      methodList.forEach(item => {
+        const delegatedAddr = authMap[fmtAddr(item.to, StatApp.networkId)];
+        if (delegatedAddr) {
+          item.to = delegatedAddr;
+        }
+      })
+      const ids = await getAddrIdArray(methodList.map(item => item.to));
+      await fillMethodInfo(methodList, ids, true, true);
+      methodList.forEach(({to, method, methodId}) => {
+        methodMap[methodId] ||= {};
+        methodMap[methodId][fmtAddr(to, StatApp.networkId)] = method;
+      });
+    }
+
+    const proxyMap = {};
+    Object.values(authMap).forEach((delegatedAddr: string) => toAddressSet.add(delegatedAddr));
+    if (toAddressSet.size) {
+      const impls: any[] = await ContractImpl.sequelize.query(`
             select concat('0x', h.hex) as hex, c.proxyType from 
             (
               select id, hex 
@@ -662,37 +860,80 @@ export class ConfluxService {
             ) h
             left join contract_impl c on h.id = c.cid
           `, {
-            type: QueryTypes.SELECT,
-            replacements: [...toAddressSet].map(item => format.hexAddress(item).substr(2))
-          }) || [];
-          impls
-            .filter(item => Boolean(item.proxyType))
-            .forEach(item =>
-              proxyMap[fmtAddr(item.hex, cfx.networkId)] =
-                item.proxyType === CONST.PROXY_PATTERN.PROXY ? "Proxy" : "BeaconProxy"
-            );
-        }
+        type: QueryTypes.SELECT,
+        replacements: [...toAddressSet].map(item => format.hexAddress(item).substr(2))
+      }) || [];
+      impls
+          .filter(item => Boolean(item.proxyType))
+          .forEach(item =>
+              proxyMap[fmtAddr(item.hex, StatApp.networkId)] =
+                  item.proxyType === CONST.PROXY_PATTERN.PROXY ? "Proxy" : "BeaconProxy"
+          );
+    }
 
-        let result = {} as any;
-        try {
-          if (convertTree) {
-            result.traceTree = tracesInTree(traceArray);
-          } else {
-            result.traceArray = traceArray;
-          }
-          result.authMap = authMap;
-          result.methodMap = methodMap;
-          result.proxyMap = proxyMap;
-          Object.values(authMap).forEach(delegatedAddr => addressSet.add(delegatedAddr));
-          result.addressArray = [...addressSet];
-        } catch (err) {
-          throw new error.ResponseDataParsingError(`Failed to parse traces by sdk: ${err}`);
-        }
-
-        return result || {};
-      },
-      {ttl: 5},
-    );
+    return {
+      authMap,
+      methodMap,
+      proxyMap
+    };
   }
+}
+
+export interface CallParams {
+  /**
+   * basic params
+   */
+  from?: string;
+  to?: string;
+  gas?: bigint | string | number;
+  gasPrice?: bigint | string | number;
+  nonce?: bigint | string | number;
+  value?: bigint | string | number;
+  data?: string;
+  input?: string; // alias of data field
+  chainId?: bigint | string | number;
+
+  /**
+   * tx type
+   * 0 - Legacy
+   * 1 - EIP-2930 (Access List)
+   * 2 - EIP-1559 (Dynamic Fee)
+   * 3 - EIP-4844 (Blob)
+   * 4 - EIP-7702 (Set Code)
+   */
+  type?: number | string;
+
+  /**
+   * EIP-1559 params
+   */
+  maxPriorityFeePerGas?: bigint | string | number;
+  maxFeePerGas?: bigint | string | number;
+
+  /**
+   * EIP-2930 params
+   */
+  accessList?: Array<{
+    address: string;
+    storageKeys: string[];
+  }>;
+
+  /**
+   * EIP-7702 params
+   */
+  authorizationList?: Authorization[];
+}
+
+export interface Authorization {
+  chainId: bigint | string | number;
+  address: string;
+  nonce: bigint | string | number;
+  yParity: number;
+  r: string;
+  s: string;
+}
+
+export interface TracerOptions {
+  tracer?: string; // tracer type: callTracer, prestateTracer, structLogs
+  tracerConfig?: Record<string, any>; // tracer config details
 }
 

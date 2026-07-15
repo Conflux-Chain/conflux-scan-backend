@@ -1,5 +1,5 @@
 import {TokenTool} from "../stat/service/tool/TokenTool";
-import {initCfxSdk} from "../stat/service/common/utils";
+import {initCfxSdk, initEthSdk} from "../stat/service/common/utils";
 import {setCfxRpcUrl} from "../koaflow/lib/flow/JsonRPCFlow";
 import {StatConfig} from "../stat/config/StatConfig";
 
@@ -38,6 +38,7 @@ export class AppBase extends Koa {
     this.ttlMap = new TTLMap();
     this.logger = createLogger('scan', 'api', `${process.cwd()}/log`, 'info', true);
     this.cfx = await initCfxSdk(config.conflux, 'common-conflux-sdk');
+    this.eth = initEthSdk(config.ether?.url);
     setCfxRpcUrl(config.conflux.url);
     this.tokenTool = new TokenTool(this.cfx);
 
