@@ -1081,9 +1081,9 @@ router_post(router, '/traceCallView',
       tags: ['trace'],
       input: {
         id: { type: 'integer', required: false },
-        jsonrpc: { type: 'string', default: false },
-        method: { type: 'string', default: false },
-        params: { type: 'array', default: false },
+        jsonrpc: { type: 'string', required: false },
+        method: { type: 'string', required: false },
+        params: { type: 'array', required: true },
       },
       output: {
         200: 'object',

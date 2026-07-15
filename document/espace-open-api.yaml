@@ -3845,7 +3845,7 @@ components:
           description: "compiler version used
                         \nfor solc compiler, such as v0.8.24+commit.e11b9ed9
                         \nfor vyper compiler, such as vyper:0.4.0
-                        \nfor fe compile, such as fe:26.0.0-alpha.12"
+                        \nfor fe compiler, such as fe:26.0.0-alpha.12"
         optimizationUsed:
           type: string
           required: true

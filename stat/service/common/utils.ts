@@ -9,7 +9,7 @@ import {useFastFormat} from "./fastFormatter";
 import {CONST} from "./constant";
 import {IToken} from "../../model/Token";
 import {IContract} from "../../model/Contract";
-import {CallParams} from "../../../scan-api/service/ConfluxService";
+import type {CallParams} from "../../../scan-api/service/ConfluxService";
 
 const lodash = require('lodash');
 const {isValidCfxAddress, decodeCfxAddress} = require('js-conflux-sdk/src/util/address');

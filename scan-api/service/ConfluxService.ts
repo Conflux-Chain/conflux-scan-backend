@@ -635,12 +635,16 @@ export class ConfluxService {
       return {};
     }
 
+    if (!eth) {
+      throw new Errors.RPCError('ETH RPC provider not configured');
+    }
+
     const paramsHash = crypto
         .createHash('sha256')
         .update(JSON.stringify(params))
         .digest('hex');
 
-    return ttlMap.cache(`ConfluxService.getCallTrace(${paramsHash}, ${formatParams})}`,
+    return ttlMap.cache(`ConfluxService.getCallTrace(${paramsHash}, ${formatParams})`,
         async () => {
           const len = params?.length || 0;
           if (len < 1) {
