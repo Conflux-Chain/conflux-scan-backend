@@ -9,7 +9,7 @@ import {
   jsonrpc_exportTransaction, jsonrpc_exportTransfer,
   jsonrpc_frontend,
   jsonrpc_listBlock,
-  jsonrpc_listCompilers, jsonrpc_listVyperCompilers,
+  jsonrpc_listCompilers, jsonrpc_listFeCompilers, jsonrpc_listVyperCompilers,
   jsonrpc_plot,
   jsonrpc_queryBlock,
   jsonrpc_queryContract,
@@ -561,7 +561,8 @@ router_get(router,'/contract/code-format',
     }),
 
     async () => {
-      return Object.values(CONST.CONTRACT_CODE_FORMAT_INFO).filter(format => format.code.endsWith('single-file'))
+      return Object.values(CONST.CONTRACT_CODE_FORMAT_INFO)
+          .filter(format => format.code.endsWith('single-file') && !format.code.startsWith('fe'))
     }
 );
 
@@ -587,6 +588,18 @@ router_get(router,'/contract/vyper-compiler',
     }),
 
     jsonrpc_listVyperCompilers,
+);
+
+router_get(router, '/contract/fe-compiler',
+    OpenAPI.flow({
+      tags: ['contract'],
+      output: {
+        200: 'object',
+        600: {code: 'integer', message: 'string'},
+      },
+    }),
+
+    jsonrpc_listFeCompilers,
 );
 
 router_get(router,'/contract/license',
