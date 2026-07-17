@@ -105,7 +105,7 @@ export class NFTCheckerService {
             );
         }
 
-        if (contractIds.length == 1) {
+        if (contractIds?.length == 1) {
             try {
                 checkAccount1155balance(contractIds[0] as number, ownerId as number, total);
             } catch (e) {
