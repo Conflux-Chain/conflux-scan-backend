@@ -607,6 +607,7 @@ export class ContractQuery {
             verifiedAt: new Date(verifiedAt.replace(/T$/, '')),
         } as VerifiedContracts;
 
+        const libraries = JSON.stringify(verified.libraries);
         this.traceCreate.query(contractAddress).then(async item => {
             const {epochNumber, from} = item;
             verified.deployer = from;
@@ -617,7 +618,7 @@ export class ContractQuery {
             const contract = await Contract.findOne({attributes: ['name'], where: {hex40id: addressId}, raw: true});
             const nametag = await NameTag.findOne({where: {hex40id: addressId}, raw: true});
             verified.hasNametag = Boolean(contract?.name || nametag?.nameTag || nametag?.labels);
-            await VerifiedContracts.upsert({...verified, libraries: JSON.stringify(verified.libraries)});
+            await VerifiedContracts.upsert({...verified, libraries});
         }).catch(err => safeAddErrorLog("contract-query", "get-verify-by-sourcify", err));
 
         this._addCache(hex, verified);

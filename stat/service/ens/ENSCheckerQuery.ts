@@ -11,6 +11,9 @@ import {abi as abiBaseRegistrar} from "../abi/BaseRegistrar";
 import {abi as abiResolver} from "../abi/Resolver";
 import {abi as abiReverseRecords} from "../abi/ReverseRecords";
 import {CONST} from "../common/constant";
+import {ENS} from "../../model/NameTag";
+import {Op} from "sequelize";
+import {CENSOR_STATUS} from "../censor/CensorService";
 
 const lodash = require('lodash');
 const CFX_COIN_TYPE = 503;
@@ -83,10 +86,37 @@ export class ENSCheckerQuery {
             return {};
         });
 
-        return Object.fromEntries(hexes
+        const ensMap = Object.fromEntries(hexes
             .map((hex, index) => names[index] ? [hex, {name: names[index]}] : undefined)
             .filter(Boolean)
         );
+
+        const localMap = await ENS.findAll({where: {address: {[Op.in]: hexes}}, raw: true})
+            .then(list => Object.fromEntries(list.map(ens => [ens.address, {
+                name: ens.name,
+                censorStatus: ens.censorStatus
+            }])));
+
+        const toUpsert = [];
+        const toDelete = [];
+        for (const address of hexes) {
+            const name = ensMap[address]?.name;
+            const {name: localName, censorStatus} = localMap[address] || {};
+            if (name) {
+                if (!localName || localName !== name) {
+                    toUpsert.push({address, name, censorStatus: CENSOR_STATUS.TO_CENSOR, updatedAt: new Date()});
+                } else if (censorStatus === CENSOR_STATUS.REJECT || censorStatus === CENSOR_STATUS.SUSPECT) {
+                    delete ensMap[address];
+                }
+            } else if (localName) {
+                toDelete.push({address})
+            }
+        }
+
+        await ENS.bulkCreate(toUpsert, {updateOnDuplicate: ["name", "censorStatus", "updatedAt"]});
+        toDelete.length && await ENS.destroy({where: {address: {[Op.in]: toDelete}}});
+
+        return ensMap;
     }
 
     public async resolveName(name) {

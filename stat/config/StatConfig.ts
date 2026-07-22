@@ -138,6 +138,7 @@ export interface CensorOptions {
     apiKey?: string;
     secretKey?: string;
     interval?: number;
+    qpsLimit?: number;
 }
 
 export interface QuoteOptions {

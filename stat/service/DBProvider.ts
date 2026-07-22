@@ -72,7 +72,7 @@ import {DailyNFTHolder, DailyNFTStat} from "../model/DailyNFTStat";
 import {CensorItem} from "../model/CensorItem";
 import {createAddressNftTransferTable, NftTransfer} from "../model/NftTransfer";
 import {DailyPosRewardStat, DailyPowRewardStat} from "../model/DailyReward";
-import {NameTag} from "../model/NameTag";
+import {ENS, NameTag} from "../model/NameTag";
 import {HeartBeatBean} from "../model/HeartBeat";
 import {DailyBurntFeeStat} from "../model/DailyBurntFeeStat";
 import {GasConsumer} from "../model/GasConsumer";
@@ -222,6 +222,7 @@ export async function initPartialModel(sequelize) {
     NameTag.register(sequelize)
     VoteParams.register(sequelize)
     DailyBurntFeeStat.register(sequelize)
+    ENS.register(sequelize)
 }
 export async function initModel(sequelize: Sequelize) {
     console.log(`init models ...`)

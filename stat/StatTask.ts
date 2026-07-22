@@ -102,7 +102,7 @@ async function main() {
     new TokenSecurityAuditSync({cfx});
     new TokenQuoteSync(cfx, config.quote);
     new TokenAutoDetect(cfx);
-    new CensorService(cfx, config.censor, {tx: 10, token: 10, nft: 10});
+    new CensorService(cfx, config.censor, {tx: 10, token: 10, nft: 10, ens: 10});
 
     const contractQuery = new ContractQuery({cfx, config: config.verification});
     contractQuery.scheduleUpdateCompilerVersions().then();
