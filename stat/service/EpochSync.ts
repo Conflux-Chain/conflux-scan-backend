@@ -807,7 +807,9 @@ export class EpochSync extends SyncBase {
             let bean: ICensorItem = {
                 transactionHash: tx.hash,
                 censorType: CENSOR_TYPE.TX,
-                epochNumber: tx.epoch, createdAt: tx.createdAt, updatedAt: tx.createdAt,
+                epochNumber: tx.epoch,
+                createdAt: tx.createdAt,
+                updatedAt: tx.createdAt,
             }
             return bean;
         })

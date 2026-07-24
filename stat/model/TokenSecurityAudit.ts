@@ -1,73 +1,73 @@
-import {Model,Sequelize,DataTypes} from "sequelize";
+import {Model, Sequelize, DataTypes} from "sequelize";
 
-export interface ITokenSecurityAudit{
-    id?:number
+export interface ITokenSecurityAudit {
+    id?: number
     // basic info
-    hex40id:number
-    base32:string
+    hex40id: number
+    base32: string
     // common audit
-    verify?:boolean
-    audit?:boolean
-    auditUrl?:string
-    sponsor?:boolean
-    zeroAdmin?:boolean
+    verify: boolean
+    audit: boolean
+    auditUrl: string
+    sponsor: boolean
+    zeroAdmin: boolean
     // cex audit
-    cexBinance?: string
-    cexHuobi?: string
-    cexOKEx?: string
+    cexBinance: string
+    cexHuobi: string
+    cexOKEx: string
     // dex audit
-    dexMoonSwap?: string
+    dexMoonSwap: string
     // track audit
-    trackCoinMarketCap?: string
+    trackCoinMarketCap: string
     // official mark
-    officialLabels?: string
+    officialLabels: string
 }
 
-export class TokenSecurityAudit extends Model<ITokenSecurityAudit> implements ITokenSecurityAudit{
-    id?:number
+export class TokenSecurityAudit extends Model<ITokenSecurityAudit> implements ITokenSecurityAudit {
+    id?: number
     // basic info
-    hex40id:number
-    base32:string
+    hex40id: number
+    base32: string
     // common audit
-    verify?:boolean
-    audit?:boolean
-    auditUrl?:string
-    sponsor?:boolean
-    zeroAdmin?:boolean
+    verify: boolean
+    audit: boolean
+    auditUrl: string
+    sponsor: boolean
+    zeroAdmin: boolean
     // cex audit
-    cexBinance?: string
-    cexHuobi?: string
-    cexOKEx?: string
+    cexBinance: string
+    cexHuobi: string
+    cexOKEx: string
     // dex audit
-    dexMoonSwap?: string
+    dexMoonSwap: string
     // track audit
-    trackCoinMarketCap?: string
+    trackCoinMarketCap: string
     // official mark
-    officialLabels?: string
+    officialLabels: string
 
-    static register(seq:Sequelize) {
+    static register(seq: Sequelize) {
         TokenSecurityAudit.init({
             id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
             // basic info
-            hex40id: {type: DataTypes.BIGINT, allowNull: false, unique: true },
+            hex40id: {type: DataTypes.BIGINT, allowNull: false, unique: true},
             base32: {type: DataTypes.CHAR(64), allowNull: false, unique: true},
             // common audit
             verify: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
             audit: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
-            auditUrl: {type: DataTypes.CHAR(255), allowNull: true, },
+            auditUrl: {type: DataTypes.CHAR(255)},
             sponsor: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
             zeroAdmin: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
             // cex audit
-            cexBinance: {type: DataTypes.CHAR(255), allowNull: true, },
-            cexHuobi: {type: DataTypes.CHAR(255), allowNull: true, },
-            cexOKEx: {type: DataTypes.CHAR(255), allowNull: true, },
+            cexBinance: {type: DataTypes.CHAR(255)},
+            cexHuobi: {type: DataTypes.CHAR(255)},
+            cexOKEx: {type: DataTypes.CHAR(255)},
             // dex audit
-            dexMoonSwap: {type: DataTypes.CHAR(255), allowNull: true, },
+            dexMoonSwap: {type: DataTypes.CHAR(255)},
             // track audit
-            trackCoinMarketCap: {type: DataTypes.CHAR(255), allowNull: true, },
+            trackCoinMarketCap: {type: DataTypes.CHAR(255)},
             // official labels
-            officialLabels: {type: DataTypes.CHAR(255), allowNull: true, },
-        },{
+            officialLabels: {type: DataTypes.CHAR(255)},
+        }, {
             tableName: 'token_security_audit',
             sequelize: seq,
             timestamps: true,
@@ -77,8 +77,8 @@ export class TokenSecurityAudit extends Model<ITokenSecurityAudit> implements IT
     static async add(token: TokenSecurityAudit, dbTx = undefined): Promise<TokenSecurityAudit> {
         return await TokenSecurityAudit.create({
             // basic info
-            hex40id:token.hex40id,
-            base32:token.base32,
+            hex40id: token.hex40id,
+            base32: token.base32,
             // common audit
             sponsor: token.sponsor, // cfx.getSponsorInfo(address)
             zeroAdmin: token.zeroAdmin, // cfx.getAccount(address)

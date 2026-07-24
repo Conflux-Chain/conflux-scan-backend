@@ -18,7 +18,7 @@ import {create721partition, Erc721Transfer} from "../model/Erc721Transfer";
 import {createAddressErc1155TransferTable, Erc1155Transfer} from "../model/Erc1155Transfer";
 import {AddressStat, DailyActiveAddress} from "../model/StatAddress";
 import {AbiSignature, ContractAbiSignature} from "../model/ContractInfo";
-import {addNameSymbolFailureColumn, Contract} from "../model/Contract";
+import {Contract} from "../model/Contract";
 import {
     BlockRowMark,
     createAddressTxTable,
@@ -194,7 +194,6 @@ export async function initPartialModel(sequelize) {
     FailedTx.register(sequelize)
     AddressStat.register(sequelize)
     Contract.register(sequelize)
-    addNameSymbolFailureColumn(sequelize).then()
     Hex40Map.register(sequelize)
     TraceCreateContract.register(sequelize)
     ContractDestroy.register(sequelize)

@@ -5,8 +5,8 @@ export const T_SENSOR_ITEM = "censor_item";
 
 export interface ICensorItem {
     id?: number;
-    epochNumber:number;
-    transactionHash?:string;
+    epochNumber: number;
+    transactionHash: string;
     censorType: number;
     censorStatus?: number;
     createdAt: Date;
@@ -15,8 +15,8 @@ export interface ICensorItem {
 
 export class CensorItem extends Model<ICensorItem> implements ICensorItem {
     id?: number;
-    epochNumber:number;
-    transactionHash?:string;
+    epochNumber: number;
+    transactionHash: string;
     censorType: number;
     censorStatus?: number;
     createdAt: Date;
@@ -26,7 +26,7 @@ export class CensorItem extends Model<ICensorItem> implements ICensorItem {
         CensorItem.init({
             id: {type: DataTypes.BIGINT, primaryKey: true, allowNull: false, autoIncrement: true},
             epochNumber: {type: DataTypes.BIGINT, allowNull: false},
-            transactionHash: {type: DataTypes.CHAR(66), allowNull: true, defaultValue: ''},
+            transactionHash: {type: DataTypes.CHAR(66), allowNull: false},
             censorType: {type: DataTypes.INTEGER, allowNull: false},
             censorStatus: {type: DataTypes.INTEGER, allowNull: false, defaultValue: CENSOR_STATUS.TO_CENSOR},
             createdAt: {type: DataTypes.DATE, allowNull: false},
@@ -37,7 +37,7 @@ export class CensorItem extends Model<ICensorItem> implements ICensorItem {
             timestamps: false,
             indexes: [
                 {name: 'idx_epochNumber', fields: ['epochNumber']},
-                {name: 'idx_tx_hash', fields: [{name:'transactionHash', length:10}], unique: true},
+                {name: 'idx_tx_hash', fields: [{name: 'transactionHash', length: 10}], unique: true},
                 {name: 'idx_block_time', fields: [{name: 'createdAt', order: 'DESC'}]},
                 {name: 'idx_censorStatus', fields: ['censorStatus']},
             ]

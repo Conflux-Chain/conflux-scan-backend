@@ -127,6 +127,7 @@ async function check() {
 			traceIndex: 0,
 			value: 0,
 			outcome: "",
+			codeHash: "",
 		} as ITraceCreateContract;
 		if (!dryRun) {
 			await TraceCreateContract.bulkCreate([mockTrace], {ignoreDuplicates: true}).catch(e=>{

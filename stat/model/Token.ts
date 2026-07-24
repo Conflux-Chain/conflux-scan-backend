@@ -13,76 +13,75 @@ export function addTokenCache(obj:{name?, symbol, decimals?, granularity?, base3
     }
 }
 
-export interface IToken{
-    id?:number
+export interface IToken {
+    id?: number
     // basic info
-    hex40id:number
-    base32:string
-    name?:string
-    symbol?:string
-    decimals?:number
-    granularity?:number
-    totalSupply?:number
+    hex40id: number
+    base32: string
+    name?: string
+    symbol?: string
+    decimals?: number
+    granularity?: number
+    totalSupply?: number
     // advance info
-    type?:string
-    transfer?:number
-    transferLatest?:number
-    holder?:number
+    type?: string
+    transfer?: number
+    transferLatest?: number
+    holder?: number
     // price info
-    price?:number
-    totalPrice?:number
-    quoteUrl?:string
-    cmcId?:number
-    bnId?:string
+    price?: number
+    totalPrice?: number
+    quoteUrl?: string
+    cmcId?: number
+    bnId?: string
     // security info
-    securityCredits?:number
-    auditResult?:boolean
+    securityCredits?: number
+    auditResult?: boolean
     censorStatus?: number
-    destroyed?:boolean
+    destroyed?: boolean
     // extra info
-    icon?:string
-    iconUrl?:string
-    website?:string
-    ipfsGateway?:string
-    portalSupport?:boolean
-    fetchBalance?:boolean
-    updatedAt?:Date
+    icon?: string
+    iconUrl?: string
+    website?: string
+    ipfsGateway?: string
+    portalSupport?: boolean
+    fetchBalance?: boolean
+    updatedAt?: Date
 }
 
-export const TOKEN_ERC_1155 = 'erc1155'
-export class Token extends Model<IToken> implements IToken{
-    id?:number
+export class Token extends Model<IToken> implements IToken {
+    id?: number
     // basic info
-    hex40id:number
-    base32:string
-    name?:string
-    symbol:string
-    decimals?:number
-    granularity?:number
-    totalSupply?:number
+    hex40id: number
+    base32: string
+    name?: string
+    symbol?: string
+    decimals?: number
+    granularity?: number
+    totalSupply?: number
     // advance info
-    type?:string
-    transfer?:number
-    transferLatest?:number
-    holder:number
+    type?: string
+    transfer?: number
+    transferLatest?: number
+    holder?: number
     // price info
-    price?:number
-    totalPrice?:number
-    quoteUrl?:string
-    cmcId?:number
-    bnId?:string
+    price?: number
+    totalPrice?: number
+    quoteUrl?: string
+    cmcId?: number
+    bnId?: string
     // security info
-    securityCredits?:number
-    auditResult?:boolean
+    securityCredits?: number
+    auditResult?: boolean
     censorStatus?: number
-    destroyed?:boolean
+    destroyed?: boolean
     // extra info
-    icon?:string
-    iconUrl?:string
-    website?:string
-    ipfsGateway?:string
-    portalSupport?:boolean
-    fetchBalance?:boolean
+    icon?: string
+    iconUrl?: string
+    website?: string
+    ipfsGateway?: string
+    portalSupport?: boolean
+    fetchBalance?: boolean
 
     static register(seq: Sequelize) {
         Token.init({
@@ -129,58 +128,39 @@ export class Token extends Model<IToken> implements IToken{
             timestamps: true,
         })
     }
-
-    static async add(token: Token, dbTx = undefined): Promise<Token> {
-        addTokenCache(token)
-        return await Token.create({
-            // basic info
-            hex40id:token.hex40id,
-            base32:token.base32,
-            name:token.name,
-            symbol:token.symbol,
-            decimals:token.decimals,
-            granularity:token.granularity,
-            totalSupply: token.totalSupply?Number(token.totalSupply):token.totalSupply,
-            // advance info
-            type:token.type,
-            transfer:token.transfer,
-            transferLatest: token.transferLatest,
-            holder:token.holder,
-            // price info
-            price:token.price,
-            totalPrice:token.totalPrice,
-            quoteUrl:token.quoteUrl,
-            cmcId:token.cmcId,
-            bnId:token.bnId,
-            // extra info
-            icon:token.icon,
-        }, {
-            transaction: dbTx
-        })
-    }
 }
 
 export interface IErc1155amount {
-    id?:number; contractId:number|string; addressId:number|string; amount: number;epoch: number;
-
+    id?: number;
+    contractId: number | string;
+    addressId: number | string;
+    amount: number;
+    epoch: number;
 }
+
 export class Erc1155Amount extends Model<IErc1155amount> implements IErc1155amount {
-    id?:number; contractId:number; addressId:number; amount: number;epoch: number;
+    id?: number;
+    contractId: number;
+    addressId: number;
+    amount: number;
+    epoch: number;
+
     static register(seq: Sequelize) {
         Erc1155Amount.init({
             id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
-            contractId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false,},
-            addressId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false,},
-            amount: {type: DataTypes.STRING(78), allowNull: false, },
-            epoch: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, },
+            contractId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
+            addressId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
+            amount: {type: DataTypes.STRING(78), allowNull: false},
+            epoch: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
         }, {
             sequelize: seq, tableName: 'erc1155_addr_amount',
             indexes: [
-                {name: 'uk_addr_contract', fields:['addressId','contractId'], unique: true}
+                {name: 'uk_addr_contract', fields: ['addressId', 'contractId'], unique: true}
             ]
         })
     }
 }
+
 // alter table erc1155_data add column latestEpoch bigint unsigned not null default 0;
 export interface IErc1155Data {
     id?:number; contractId:number; addressId:number; tokenId:string; amount: number;

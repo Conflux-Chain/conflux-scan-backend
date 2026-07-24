@@ -1,52 +1,52 @@
-import {DataTypes, Model, QueryTypes, Sequelize, UniqueConstraintError} from "sequelize";
+import {DataTypes, Model, Sequelize, UniqueConstraintError} from "sequelize";
 import {CENSOR_STATUS} from "../service/censor/CensorService";
 
-export interface IContract{
-    id?:number
+export interface IContract {
+    id?: number
     epoch: number
-    base32:string
-    hex40id:number
-    name?:string
-    website?:string
-    abi?:string
-    sourceCode?:string
-    icon?:string
-    destroyed?:boolean
+    base32: string
+    hex40id: number
+    name?: string
+    website?: string
+    abi?: string
+    sourceCode?: string
+    icon?: string
+    destroyed?: boolean
     censorStatus?: number
     nameSymbolFailed?: boolean;
     createdAt?: Date
 }
 
-export class Contract extends Model<IContract> implements IContract{
-    id?:number
+export class Contract extends Model<IContract> implements IContract {
+    id?: number
     epoch: number
-    base32:string
-    hex40id:number
-    name?:string
-    website?:string
-    abi?:string
-    sourceCode?:string
-    icon?:string
-    destroyed?:boolean
+    base32: string
+    hex40id: number
+    name?: string
+    website?: string
+    abi?: string
+    sourceCode?: string
+    icon?: string
+    destroyed?: boolean
     censorStatus?: number
     nameSymbolFailed?: boolean;
     createdAt?: Date
 
-    static register(seq:Sequelize) {
+    static register(seq: Sequelize) {
         Contract.init({
             id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
-            epoch: {type: DataTypes.BIGINT, allowNull: true},
+            epoch: {type: DataTypes.BIGINT},
             base32: {type: DataTypes.CHAR(64), allowNull: false, unique: true},
             hex40id: {type: DataTypes.BIGINT, allowNull: false, unique: true},
-            name: {type: DataTypes.CHAR(255), allowNull: true},
-            website: {type: DataTypes.CHAR(255), allowNull: true},
-            abi: {type: DataTypes.TEXT, allowNull: true, },
-            sourceCode: {type: DataTypes.TEXT({length:'long'}), allowNull: true, },
-            icon: {type: DataTypes.BLOB('medium'), allowNull: true, },
+            name: {type: DataTypes.CHAR(255)},
+            website: {type: DataTypes.CHAR(255)},
+            abi: {type: DataTypes.TEXT},
+            sourceCode: {type: DataTypes.TEXT({length: 'long'})},
+            icon: {type: DataTypes.BLOB('medium')},
             destroyed: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
-            nameSymbolFailed: {type: DataTypes.BOOLEAN, allowNull: true, defaultValue: null},
             censorStatus: {type: DataTypes.INTEGER, allowNull: false, defaultValue: CENSOR_STATUS.TO_CENSOR},
-        },{
+            nameSymbolFailed: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
+        }, {
             tableName: 'contract',
             sequelize: seq,
             timestamps: true,
@@ -56,7 +56,7 @@ export class Contract extends Model<IContract> implements IContract{
     static async add(contract: Contract, dbTx = undefined): Promise<IContract> {
         return await Contract.create(contract, {
             transaction: dbTx
-        }).catch(err=>{
+        }).catch(err => {
             if (err instanceof UniqueConstraintError) {
                 // contract which created by transaction directly, will be saved when sync tx.
                 return contract
@@ -66,26 +66,26 @@ export class Contract extends Model<IContract> implements IContract{
     }
 }
 
-export interface IProxyVerify{
-    id?:number
-    base32:string
-    expectedImpl?: string
-    guid?:string
+export interface IProxyVerify {
+    id?: number
+    base32: string
+    guid: string
+    expectedImpl: string
 }
 
-export class ProxyVerify extends Model<IProxyVerify> implements IProxyVerify{
-    id?:number
-    base32:string
-    expectedImpl?: string
-    guid?:string
+export class ProxyVerify extends Model<IProxyVerify> implements IProxyVerify {
+    id?: number
+    base32: string
+    guid: string
+    expectedImpl: string
 
-    static register(seq:Sequelize) {
+    static register(seq: Sequelize) {
         ProxyVerify.init({
             id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
             base32: {type: DataTypes.CHAR(64), allowNull: false},
-            guid: {type: DataTypes.CHAR(50), allowNull: true},
-            expectedImpl: {type: DataTypes.CHAR(64), allowNull: true},
-        },{
+            guid: {type: DataTypes.CHAR(50), allowNull: false},
+            expectedImpl: {type: DataTypes.CHAR(64)},
+        }, {
             tableName: 'proxy_verify',
             sequelize: seq,
             timestamps: true,
@@ -94,21 +94,11 @@ export class ProxyVerify extends Model<IProxyVerify> implements IProxyVerify{
 
     static async add(proxy: ProxyVerify, dbTx = undefined): Promise<IProxyVerify> {
         return await ProxyVerify.create({
-            base32:proxy.base32,
+            base32: proxy.base32,
+            guid: proxy.guid,
             expectedImpl: proxy.expectedImpl,
-            guid:proxy.guid,
         }, {
             transaction: dbTx
         })
     }
-}
-
-export async function addNameSymbolFailureColumn(seq: Sequelize) {
-    return seq.query(`alter table ${Contract.getTableName()} add column nameSymbolFailed bool default null`, {
-        type: QueryTypes.UPDATE
-    }).catch(e=>{
-        if (e.original?.code != 'ER_DUP_FIELDNAME') {
-            console.log(`failed to add column`, e)
-        }
-    })
 }
