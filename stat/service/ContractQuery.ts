@@ -789,7 +789,7 @@ export class ContractQuery {
         }
 
         const guid = this.genGUID(base32);
-        const record = await ProxyVerify.add({base32, expectedImpl, guid} as ProxyVerify);
+        const record = await ProxyVerify.add({base32, guid, expectedImpl} as ProxyVerify);
         console.log(`[${address}]stat submitVerifyProxy request`, 'addResult ', `${JSON.stringify(record)}`);
         return { address, guid: record.guid };
     }

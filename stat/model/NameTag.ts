@@ -5,26 +5,26 @@ export interface INameTag {
     id?: number
     base32: string
     hex40id: number
-    eoa?: boolean
+    eoa: boolean
     auditor: string
     epoch: number
-    nameTag?: string
-    website?: string
-    desc?: string
-    labels?: string
+    nameTag: string
+    website: string
+    desc: string
+    labels: string
 }
 
 export class NameTag extends Model<INameTag> implements INameTag {
     id?: number
     base32: string
     hex40id: number
-    eoa?: boolean
+    eoa: boolean
     auditor: string
     epoch: number
-    nameTag?: string
-    website?: string
-    desc?: string
-    labels?: string
+    nameTag: string
+    website: string
+    desc: string
+    labels: string
 
     static register(seq: Sequelize) {
         NameTag.init({
@@ -34,10 +34,10 @@ export class NameTag extends Model<INameTag> implements INameTag {
             eoa: {type: DataTypes.BOOLEAN, allowNull: false},
             auditor: {type: DataTypes.CHAR(64), allowNull: false},
             epoch: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false,},
-            nameTag: {type: DataTypes.CHAR(255), allowNull: true},
-            website: {type: DataTypes.CHAR(255), allowNull: true},
-            desc: {type: DataTypes.STRING(512), allowNull: true},
-            labels: {type: DataTypes.CHAR(255), allowNull: true},
+            nameTag: {type: DataTypes.CHAR(255)},
+            website: {type: DataTypes.CHAR(255)},
+            desc: {type: DataTypes.STRING(512)},
+            labels: {type: DataTypes.CHAR(255)},
         }, {
             tableName: 'name_tag',
             sequelize: seq,

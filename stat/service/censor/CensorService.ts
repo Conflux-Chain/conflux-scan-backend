@@ -71,7 +71,7 @@ export class CensorService {
 
         async function repeat() {
             await that.doCensor().catch(e => {
-                // safeAddErrorLog('stat-task', 'censor-service', e).then();
+                safeAddErrorLog('stat-task', 'censor-service', e).then();
                 console.log(`censor error: `, e)
             });
             setTimeout(repeat, delay);
