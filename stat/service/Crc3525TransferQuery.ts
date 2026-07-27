@@ -39,6 +39,7 @@ export class Crc3525TransferQuery extends TransferQueryBase{
             'value', 'fromTokenId', 'toTokenId', 'event', 'slot',
             ['contractId', 'address'],
             ['createdAt', 'timestamp'],
+            ['tx', 'transactionHash'],
         ];
     }
     buildTokenIdOption(conditionArray: any[], tokenId: any) {

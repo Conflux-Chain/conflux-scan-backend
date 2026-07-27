@@ -63,6 +63,7 @@ export function decodeTransferFromReceipts(receipts2d:TransactionReceipt[][],tok
         transfer['transactionLogIndex'] = txLogIndex;
         transfer['blockIndex'] = blockIdx;
         transfer['createdAt'] = dt;
+        transfer['tx'] = tx.transactionHash;
         arr.push(transfer)
     }
     let blockIdx = -1;

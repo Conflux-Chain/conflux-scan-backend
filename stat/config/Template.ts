@@ -4,7 +4,7 @@ export default {
     port: 8087,
     apiPort: 9527,
     v1port: 8895,
-    diffMonitorPort: -1000,
+    diffMonitorPort: -9000,
 
     /** blockchain rpc configurations */
     conflux: null,

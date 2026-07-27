@@ -1,14 +1,11 @@
 import {DataTypes, Model, Sequelize} from "sequelize";
 import {createTable} from "../service/DBProvider";
+import {IBaseBlock} from "./FullBlock";
 
 /**
  * list block mined by miner
  */
-export interface IFullMinerBlock {
-    minerId: number;
-    epoch: number;
-    position: number;
-    createdAt: Date,
+export interface IFullMinerBlock extends IBaseBlock {
 }
 
 const T_FULL_MINER_BLOCK = 'full_miner_block';
@@ -18,6 +15,17 @@ create table if not exists ${T_FULL_MINER_BLOCK}
 \t \`minerId\` bigint(20) unsigned NOT NULL,
 \t \`epoch\` bigint(20) unsigned NOT NULL,
 \t \`position\` smallint(6) NOT NULL DEFAULT '0',
+    hash char(66) CHARACTER SET ascii,
+   
+   \`avgGasPrice\` decimal(36, 0) NOT NULL DEFAULT '0',
+   \`txCount\`          int NOT NULL DEFAULT '0',
+   \`executedTxnCount\` int NOT NULL DEFAULT '0',
+   \`gasLimit\`    decimal(36, 0) NOT NULL DEFAULT '0',
+   \`totalReward\` decimal(36, 0) NOT NULL DEFAULT '0',
+   \`gasUsed\` decimal(36, 0) NOT NULL DEFAULT '0',
+   \`difficulty\` bigint unsigned NOT NULL DEFAULT '0',
+   \`pivot\` tinyint(1) NOT NULL DEFAULT '0',
+    
 \t \`createdAt\` datetime NOT NULL,
   PRIMARY KEY (\`minerId\` DESC, \`epoch\` DESC, \`position\` DESC),
   KEY \`block_time_idx\` (\`createdAt\` DESC)
@@ -42,14 +50,34 @@ export class FullMinerBlock extends Model<IFullMinerBlock> implements IFullMiner
     minerId: number;
     epoch: number;
     position: number;
+    avgGasPrice: bigint;
+    gasUsed:number;
+    txCount:number;
+    executedTxnCount:number;
+    gasLimit: number;
+    totalReward: bigint;
+    difficulty: number;
+    pivot: boolean;
+
+    hash: string;
     createdAt: Date;
 
     static register(sequelize) {
         FullMinerBlock.init({
                 minerId: DataTypes.BIGINT,
                 epoch: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false},
-                position: {type: DataTypes.SMALLINT, allowNull: false, defaultValue: 0}, // A 16 bit integer.
+                position: {type: DataTypes.SMALLINT, allowNull: false, defaultValue: 0}, // A 16-bits integer.
+                hash: {type: DataTypes.STRING(66), allowNull: false, charset: 'ascii',} as any,
                 createdAt: {type: DataTypes.DATE, allowNull: false},
+
+                txCount: {type: DataTypes.INTEGER, allowNull: false, defaultValue: 0}, // A 32-bits integer.
+                executedTxnCount: {type: DataTypes.INTEGER, allowNull: true, defaultValue: 0}, // A 32-bit integer.
+                totalReward: {type: DataTypes.DECIMAL(36,0), allowNull: false, defaultValue: 0},
+                avgGasPrice: {type: DataTypes.DECIMAL(36,0), allowNull: false, defaultValue: 0}, // sum(gasPrice of tx) / txCount
+                gasLimit: {type: DataTypes.DECIMAL(36,0), allowNull: false, defaultValue: 0},
+                gasUsed: {type: DataTypes.DECIMAL(36,0), allowNull: false, defaultValue: 0},
+                difficulty: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, defaultValue: 0},
+                pivot: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: 0},
             }
             , {
                 timestamps: false,

@@ -32,7 +32,7 @@ export class AddressNfts extends Model<IAddressNfts> implements IAddressNfts {
             addressId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, },
             contractId: {type: DataTypes.BIGINT({unsigned: true}), allowNull: false, },
             tokenId: {type: DataTypes.STRING(78), allowNull: false, },
-            value: {type: DataTypes.DECIMAL(65, 0), allowNull: false, },
+            value: {type: DataTypes.STRING(78), allowNull: false, },
             type: {type: DataTypes.SMALLINT, allowNull: false},
             createdAt: {type: DataTypes.DATE, allowNull: false},
             updatedAt: {type: DataTypes.DATE, allowNull: false},
