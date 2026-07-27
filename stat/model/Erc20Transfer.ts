@@ -4,7 +4,7 @@ import {Erc721Transfer} from "./Erc721Transfer";
 import {Erc1155Transfer} from "./Erc1155Transfer";
 import {createTable} from "../service/DBProvider";
 import {Epoch} from "./Epoch";
-import {sqlLogFn} from "./Utils";
+
 export interface IContractUser {
     id?: number
     contractId: number
@@ -42,6 +42,7 @@ export interface ITokenTransfer {
     contractId: number
     fromId: number
     toId: number
+    tx: string
 }
 
 export interface IErc20Transfer extends ITokenTransfer{
@@ -62,6 +63,7 @@ const ADDRESS_ERC20TRANSFER_SQL = `
   \`blockIndex\` int unsigned NOT NULL,
   \`txIndex\` mediumint unsigned NOT NULL,
   \`txLogIndex\` mediumint unsigned NOT NULL,
+  tx char(66) character set 'ascii' not null,
   \`createdAt\` datetime NOT NULL,
   \`fromId\` bigint unsigned NOT NULL,
   \`toId\` bigint unsigned NOT NULL,
@@ -106,6 +108,7 @@ export class AddressErc20Transfer extends Model<IAddressErc20Transfer> implement
     blockIndex: number
     txIndex: number
     txLogIndex: number
+    tx: string
     fromId: number
     toId: number
     value: string
@@ -117,6 +120,7 @@ export class AddressErc20Transfer extends Model<IAddressErc20Transfer> implement
             blockIndex: {type: DataTypes.SMALLINT, allowNull: false},
             txIndex: {type: DataTypes.INTEGER, allowNull: false},
             txLogIndex: {type: DataTypes.INTEGER, allowNull: false},
+            tx: {type: DataTypes.STRING(66), allowNull: false, charset: 'ascii'} as any,
             contractId: {type: DataTypes.BIGINT, allowNull: false},
             fromId: {type: DataTypes.BIGINT, allowNull: false},
             toId: {type: DataTypes.BIGINT, allowNull: false},
@@ -141,6 +145,7 @@ export class Erc20Transfer extends Model<IErc20Transfer> implements IErc20Transf
     blockIndex: number
     txIndex: number
     txLogIndex: number
+    tx: string
     fromId: number
     toId: number
     value: string
@@ -152,6 +157,7 @@ export class Erc20Transfer extends Model<IErc20Transfer> implements IErc20Transf
             blockIndex: {type: DataTypes.SMALLINT, allowNull: false},
             txIndex: {type: DataTypes.INTEGER, allowNull: false},
             txLogIndex: {type: DataTypes.INTEGER, allowNull: false},
+            tx: {type: DataTypes.STRING(66), allowNull: false, charset: 'ascii'} as any,
             contractId: {type: DataTypes.BIGINT, allowNull: false},
             fromId: {type: DataTypes.BIGINT, allowNull: false},
             toId: {type: DataTypes.BIGINT, allowNull: false},

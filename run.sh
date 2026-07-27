@@ -347,7 +347,7 @@ exports.default = {
     blockSyncRpc: { url: '$_RPC',keepAlive: true, },
     cfxTransferRpc: { url: '$_RPC',keepAlive: true, },
     tokenTransferRpc: { url: '$_RPC',keepAlive: true, },
-
+    firstBlockNo: 0,
     $CORE_RPC
     $_IS_EVM
     $_NO_CORE_SPACE

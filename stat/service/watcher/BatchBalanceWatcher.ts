@@ -260,7 +260,9 @@ async function syncErc1155data(epochBase: number, rpc: Contract, cfx:Conflux) {
                         })
                     }
                 }
+                // do nothing, only amount is changed. token balance is not affected.
             } else {
+                // someone lost his token balance record.
                 const deleted = await Erc1155Data.destroy({
                     where: {contractId, addressId, tokenId}
                 })

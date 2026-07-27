@@ -6,6 +6,7 @@ import {StatApp} from "../../stat/StatApp";
 import {saveApiLog} from "../../stat/monitor/ApiLog";
 import {CODE_PARAMETER_ERROR, CODE_PARAMETER_ERROR_MSG, CODE_RATE_LIMITED} from "../common/Def";
 import {safeAddErrorLog} from "../../stat/monitor/ErrorMonitor";
+import {Errors} from "../../stat/service/common/LogicError";
 import {EtherOption} from "../../stat/config/StatConfig";
 import {DAY} from "../../stat/service/common/constant";
 
@@ -33,7 +34,7 @@ export async function handleException(ctx, next) {
             setBody(ctx, ctx.request.query, CODE_PARAMETER_ERROR, CODE_PARAMETER_ERROR_MSG)
             return
         }
-        if (err instanceof InvalidParamError) {
+        if (err instanceof InvalidParamError || err instanceof Errors.ParameterError) {
             setBody(ctx, ctx.request.query, CODE_PARAMETER_ERROR, err.message)
             return
         }
@@ -43,6 +44,7 @@ export async function handleException(ctx, next) {
         }
         setBody(ctx, undefined, 500, err.toString())
         if (err.code == 500) {
+            err['url'] = ctx.request.url;
             safeAddErrorLog('open', `open-500-${err.message}`, err);
         }
         console.log(`api error ${ctx.request.url}`, err)

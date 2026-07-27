@@ -10,6 +10,7 @@ export interface INftTransfer {
     txIndex: number
     txLogIndex: number
     batchIndex: number
+    tx: string;
 
     fromId: number
     toId: number
@@ -27,6 +28,7 @@ export class NftTransfer extends Model<INftTransfer> implements INftTransfer {
     blockIndex: number
     txIndex: number
     txLogIndex: number
+    tx: string;
     batchIndex: number
 
     fromId: number
@@ -46,6 +48,7 @@ export class NftTransfer extends Model<INftTransfer> implements INftTransfer {
             txIndex: {type: DataTypes.SMALLINT, allowNull: false},
             txLogIndex: {type: DataTypes.SMALLINT, allowNull: false},
             batchIndex: {type: DataTypes.SMALLINT, allowNull: false},
+            tx: {type: DataTypes.STRING(66), allowNull: false},
 
             fromId: {type: DataTypes.BIGINT, allowNull: false},
             toId: {type: DataTypes.BIGINT, allowNull: false},
@@ -89,6 +92,7 @@ CREATE TABLE IF NOT EXISTS ${T_ADDRESS_NFT_TRANSFER}
   \`txIndex\` smallint(6) unsigned NOT NULL,
   \`txLogIndex\` smallint(6) unsigned NOT NULL,
   \`batchIndex\` smallint(6) unsigned NOT NULL,
+    tx char(66) character set ascii not null,
   \`fromId\` bigint(20) NOT NULL,
   \`toId\` bigint(20) NOT NULL,
   \`contractId\` bigint(20) NULL,
@@ -121,6 +125,7 @@ export interface IAddressNftTransfer {
     txIndex: number
     txLogIndex: number
     batchIndex: number
+    tx: string;
 
     fromId: number
     toId: number
@@ -140,6 +145,7 @@ export class AddressNftTransfer extends Model<IAddressNftTransfer> implements IA
     txIndex: number
     txLogIndex: number
     batchIndex: number
+    tx: string;
 
     fromId: number
     toId: number
@@ -158,6 +164,7 @@ export class AddressNftTransfer extends Model<IAddressNftTransfer> implements IA
             txIndex: {type: DataTypes.SMALLINT, allowNull: false},
             txLogIndex: {type: DataTypes.SMALLINT, allowNull: false},
             batchIndex: {type: DataTypes.SMALLINT, allowNull: false},
+            tx: {type: DataTypes.STRING(66), allowNull: false},
 
             fromId: {type: DataTypes.BIGINT, allowNull: false},
             toId: {type: DataTypes.BIGINT, allowNull: false},
