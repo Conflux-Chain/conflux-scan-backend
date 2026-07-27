@@ -1,12 +1,15 @@
 import {ScanApp, ScanCtx} from "./index";
 import {QueryTypes} from "sequelize";
 import {NoCoreSpace} from "../../stat/config/StatConfig";
+import {FullBlock} from "../../stat/model/FullBlock";
+import {getCfxSdk} from "../../stat/service/common/utils";
+import {TransactionReceipt} from "js-conflux-sdk/dist/types/rpc/types/formatter";
 
 const lodash = require('lodash');
 const limitMap = require('limit-map');
 const BigFixed = require('bigfixed');
 const {StatApp} = require("../../stat/StatApp");
-const {FullBlockExt} = require( "../../stat/model/FullBlock")
+// const {FullBlockExt} = require( "../../stat/model/FullBlock")
 
 const DETAIL_FIELDS = ['newTransactionCount', 'avgGasPrice'];
 const PIVOT_FIELDS = ['blockIndex', 'pivotHash'];
@@ -94,13 +97,18 @@ export class BlockService {
     if (gasLimit) {
       detailInfo['gasLimit'] = gasLimit;
     }
-    const blkExt = await FullBlockExt.sequelize.query(`select * from full_block_ext where epoch = ? and position = 
-         (select position from full_block where hash = ?)`,
-        { type: QueryTypes.SELECT, replacements: [block.epochNumber, block.hash]})
-        .then(arr => {return arr?.length ? arr[0] : null});
-    let extra = blkExt?.extra ? JSON.parse(blkExt.extra) : undefined
-    lodash.assign(block, {burntGasFee: extra?.burntFee, coreBlock})
-    rewardDetail['burntGasFee'] = extra?.burntFee
+    let burntGasFee = await FullBlock.findOne({
+      where: {epoch: block.epochNumber, hash: block.hash},
+      raw: true,
+    }).then(bean=>{
+      if (bean) {
+        return JSON.parse(bean.extra ?? '{}').burntFee;
+      } else {
+        return loadBlockExtByRpc(block).then(res=>res.sumBurntGasFee);
+      }
+    })
+    lodash.assign(block, {burntGasFee, coreBlock})
+    rewardDetail['burntGasFee'] = burntGasFee;
 
     const epoch = await service.epoch.query({ epochNumber: block.epochNumber }) || {};
     return lodash.defaults(detailInfo, block, pivotInfo, reward, {
@@ -271,4 +279,20 @@ async function loadEvmBlockSpec(epochNumber: number, gasLimitBase: number) {
     // core space, it was calculated when syncing blocks, and used in fn _getDetail
   }
   return {coreBlock, gasLimit};
+}
+
+async function loadBlockExtByRpc({hash, transactions}) {
+  const receipts = await Promise.all(
+      transactions.map(async (transaction) => {
+        if (transaction instanceof String) {
+          return getCfxSdk().getTransactionReceipt(transaction.toString());
+        } else {
+          return transaction as TransactionReceipt;
+        }
+      })
+  );
+  const sumBurntGasFee = receipts.map(r=>{
+    return BigInt(r['burntGasFee'] || 0)
+  }).reduce((a, b)=> a +b , BigInt(0));
+  return {receipts, sumBurntGasFee};
 }

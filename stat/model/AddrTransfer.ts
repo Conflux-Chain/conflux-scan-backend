@@ -13,6 +13,11 @@ CREATE TABLE IF NOT EXISTS ${T_ADDRESS_TRANSFER}
   \`txIndex\` smallint(6) unsigned NOT NULL,
   \`txLogIndex\` smallint(6) unsigned NOT NULL,
   \`batchIndex\` smallint(6) unsigned NOT NULL,
+  tx char(66) character set ascii not null,
+  nonce bigint not null,
+  method varchar(10) character set ascii not null,
+  status tinyint NOT NULL,
+  gas decimal(36,0) NOT NULL DEFAULT '0',   
   \`fromId\` bigint(20) NOT NULL,
   \`toId\` bigint(20) NOT NULL,
   \`contractId\` bigint(20) NULL,
@@ -42,6 +47,13 @@ export interface IAddressTransfer {
 
     epoch: number
     blockIndex: number
+
+    tx: string;
+    nonce: bigint;
+    method: string;
+    status: number;
+    gas: bigint;
+
     txIndex: number
     txLogIndex: number
     batchIndex: number
@@ -63,6 +75,13 @@ export class AddressTransfer extends Model<IAddressTransfer> implements IAddress
     epoch: number
     blockIndex: number
     txIndex: number
+
+    tx: string;
+    nonce: bigint;
+    method: string;
+    status: number;
+    gas: bigint;
+
     txLogIndex: number
     batchIndex: number
 
@@ -82,6 +101,11 @@ export class AddressTransfer extends Model<IAddressTransfer> implements IAddress
             epoch: {type: DataTypes.BIGINT, allowNull: false},
             blockIndex: {type: DataTypes.SMALLINT, allowNull: false},
             txIndex: {type: DataTypes.SMALLINT, allowNull: false},
+            nonce: {type: DataTypes.BIGINT, allowNull: false},
+            gas: {type: DataTypes.BIGINT, allowNull: false},
+            status: {type: DataTypes.TINYINT, allowNull: false},
+            method: {type: DataTypes.STRING(10), allowNull: false, charset: 'ascii'} as any,
+            tx: {type: DataTypes.STRING(66), allowNull: false, charset: 'ascii'} as any,
             txLogIndex: {type: DataTypes.SMALLINT, allowNull: false},
             batchIndex: {type: DataTypes.SMALLINT, allowNull: false},
 

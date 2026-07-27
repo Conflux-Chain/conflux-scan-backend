@@ -33,6 +33,7 @@ export class TokenApproval extends Model<ITokenApproval> implements ITokenApprov
     contractId: number
     blockIndex: number
     txIndex: number
+    tx: string
     txLogIndex: number
     fromId: number
     toId: number
@@ -47,6 +48,7 @@ export class TokenApproval extends Model<ITokenApproval> implements ITokenApprov
             createdAt: {type: DataTypes.DATE, allowNull: false},
             blockIndex: {type: DataTypes.SMALLINT, allowNull: false},
             txIndex: {type: DataTypes.INTEGER, allowNull: false},
+            tx: {type: DataTypes.STRING(66), allowNull: false, charset: 'ascii'} as any,
             txLogIndex: {type: DataTypes.INTEGER, allowNull: false},
             contractId: {type: DataTypes.BIGINT, allowNull: false},
             fromId: {type: DataTypes.BIGINT, allowNull: false},

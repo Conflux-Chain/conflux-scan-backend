@@ -29,6 +29,7 @@ export class Crc1155TransferQuery extends TransferQueryBase{
             'value',
             ['contractId', 'address'],
             ['createdAt', 'timestamp'],
+            ['tx', 'transactionHash'],
         ];
     }
     public async doQuery(options: any, queryOptions: any): Promise<any>{

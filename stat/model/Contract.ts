@@ -102,13 +102,3 @@ export class ProxyVerify extends Model<IProxyVerify> implements IProxyVerify{
         })
     }
 }
-
-export async function addNameSymbolFailureColumn(seq: Sequelize) {
-    return seq.query(`alter table ${Contract.getTableName()} add column nameSymbolFailed bool default null`, {
-        type: QueryTypes.UPDATE
-    }).catch(e=>{
-        if (e.original?.code != 'ER_DUP_FIELDNAME') {
-            console.log(`failed to add column`, e)
-        }
-    })
-}
