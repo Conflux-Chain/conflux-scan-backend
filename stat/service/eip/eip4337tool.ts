@@ -7,7 +7,7 @@ import {Conflux} from "js-conflux-sdk";
 import {init} from "../tool/FixDailyTokenStat";
 import {initCfxSdk} from "../common/utils";
 import {AddressTransactionIndex} from "../../model/FullBlock";
-import {AATx, BundleTx, entrypointAddrSet} from "../../model/eip4337model";
+import {AATx, BundleTx, entrypointAddrSet, T_AA_TX_PARTITION} from "../../model/eip4337model";
 import {makeIdV} from "../../model/HexMap";
 import {setupEntrypointIds, syncEpoch} from "./eip4337";
 
@@ -93,9 +93,12 @@ npx tsc && node stat/service/eip/eip4337tool.js fixMissing                      
 npx tsc && node stat/service/eip/eip4337tool.js fixMissing 250000000              # from epoch
 npx tsc && node stat/service/eip/eip4337tool.js fixMissing 250000000 252000000    # range
 npx tsc && node stat/service/eip/eip4337tool.js fixPositions                      # backfill position field
+npx tsc && node stat/service/eip/eip4337tool.js backfillPartition                 # backfill aaTx into sender partition table
+npx tsc && node stat/service/eip/eip4337tool.js backfillPartition 10000           # custom batch size
  */
 
 const BUNDLE_BATCH = 500;
+const AATX_BACKFILL_BATCH = 5000;
 
 /**
  * Backfill the `position` column for all existing aaTx rows.
@@ -151,6 +154,74 @@ async function fixAATxPositions(): Promise<void> {
 	console.log(`Done. Fixed positions for ${totalBundles} bundle txs.`);
 }
 
+/**
+ * Backfill historical rows from `aaTx` into sender-partitioned table.
+ *
+ * Idempotent behavior: rows are inserted only when a matching
+ * (userOpHash, epoch, bundleTxId, position) row does not already exist
+ * in the target table.
+ */
+async function backfillAATxPartition(batchSize = AATX_BACKFILL_BATCH): Promise<void> {
+	let cursor = BigInt(0);
+	let batchNum = 0;
+	let scannedRows = 0;
+	let insertedRows = 0;
+
+	while (true) {
+		const sourceRows = await AATx.findAll({
+			where: { id: { [Op.gt]: cursor } },
+			attributes: ['id'],
+			order: [['id', 'ASC']],
+			limit: batchSize,
+			raw: true,
+		}) as any[];
+
+		if (sourceRows.length === 0) {
+			break;
+		}
+
+		batchNum += 1;
+		scannedRows += sourceRows.length;
+		const maxId = BigInt(sourceRows[sourceRows.length - 1].id);
+
+		const [_, meta] = await AATx.sequelize.query(`
+			INSERT INTO ${T_AA_TX_PARTITION} (
+				userOpHash, epoch, senderId, bundlerId, eventContractId,
+				entryPointId, bundleTxId, paymasterId, nonce, position,
+				success, actualGasCost, actualGasUsed, methods, method7702,
+				createdAt, updatedAt
+			)
+			SELECT
+				s.userOpHash, s.epoch, s.senderId, s.bundlerId, s.eventContractId,
+				s.entryPointId, s.bundleTxId, s.paymasterId, s.nonce, s.position,
+				s.success, s.actualGasCost, s.actualGasUsed, s.methods, s.method7702,
+				s.createdAt, s.updatedAt
+			FROM aaTx s
+			LEFT JOIN ${T_AA_TX_PARTITION} t
+				ON t.userOpHash = s.userOpHash
+				AND t.epoch = s.epoch
+				AND t.bundleTxId = s.bundleTxId
+				AND t.position = s.position
+			WHERE s.id > :cursor AND s.id <= :maxId AND t.id IS NULL
+		`, {
+			replacements: { cursor: cursor.toString(), maxId: maxId.toString() },
+			type: QueryTypes.INSERT,
+		});
+
+		const affected = Number((meta as any) || 0);
+		insertedRows += Number.isFinite(affected) ? affected : 0;
+		cursor = maxId;
+
+		console.log(`backfill batch ${batchNum}: scanned=${sourceRows.length} inserted=${affected} cursor=${cursor}`);
+
+		if (sourceRows.length < batchSize) {
+			break;
+		}
+	}
+
+	console.log(`backfill done: scanned=${scannedRows} inserted=${insertedRows}`);
+}
+
 /*
 node stat/service/eip/eip4337tool.js debugEffectiveAuth
  */
@@ -177,6 +248,12 @@ async function main() {
 		console.log('fixPositions: backfilling position field for all aaTx rows...');
 		await init();
 		await fixAATxPositions();
+	} else if (cmd === 'backfillPartition') {
+		const batchSizeRaw = fromEpochStr ? parseInt(fromEpochStr) : AATX_BACKFILL_BATCH;
+		const batchSize = Number.isFinite(batchSizeRaw) && batchSizeRaw > 0 ? batchSizeRaw : AATX_BACKFILL_BATCH;
+		console.log(`backfillPartition: batchSize=${batchSize}`);
+		await init();
+		await backfillAATxPartition(batchSize);
 	} else {
 		console.log(`unknown cmd: ${cmd}`);
 	}

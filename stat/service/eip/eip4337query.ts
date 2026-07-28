@@ -1,5 +1,5 @@
 // Query result interfaces with joined data
-import {AATx, BundleTx, IAATx, IBundleTx, UserOperationRevertReason} from "../../model/eip4337model";
+import {AATxPartition, BundleTx, IAATx, IBundleTx, UserOperationRevertReason} from "../../model/eip4337model";
 import {Hex40Map, idHex40Map} from "../../model/HexMap";
 import {IPageParam} from "../../router/ParamChecker";
 import {ethers} from "ethers";
@@ -152,7 +152,7 @@ export async function queryAATx(params: AATxQueryParams): Promise<{ list: AATxQu
         whereClause.entryPointId = params.entryPointId;
     }
 
-    const {rows: results, count} = await AATx.findAndCountAll({
+    const {rows: results, count} = await AATxPartition.findAndCountAll({
         where: whereClause,
         include: [
             {
@@ -233,7 +233,7 @@ async function fillRevertReason(row: IAATx & any) : Promise<string> {
     return failedReason;
 }
 
-const pickAddr = (key: string, bundle: BundleTx|AATx) => {
+const pickAddr = (key: string, bundle: BundleTx|AATxPartition) => {
     // @ts-ignore
     const v = bundle.get(key)?.hex;
     return v ? ethers.getAddress('0x' + v) : '';
@@ -308,7 +308,7 @@ export async function fetchMethodsByUserOpHashes(
     userOpHashes: string[],
 ): Promise<Map<string, string>> {
     if (!userOpHashes.length) return new Map();
-    const rows = await AATx.findAll({
+    const rows = await AATxPartition.findAll({
         where: { userOpHash: { [Op.in]: userOpHashes } },
         attributes: ['userOpHash', 'methods'],
         raw: true,
@@ -367,11 +367,10 @@ export async function getAATxDetail(cfx: Conflux, userOpHash: string): Promise<A
  * Returns -1 if not found.
  */
 export async function getAAOpPosition(userOpHash: string): Promise<number> {
-    const row = await AATx.findOne({
+    const row = await AATxPartition.findOne({
         where: { userOpHash },
         attributes: ['position'],
         raw: true,
     }) as any;
     return row != null ? Number(row.position) : -1;
 }
-

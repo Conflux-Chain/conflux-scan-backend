@@ -1,5 +1,6 @@
 import {DataTypes, Model, Sequelize} from "sequelize";
-import {Hex40Map, makeIdV} from "./HexMap";
+import {Hex40Map} from "./HexMap";
+import {createTable} from "../service/DBProvider";
 
 export interface IBundleTx {
 	id: bigint;
@@ -133,6 +134,102 @@ export class AATx extends Model<IAATx> implements IAATx {
 	}
 }
 
+export const T_AA_TX_PARTITION = 'aaTx_partition_by_sender';
+export const T_AA_TX_PARTITION_SQL = `
+CREATE TABLE if not exists ${T_AA_TX_PARTITION} (
+    \`id\` bigint(20) NOT NULL AUTO_INCREMENT,
+    \`userOpHash\` varchar(66) NOT NULL,
+    \`epoch\` bigint(20) NOT NULL,
+    \`senderId\` bigint(20) NOT NULL,
+    \`bundlerId\` bigint(20) NOT NULL,
+    \`eventContractId\` bigint(20) NOT NULL,
+    \`entryPointId\` bigint(20) NOT NULL,
+    \`bundleTxId\` bigint(20) NOT NULL,
+    \`paymasterId\` bigint(20) NOT NULL,
+    \`nonce\` varchar(78) NOT NULL,
+    \`position\` int(11) NOT NULL DEFAULT 0,
+    \`success\` tinyint(1) NOT NULL,
+    \`actualGasCost\` decimal(36,18) NOT NULL,
+    \`actualGasUsed\` bigint(20) NOT NULL,
+    \`methods\` varchar(${LEN_AA_TX_METHODS}) DEFAULT '',
+    \`method7702\` varchar(32) NOT NULL DEFAULT '',
+    \`createdAt\` datetime NOT NULL,
+    \`updatedAt\` datetime NOT NULL,
+    PRIMARY KEY (\`id\`, \`senderId\`),
+    KEY \`idx_epoch\` (\`epoch\`),
+    KEY \`idx_senderId_bundlerId_entryPointId\` (\`senderId\`,\`bundlerId\`,\`entryPointId\`),
+    KEY \`idx_senderId_entryPointId\` (\`senderId\`,\`entryPointId\`),
+    KEY \`idx_bundlerId_entryPointId\` (\`bundlerId\`,\`entryPointId\`),
+    KEY \`idx_entryPointId\` (\`entryPointId\`),
+    KEY \`idx_opHash\` (\`userOpHash\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+PARTITION BY HASH (\`senderId\`)
+PARTITIONS 97;
+`;
+
+export async function createAATxPartitionTable(sequelize: Sequelize) {
+	return createTable(sequelize, T_AA_TX_PARTITION_SQL).then(()=>{
+		AATxPartition.register(sequelize);
+	}).catch(err=>{
+		console.log(`createAATxPartitionTable fail, sql ${T_AA_TX_PARTITION_SQL}:`, err)
+		process.exit(9)
+	})
+}
+
+export class AATxPartition extends Model<IAATx> implements IAATx {
+	id: bigint;
+	userOpHash: string;
+	epoch: bigint;
+	senderId: number;
+	bundlerId: number;
+	eventContractId: number;
+	entryPointId: number;
+	bundleTxId: bigint;
+	paymasterId: number;
+	nonce: string;
+	position: number;
+	success: boolean;
+	actualGasCost: string;
+	actualGasUsed: string;
+	methods: string;
+	method7702: string;
+	createdAt: Date;
+
+	static register(sequelize: Sequelize) {
+		AATxPartition.init({
+			id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true},
+			userOpHash: {type: DataTypes.STRING(66), allowNull: false},
+			epoch: {type: DataTypes.BIGINT, allowNull: false},
+			senderId: {type: DataTypes.BIGINT, allowNull: false},
+			bundlerId: {type: DataTypes.BIGINT, allowNull: false},
+			eventContractId: {type: DataTypes.BIGINT, allowNull: false},
+			entryPointId: {type: DataTypes.BIGINT, allowNull: false},
+			bundleTxId: {type: DataTypes.BIGINT, allowNull: false},
+			paymasterId: {type: DataTypes.BIGINT, allowNull: false},
+			nonce: {type: DataTypes.STRING(78), allowNull: false},
+			position: {type: DataTypes.INTEGER, allowNull: false, defaultValue: 0},
+			success: {type: DataTypes.BOOLEAN, allowNull: false},
+			actualGasCost: {type: DataTypes.DECIMAL(36,18), allowNull: false},
+			actualGasUsed: {type: DataTypes.BIGINT, allowNull: false},
+			methods: {type: DataTypes.STRING(LEN_AA_TX_METHODS),
+				allowNull: true, defaultValue: '', },
+			method7702: {type: DataTypes.STRING(32), allowNull: false, defaultValue: '', },
+			createdAt: {type: DataTypes.DATE, allowNull: false},
+		}, {
+			sequelize,
+			tableName: T_AA_TX_PARTITION,
+			indexes: [
+				{name: 'idx_epoch', fields: ['epoch']},
+				{name: 'idx_senderId_bundlerId_entryPointId', fields: ['senderId', 'bundlerId', 'entryPointId']},
+				{name: 'idx_senderId_entryPointId', fields: ['senderId', 'entryPointId']},
+				{name: 'idx_bundlerId_entryPointId', fields: ['bundlerId', 'entryPointId']},
+				{name: 'idx_entryPointId', fields: ['entryPointId']},
+				{name: 'idx_opHash', fields: ['userOpHash']},
+			]
+		});
+	}
+}
+
 export const entrypointAddrSet = new Set([
 	'0x5ff137d4b0fdcd49dca30c7cf57e578a026d2789', // --- v0.6
 	'0x0000000071727de22e5e9d8baf0edac6f37da032', // --- v0.7
@@ -152,6 +249,11 @@ export async function bindBundleTxModels() {
 	AATx.belongsTo(Hex40Map, { as: 'entryPoint', foreignKey: 'entryPointId' });
 
 	AATx.belongsTo(BundleTx, { as: 'bundleTx', foreignKey: 'bundleTxId' });
+
+	AATxPartition.belongsTo(Hex40Map, { as: 'sender', foreignKey: 'senderId' });
+	AATxPartition.belongsTo(Hex40Map, { as: 'bundler', foreignKey: 'bundlerId' });
+	AATxPartition.belongsTo(Hex40Map, { as: 'entryPoint', foreignKey: 'entryPointId' });
+	AATxPartition.belongsTo(BundleTx, { as: 'bundleTx', foreignKey: 'bundleTxId' });
 }
 
 

@@ -2,7 +2,7 @@ import {ethers, formatEther} from "ethers";
 import {Conflux, format} from "js-conflux-sdk";
 import {parseAATxMethods, getPaymasterAddress, readOpHash} from "./eip4337decoder";
 import {parseUserOperationEvent, parseUserOperationRevertReason} from "./eip4337abi";
-import {AATx, BundleTx} from "../../model/eip4337model";
+import {AATxPartition, BundleTx} from "../../model/eip4337model";
 
 const {tracesInTree} = require('js-conflux-sdk/src/util/trace');
 
@@ -413,7 +413,7 @@ const INNER_HANDLE_OP_SELECTOR_V6  = '0x1d732756';
  * Returns null if the user op is not found.
  */
 export async function getBundleTxHashForUserOp(userOpHash: string): Promise<string | null> {
-	const aaTx = await AATx.findOne({
+	const aaTx = await AATxPartition.findOne({
 		where: { userOpHash: userOpHash.toLowerCase() },
 		include: [{ model: BundleTx, as: 'bundleTx', attributes: ['hash'], required: true }],
 		raw: false,

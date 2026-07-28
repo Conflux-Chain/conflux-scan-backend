@@ -6,7 +6,7 @@ import {
 	parseUserOperationRevertReason
 } from "./eip4337abi";
 import {
-	AATx, AccountDeployed,
+	AATx, AATxPartition, AccountDeployed,
 	BundleTx, entrypointAddrIdSet, entrypointAddrSet,
 	IAATx,
 	IAccountDeployed,
@@ -71,6 +71,7 @@ export async function pop4337data(epoch: number|any, dbTx: Transaction) {
 	const options = {where: {epoch} , transaction: dbTx};
 
 	await AATx.destroy(options);
+	await AATxPartition.destroy(options);
 	await UserOperationRevertReason.destroy(options);
 	await AccountDeployed.destroy(options);
 	await BundleTx.destroy(options);
@@ -106,7 +107,11 @@ export async function saveBundleData(data: IBundleData, dbTx: Transaction) : Pro
 		data.revertReasonArr[i].bundleTxId = data.bundlerTxId;
 	}
 
-	await AATx.bulkCreate(data.aaTxArr, {
+	const aaTxRows = data.aaTxArr.map(row => ({...row}));
+	await AATx.bulkCreate(aaTxRows, {
+		transaction: dbTx,
+	});
+	await AATxPartition.bulkCreate(aaTxRows.map(row => ({...row})), {
 		transaction: dbTx,
 	});
 	await UserOperationRevertReason.bulkCreate(data.revertReasonArr, {

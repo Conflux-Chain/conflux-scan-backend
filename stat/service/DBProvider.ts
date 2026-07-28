@@ -88,7 +88,14 @@ import {ContractImpl} from "../model/ContractImpl";
 import {VerifiedContracts} from "../model/VerifiedContracts";
 import {initBlockWithdrawModel} from "../model/ZG";
 import {DailyGasStat} from "../model/DailyGasStat";
-import {AATx, AccountDeployed, bindBundleTxModels, BundleTx, UserOperationRevertReason} from "../model/eip4337model";
+import {
+    AATx,
+    AccountDeployed,
+    bindBundleTxModels,
+    BundleTx,
+    createAATxPartitionTable,
+    UserOperationRevertReason
+} from "../model/eip4337model";
 
 let conf
 export function createDB(config) {
@@ -158,6 +165,7 @@ export async function initPartialModel(sequelize) {
         createAddressTransferTable(sequelize),
         createAddressNftTransferTable(sequelize),
         createFullBlockExtTable(sequelize),
+        createAATxPartitionTable(sequelize),
     ])
     ApiLog.register(sequelize)
     ReqAccount.register(sequelize)
