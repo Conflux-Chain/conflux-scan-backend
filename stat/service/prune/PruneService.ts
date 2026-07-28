@@ -2,12 +2,14 @@ import {
     KEY_PRUNE_ADJUST_BY_SBM,
     KEY_PRUNE_DEL_ROWS_PER_LOOP,
     KEY_PRUNE_DELAY_EPOCHS_AGAINST_LATEST,
+    KEY_PRUNE_EPOCH_ADDR_AA_TX,
     KEY_PRUNE_EPOCH_ADDR_TRANSFER,
     KEY_PRUNE_EPOCH_BLOCK,
     KEY_PRUNE_EPOCH_CFX_TRANSFER,
     KEY_PRUNE_EPOCH_TOKEN_TRANSFER,
     KEY_PRUNE_EPOCHS_PER_TIME,
     KEY_PRUNE_SLEEP_MS_PER_LOOP,
+    KEY_PRUNE_SWITCH_ADDR_AA_TX,
     KV
 } from "../../model/KV"
 import {AddressTransactionIndex, FullBlock, FullTransaction, loadMaxBlockEpoch} from "../../model/FullBlock"
@@ -30,6 +32,7 @@ import {createDB, getSlaveStatus, initModel} from "../DBProvider"
 import {doHeartBeat, KEY_PRUNE} from "../../model/HeartBeat"
 import {listenPort} from "../../monitor/serverApi";
 import { StuckChecker } from "../../monitor/Monitor"
+import {AATx, AddrAATx} from "../../model/eip4337model";
 
 const lodash = require('lodash');
 
@@ -142,6 +145,7 @@ export class PruneService {
     }
 
     private async prune() {
+        const enableAddrAATxPrune = await KV.getSwitch(KEY_PRUNE_SWITCH_ADDR_AA_TX)
         if(this.opts?.table === 'prune_info') {
             await this.pruneByPruned(this.opts?.type)
         } else if(this.opts?.table === 'address_transfer') {
@@ -151,6 +155,24 @@ export class PruneService {
             await this.pruneAddrCfxTs()
             await this.pruneAddrTokenTs()
             await this.pruneAddrTs()
+            if (enableAddrAATxPrune) {
+                await this.pruneAddrAATx()
+            }
+        }
+    }
+
+    private async pruneAddrAATx() {
+        const epochs = await this.getEpochsToPrune(KEY_PRUNE_EPOCH_ADDR_AA_TX)
+        const epochAATx: number = await AATx.max('epoch')
+        if (!lodash.isNumber(epochAATx)) {
+            return
+        }
+        const delayEpochs = this.pruneCfg.delayEpochsAgainstLatest
+
+        if(epochs.maxEpoch <= epochAATx - delayEpochs) {
+            const sql = `select distinct(senderId) as id from ${AATx.getTableName()} where epoch >= :minEpoch and epoch <= :maxEpoch`
+            await this.pruneTable(PruneType.ADDR_AA_TX, epochs, sql)
+            await KV.upsert({key: KEY_PRUNE_EPOCH_ADDR_AA_TX, value: `${epochs.maxEpoch}`})
         }
     }
 
@@ -204,6 +226,10 @@ export class PruneService {
     }
 
     private async pruneByPruned(pruneType?: any) {
+        const enableAddrAATxPrune = await KV.getSwitch(KEY_PRUNE_SWITCH_ADDR_AA_TX)
+        if (pruneType === PruneType.ADDR_AA_TX && !enableAddrAATxPrune) {
+            return
+        }
         let types
         if(pruneType) {
             types = [pruneType]
@@ -211,6 +237,9 @@ export class PruneService {
             types = [PruneType.MINER_BLOCK, PruneType.ADDR_TX, PruneType.ADDR_CFX_TRANSFER,
                 PruneType.ADDR_ERC20_TRANSFER, PruneType.ADDR_ERC721_TRANSFER, PruneType.ADDR_ERC1155_TRANSFER,
                 PruneType.ADDR_TRANSFER]
+            if (enableAddrAATxPrune) {
+                types.push(PruneType.ADDR_AA_TX)
+            }
         }
         const sql = `select addressId from ${PruneInfo.getTableName()} where type = ?`
         for (const type of types) {
@@ -245,7 +274,9 @@ export class PruneService {
 
     private async pruneAddress(addressId, type, maxEpoch?) {
         const [_, model] = this.getTables(type)
-        const whereOpt = model === FullMinerBlock ? {minerId: addressId} : {addressId}
+        const whereOpt = model === FullMinerBlock ? {minerId: addressId}
+            : type === PruneType.ADDR_AA_TX ? {senderId: addressId}
+            : {addressId}
         const keepRows = model === AddressTransfer ? this.KEEP_ROWS_ADDR_TS : this.KEEP_ROWS
         const one = await (model as any).findOne({
             where: whereOpt, order: [["epoch", "desc"]], offset: keepRows, limit: 1, raw: true
@@ -302,6 +333,8 @@ export class PruneService {
                 return [[Erc1155Transfer], AddressErc1155Transfer]
             case PruneType.ADDR_TRANSFER:
                 return [[FullTransaction,CfxTransfer,Erc20Transfer,Erc721Transfer,Erc1155Transfer], AddressTransfer]
+            case PruneType.ADDR_AA_TX:
+                return [[AATx], AddrAATx]
             default:
                 throw new Error(`Prune type ${type} not supported`)
         }
