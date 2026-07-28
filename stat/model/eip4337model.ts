@@ -134,9 +134,9 @@ export class AATx extends Model<IAATx> implements IAATx {
 	}
 }
 
-export const T_AA_TX_PARTITION = 'aaTx_partition_by_sender';
-export const T_AA_TX_PARTITION_SQL = `
-CREATE TABLE if not exists ${T_AA_TX_PARTITION} (
+export const T_ADDR_AA_TX = 'address_aa_tx';
+export const T_ADDR_AA_TX_SQL = `
+CREATE TABLE if not exists ${T_ADDR_AA_TX} (
     \`id\` bigint(20) NOT NULL AUTO_INCREMENT,
     \`userOpHash\` varchar(66) NOT NULL,
     \`epoch\` bigint(20) NOT NULL,
@@ -167,16 +167,16 @@ PARTITION BY HASH (\`senderId\`)
 PARTITIONS 97;
 `;
 
-export async function createAATxPartitionTable(sequelize: Sequelize) {
-	return createTable(sequelize, T_AA_TX_PARTITION_SQL).then(()=>{
-		AATxPartition.register(sequelize);
+export async function createAddrAATxTable(sequelize: Sequelize) {
+	return createTable(sequelize, T_ADDR_AA_TX_SQL).then(()=>{
+		AddrAATx.register(sequelize);
 	}).catch(err=>{
-		console.log(`createAATxPartitionTable fail, sql ${T_AA_TX_PARTITION_SQL}:`, err)
+		console.log(`createAddrAATxTable fail, sql ${T_ADDR_AA_TX_SQL}:`, err)
 		process.exit(9)
 	})
 }
 
-export class AATxPartition extends Model<IAATx> implements IAATx {
+export class AddrAATx extends Model<IAATx> implements IAATx {
 	id: bigint;
 	userOpHash: string;
 	epoch: bigint;
@@ -196,7 +196,7 @@ export class AATxPartition extends Model<IAATx> implements IAATx {
 	createdAt: Date;
 
 	static register(sequelize: Sequelize) {
-		AATxPartition.init({
+		AddrAATx.init({
 			id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true},
 			userOpHash: {type: DataTypes.STRING(66), allowNull: false},
 			epoch: {type: DataTypes.BIGINT, allowNull: false},
@@ -217,7 +217,7 @@ export class AATxPartition extends Model<IAATx> implements IAATx {
 			createdAt: {type: DataTypes.DATE, allowNull: false},
 		}, {
 			sequelize,
-			tableName: T_AA_TX_PARTITION,
+			tableName: T_ADDR_AA_TX,
 			indexes: [
 				{name: 'idx_epoch', fields: ['epoch']},
 				{name: 'idx_senderId_bundlerId_entryPointId', fields: ['senderId', 'bundlerId', 'entryPointId']},
@@ -250,10 +250,10 @@ export async function bindBundleTxModels() {
 
 	AATx.belongsTo(BundleTx, { as: 'bundleTx', foreignKey: 'bundleTxId' });
 
-	AATxPartition.belongsTo(Hex40Map, { as: 'sender', foreignKey: 'senderId' });
-	AATxPartition.belongsTo(Hex40Map, { as: 'bundler', foreignKey: 'bundlerId' });
-	AATxPartition.belongsTo(Hex40Map, { as: 'entryPoint', foreignKey: 'entryPointId' });
-	AATxPartition.belongsTo(BundleTx, { as: 'bundleTx', foreignKey: 'bundleTxId' });
+	AddrAATx.belongsTo(Hex40Map, { as: 'sender', foreignKey: 'senderId' });
+	AddrAATx.belongsTo(Hex40Map, { as: 'bundler', foreignKey: 'bundlerId' });
+	AddrAATx.belongsTo(Hex40Map, { as: 'entryPoint', foreignKey: 'entryPointId' });
+	AddrAATx.belongsTo(BundleTx, { as: 'bundleTx', foreignKey: 'bundleTxId' });
 }
 
 

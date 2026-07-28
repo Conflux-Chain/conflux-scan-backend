@@ -7,7 +7,7 @@ import {Conflux} from "js-conflux-sdk";
 import {init} from "../tool/FixDailyTokenStat";
 import {initCfxSdk} from "../common/utils";
 import {AddressTransactionIndex} from "../../model/FullBlock";
-import {AATx, BundleTx, entrypointAddrSet, T_AA_TX_PARTITION} from "../../model/eip4337model";
+import {AATx, BundleTx, entrypointAddrSet, T_ADDR_AA_TX} from "../../model/eip4337model";
 import {makeIdV} from "../../model/HexMap";
 import {setupEntrypointIds, syncEpoch} from "./eip4337";
 
@@ -161,7 +161,7 @@ async function fixAATxPositions(): Promise<void> {
  * (userOpHash, epoch, bundleTxId, position) row does not already exist
  * in the target table.
  */
-async function backfillAATxPartition(batchSize = AATX_BACKFILL_BATCH): Promise<void> {
+async function backfillAddrAATx(batchSize = AATX_BACKFILL_BATCH): Promise<void> {
 	let cursor = BigInt(0);
 	let batchNum = 0;
 	let scannedRows = 0;
@@ -185,7 +185,7 @@ async function backfillAATxPartition(batchSize = AATX_BACKFILL_BATCH): Promise<v
 		const maxId = BigInt(sourceRows[sourceRows.length - 1].id);
 
 		const [_, meta] = await AATx.sequelize.query(`
-			INSERT INTO ${T_AA_TX_PARTITION} (
+			INSERT INTO ${T_ADDR_AA_TX} (
 				userOpHash, epoch, senderId, bundlerId, eventContractId,
 				entryPointId, bundleTxId, paymasterId, nonce, position,
 				success, actualGasCost, actualGasUsed, methods, method7702,
@@ -197,7 +197,7 @@ async function backfillAATxPartition(batchSize = AATX_BACKFILL_BATCH): Promise<v
 				s.success, s.actualGasCost, s.actualGasUsed, s.methods, s.method7702,
 				s.createdAt, s.updatedAt
 			FROM aaTx s
-			LEFT JOIN ${T_AA_TX_PARTITION} t
+			LEFT JOIN ${T_ADDR_AA_TX} t
 				ON t.userOpHash = s.userOpHash
 				AND t.epoch = s.epoch
 				AND t.bundleTxId = s.bundleTxId
@@ -253,7 +253,7 @@ async function main() {
 		const batchSize = Number.isFinite(batchSizeRaw) && batchSizeRaw > 0 ? batchSizeRaw : AATX_BACKFILL_BATCH;
 		console.log(`backfillPartition: batchSize=${batchSize}`);
 		await init();
-		await backfillAATxPartition(batchSize);
+		await backfillAddrAATx(batchSize);
 	} else {
 		console.log(`unknown cmd: ${cmd}`);
 	}

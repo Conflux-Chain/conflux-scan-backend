@@ -6,7 +6,7 @@ import {
 	parseUserOperationRevertReason
 } from "./eip4337abi";
 import {
-	AATx, AATxPartition, AccountDeployed,
+	AATx, AddrAATx, AccountDeployed,
 	BundleTx, entrypointAddrIdSet, entrypointAddrSet,
 	IAATx,
 	IAccountDeployed,
@@ -16,7 +16,8 @@ import {
 } from "../../model/eip4337model";
 import {formatEther} from "ethers";
 import {makeIdV} from "../../model/HexMap";
-import {Transaction} from "sequelize";import {Conflux, format} from "js-conflux-sdk";
+import {Transaction} from "sequelize";
+import {Conflux, format} from "js-conflux-sdk";
 import {init} from "../tool/FixDailyTokenStat";
 import {getCfxSdk, initCfxSdk} from "../common/utils";
 import {ContractQuery} from "../ContractQuery";
@@ -69,9 +70,24 @@ export async function buildAATxDBModel(op: IUserOperationEvent, blockTime: Date,
 
 export async function pop4337data(epoch: number|any, dbTx: Transaction) {
 	const options = {where: {epoch} , transaction: dbTx};
+	const senderRows = await AATx.findAll({
+		where: {epoch},
+		attributes: ['senderId'],
+		group: ['senderId'],
+		raw: true,
+		transaction: dbTx,
+	}) as any[];
 
 	await AATx.destroy(options);
-	await AATxPartition.destroy(options);
+	for (const row of senderRows) {
+		await AddrAATx.destroy({
+			where: {
+				epoch,
+				senderId: row.senderId,
+			},
+			transaction: dbTx,
+		});
+	}
 	await UserOperationRevertReason.destroy(options);
 	await AccountDeployed.destroy(options);
 	await BundleTx.destroy(options);
@@ -111,7 +127,7 @@ export async function saveBundleData(data: IBundleData, dbTx: Transaction) : Pro
 	await AATx.bulkCreate(aaTxRows, {
 		transaction: dbTx,
 	});
-	await AATxPartition.bulkCreate(aaTxRows.map(row => ({...row})), {
+	await AddrAATx.bulkCreate(aaTxRows.map(row => ({...row})), {
 		transaction: dbTx,
 	});
 	await UserOperationRevertReason.bulkCreate(data.revertReasonArr, {

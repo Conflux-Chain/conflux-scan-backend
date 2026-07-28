@@ -93,7 +93,7 @@ import {
     AccountDeployed,
     bindBundleTxModels,
     BundleTx,
-    createAATxPartitionTable,
+    createAddrAATxTable,
     UserOperationRevertReason
 } from "../model/eip4337model";
 
@@ -165,7 +165,7 @@ export async function initPartialModel(sequelize) {
         createAddressTransferTable(sequelize),
         createAddressNftTransferTable(sequelize),
         createFullBlockExtTable(sequelize),
-        createAATxPartitionTable(sequelize),
+        createAddrAATxTable(sequelize),
     ])
     ApiLog.register(sequelize)
     ReqAccount.register(sequelize)
