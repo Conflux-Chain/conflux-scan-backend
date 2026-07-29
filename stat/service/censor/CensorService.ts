@@ -166,7 +166,7 @@ export class CensorService {
 
         for (const contract of contractArray) {
             const {id, name} = contract;
-            if (name === null) {
+            if (!name) {
                 await Contract.update({censorStatus: CENSOR_STATUS.ACCEPT, updatedAt: new Date()} as any,
                     {where: {id}});
                 continue;
