@@ -1,5 +1,5 @@
 import {Model,Sequelize,DataTypes} from "sequelize";
-import {CENSOR_STATUS} from "../service/censor/CensorService";
+import {CONST} from "../service/common/constant";
 
 const NodeCache = require( "node-cache" );
 export const cacheTtl = 60 * 10 // 10 minutes
@@ -108,7 +108,7 @@ export class Token extends Model<IToken> implements IToken {
             // security info
             securityCredits: {type: DataTypes.INTEGER, allowNull: false, defaultValue: 0},
             auditResult: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
-            censorStatus: {type: DataTypes.INTEGER, allowNull: false, defaultValue: CENSOR_STATUS.TO_CENSOR},
+            censorStatus: {type: DataTypes.INTEGER, allowNull: false, defaultValue: CONST.CENSOR_STATUS.TO_CENSOR},
             destroyed: {type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false},
             // extra info
             icon: {type: DataTypes.BLOB('medium')},

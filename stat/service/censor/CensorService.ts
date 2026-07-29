@@ -12,10 +12,12 @@ import {TraceCreateContract} from "../../model/TraceCreateContract";
 import {CensorOptions} from "../../config/StatConfig";
 import {ENS} from "../../model/NameTag";
 import {sleep} from "../tool/ProcessTool";
+import {CONST} from "../common/constant";
 
 const lodash = require('lodash');
 const AipContentCensorClient = require("baidu-aip-sdk").contentCensor;
 const HttpClient = require("baidu-aip-sdk").HttpClient;
+const {CENSOR_STATUS} = CONST;
 
 export class CensorService {
     private cfx: any;
@@ -31,12 +33,12 @@ export class CensorService {
     private CENSOR_CACHE = {}; // key: text-to-censor, value: {censorStatus: 1-accept, 2-reject, 3-suspect, latestCensorTime: datetime}
     private CENSOR_CACHE_MAX_SIZE = 10000;
 
-    public constructor(cfx: Conflux, opt: CensorOptions, itemsPerTime: any = {
-        tx: 1,
-        contract: 1,
-        token: 1,
-        nft: 1,
-        ens: 1
+    public constructor(cfx: Conflux, opt: CensorOptions, itemsPerTime: {
+        tx?: number,
+        contract?: number,
+        token?: number,
+        nft?: number,
+        ens?: number
     }) {
         if (!opt.enable) {
             console.log("Censor service disabled!");
@@ -48,7 +50,7 @@ export class CensorService {
 
         this.cfx = cfx;
         this.opt = opt;
-        this.itemsPerTime = itemsPerTime;
+        this.itemsPerTime = lodash.defaults({tx: 1, contract: 1, token: 1, nft: 1, ens: 1}, itemsPerTime);
         this.launchTime = fmtDtUTC(new Date());
         this.censorInterval = Math.ceil(1000 / (opt.qpsLimit || 20));
 
@@ -358,17 +360,4 @@ export enum CENSOR_TYPE {
     TX = 1,
     TOKEN = 2,
     NFT = 3,
-}
-
-/**
- * censor by timer: TO_CENSOR、FAIL
- * clear by timer: ACCEPT
- * reserve to db: REJECT、SUSPECT
- */
-export enum CENSOR_STATUS {
-    TO_CENSOR = 0,
-    ACCEPT = 1,
-    REJECT = 2,
-    SUSPECT = 3,
-    FAIL = 4,
 }

@@ -13,7 +13,6 @@ import {abi as abiReverseRecords} from "../abi/ReverseRecords";
 import {CONST} from "../common/constant";
 import {ENS, NameTag} from "../../model/NameTag";
 import {Op, QueryTypes} from "sequelize";
-import {CENSOR_STATUS} from "../censor/CensorService";
 import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
 
 const lodash = require('lodash');
@@ -30,7 +29,7 @@ export class ENSCheckerQuery {
     protected reverseRecords;
     protected graphql;
 
-    private verifiedLabelTokens;
+    private verifiedLabelTokens: Record<string, string> = {};
 
     public constructor(cfx: Conflux) {
         const config: ENSOptions | undefined = CONST.ENS[StatApp.networkId];
@@ -109,12 +108,12 @@ export class ENSCheckerQuery {
             const {name: localName, censorStatus} = localMap[address] || {};
             if (name) {
                 if (!localName || localName !== name) {
-                    toUpsert.push({address, name, censorStatus: CENSOR_STATUS.TO_CENSOR, updatedAt: new Date()});
-                } else if (censorStatus === CENSOR_STATUS.REJECT || censorStatus === CENSOR_STATUS.SUSPECT) {
+                    toUpsert.push({address, name, censorStatus: CONST.CENSOR_STATUS.TO_CENSOR, updatedAt: new Date()});
+                } else if (censorStatus === CONST.CENSOR_STATUS.REJECT || censorStatus === CONST.CENSOR_STATUS.SUSPECT) {
                     delete ensMap[address];
                 }
             } else if (localName) {
-                toDelete.push({address})
+                toDelete.push(address)
             }
         }
 

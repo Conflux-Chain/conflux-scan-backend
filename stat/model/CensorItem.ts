@@ -1,5 +1,5 @@
 import {DataTypes, Model, Sequelize} from "sequelize";
-import {CENSOR_STATUS} from "../service/censor/CensorService";
+import {CONST} from "../service/common/constant";
 
 export const T_SENSOR_ITEM = "censor_item";
 
@@ -28,7 +28,7 @@ export class CensorItem extends Model<ICensorItem> implements ICensorItem {
             epochNumber: {type: DataTypes.BIGINT, allowNull: false},
             transactionHash: {type: DataTypes.CHAR(66), allowNull: false},
             censorType: {type: DataTypes.INTEGER, allowNull: false},
-            censorStatus: {type: DataTypes.INTEGER, allowNull: false, defaultValue: CENSOR_STATUS.TO_CENSOR},
+            censorStatus: {type: DataTypes.INTEGER, allowNull: false, defaultValue: CONST.CENSOR_STATUS.TO_CENSOR},
             createdAt: {type: DataTypes.DATE, allowNull: false},
             updatedAt: {type: DataTypes.DATE, allowNull: false},
         }, {

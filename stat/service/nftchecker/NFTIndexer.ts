@@ -8,7 +8,6 @@ import {initCfxSdk} from "../common/utils";
 import {init} from "../tool/FixDailyTokenStat";
 import {TokenQuery} from "../TokenQuery";
 import {IPFSGatewaySync} from "../IPFSGatewaySync";
-import {CENSOR_STATUS} from "../censor/CensorService";
 import {format} from "js-conflux-sdk";
 import {regExitHook} from "../tool/ProcessTool";
 import {listenPort} from "../../monitor/serverApi";
@@ -51,7 +50,7 @@ export class NftMeta extends Model<INftMeta> implements INftMeta {
             tokenId: {type: DataTypes.STRING(78), allowNull: false},
             epochNumber: {type: DataTypes.BIGINT, allowNull: false},
             status: {type: DataTypes.INTEGER, allowNull: false, defaultValue: 20},
-            censorStatus: {type: DataTypes.INTEGER, allowNull: false, defaultValue: CENSOR_STATUS.TO_CENSOR},
+            censorStatus: {type: DataTypes.INTEGER, allowNull: false, defaultValue: CONST.CENSOR_STATUS.TO_CENSOR},
             retry: {type: DataTypes.INTEGER, allowNull: false, defaultValue: 0},
             errorType: {type: DataTypes.INTEGER, allowNull: false, defaultValue: 0},
             error: {type: DataTypes.STRING(1024), allowNull: true},

@@ -660,4 +660,17 @@ export const CONST = {
   },
 
   FRONTEND_CONFIG: frontendConstant,
+
+  /**
+   * censor by timer: TO_CENSOR、FAIL
+   * clear by timer: ACCEPT
+   * reserve to db: REJECT、SUSPECT
+   */
+  CENSOR_STATUS: {
+    TO_CENSOR: 0,
+    ACCEPT: 1,
+    REJECT: 2,
+    SUSPECT: 3,
+    FAIL: 4,
+  },
 };

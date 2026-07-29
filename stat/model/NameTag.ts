@@ -1,5 +1,5 @@
 import {Model, Sequelize, DataTypes} from "sequelize";
-import {CENSOR_STATUS} from "../service/censor/CensorService";
+import {CONST} from "../service/common/constant";
 
 export interface INameTag {
     id?: number
@@ -88,7 +88,7 @@ export class ENS extends Model<IENS> implements IENS {
             id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
             address: {type: DataTypes.STRING(64), allowNull: false, unique: true},
             name: {type: DataTypes.STRING(128), allowNull: false},
-            censorStatus: {type: DataTypes.INTEGER, allowNull: false, defaultValue: CENSOR_STATUS.TO_CENSOR},
+            censorStatus: {type: DataTypes.INTEGER, allowNull: false, defaultValue: CONST.CENSOR_STATUS.TO_CENSOR},
             updatedAt: {type: DataTypes.DATE, allowNull: false},
         }, {
             tableName: 'ens',

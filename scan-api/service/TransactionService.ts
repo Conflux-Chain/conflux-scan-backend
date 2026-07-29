@@ -10,7 +10,6 @@ import {getCfxTransfer} from "../../stat/CfxTransferSync";
 
 const lodash = require('lodash');
 const limitMap = require('limit-map');
-const {CENSOR_STATUS} = require("../../stat/service/censor/CensorService");
 const {hexToUtf8, utf8ToHex} = require("../../stat/service/tool/CensorTool");
 const {extractActualGasCost} = require("../../stat/service/common/utils");
 const BigFixed = require('bigfixed');
@@ -60,7 +59,8 @@ export class TransactionService {
 
     let txInputData = transaction.data;
     const censorResult = await CensorService.getCensorResult(hash);
-    if(censorResult && (censorResult.censorStatus === CENSOR_STATUS.REJECT || censorResult.censorStatus === CENSOR_STATUS.SUSPECT)) {
+    if (censorResult && (censorResult.censorStatus === CONST.CENSOR_STATUS.REJECT
+        || censorResult.censorStatus === CONST.CENSOR_STATUS.SUSPECT)) {
       const {data} = hexToUtf8(transaction.data.substr(2));
       const mosaicData = CensorService.mosaicText(data);
       txInputData = `0x${utf8ToHex(mosaicData).data}`;
