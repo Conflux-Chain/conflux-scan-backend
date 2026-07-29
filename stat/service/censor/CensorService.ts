@@ -32,6 +32,7 @@ export class CensorService {
 
     private CENSOR_CACHE = {}; // key: text-to-censor, value: {censorStatus: 1-accept, 2-reject, 3-suspect, latestCensorTime: datetime}
     private CENSOR_CACHE_MAX_SIZE = 10000;
+    private MAX_CENSOR_TEXT_LEN = 6666;
 
     public constructor(cfx: Conflux, opt: CensorOptions, itemsPerTime: {
         tx?: number,
@@ -166,11 +167,6 @@ export class CensorService {
 
         for (const contract of contractArray) {
             const {id, name} = contract;
-            if (name === null) {
-                await Contract.update({censorStatus: CENSOR_STATUS.ACCEPT, updatedAt: new Date()} as any,
-                    {where: {id}});
-                continue;
-            }
 
             const result = await this.censorWithCache(name);
 
@@ -250,11 +246,6 @@ export class CensorService {
             const {contractId, tokenId, content} = nftMeta;
             const metaData = JSON.parse(content || "{}");
             const {name} = metaData;
-            if (!name) {
-                await NftMeta.update({censorStatus: CENSOR_STATUS.ACCEPT, updatedAt: new Date()} as any,
-                    {where: {contractId, tokenId}});
-                continue;
-            }
 
             const result = await this.censorWithCache(name);
 
@@ -295,8 +286,14 @@ export class CensorService {
     }
 
     // -------------------------- third party censor ----------------------------
-    private async censorWithCache(text) {
+    private async censorWithCache(plain: string) {
         let result;
+
+        if (!plain) {
+            return {conclusionType: CENSOR_STATUS.ACCEPT};
+        }
+
+        const text = plain.slice(0, this.MAX_CENSOR_TEXT_LEN);
 
         const cache = this.CENSOR_CACHE[text];
         if (cache) {
@@ -325,7 +322,7 @@ export class CensorService {
         }
 
         const {error_code, error_msg} = result || {};
-        if (error_code !== 0) {
+        if (error_code) {
             throw new Error(error_msg);
         }
 
