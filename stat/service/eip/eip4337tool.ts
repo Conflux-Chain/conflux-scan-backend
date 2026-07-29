@@ -200,6 +200,7 @@ async function backfillAddrAATx(batchSize = AATX_BACKFILL_BATCH): Promise<void> 
 			LEFT JOIN ${T_ADDR_AA_TX} t
 				ON t.userOpHash = s.userOpHash
 				AND t.epoch = s.epoch
+				AND t.senderId = s.senderId
 				AND t.bundleTxId = s.bundleTxId
 				AND t.position = s.position
 			WHERE s.id > :cursor AND s.id <= :maxId AND t.id IS NULL
@@ -208,8 +209,11 @@ async function backfillAddrAATx(batchSize = AATX_BACKFILL_BATCH): Promise<void> 
 			type: QueryTypes.INSERT,
 		});
 
-		const affected = Number((meta as any) || 0);
-		insertedRows += Number.isFinite(affected) ? affected : 0;
+		const affectedRaw = (typeof meta === 'number')
+			? meta
+			: ((meta as any)?.affectedRows ?? (meta as any)?.rowCount ?? 0);
+		const affected = Number(affectedRaw) || 0;
+		insertedRows += affected;
 		cursor = maxId;
 
 		console.log(`backfill batch ${batchNum}: scanned=${sourceRows.length} inserted=${affected} cursor=${cursor}`);
