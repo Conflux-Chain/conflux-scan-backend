@@ -109,6 +109,7 @@ async function main() {
     contractQuery.scheduleVerifyByAuto().then();
     contractQuery.scheduleStatTxnVolume().then();
     contractQuery.scheduleWithNametag().then();
+    contractQuery.scheduleLatestVerified().then();
 
     if (!StatApp.isEVM) {
         let fullCfx = cfx;

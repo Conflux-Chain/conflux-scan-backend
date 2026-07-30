@@ -5,6 +5,7 @@ export interface IVerifiedContracts{
     address:string
     addressId?: number
     name:string
+    shortName?: string
     compiler?:string
     version?:string
     language?:string
@@ -32,6 +33,7 @@ export class VerifiedContracts extends Model<IVerifiedContracts> implements IVer
     address: string
     addressId?: number
     name: string
+    shortName?: string
     compiler?: string
     version?: string
     language?:string
@@ -59,6 +61,7 @@ export class VerifiedContracts extends Model<IVerifiedContracts> implements IVer
             address: {type: DataTypes.CHAR(64), allowNull: false, unique: true},
             addressId: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0},
             name: {type: DataTypes.CHAR(255), allowNull: false},
+            shortName: { type: DataTypes.CHAR(255) },
             compiler: {type: DataTypes.CHAR(10), allowNull: false, defaultValue: 'solc'},
             version: {type: DataTypes.CHAR(255), allowNull: false},
             language: {type: DataTypes.CHAR(20), allowNull: false},
@@ -91,6 +94,7 @@ export class VerifiedContracts extends Model<IVerifiedContracts> implements IVer
             address: contract.address,
             addressId: contract.addressId,
             name: contract.name,
+            shortName: contract.shortName,
             compiler: contract.compiler,
             version: contract.version,
             language: contract.language,

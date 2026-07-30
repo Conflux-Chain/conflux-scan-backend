@@ -38,3 +38,13 @@ stat/config/Prod.ts
 stat/**/*.js
 stat/dist/
 tsconfig.tsbuildinfo
+common/JsonRPCSDK.js
+scan-api/AppBase.js
+scan-api/router/handler.js
+scan-api/router/supply.js
+tools/FixTokenBalance.js
+tools/FixTxGasFee.js
+tools/rpcLoadTest.js
+tools/Tools.js
+.env
+.vscode/settings.json

@@ -351,6 +351,9 @@ async function migDB(seq: Sequelize) {
     await addColumnIfNotExistsV2(qi, verifiedContracts, 'hasNametag', {
         type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false,
     });
+    await addColumnIfNotExistsV2(qi, verifiedContracts, 'shortName', {
+        type: DataTypes.CHAR(255),
+    });
     await addIndexIfNotExistsMySQL(qi, verifiedContracts, 'idx_verifiedAt', {fields: ['verifiedAt']});
 
     const contract = Contract.getTableName().toString();

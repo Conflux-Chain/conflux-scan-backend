@@ -7,6 +7,7 @@ import {VerifiedContracts} from "../../model/VerifiedContracts";
 
 const BigFixed = require('bigfixed');
 const lodash = require('lodash');
+const timeBufferWaitVerifiedSync = 3 * 60 * 1000; // 3 minutes buffer for verified contract sync
 
 export class StatDailyContractVerified extends TimerStat{
 
@@ -20,13 +21,17 @@ export class StatDailyContractVerified extends TimerStat{
         return `${DailyContractVerified.getTableName()}`;
     }
 
-    public async nextStatRange(): Promise<{rangeBegin: Date, rangeEnd: Date}> {
+    public async nextStatRange(): Promise<{ rangeBegin: Date, rangeEnd: Date, rangeEndWithBuffer?: Date }> {
         const lastStat = await DailyContractVerified.findOne({
             where: {statType: this.baseInterval},
             order:[["statDay","desc"]],
             limit: 1
         });
-        return this.getStatRangeMin(lastStat, 10);
+        const range = this.getStatRangeMin(lastStat, 10);
+
+        const rangeEndWithBuffer = new Date(range.rangeEnd.getTime() + timeBufferWaitVerifiedSync); // 3 minutes buffer
+
+        return { ...range, rangeEndWithBuffer };
     }
 
     public async firstEpochAfterRangeEnd(rangeEnd): Promise<number> {

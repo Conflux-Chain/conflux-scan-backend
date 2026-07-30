@@ -2,7 +2,7 @@ import {Hex40Map, makeId, makeIdV} from "../../model/HexMap";
 import {init as initialize} from "./FixDailyTokenStat";
 import {StatApp} from "../../StatApp";
 import {StatConfig} from "../../config/StatConfig";
-import {initCfxSdk} from "../common/utils";
+import { initCfxSdk, splitFullyQualifiedName } from "../common/utils";
 import {CONST} from "../common/constant";
 import {ContractQuery, ImplInfo} from "../ContractQuery";
 import {IS_EVM2, KV} from "../../model/KV";
@@ -100,6 +100,9 @@ async function run() {
     if (type === 9) {
         const t = await TokenAutoDetect.detect(addr, tokenTool, false, true);
         console.log("detect result ==\n", t);
+    }
+    if (type === 10) {
+        await fillbackContractShortName();
     }
     await close();
 }
@@ -528,4 +531,18 @@ async function syncAnnouncedAbi() {
     }
 
     console.log(`done! ${txs.length} txs processed`);
+}
+
+async function fillbackContractShortName() {
+    const contracts = await VerifiedContracts.findAll({
+        attributes: ["id", "name"],
+        where: { shortName: null },
+        raw: true
+    });
+
+    for (const c of contracts) {
+        const { id, name } = c;
+        const shortName = splitFullyQualifiedName(name).contractName;
+        await VerifiedContracts.update({ shortName }, { where: { id } });
+    }
 }

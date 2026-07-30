@@ -35,6 +35,7 @@ import {
     KEY_STAT_ANNOUNCE_NAME_FOR_VERIFIED_CONTRACTS,
     KEY_STAT_NAME_TAG_FOR_VERIFIED_CONTRACTS,
     KEY_STAT_TXNS_FOR_VERIFIED_CONTRACTS,
+    KEY_VERIFIED_MATCH_ID,
     KEY_VYPER_VERSIONS,
     KV,
     VERIFIED_COUNT_ALL,
@@ -365,7 +366,7 @@ export class ContractQuery {
             conditions.push({compiler});
         }
         if (contractName !== undefined) {
-            conditions.push({name: {[Op.like]: `%${contractName}%`}});
+            conditions.push({ shortName: { [Op.like]: `%${contractName}%` } });
         }
         if (compilerVersion !== undefined) {
             conditions.push({version: compilerVersion});
@@ -588,6 +589,7 @@ export class ContractQuery {
             address: format.address(address, StatApp.networkId),
             addressId,
             name: fullyQualifiedName,
+            shortName: splitFullyQualifiedName(fullyQualifiedName).contractName,
             compiler,
             version: compilerVersion,
             language,
@@ -1840,6 +1842,51 @@ export class ContractQuery {
         }
 
         return result;
+    }
+
+    async scheduleLatestVerified(interval: number = 3000) {
+        const that = this;
+
+        async function repeat() {
+            await that.syncLatestVerified().catch(e => {
+                console.log('Schedule sync_latest_verified fail', e);
+            });
+            setTimeout(repeat, interval);
+        }
+
+        repeat().then();
+        console.log(`[sync_latest_verified]schedule in ${interval / 1000}s interval`);
+    }
+
+    private async syncLatestVerified() {
+        const curMatchId = await KV.getNumber(KEY_VERIFIED_MATCH_ID, 0);
+
+        const resp = await ContractQuery._getJsonRequest({
+            url: `${this.verifyUrl}/contracts/${StatApp.networkId}?sort=asc&afterMatchId=${curMatchId}&limit=10`
+        });
+        console.log(`syncLatestVerified: curMatchId=${curMatchId}, resp=${JSON.stringify(resp)}`);
+        if (!resp) {
+            return;
+        }
+
+        const { results } = resp.data;
+        if (results?.length === 0) {
+            return;
+        }
+
+        for (const contract of results) {
+            const { address, matchId } = contract;
+            const existing = await VerifiedContracts.findOne({ attributes: ["id"], where: { matchId }, raw: true });
+            if (!existing) {
+                const verified = await this.getVerifyBySourcify(address, true).catch(e => {
+                    console.log('Failed to get verify by Sourcify for address', address, e);
+                });
+                if (!verified) {
+                    break;
+                }
+            }
+            await KV.upsert({ key: KEY_VERIFIED_MATCH_ID, value: `${matchId}` });
+        }
     }
 }
 
