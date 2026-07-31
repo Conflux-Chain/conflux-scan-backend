@@ -5,6 +5,9 @@ import {regExitHook, sleep} from "../stat/service/tool/ProcessTool";
 import {Conflux} from "js-conflux-sdk";
 import {init} from "../stat/service/tool/FixDailyTokenStat";
 import {initCfxSdk} from "../stat/service/common/utils";
+import * as fs from "fs";
+
+const PROGRESS_FILE = "/tmp/fixTxGas-epoch.txt";
 
 class DataEntry {
 	id: number;
@@ -23,14 +26,30 @@ class Context {
 	diffFeeCount: number = 0;
 
 	logCounter: number = 0;
+	processedEpochCount: number = 0;
 }
 
 async function main() {
-	const [,,cmd, arg1, arg2] = process.argv;
+	const args = process.argv.slice(2);
+	const cmd = args.find(v => v === "test");
+	const argEpochMaxInclude = args.find(v => /^\d+$/.test(v));
 
 	const cfg = await init()
 	let cfx: Conflux = await initCfxSdk(cfg.conflux);
 	let epochMaxInclude = await cfx.getEpochNumber();
+
+	const savedEpochMaxInclude = loadSavedEpochMaxInclude();
+	const parsedArgEpochMaxInclude = parseEpoch(argEpochMaxInclude);
+
+	if (savedEpochMaxInclude !== null) {
+		epochMaxInclude = Math.min(epochMaxInclude, savedEpochMaxInclude);
+	}
+
+	if (parsedArgEpochMaxInclude !== null) {
+		epochMaxInclude = Math.min(epochMaxInclude, parsedArgEpochMaxInclude);
+	}
+
+	console.log(`use epochMaxInclude ${epochMaxInclude}, arg ${parsedArgEpochMaxInclude}, saved ${savedEpochMaxInclude}`);
 
 	const ctx = new Context();
 
@@ -43,6 +62,40 @@ async function main() {
 	updateGas(ctx)
 
 	regExitHook()
+}
+
+function parseEpoch(v: string | undefined): number | null {
+	if (!v) {
+		return null;
+	}
+	const parsed = Number(v);
+	if (!Number.isInteger(parsed) || parsed < 0) {
+		return null;
+	}
+	return parsed;
+}
+
+function loadSavedEpochMaxInclude(): number | null {
+	if (!fs.existsSync(PROGRESS_FILE)) {
+		return null;
+	}
+	const value = fs.readFileSync(PROGRESS_FILE, "utf8").trim();
+	const parsed = parseEpoch(value);
+	if (parsed === null) {
+		console.log(`invalid progress in ${PROGRESS_FILE}: ${value}`);
+		return null;
+	}
+	return parsed;
+}
+
+function saveEpochProgress(epoch: number): void {
+	fs.writeFileSync(PROGRESS_FILE, `${epoch}\n`);
+}
+
+function clearEpochProgress(): void {
+	if (fs.existsSync(PROGRESS_FILE)) {
+		fs.unlinkSync(PROGRESS_FILE);
+	}
 }
 
 function fatal() {
@@ -66,6 +119,11 @@ async function updateGas(ctx: Context): Promise<void> {
 
 		ctx.txMap.delete(id);
 		id ++;
+		ctx.processedEpochCount++;
+
+		if (ctx.processedEpochCount % 1000 === 0) {
+			saveEpochProgress(de.epoch);
+		}
 
 		const dbTxByHash = new Map<string, FullTransaction>();
 		de.tx.forEach((transaction) => {
@@ -124,6 +182,8 @@ async function updateGas(ctx: Context): Promise<void> {
 			fatal();
 		}
 	}
+
+	clearEpochProgress();
 }
 
 async function loadReceiptTask(ctx:Context, cfx:Conflux) {
@@ -210,4 +270,4 @@ if (module == require.main) {
 	main()
 }
 
-// node tools/FixTxGasFee.js
+// node tools/FixTxGasFee.js [test] [epochMaxInclude]
