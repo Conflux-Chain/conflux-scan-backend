@@ -251,7 +251,7 @@ async function loadTxTask(epochMaxInclude: number, map: Map<number, DataEntry>, 
 async function loadTx(epochMaxInclude: number, limit: number) {
 	const all = await FullTransaction.findAll({
 		attributes: ['epoch', 'hash', 'gas'],
-		where: {epoch: {[Op.lte]: [epochMaxInclude]}, status: 0, gas: {[Op.ne]: 0}},
+		where: {epoch: {[Op.lte]: epochMaxInclude}, status: 0, gas: {[Op.ne]: 0}},
 		order: [['epoch', 'desc'], ['blockPosition', 'desc'], ['txPosition', 'desc']],
 		limit
 	});
