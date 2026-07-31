@@ -32,7 +32,7 @@ export class CensorService {
 
     private CENSOR_CACHE = {}; // key: text-to-censor, value: {censorStatus: 1-accept, 2-reject, 3-suspect, latestCensorTime: datetime}
     private readonly CENSOR_CACHE_MAX_SIZE = 10000;
-    private readonly MAX_CENSOR_TEXT_LEN = 6666;
+    private readonly MAX_CENSOR_TEXT_LEN = 6666; // Text length limit: 20,000 bytes (approximately 6,666 characters)
 
     public constructor(cfx: Conflux, opt: CensorOptions, itemsPerTime: {
         tx?: number,
@@ -53,7 +53,7 @@ export class CensorService {
         this.opt = opt;
         this.itemsPerTime = lodash.defaults({tx: 1, contract: 1, token: 1, nft: 1, ens: 1}, itemsPerTime);
         this.launchTime = fmtDtUTC(new Date());
-        this.censorInterval = Math.ceil(1000 / (opt.qpsLimit || 20));
+        this.censorInterval = Math.ceil(1000 / (opt.qpsLimit || 200)); // default 200 qps limit
 
         this.schedule(opt.interval || 10000).then();
     }
