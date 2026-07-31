@@ -1864,7 +1864,6 @@ export class ContractQuery {
         const resp = await ContractQuery._getJsonRequest({
             url: `${this.verifyUrl}/contracts/${StatApp.networkId}?sort=asc&afterMatchId=${curMatchId}&limit=10`
         });
-        console.log(`syncLatestVerified: curMatchId=${curMatchId}, resp=${JSON.stringify(resp)}`);
         if (!resp) {
             return;
         }
