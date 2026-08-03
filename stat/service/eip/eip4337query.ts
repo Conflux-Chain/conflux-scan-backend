@@ -1,5 +1,5 @@
 // Query result interfaces with joined data
-import {AddrAATx, BundleTx, IAATx, IBundleTx, UserOperationRevertReason} from "../../model/eip4337model";
+import {AATx, AddrAATx, BundleTx, IAATx, IBundleTx, UserOperationRevertReason} from "../../model/eip4337model";
 import {Hex40Map, idHex40Map} from "../../model/HexMap";
 import {IPageParam} from "../../router/ParamChecker";
 import {ethers} from "ethers";
@@ -152,7 +152,8 @@ export async function queryAATx(params: AATxQueryParams): Promise<{ list: AATxQu
         whereClause.entryPointId = params.entryPointId;
     }
 
-    const {rows: results, count} = await AddrAATx.findAndCountAll({
+    const model = params.senderId !== undefined ? AddrAATx : AATx;
+    const {rows: results, count} = await model.findAndCountAll({
         where: whereClause,
         include: [
             {
@@ -233,7 +234,7 @@ async function fillRevertReason(row: IAATx & any) : Promise<string> {
     return failedReason;
 }
 
-const pickAddr = (key: string, bundle: BundleTx|AddrAATx) => {
+const pickAddr = (key: string, bundle: BundleTx|AddrAATx|AATx) => {
     // @ts-ignore
     const v = bundle.get(key)?.hex;
     return v ? ethers.getAddress('0x' + v) : '';
