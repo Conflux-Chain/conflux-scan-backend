@@ -309,7 +309,7 @@ export async function fetchMethodsByUserOpHashes(
     userOpHashes: string[],
 ): Promise<Map<string, string>> {
     if (!userOpHashes.length) return new Map();
-    const rows = await AddrAATx.findAll({
+    const rows = await AATx.findAll({
         where: { userOpHash: { [Op.in]: userOpHashes } },
         attributes: ['userOpHash', 'methods'],
         raw: true,
@@ -368,7 +368,7 @@ export async function getAATxDetail(cfx: Conflux, userOpHash: string): Promise<A
  * Returns -1 if not found.
  */
 export async function getAAOpPosition(userOpHash: string): Promise<number> {
-    const row = await AddrAATx.findOne({
+    const row = await AATx.findOne({
         where: { userOpHash },
         attributes: ['position'],
         raw: true,
