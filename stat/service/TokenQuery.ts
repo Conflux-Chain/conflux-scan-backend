@@ -428,7 +428,7 @@ export class TokenQuery {
     }
 
     private async addSecurityAuditInfo(tokenArray) {
-        const addressArray = tokenArray?.map(item => item.address);
+        const addressArray = tokenArray?.map(item => format.address(item.address, StatApp.networkId));
         if (!addressArray?.length) {
             return;
         }
@@ -437,7 +437,7 @@ export class TokenQuery {
         const securityAuditMap = lodash.keyBy(securityAuditArray, 'base32');
 
         tokenArray.forEach(item => {
-            const securityAudit = securityAuditMap[item.address];
+            const securityAudit = securityAuditMap[format.address(item.address, StatApp.networkId)];
             item.securityAudit = {
                 verify: securityAudit?.verify ? 1 : 0,
                 audit: { result: securityAudit?.audit ? 1 : 0, auditUrl: securityAudit?.auditUrl },
