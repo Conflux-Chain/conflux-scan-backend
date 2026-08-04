@@ -221,6 +221,7 @@ export class TokenQuery {
         }
 
         // add security audit info
+
         await this.addSecurityAuditInfo(list);
 
         return {
@@ -428,12 +429,15 @@ export class TokenQuery {
     }
 
     private async addSecurityAuditInfo(tokenArray) {
+        console.log(`debug label ===1===`, JSON.stringify(tokenArray))
         const addressArray = tokenArray?.map(item => item.address);
+        console.log(`debug label ===2===`, JSON.stringify(addressArray))
         if (!addressArray?.length) {
             return;
         }
 
         const securityAuditArray = await TokenSecurityAudit.findAll({where: {base32: {[Op.in]: addressArray}}});
+        console.log(`debug label ===3===`, JSON.stringify(securityAuditArray))
         const securityAuditMap = lodash.keyBy(securityAuditArray, 'base32');
 
         tokenArray.forEach(item => {
