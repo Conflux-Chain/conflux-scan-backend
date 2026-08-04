@@ -441,7 +441,7 @@ export class TokenQuery {
         const securityAuditMap = lodash.keyBy(securityAuditArray, 'base32');
 
         tokenArray.forEach(item => {
-            const securityAudit = securityAuditMap[item.address];
+            const securityAudit = securityAuditMap[format.address(item.address, StatApp.networkId)];
             item.securityAudit = {
                 verify: securityAudit?.verify ? 1 : 0,
                 audit: { result: securityAudit?.audit ? 1 : 0, auditUrl: securityAudit?.auditUrl },
