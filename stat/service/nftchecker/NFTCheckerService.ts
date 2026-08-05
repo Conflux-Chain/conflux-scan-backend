@@ -58,7 +58,7 @@ export class NFTCheckerService {
             let page;
             if (cursor > 0 && skip === 0) {
                 delete options.offset;
-                options.where[cursorField] = {[sort === 'DESC' ? Op.lt : Op.gt]: cursorValue};
+                options.where[cursorField] = { [sort === 'DESC' || sort === 'desc' ? Op.lt : Op.gt]: cursorValue };
                 const rows = await AddressNfts.findAll(options);
                 delete options.attributes;
                 delete options.where[cursorField];

@@ -11,5 +11,10 @@ export async function init() {
   await scheduleSwaggerReporter(config.influxDB, config.v1port);
   repeatHeartBeat(`${KEY_SCAN_API}_${config.serverTag}`);
 
-  return app.start()
+  await app.init();
+  return app;
+}
+
+export async function start(app: any) {
+  return app.start();
 }

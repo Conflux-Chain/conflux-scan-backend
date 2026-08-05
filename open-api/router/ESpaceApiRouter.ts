@@ -968,7 +968,7 @@ function parseListTransferParam(ctx) {
     mustBeHex64ParamIfPresent(ctx.request.query, 'txhash');
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contractaddress', 'address');
     mustBeIntParamIfPresent(ctx.request.query, 'page', 'offset', 'startblock', 'endblock');
-    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['asc', 'desc']);
+    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['asc', 'desc', 'ASC', 'DESC']);
     const {page, offset} = paginateEVM(ctx.request.query);
     const {txhash, contractaddress, address, startblock, endblock, sort} = ctx.request.query;
     return {txhash, contractaddress, address, startblock, endblock, sort, page, offset};
@@ -976,7 +976,7 @@ function parseListTransferParam(ctx) {
 
 function parseStatParam(ctx) {
     mustBeDateParamIfPresent(ctx.request.query, 'startdate', 'enddate');
-    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['asc', 'desc']);
+    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['asc', 'desc', 'ASC', 'DESC']);
 
     const {startdate, enddate, sort = 'desc'} = ctx.request.query;
 

@@ -1,0 +1,463 @@
+openapi: 3.0.0
+info:
+  title: Conflux Stat API (Private)
+  description: 'Private OpenAPI draft for stat routes.'
+  version: 0.2.0
+servers:
+  - url: '/stat'
+    description: 'stat server'
+
+tags:
+  - name: 'Server Info'
+  - name: 'Tokens'
+  - name: 'Contract'
+  - name: 'Auth'
+  - name: 'Overview'
+  - name: 'Top'
+  - name: 'Balance'
+  - name: 'Miner'
+  - name: 'Transaction'
+  - name: 'Sync'
+  - name: 'Daily'
+  - name: 'Cross Space'
+  - name: 'NFT'
+  - name: 'ENS'
+  - name: 'Performance'
+
+paths:
+  '/server-info':
+    get:
+      tags: ['Server Info']
+      description: 'Get stat server info.'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+
+  '/tokens/nft-token-id-count':
+    get:
+      tags: ['Tokens']
+      description: 'Count NFT token ids by contract.'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+  '/tokens/daily-token-txn':
+    get:
+      tags: ['Tokens']
+      description: 'Get daily token txn stats.'
+      parameters:
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+  '/tokens/holder-rank':
+    get:
+      tags: ['Tokens']
+      description: 'Get token holder rank.'
+      parameters:
+        - $ref: '#/components/parameters/addressParamRequired'
+        - $ref: '#/components/parameters/skipParam'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+  '/tokens/by-address':
+    get:
+      tags: ['Tokens']
+      description: 'Get token detail by address.'
+      parameters:
+        - $ref: '#/components/parameters/addressParamRequired'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+  '/tokens/list':
+    get:
+      tags: ['Tokens']
+      description: 'List tokens with filters.'
+      parameters:
+        - $ref: '#/components/parameters/transferTypeParam'
+        - $ref: '#/components/parameters/orderByParam'
+        - $ref: '#/components/parameters/reverseStringParam'
+        - $ref: '#/components/parameters/skipParam'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+  '/tokens/list/latest':
+    get:
+      tags: ['Tokens']
+      description: 'List latest tokens by account.'
+      parameters:
+        - $ref: '#/components/parameters/accountAddressParam'
+        - $ref: '#/components/parameters/transferTypeParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+  '/tokens/name':
+    get:
+      tags: ['Tokens']
+      description: 'Search token by name.'
+      parameters:
+        - $ref: '#/components/parameters/nameParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+
+  '/contract/by-address':
+    get:
+      tags: ['Contract']
+      description: 'Get contract by address.'
+      parameters:
+        - $ref: '#/components/parameters/addressParamRequired'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+  '/contract/check-abi':
+    get:
+      tags: ['Contract']
+      description: 'Check contract abi string.'
+      parameters:
+        - $ref: '#/components/parameters/abiParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+  '/list-abi-method':
+    get:
+      tags: ['Contract']
+      description: 'List parsed abi methods.'
+      parameters:
+        - $ref: '#/components/parameters/addressParamRequired'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+  '/list-abi-event':
+    get:
+      tags: ['Contract']
+      description: 'List parsed abi events.'
+      parameters:
+        - $ref: '#/components/parameters/addressParamRequired'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+  '/contract/registered/name':
+    get:
+      tags: ['Contract']
+      description: 'List registered contract names.'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+  '/contract/stat/list':
+    get:
+      tags: ['Contract']
+      description: 'Get contract stat list.'
+      parameters:
+        - $ref: '#/components/parameters/skipParam'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+
+  '/list-auth-action':
+    get:
+      tags: ['Auth']
+      description: 'List auth actions.'
+      parameters:
+        - $ref: '#/components/parameters/skipParam'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+  '/list-auth-action-in-tx':
+    get:
+      tags: ['Auth']
+      description: 'List auth actions in tx.'
+      parameters:
+        - $ref: '#/components/parameters/txHashParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+
+  '/recent-overview':
+    get:
+      tags: ['Overview']
+      description: 'Get recent overview statistics.'
+      parameters:
+        - $ref: '#/components/parameters/daysParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+  '/top-gas-used':
+    get:
+      tags: ['Top']
+      description: 'Get top gas used list.'
+      parameters:
+        - $ref: '#/components/parameters/spanParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+  '/top-cfx-holder':
+    get:
+      tags: ['Top']
+      description: 'Get top CFX holder list.'
+      parameters:
+        - $ref: '#/components/parameters/typeParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+  '/top-cfx-holder-csv':
+    get:
+      tags: ['Top']
+      description: 'Export top CFX holders csv.'
+      responses:
+        200:
+          $ref: '#/components/responses/CsvFile'
+  '/top-token-holder-csv':
+    get:
+      tags: ['Top']
+      description: 'Export top token holders csv.'
+      responses:
+        200:
+          $ref: '#/components/responses/CsvFile'
+
+  '/get-cfx-balance-at':
+    get:
+      tags: ['Balance']
+      description: 'Get CFX balance at specified epoch.'
+      parameters:
+        - $ref: '#/components/parameters/addressParamRequired'
+        - $ref: '#/components/parameters/epochNumberParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+
+  '/miner/top-by-type':
+    get:
+      tags: ['Miner']
+      description: 'Get miner top by type.'
+      parameters:
+        - $ref: '#/components/parameters/typeParam'
+        - $ref: '#/components/parameters/skipParam'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+
+  '/tx/top-by-type':
+    get:
+      tags: ['Transaction']
+      description: 'Get tx top by type.'
+      parameters:
+        - $ref: '#/components/parameters/typeParam'
+        - $ref: '#/components/parameters/skipParam'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+  '/transaction/pending':
+    get:
+      tags: ['Transaction']
+      description: 'Get pending transaction stats.'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+
+  '/sync-info':
+    get:
+      tags: ['Sync']
+      description: 'Get sync info.'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+
+  '/daily-token-stat':
+    get:
+      tags: ['Daily']
+      description: 'Get daily token stat.'
+      parameters:
+        - $ref: '#/components/parameters/limitParam'
+        - $ref: '#/components/parameters/base32Param'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+
+  '/cross-space-cfx':
+    get:
+      tags: ['Cross Space']
+      description: 'Get cross-space CFX stats.'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+
+  '/nft/checker/preview':
+    get:
+      tags: ['NFT']
+      description: 'Get NFT checker preview.'
+      parameters:
+        - $ref: '#/components/parameters/addressParamRequired'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+  '/nft/checker/detail':
+    get:
+      tags: ['NFT']
+      description: 'Get NFT checker detail.'
+      parameters:
+        - $ref: '#/components/parameters/addressParamRequired'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+  '/nft/checker/refresh':
+    get:
+      tags: ['NFT']
+      description: 'Refresh NFT checker cache.'
+      parameters:
+        - $ref: '#/components/parameters/addressParamRequired'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+  '/nft/list1155inventory':
+    get:
+      tags: ['NFT']
+      description: 'List ERC1155 inventory.'
+      parameters:
+        - $ref: '#/components/parameters/accountAddressParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+  '/nft/active-token-ids':
+    get:
+      tags: ['NFT']
+      description: 'List active token ids.'
+      parameters:
+        - $ref: '#/components/parameters/addressParamRequired'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+  '/nft/checker/token':
+    get:
+      tags: ['NFT']
+      description: 'List NFT checker token ids.'
+      parameters:
+        - $ref: '#/components/parameters/addressParamRequired'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+  '/nft/account/token-by-contract':
+    get:
+      tags: ['NFT']
+      description: 'List account NFTs by contract.'
+      parameters:
+        - $ref: '#/components/parameters/accountAddressParam'
+        - $ref: '#/components/parameters/addressParamRequired'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+
+  '/ens/nameRegistrations':
+    get:
+      tags: ['ENS']
+      description: 'Get ENS name registrations.'
+      parameters:
+        - $ref: '#/components/parameters/accountAddressParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+  '/ens/resolveName':
+    get:
+      tags: ['ENS']
+      description: 'Resolve ENS name to address.'
+      parameters:
+        - $ref: '#/components/parameters/nameParamRequired'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+  '/ens/lookupAddress':
+    get:
+      tags: ['ENS']
+      description: 'Lookup ENS names by address.'
+      parameters:
+        - $ref: '#/components/parameters/addressParamRequired'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+  '/ens/ownedNames':
+    get:
+      tags: ['ENS']
+      description: 'List ENS owned names.'
+      parameters:
+        - $ref: '#/components/parameters/accountAddressParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+  '/ens/resolvedNames':
+    get:
+      tags: ['ENS']
+      description: 'List ENS resolved names.'
+      parameters:
+        - $ref: '#/components/parameters/addressParamRequired'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+
+  '/transfer/tps':
+    get:
+      tags: ['Performance']
+      description: 'Get transfer TPS stats.'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+  '/gasused/tps':
+    get:
+      tags: ['Performance']
+      description: 'Get gas used TPS stats.'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+  '/gasprice/tracker':
+    get:
+      tags: ['Performance']
+      description: 'Get gas price tracker stats.'
+      responses:
+        200:
+          $ref: '#/components/responses/OkJson'
+
+components:
+  parameters:
+    skipParam: { name: skip, in: query, required: false, schema: { type: integer, minimum: 0, default: 0 } }
+    limitParam: { name: limit, in: query, required: false, schema: { type: integer, minimum: 0, maximum: 1000, default: 10 } }
+    reverseStringParam: { name: reverse, in: query, required: false, schema: { type: string, enum: ['true', 'false'] } }
+    transferTypeParam: { name: transferType, in: query, required: false, schema: { type: string, enum: ['ERC20', 'ERC721', 'ERC1155'] } }
+    orderByParam: { name: orderBy, in: query, required: false, schema: { type: string } }
+    nameParam: { name: name, in: query, required: false, schema: { type: string } }
+    nameParamRequired: { name: name, in: query, required: true, schema: { type: string } }
+    addressParamRequired: { name: address, in: query, required: true, schema: { type: string } }
+    accountAddressParam: { name: accountAddress, in: query, required: false, schema: { type: string } }
+    abiParam: { name: abi, in: query, required: false, schema: { type: string } }
+    txHashParam: { name: txHash, in: query, required: true, schema: { type: string } }
+    spanParam: { name: span, in: query, required: false, schema: { type: string, enum: ['24h', '3d', '7d'] } }
+    typeParam: { name: type, in: query, required: false, schema: { type: string } }
+    epochNumberParam: { name: epochNumber, in: query, required: false, schema: { type: integer, minimum: 0 } }
+    base32Param: { name: base32, in: query, required: false, schema: { type: string } }
+    daysParam: { name: days, in: query, required: true, schema: { type: integer, minimum: 1, maximum: 7, default: 1 } }
+
+  schemas:
+    ApiSuccess:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string, example: '' }
+        data: {}
+
+  responses:
+    OkJson:
+      description: 'Success JSON response.'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiSuccess'
+    CsvFile:
+      description: 'CSV file stream.'
+      content:
+        text/csv:
+          schema:
+            type: string
+            format: binary

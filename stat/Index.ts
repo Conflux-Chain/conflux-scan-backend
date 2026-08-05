@@ -1,7 +1,7 @@
 import {redirectLog} from "./service/tool/LoggerConfig";
 import {StatApp} from "./StatApp";
-import {loadConfig} from "./config/StatConfig";
-import {register} from "./router/StatRouter";
+import { ConfigInstance, loadConfig } from "./config/StatConfig";
+import { register } from "./router/StatRouter";
 import {KV} from "./model/KV";
 import {Server} from 'http'
 import {saveApiLog} from "./monitor/ApiLog";
@@ -31,16 +31,21 @@ export async function init() {
     const config = loadConfig('Prod');
     const statApp = new StatApp(config);
     await statApp.init();
+    console.log(`${new Date().toISOString()}======= initialized scan stat=======`)
 
+    return { statKoa: app, statApp };
+}
+
+export async function start(app: any, statApp: StatApp) {
     register(app, statApp);
-    const port = config.port || 8087;
+
+    const port = ConfigInstance.port || 8087;
     const server = app.listen(port);
 
     regProcessHook(server)
-    repeatHeartBeat(`${KEY_STAT}_${config.serverTag}`)
+    repeatHeartBeat(`${KEY_STAT}_${ConfigInstance.serverTag}`)
 
     console.log(`${new Date().toISOString()}=======scan stat listen on port ${port} network ${StatApp.networkId}=======`);
-    return statApp;
 }
 
 function exitOnSignal(server: Server) {
@@ -60,5 +65,7 @@ function regProcessHook(server: Server) {
 }
 
 if (require.main === module) {
-    init().then();
+    init().then(({ statKoa, statApp }) => {
+        start(statKoa, statApp).then()
+    });
 }

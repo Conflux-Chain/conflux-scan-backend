@@ -233,7 +233,7 @@ export async function verifySourcecode(ctx) {
         compilerVersion: body.compilerversion,
         optimizationUsed: body.optimizationUsed,
         runs: body.runs,
-        constructorArguments: body.constructorArguements,
+        constructorArguments: body.constructorArguements || body.constructorArguments,
         evmVersion: body.evmversion,
         licenseType: body.licenseType,
         ...libraries(body),
@@ -308,7 +308,7 @@ export async function checkProxyVerification(ctx) {
 }
 
 export async function listVerifiedContracts(ctx) {
-    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC', 'ASC'])
+    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['asc', 'desc', 'ASC', 'DESC'])
     mustBeIntParamIfPresent(ctx.request.query, 'cursor', 'limit', 'minTimestamp','maxTimestamp');
 
     const {sort, cursor, minTimestamp, maxTimestamp} = ctx.request.query;
@@ -326,7 +326,7 @@ const LIST_LIMIT = 5_000;
 export async function listVerifiedContractsLatest(ctx) {
     mustBeEnumParamIfPresent(ctx.request.query, 'compiler', ['solc', 'vyper']);
     mustBeEnumParamIfPresent(ctx.request.query, 'sortField', ['verified_time', 'txn_volume']);
-    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC', 'ASC']);
+    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['asc', 'desc', 'ASC', 'DESC']);
     mustBeEnumParamIfPresent(ctx.request.query, 'hasNametag', ['false', 'true']);
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contractAddress', 'deployerAddress');
     mustBeIntParamIfPresent(ctx.request.query, 'licenseType', 'startBlock', 'endBlock', 'minEpochNumber', 'maxEpochNumber',
