@@ -3,13 +3,10 @@ import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import {format} from "js-conflux-sdk"
 import {fmtAddr, StatApp} from "../StatApp";
 import * as Koa from 'koa'
-import * as Application from 'koa'
 import {Context} from 'koa'
 import * as Router from 'koa-router'
 import {KEY_NFT_FROM_DB, KEY_TX_EPOCH, KV, USE_REMOTE_STAT} from "../model/KV";
-import {TxnQuery} from "../service/TxnQuery";
-import {koaSwagger} from "koa2-swagger-ui";
-import ApiDef from "./ApiDef";
+import { TxnQuery } from "../service/TxnQuery";
 import {DailyToken, NftId, NftMint, Token} from "../model/Token";
 import {T_DAILY_TOKEN_TXN} from "../model/Erc20Transfer";
 import {sumRecentCfxAmount} from "../model/CfxTransfer";
@@ -42,7 +39,7 @@ import {NoCoreSpace} from "../config/StatConfig";
 import {AbiSignature, parseAbiStr, saveAbiSigs} from "../model/ContractInfo";
 import {AuthAction, getAuthActionInTx, listAuthAction} from "../model/EIP7702model";
 import {CONST} from "../service/common/constant";
-import {ContractQuery} from "../service/ContractQuery";
+import { ContractQuery } from "../service/ContractQuery";
 
 const superagent = require('superagent');
 const NodeCache = require( "node-cache" );
@@ -832,49 +829,6 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
     });
 }
 
-// swagger stat doesn't support multiple instances,
-// use this hook to bypass.
-let swStatFn = function(ctx, next) {
-    console.log(`${__filename} call to stub`)
-    return next()
-}
-
-export function setSwStatFn(fn) {
-    swStatFn = fn
-}
-
-function addSwagger(app: Application, router: Router<any, {}>) {
-    const docPath = `${ROUTER_PREFIX}/api-doc-stat`
-    let apiDef = '/swagger.json.conf'; // .conf avoid frontend nginx interceptor.
-    app.use(
-        koaSwagger({
-            routePrefix: docPath,
-            oauthOptions: {},
-            swaggerOptions: {
-                url: `${ROUTER_PREFIX}${apiDef}`,
-                title: 'statistic-api-doc'
-            },
-        }),
-    );
-    router.get(apiDef, async (ctx)=>{
-        ctx.body = ApiDef
-    })
-    // metrics
-    const pathArr = router.stack.map((layer) => {
-        return layer.path.split('/').map((sec) => {
-            return sec.startsWith(':') ? `{${sec.substr(1)}}` : sec;
-        }).join('/');
-    });
-    const pathDef = {};
-    pathArr.forEach((p) => {
-        pathDef[p] = { get: {} };
-    });
-    // @ts-ignore
-    ApiDef.paths = pathDef;
-    console.log(`do not register swagger-stat on stat-router.`)
-    app.use((ctx,next)=>swStatFn(ctx, next))
-}
-
 export function register(app:Koa, statApp: StatApp) {
     const router = new Router({ prefix: '/stat' })
     router.use(async (ctx, next)=>{
@@ -915,7 +869,6 @@ export function register(app:Koa, statApp: StatApp) {
 
     app.use(cors())
     app.use(bodyParser())
-    addSwagger(app, router)
     let middleware = router.routes();
     app.use(middleware)
     addConfluxConsortiumNFTRouter(router, statApp)

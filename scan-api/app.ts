@@ -2,20 +2,15 @@ import {router} from "./router";
 import {ScanServices, serviceLoader} from "./service";
 import {fmtAddr, StatApp} from "../stat/StatApp";
 import {AppBase} from "./AppBase";
-import {checkRate, loadRateConfig} from "../stat/router/RateLimiter";
-import {setSwStatFn} from "../stat/router/StatRouter";
-import ApiDef from "../stat/router/ApiDef";
+import { checkRate, loadRateConfig } from "../stat/router/RateLimiter";
 import {jsonrpc} from "./router/jsonrpc";
 import {saveApiLog} from "../stat/monitor/ApiLog";
 import {KV} from "../stat/model/KV";
-import {format} from "js-conflux-sdk";
-import {StatConfig} from "../stat/config/StatConfig";
+import { format } from "js-conflux-sdk";
+import { StatConfig } from "../stat/config/StatConfig";
 
 const lodash = require('lodash');
-const e2k = require('express-to-koa');
-const swStats = require('swagger-stats');
-const {parameterErrorCode} = require('../common/error')
-const apiSpec = require('../document/api-place-hoder-for-swagger-stat.json');
+const { parameterErrorCode } = require('../common/error')
 
 export class ApiApp extends AppBase {
   service: ScanServices;
@@ -25,7 +20,8 @@ export class ApiApp extends AppBase {
   }
 
   async init() {
-    await super.init();
+    console.log(`${new Date().toISOString()}=======start scan api========`);
+    await super.initialize();
     this.proxy = true;
 
     // db
@@ -39,6 +35,21 @@ export class ApiApp extends AppBase {
 
     this.service = serviceLoader(this);
     this.startLog();
+
+    loadRateConfig().then()
+
+    this.use(checkRate)
+
+    this.use(async (ctx, next) => {
+      const start = Date.now();
+      await next();
+      const ms = Date.now() - start;
+      saveApiLog(ctx, ms).catch()
+    })
+
+    console.log(`${new Date().toISOString()}=======initialized scan api========`);
+
+    return this;
   }
 
   // wrap error as ParameterError
@@ -64,42 +75,6 @@ export class ApiApp extends AppBase {
     });
   }
 
-  listen(port) {
-    const pathArr = this.router.stack.map((layer) => {
-      return layer.path.split('/').map((sec) => {
-        return sec.startsWith(':') ? `{${sec.substr(1)}}` : sec;
-      }).join('/');
-    });
-    const pathDef = ApiDef.paths;
-    pathArr.forEach((p) => {
-      pathDef[p] = { get: {} };
-    });
-    apiSpec.paths = pathDef;
-
-    loadRateConfig().then()
-
-    this.use(checkRate)
-
-    // metrics
-    const swStat = e2k(swStats.getMiddleware({
-      swaggerSpec: apiSpec,
-      uriPath: '/v1/api-stat', // ui at /v1/api-stat/
-      hostname: 'scan-backend-api-stat', // Prevent exposure of server ip
-      basePath: '',
-    }));
-    setSwStatFn(swStat)
-    this.use(swStat);
-
-    this.use(async (ctx,next)=>{
-      const start = Date.now();
-      await next();
-      const ms = Date.now() - start;
-      saveApiLog(ctx, ms).catch()
-    })
-
-    return super.listen(port);
-  }
-
   startLog() {
     lodash.forEach(jsonrpc.methods, (func, method) => {
       this.traceLog.traceMethod(jsonrpc.methods, method, {
@@ -120,10 +95,8 @@ export class ApiApp extends AppBase {
   }
 
   async start() {
-    console.log(`${new Date().toISOString()}=======start scan api========`);
-    await this.init();
     const port = this.config.v1port;
-    this.listen(port);
+    super.listen(port);
     console.log(`${new Date().toISOString()}=======scan api listen on port ${port} network ${StatApp.networkId}========`);
   }
 

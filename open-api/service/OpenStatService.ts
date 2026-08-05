@@ -264,7 +264,7 @@ async function topTokenTransfer(ctx, statType) {
 
 function parseStatParam(ctx) {
     mustBeIntParamIfPresent(ctx.request.query, 'minTimestamp', 'maxTimestamp', 'skip', 'limit');
-    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC', 'ASC']);
+    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['asc', 'desc', 'ASC', 'DESC']);
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contract');
 
     const sort = (ctx.request.query.sort || 'DESC').toLowerCase();

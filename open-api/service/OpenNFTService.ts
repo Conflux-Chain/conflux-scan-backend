@@ -42,7 +42,7 @@ export async function listAccountNFTs(ctx) {
 export async function listNFTTokens(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'owner');
     mustBeAddressArrayParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contract');
-    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC'])
+    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['asc', 'desc', 'ASC', 'DESC'])
     mustBeEnumParamIfPresent(ctx.request.query, 'sortField', ['latest_update_time','mint_time'])
     mustBeIntParamIfPresent(ctx.request.query, 'cursor', 'skip', 'limit', 'tokenId');
     mustBeEnumParamIfPresent(ctx.request.query, 'withBrief', ['false', 'true']);

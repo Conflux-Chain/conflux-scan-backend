@@ -518,7 +518,7 @@ export class FullBlockQuery {
             PruneInfo.findOne({where: {addressId: accountAddressId, type: PruneType.ADDR_TX}, raw: true,}),
             TransferCount.findOne({where: {addressId: accountAddressId, type: 'TX'}, raw: true,}),
             new Promise(r=>{
-                if (sort === 'DESC') {
+                if (sort === 'DESC' || sort === 'desc') {
                     r(undefined);
                 } else {
                     // options.order = [['epoch', sort], ['blockPosition', sort], ['txPosition', sort]];
@@ -531,7 +531,7 @@ export class FullBlockQuery {
                 }
             })
         ]);
-        if (sort === 'DESC') {
+        if (sort === 'DESC' || sort === 'desc') {
             newestTx = list[0];
         }
         if (countCache

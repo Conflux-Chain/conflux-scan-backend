@@ -8,13 +8,13 @@ import {Errors} from "../../stat/service/common/LogicError";
 
 export async function listAccountsByCursor(ctx) {
 	mustBeIntParamIfPresent(ctx.request.query, "id", "limit");
-	mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC']);
+	mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['asc', 'desc', 'ASC', 'DESC']);
 	let {id, sort = 'DESC'} = ctx.request.query;
 	const limit = intParam(ctx.request.query, "limit", 10);
 	if (limit > LIMIT_MAX) {
 		throw new Errors.ParameterError(`Parameter <limit exceeds ${LIMIT_MAX}`);
 	}
-	const idOption = {id:{[sort == "ASC" ? Op.gt : Op.lt] : id}};
+	const idOption = { id: { [sort == "ASC" || sort == "asc" ? Op.gt : Op.lt]: id } };
 	if (id == undefined) {
 		delete idOption['id']
 	}

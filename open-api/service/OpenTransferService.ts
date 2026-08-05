@@ -117,7 +117,7 @@ export function polishTransferList(page, withCursor = false) {
 export async function listTransfer(ctx, service, cursor = undefined, cursorField = undefined, withCursor = false) {
     mustBeIntParamIfPresent(ctx.request.query, 'minEpochNumber','maxEpochNumber', 'startBlock', 'endBlock', 'minTimestamp','maxTimestamp')
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'from','to','account', 'contract')
-    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['DESC','ASC'])
+    mustBeEnumParamIfPresent(ctx.request.query, 'sort', ['asc', 'desc', 'ASC', 'DESC'])
     mustBeEnumParamIfPresent(ctx.request.query, 'transferType', lodash.map(Object.values(CONST.ADDRESS_TRANSFER_TYPE), item => item.name))
 
     const {skip, limit} = paginateCore(ctx.request.query)

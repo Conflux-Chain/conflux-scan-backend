@@ -261,7 +261,7 @@ export class PosQuery {
         ) account
         left join (select accountId, votingPower from pos_committee_node where epochNumber = ?) node
         on account.id = node.accountId`
-        const sqlOrder =`order by ${orderBy} ${order}, rankAvailableVotes ${order === 'desc' ? 'asc' : 'desc'}, id desc limit ?,?`
+        const sqlOrder = `order by ${orderBy} ${order}, rankAvailableVotes ${order === 'DESC' || order === 'desc' ? 'asc' : 'desc'}, id desc limit ?,?`
         const sqlCounter = `select count(*) as cntr from`
 
         const sqlQuery = `${sqlSelect} ${sqlTmpTable} ${sqlOrder}`

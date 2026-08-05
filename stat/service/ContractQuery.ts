@@ -283,7 +283,7 @@ export class ContractQuery {
         };
         const conditions = [];
         if (cursor > 0) {
-            conditions.push({[cursorField]: {[sort === 'DESC' ? Op.lt : Op.gt]: cursor}});
+            conditions.push({ [cursorField]: { [sort === 'DESC' || sort === 'desc' ? Op.lt : Op.gt]: cursor } });
         }
         const timeConditions = []
         if (minTimestamp !== undefined) {

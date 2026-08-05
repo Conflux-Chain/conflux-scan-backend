@@ -1,0 +1,501 @@
+openapi: 3.0.0
+info:
+  title: Conflux Scan API v1 (Private)
+  description: 'Private OpenAPI draft for scan-api v1 routes.'
+  version: 0.2.0
+servers:
+  - url: '/v1'
+    description: 'scan-api v1 server'
+
+tags:
+  - name: 'Server Info'
+  - name: 'Statistic'
+  - name: 'Frontend'
+  - name: 'Block'
+  - name: 'Transaction'
+  - name: 'Account'
+  - name: 'Contract'
+  - name: 'Token'
+  - name: 'Transfer'
+  - name: 'AA'
+  - name: 'Event'
+  - name: 'ENS'
+  - name: 'NameTag'
+  - name: 'Report'
+
+paths:
+  '/':
+    get:
+      tags: ['Server Info']
+      description: 'Get scan-api v1 server info.'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+
+  '/dag':
+    get:
+      tags: ['Statistic']
+      description: 'Get dag statistics.'
+      parameters:
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+  '/plot':
+    get:
+      tags: ['Statistic']
+      description: 'Get plot metrics.'
+      parameters:
+        - $ref: '#/components/parameters/intervalParam'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+  '/trend':
+    get:
+      tags: ['Statistic']
+      description: 'Get trend metrics.'
+      parameters:
+        - $ref: '#/components/parameters/intervalParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+  '/homeDashboard':
+    get:
+      tags: ['Statistic']
+      description: 'Get homepage dashboard data.'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+  '/frontend':
+    get:
+      tags: ['Frontend']
+      description: 'Get frontend bootstrap payload.'
+      parameters:
+        - $ref: '#/components/parameters/refererHeader'
+        - $ref: '#/components/parameters/hostHeader'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+
+  '/block/{hash}':
+    get:
+      tags: ['Block']
+      description: 'Get block by hash or height.'
+      parameters:
+        - $ref: '#/components/parameters/hashPath'
+        - $ref: '#/components/parameters/fieldsParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+  '/block':
+    get:
+      tags: ['Block']
+      description: 'List blocks with filters.'
+      parameters:
+        - $ref: '#/components/parameters/epochNumberParam'
+        - $ref: '#/components/parameters/blockHashParam'
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/minerParam'
+        - $ref: '#/components/parameters/referredByParam'
+        - $ref: '#/components/parameters/minEpochNumberParam'
+        - $ref: '#/components/parameters/maxEpochNumberParam'
+        - $ref: '#/components/parameters/reverseParam'
+        - $ref: '#/components/parameters/skipParam'
+        - $ref: '#/components/parameters/limitParam'
+        - $ref: '#/components/parameters/fieldsParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+
+  '/transaction/{hash}':
+    get:
+      tags: ['Transaction']
+      description: 'Get transaction by hash.'
+      parameters:
+        - $ref: '#/components/parameters/hashPath'
+        - $ref: '#/components/parameters/fieldsParam'
+        - $ref: '#/components/parameters/aggregateParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+  '/transaction':
+    get:
+      tags: ['Transaction']
+      description: 'List transactions with filters.'
+      parameters:
+        - $ref: '#/components/parameters/accountAddressParam'
+        - $ref: '#/components/parameters/fromParam'
+        - $ref: '#/components/parameters/toParam'
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/minEpochNumberParam'
+        - $ref: '#/components/parameters/maxEpochNumberParam'
+        - $ref: '#/components/parameters/reverseParam'
+        - $ref: '#/components/parameters/skipParam'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+
+  '/account/{address}':
+    get:
+      tags: ['Account']
+      description: 'Get account detail.'
+      parameters:
+        - $ref: '#/components/parameters/addressPath'
+        - $ref: '#/components/parameters/fieldsParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+
+  '/contract/internals':
+    get:
+      tags: ['Contract']
+      description: 'List internal contracts.'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+  '/contract/code-format':
+    get:
+      tags: ['Contract']
+      description: 'List contract code formats.'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+  '/contract/compiler':
+    get:
+      tags: ['Contract']
+      description: 'List solidity compilers.'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+  '/contract/vyper-compiler':
+    get:
+      tags: ['Contract']
+      description: 'List vyper compilers.'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+  '/contract/fe-compiler':
+    get:
+      tags: ['Contract']
+      description: 'List fe compilers.'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+  '/contract/license':
+    get:
+      tags: ['Contract']
+      description: 'List license options.'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+  '/contract/evm-version':
+    get:
+      tags: ['Contract']
+      description: 'List EVM versions.'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+  '/contract/verify':
+    post:
+      tags: ['Contract']
+      description: 'Verify a contract.'
+      requestBody:
+        $ref: '#/components/requestBodies/ContractVerifyBody'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+  '/contract/verify/cross-space':
+    post:
+      tags: ['Contract']
+      description: 'Verify cross-space contract relation.'
+      requestBody:
+        $ref: '#/components/requestBodies/ContractVerifyCrossSpaceBody'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+  '/contract/{address}':
+    get:
+      tags: ['Contract']
+      description: 'Get contract detail.'
+      parameters:
+        - $ref: '#/components/parameters/addressPath'
+        - $ref: '#/components/parameters/fieldsParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+  '/contract':
+    get:
+      tags: ['Contract']
+      description: 'List contracts.'
+      parameters:
+        - $ref: '#/components/parameters/accountAddressParam'
+        - $ref: '#/components/parameters/addressArrayParam'
+        - $ref: '#/components/parameters/orderByParam'
+        - $ref: '#/components/parameters/reverseParam'
+        - $ref: '#/components/parameters/skipParam'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+  '/contract-and-token':
+    get:
+      tags: ['Contract']
+      description: 'List contracts and tokens.'
+      parameters:
+        - $ref: '#/components/parameters/accountAddressParam'
+        - $ref: '#/components/parameters/skipParam'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+
+  '/token/{address}':
+    get:
+      tags: ['Token']
+      description: 'Get token detail.'
+      parameters:
+        - $ref: '#/components/parameters/addressPath'
+        - $ref: '#/components/parameters/fieldsParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+  '/token':
+    get:
+      tags: ['Token']
+      description: 'List tokens.'
+      parameters:
+        - $ref: '#/components/parameters/transferTypeParam'
+        - $ref: '#/components/parameters/addressArrayParam'
+        - $ref: '#/components/parameters/accountAddressParam'
+        - $ref: '#/components/parameters/nameParam'
+        - $ref: '#/components/parameters/orderByParam'
+        - $ref: '#/components/parameters/reverseParam'
+        - $ref: '#/components/parameters/skipParam'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+
+  '/transfer':
+    get:
+      tags: ['Transfer']
+      description: 'List transfer records.'
+      parameters:
+        - $ref: '#/components/parameters/transferTypeParam'
+        - $ref: '#/components/parameters/accountAddressParam'
+        - $ref: '#/components/parameters/addressParam'
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/fromParam'
+        - $ref: '#/components/parameters/toParam'
+        - $ref: '#/components/parameters/transactionHashParam'
+        - $ref: '#/components/parameters/tokenIdParam'
+        - $ref: '#/components/parameters/minEpochNumberParam'
+        - $ref: '#/components/parameters/maxEpochNumberParam'
+        - $ref: '#/components/parameters/reverseParam'
+        - $ref: '#/components/parameters/skipParam'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+  '/transferTree/{transactionHash}':
+    get:
+      tags: ['Transfer']
+      description: 'Get transfer tree by transaction hash.'
+      parameters:
+        - $ref: '#/components/parameters/transactionHashPath'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+  '/traceCallView':
+    post:
+      tags: ['Transfer']
+      description: 'Get trace call view by transaction hash.'
+      requestBody:
+        $ref: '#/components/requestBodies/TraceCallBody'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+  '/aa-tx/{userOpHash}':
+    get:
+      tags: ['AA']
+      description: 'Get account abstraction tx detail.'
+      parameters:
+        - $ref: '#/components/parameters/userOpHashPath'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+
+  '/eventLog':
+    get:
+      tags: ['Event']
+      description: 'Get event logs.'
+      parameters:
+        - $ref: '#/components/parameters/addressParam'
+        - $ref: '#/components/parameters/fromParam'
+        - $ref: '#/components/parameters/toParam'
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+        - $ref: '#/components/parameters/minEpochNumberParam'
+        - $ref: '#/components/parameters/maxEpochNumberParam'
+        - $ref: '#/components/parameters/reverseParam'
+        - $ref: '#/components/parameters/skipParam'
+        - $ref: '#/components/parameters/limitParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+
+  '/ens/reverse/match':
+    get:
+      tags: ['ENS']
+      description: 'Match ENS reverse records.'
+      parameters:
+        - $ref: '#/components/parameters/addressArrayParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+  '/nametag':
+    get:
+      tags: ['NameTag']
+      description: 'Get nametag records.'
+      parameters:
+        - $ref: '#/components/parameters/addressArrayParam'
+      responses:
+        200:
+          $ref: '#/components/responses/OkEnvelope'
+
+  '/report/transaction':
+    get:
+      tags: ['Report']
+      description: 'Export transaction report.'
+      parameters:
+        - $ref: '#/components/parameters/accountAddressParam'
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+      responses:
+        200:
+          $ref: '#/components/responses/BinaryFile'
+  '/report/transfer':
+    get:
+      tags: ['Report']
+      description: 'Export transfer report.'
+      parameters:
+        - $ref: '#/components/parameters/accountAddressParam'
+        - $ref: '#/components/parameters/minTimestampParam'
+        - $ref: '#/components/parameters/maxTimestampParam'
+      responses:
+        200:
+          $ref: '#/components/responses/BinaryFile'
+
+components:
+  parameters:
+    hashPath: { name: hash, in: path, required: true, schema: { type: string } }
+    addressPath: { name: address, in: path, required: true, schema: { type: string } }
+    transactionHashPath: { name: transactionHash, in: path, required: true, schema: { type: string } }
+    userOpHashPath: { name: userOpHash, in: path, required: true, schema: { type: string } }
+
+    refererHeader: { name: referer, in: header, required: false, schema: { type: string } }
+    hostHeader: { name: host, in: header, required: false, schema: { type: string } }
+
+    intervalParam: { name: interval, in: query, required: false, schema: { type: integer } }
+    epochNumberParam: { name: epochNumber, in: query, required: false, schema: { type: integer, minimum: 0 } }
+    blockHashParam: { name: blockHash, in: query, required: false, schema: { type: string } }
+    minerParam: { name: miner, in: query, required: false, schema: { type: string } }
+    referredByParam: { name: referredBy, in: query, required: false, schema: { type: string } }
+    minEpochNumberParam: { name: minEpochNumber, in: query, required: false, schema: { type: integer, minimum: 0 } }
+    maxEpochNumberParam: { name: maxEpochNumber, in: query, required: false, schema: { type: integer, minimum: 0 } }
+    minTimestampParam: { name: minTimestamp, in: query, required: false, schema: { type: integer, minimum: 0 } }
+    maxTimestampParam: { name: maxTimestamp, in: query, required: false, schema: { type: integer, minimum: 0 } }
+    reverseParam: { name: reverse, in: query, required: false, schema: { type: boolean, default: true } }
+    skipParam: { name: skip, in: query, required: false, schema: { type: integer, minimum: 0, default: 0 } }
+    limitParam: { name: limit, in: query, required: false, schema: { type: integer, minimum: 0, maximum: 100, default: 10 } }
+    fieldsParam: { name: fields, in: query, required: false, schema: { type: array, items: { type: string } } }
+    aggregateParam: { name: aggregate, in: query, required: false, schema: { type: boolean, default: false } }
+    accountAddressParam: { name: accountAddress, in: query, required: false, schema: { type: string } }
+    addressParam: { name: address, in: query, required: false, schema: { type: string } }
+    fromParam: { name: from, in: query, required: false, schema: { type: string, nullable: true } }
+    toParam: { name: to, in: query, required: false, schema: { type: string, nullable: true } }
+    transactionHashParam: { name: transactionHash, in: query, required: false, schema: { type: string } }
+    tokenIdParam: { name: tokenId, in: query, required: false, schema: { type: string } }
+    transferTypeParam: { name: transferType, in: query, required: false, schema: { type: string } }
+    addressArrayParam: { name: addressArray, in: query, required: false, schema: { type: array, items: { type: string } } }
+    nameParam: { name: name, in: query, required: false, schema: { type: string } }
+    orderByParam: { name: orderBy, in: query, required: false, schema: { type: string } }
+
+  schemas:
+    ApiSuccess:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string, example: '' }
+        data: {}
+    ApiSuccessEVM:
+      type: object
+      properties:
+        status: { type: string, example: '1' }
+        message: { type: string, example: '' }
+        result: {}
+    ApiError:
+      type: object
+      properties:
+        code: { type: integer }
+        message: { type: string }
+        data: { nullable: true }
+
+  requestBodies:
+    ContractVerifyBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [address]
+            properties:
+              address: { type: string }
+              name: { type: string }
+              codeFormat: { type: string }
+              sourceCode: { type: string }
+              compiler: { type: string }
+              optimizeRuns: { type: integer, nullable: true }
+              license: { type: string }
+              constructorArgs: { type: string }
+              evmVersion: { type: string }
+    ContractVerifyCrossSpaceBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [address]
+            properties:
+              address: { type: string }
+              includeAllOtherSpace: { type: boolean, default: false }
+    TraceCallBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              transactionHash: { type: string }
+
+  responses:
+    OkEnvelope:
+      description: 'Success response envelope (core mode usually code/data, evm mode usually status/result).'
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: '#/components/schemas/ApiSuccess'
+              - $ref: '#/components/schemas/ApiSuccessEVM'
+    BinaryFile:
+      description: 'Binary export file stream.'
+      content:
+        application/octet-stream:
+          schema:
+            type: string
+            format: binary

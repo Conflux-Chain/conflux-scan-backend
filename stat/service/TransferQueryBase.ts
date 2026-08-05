@@ -96,7 +96,7 @@ export abstract class TransferQueryBase {
             }
         }
         if(cursor !== undefined && cursor !== 0) {
-            conditionArray.push({[cursorField]: {[sort === 'DESC' ? Op.lt : Op.gt]: cursor}});
+            conditionArray.push({ [cursorField]: { [sort === 'DESC' || sort === 'desc' ? Op.lt : Op.gt]: cursor } });
             delete queryOptions.offset;
         }
         if(conditionArray.length === 1){
@@ -302,7 +302,7 @@ export abstract class TransferQueryBase {
             this.addrModel.findAll(queryOptions),
             PruneInfo.findOne({where: {addressId, type: this.addrPruneType}}),
             new Promise(r=>{
-                if (sort === 'DESC') {
+                if (sort === 'DESC' || sort === 'desc') {
                     r(undefined);
                 } else {
                     queryOptions.order.forEach(o=>o[1] = 'DESC');
@@ -314,7 +314,7 @@ export abstract class TransferQueryBase {
                 }
             })
         ])
-        if (sort === 'DESC') {
+        if (sort === 'DESC' || sort === 'desc') {
             newestTx = rows[0];
         }
         let finalCount;
