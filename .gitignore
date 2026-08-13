@@ -1,5 +1,8 @@
 # Created by .ignore support plugin (hsz.mobi)
 .idea/
+.vscode/
+
+node_modules/
 
 open-api/**/*.js
 koaflow/**/*.js
@@ -26,25 +29,7 @@ scan-api/service/index.js
 scan-api/starter.js
 scan-api/tsconfig.tsbuildinfo
 
-scan-compiler/config/local.js
-
 **/*.d.ts
 **/*.d.ts.map
-node_modules/
-stat/config/Prod-mainnet-back.ts
-stat/config/Prod-mainnet-main.ts
-stat/config/Prod-testnet-main.ts
-stat/config/Prod.ts
 stat/**/*.js
-stat/dist/
 tsconfig.tsbuildinfo
-common/JsonRPCSDK.js
-scan-api/AppBase.js
-scan-api/router/handler.js
-scan-api/router/supply.js
-tools/FixTokenBalance.js
-tools/FixTxGasFee.js
-tools/rpcLoadTest.js
-tools/Tools.js
-.env
-.vscode/settings.json

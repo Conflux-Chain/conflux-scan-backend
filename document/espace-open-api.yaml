@@ -47,19 +47,19 @@ security:
   - ApiKeyHeader: []
 tags:
   - name: "Accounts - Etherscan compatible"
-    description: "Accounts - Etherscan compatible endpoints"
-  - name: "Contracts - Etherscan compatible"
-    description: "Contracts - Etherscan compatible endpoints"
+    description: "Etherscan-compatible endpoints for querying account balances, transactions, token transfers, mined blocks, and token holdings on Conflux eSpace."
   - name: "Blocks - Etherscan compatible"
-    description: "Blocks - Etherscan compatible endpoints"
-  - name: "Gas Tracker - Etherscan compatible"
-    description: "Gas Tracker - Etherscan compatible endpoints"
-  - name: "Stats - Etherscan compatible"
-    description: "Stats - Etherscan compatible endpoints"
+    description: "Etherscan-compatible endpoints for querying blocks by timestamp and retrieving daily block count and average block time statistics."
   - name: "Transactions - Etherscan compatible"
-    description: "Transactions - Etherscan compatible endpoints"
+    description: "Etherscan-compatible endpoints for checking transaction receipt status and contract execution results by transaction hash."  
+  - name: "Contracts - Etherscan compatible"
+    description: "Etherscan-compatible endpoints for retrieving contract ABIs, source code, creation details, and contract or proxy verification status on Conflux eSpace."
   - name: "Tokens - Etherscan compatible"
-    description: "Tokens - Etherscan compatible endpoints"
+    description: "Etherscan-compatible endpoints for querying ERC-20 supply, balances, holders, historical data, and token metadata."    
+  - name: "Gas Tracker - Etherscan compatible"
+    description: "Etherscan-compatible endpoints for retrieving historical gas limits, gas usage, and gas price statistics on Conflux eSpace."
+  - name: "Stats - Etherscan compatible"
+    description: "Etherscan-compatible endpoints for querying CFX supply, price, network utilization, mining, transaction, fee, and address statistics."
   - name: "Accounts"
     description: "Account-related endpoints for transactions, transfers, assets, approvals, and account information."
   - name: "Contracts"
@@ -72,8 +72,8 @@ tags:
     description: "Utility endpoints such as transaction input decoding."
   - name: "Stats"
     description: "On-chain statistics and ranking data."
-  - name: EIP
-    description: EIP endpoints
+  - name: "EIP"
+    description: "Endpoints for querying EIP-7702 authorizations and EIP-4337 bundles, UserOperations, and account abstraction execution details."
   - name: "data"
     description: "Low-level data listing and cursor-based retrieval endpoints."  
 paths:
@@ -4058,7 +4058,6 @@ components:
             optional, leave blank for compiler default
             applicable when codeformat is solidity-single-file or vyper-single-file
           nullable: true
-        license:
         licenseType:
           type: string
           required: true
@@ -5557,7 +5556,7 @@ components:
         type: string
         default: "2025-02-28"
     sortParam:
-      description: "the sorting preference, use asc to sort by ascending and desc to sort by descending"
+      description: "Sort in asc or desc order by timestamp(or relevant field)"
       name: sort
       in: query
       required: false
