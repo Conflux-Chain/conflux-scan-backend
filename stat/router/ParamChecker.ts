@@ -46,6 +46,9 @@ function paginate(reqObj: object, skipKey: string, limitKey: string, options?: a
     if (skipMax !== undefined && pagination[skipKey] >= skipMax) {
         throw new Errors.ParameterError(`Parameter <${skipKey}> exceeds ${skipMax}`);
     }
+    if (skipMax !== undefined && (pagination[skipKey] + pagination[limitKey]) > skipMax) {
+        throw new Errors.ParameterError(`Parameter <${skipKey} + ${limitKey}> exceeds ${skipMax}`);
+    }
     if (pagination[limitKey] < 1) {
         throw new Errors.ParameterError(`Parameter <${limitKey}>'s minimum value is 1`)
     }
