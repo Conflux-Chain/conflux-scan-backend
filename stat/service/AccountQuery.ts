@@ -24,6 +24,7 @@ import {ContractQuery} from "./ContractQuery";
 import {CONST} from "./common/constant";
 import {splitFullyQualifiedName} from "./common/utils";
 import {ContractImpl} from "../model/ContractImpl";
+import {AddrAATx} from "../model/eip4337model";
 
 const lodash = require('lodash');
 const BigFixed = require('bigfixed');
@@ -96,6 +97,7 @@ export class AccountQuery {
                 nftAssetTab: 0,
                 minedBlockTab: 0,
                 authorizationsTab: 0,
+                hasAATx: false,
             };
         }
 
@@ -121,6 +123,14 @@ export class AccountQuery {
 
         tabSwitches.nftAssetTab = tabSwitches.nftAssetTab || tabSwitches.nftAssetTab2;
         delete tabSwitches.nftAssetTab2;
+
+        const aaTx = await AddrAATx.findOne({
+            attributes: ['id'],
+            where: {senderId: addressInfo.id},
+            raw: true,
+        });
+
+        tabSwitches.hasAATx = Boolean(aaTx);
 
         return tabSwitches;
     }
