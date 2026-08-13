@@ -8,10 +8,10 @@ info:
 
     | API Host | Net | Mode | Scan |
     |---|---|---|---|
-    | [https://api.confluxscan.org](https://api.confluxscan.org/doc) | Mainnet Core | Production | [https://confluxscan.org](https://confluxscan.org) |
-    | [https://evmapi.confluxscan.org](https://evmapi.confluxscan.org/doc) | Mainnet eSpace | Production | [https://evm.confluxscan.org](https://evm.confluxscan.org) |
-    | [https://api-testnet.confluxscan.org](https://api-testnet.confluxscan.org/doc) | Testnet Core | Production | [https://testnet.confluxscan.org](https://testnet.confluxscan.org) |
-    | [https://evmapi-testnet.confluxscan.org](https://evmapi-testnet.confluxscan.org/doc) | Testnet eSpace | Production | [https://evmtestnet.confluxscan.org](https://evmtestnet.confluxscan.org) |
+    | [https://api.confluxscan.__tld__](https://api.confluxscan.__tld__/doc) | Mainnet Core | Production | [https://confluxscan.__tld__](https://confluxscan.__tld__) |
+    | [https://evmapi.confluxscan.__tld__](https://evmapi.confluxscan.__tld__/doc) | Mainnet eSpace | Production | [https://evm.confluxscan.__tld__](https://evm.confluxscan.__tld__) |
+    | [https://api-testnet.confluxscan.__tld__](https://api-testnet.confluxscan.__tld__/doc) | Testnet Core | Production | [https://testnet.confluxscan.__tld__](https://testnet.confluxscan.__tld__) |
+    | [https://evmapi-testnet.confluxscan.__tld__](https://evmapi-testnet.confluxscan.__tld__/doc) | Testnet eSpace | Production | [https://evmtestnet.confluxscan.__tld__](https://evmtestnet.confluxscan.__tld__) |
 
     ### Notes:
 
@@ -36,18 +36,12 @@ info:
     |---|---|
     | Core | [openapi-sdk-core](https://www.npmjs.com/package/@conflux-lib/openapi-sdk-core) |
     | EVM | [openapi-sdk-evm](https://www.npmjs.com/package/@conflux-lib/openapi-sdk-evm) |
-
-    [Draft] Strict-compatible refactor: keep all original URLs unchanged; enhance metadata/security/error responses.
   version: 0.0.3
 servers:
-  - url: "https://api.confluxscan.org"
+  - url: "https://api.confluxscan.__tld__"
     description: Mainnet Core
-  - url: "https://api.confluxscan.net"
-    description: Mainnet Core  
-  - url: "https://api-testnet.confluxscan.org"
+  - url: "https://api-testnet.confluxscan.__tld__"
     description: Testnet Core
-  - url: "https://api-testnet.confluxscan.net"
-    description: Testnet Core  
 security:
   - ApiKeyQuery: []    
   - ApiKeyHeader: []

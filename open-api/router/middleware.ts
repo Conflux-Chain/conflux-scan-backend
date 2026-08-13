@@ -79,6 +79,9 @@ export function addSwagger(app: Koa, prefix, swaggerYaml, tld) {
     console.log(`loading swaggerYaml:${swaggerYaml}`)
     const spec = yamljs.load(swaggerYaml);
     spec.info.description = spec.info.description.replace(/__tld__/gi, tld)
+    spec.servers.forEach(server => {
+        server.url = server.url.replace(/__tld__/gi, tld)
+    })
     console.log(`loading swaggerYaml:${swaggerYaml} done`)
     // metrics
     patchStatsLib();
