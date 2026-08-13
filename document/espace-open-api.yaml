@@ -4058,7 +4058,6 @@ components:
             optional, leave blank for compiler default
             applicable when codeformat is solidity-single-file or vyper-single-file
           nullable: true
-        license:
         licenseType:
           type: string
           required: true
@@ -5557,7 +5556,7 @@ components:
         type: string
         default: "2025-02-28"
     sortParam:
-      description: "the sorting preference, use asc to sort by ascending and desc to sort by descending"
+      description: "Sort in asc or desc order by timestamp(or relevant field)"
       name: sort
       in: query
       required: false

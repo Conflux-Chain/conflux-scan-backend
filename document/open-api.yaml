@@ -4034,15 +4034,21 @@ components:
       required: false
       schema:
         type: boolean
+        enum:
+          - true
+          - false
         default: false
     sortParam:
-      description: "Sort in ASC or DESC order by timestamp(or relevant field)"
+      description: "Sort in asc or desc order by timestamp(or relevant field)"
       name: sort
       in: query
       required: false
       schema:
         type: string
-        default: DESC
+        enum:
+          - asc
+          - desc
+        default: desc
     sortFieldParam:
       description: "The field used for sorting. The value is latest_update_time or mint_time"
       name: sortField
@@ -4050,6 +4056,9 @@ components:
       required: false
       schema:
         type: string
+        enum:
+          - latest_update_time
+          - mint_time
         default: latest_update_time
     transferTypeParam:
       description: |-
@@ -4105,6 +4114,10 @@ components:
       required: false
       schema:
         type: string
+        enum:
+          - 24h
+          - 3d
+          - 7d
         default: 24h
     ownerParam:
       name: owner
@@ -4129,6 +4142,9 @@ components:
       required: false
       schema:
         type: string
+        enum:
+          - true
+          - false
         default: false
     withBriefParam:
       description: "If show brief which contains name，image and description, the value is true/false."

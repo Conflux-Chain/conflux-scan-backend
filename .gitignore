@@ -48,3 +48,5 @@ tools/rpcLoadTest.js
 tools/Tools.js
 .env
 .vscode/settings.json
+scan-api/router/middleware.js
+.gitignore
