@@ -97,7 +97,7 @@ export class AccountQuery {
                 nftAssetTab: 0,
                 minedBlockTab: 0,
                 authorizationsTab: 0,
-                hasAATx: false,
+                aaTxTab: 0,
             };
         }
 
@@ -110,7 +110,7 @@ export class AccountQuery {
             nftAssetTab2: {model: Erc1155Data, field: 'addressId'},
             minedBlockTab: {model: FullMinerBlock, field: 'minerId'},
             authorizationsTab: {model: AuthAction, field: 'author', value: `0x${addressInfo.hex}`},
-            hasAATx: {model: AddrAATx, field: 'senderId'},
+            aaTxTab: {model: AddrAATx, field: 'senderId'},
         } as any;
 
         await Promise.all(Object.keys(tabSwitches).map((tab) => {
