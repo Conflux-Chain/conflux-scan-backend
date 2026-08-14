@@ -110,6 +110,7 @@ export class AccountQuery {
             nftAssetTab2: {model: Erc1155Data, field: 'addressId'},
             minedBlockTab: {model: FullMinerBlock, field: 'minerId'},
             authorizationsTab: {model: AuthAction, field: 'author', value: `0x${addressInfo.hex}`},
+            hasAATx: {model: AddrAATx, field: 'senderId'},
         } as any;
 
         await Promise.all(Object.keys(tabSwitches).map((tab) => {
@@ -123,14 +124,6 @@ export class AccountQuery {
 
         tabSwitches.nftAssetTab = tabSwitches.nftAssetTab || tabSwitches.nftAssetTab2;
         delete tabSwitches.nftAssetTab2;
-
-        const aaTx = await AddrAATx.findOne({
-            attributes: ['id'],
-            where: {senderId: addressInfo.id},
-            raw: true,
-        });
-
-        tabSwitches.hasAATx = Boolean(aaTx);
 
         return tabSwitches;
     }
