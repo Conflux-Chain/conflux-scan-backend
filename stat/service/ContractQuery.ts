@@ -599,7 +599,7 @@ export class ContractQuery {
             runs: compilerSettings?.optimizer?.runs,
             libraries: compilerSettings?.libraries,
             license: CONST.CONTRACT_LICENSE[licenseType || 1].code,
-            constructorArgs: similarMatchChainId ? undefined : creationBytecode.transformationValues?.constructorArguments,
+            constructorArgs: creationBytecode.transformationValues?.constructorArguments,
             codeFormat: `${language}${sourceCode.startsWith("{") ? "(Json)" : ""}`,
             sourceCode,
             abi: JSON.stringify(abi),
