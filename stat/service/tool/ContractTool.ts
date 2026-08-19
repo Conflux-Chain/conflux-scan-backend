@@ -30,6 +30,9 @@ import {TokenAutoDetect} from "../TokenAutoDetect";
 
 const fs = require('fs');
 const path = require('path');
+const axios = require('axios');
+
+const baseUrl = "https://www.confluxscan.net/verification";
 
 /**
  * arguments
@@ -102,7 +105,7 @@ async function run() {
         console.log("detect result ==\n", t);
     }
     if (type === 10) {
-        await fillbackContractShortName();
+        await backfillConstructorArgsForSimilarMatches();
     }
     await close();
 }
@@ -239,8 +242,6 @@ function executeCommands(commands) {
 }
 
 async function verifyFromScan(submitVerify: boolean = true) {
-    const axios = require('axios');
-    const baseUrl = "https://www.confluxscan.net/verification";
     const missing = `${path.dirname(__filename)}/verify.missing`;
 
     while (true) {
@@ -362,9 +363,6 @@ async function updateNametagHexId() {
 }
 
 async function addVerifiedColumns() {
-    const axios = require('axios');
-    const baseUrl = "https://www.confluxscan.net/verification";
-
     const list = await VerifiedContracts.findAll({
         attributes: ['id', 'address', 'name', 'language', [Sequelize.fn('LEFT', Sequelize.col('sourceCode'), 5), 'sourceCode']],
         order: [['id', 'ASC']],
@@ -533,16 +531,57 @@ async function syncAnnouncedAbi() {
     console.log(`done! ${txs.length} txs processed`);
 }
 
-async function fillbackContractShortName() {
-    const contracts = await VerifiedContracts.findAll({
-        attributes: ["id", "name"],
-        where: { shortName: null },
-        raw: true
+async function backfillConstructorArgsForSimilarMatches() {
+    const list = await VerifiedContracts.findAll({
+        attributes: ['id', 'address'],
+        where: { similarMatchChainId: { [Op.ne]: null } },
+        order: [['id', 'ASC']],
     });
+    console.log(`start to process ${list.length} contracts ...`);
 
-    for (const c of contracts) {
-        const { id, name } = c;
-        const shortName = splitFullyQualifiedName(name).contractName;
-        await VerifiedContracts.update({ shortName }, { where: { id } });
+    for (let i = 0; i < list.length; i++) {
+        const { id, address: base32 } = list[i];
+
+        const address = ethers.getAddress(format.hexAddress(base32));
+        const queryUrl = `${baseUrl}/contract/${StatApp.networkId}/${address}?fields=creationBytecode.transformationValues`;
+
+        while (true) {
+            try {
+                const resp = await axios.get(queryUrl, { family: 4, headers: { 'Accept': 'application/json' } });
+                const { address: respAddress, match, creationBytecode } = resp.data;
+                if (respAddress !== address) {
+                    console.log(`contract ${base32} address not match. expect ${address} got ${respAddress}`);
+                    process.exit(9);
+                }
+                if (!match) {
+                    console.log(`contract ${base32} not verified`);
+                    process.exit(9);
+                }
+
+                if (creationBytecode.transformationValues?.constructorArguments) {
+                    await VerifiedContracts.update({
+                        constructorArgs: creationBytecode.transformationValues?.constructorArguments,
+                    }, {
+                        where: { id }
+                    });
+                }
+
+                break;
+            } catch (e) {
+                if (e.status === 404) {
+                    console.log(`fetch contract ${base32} not found`);
+                    break;
+                }
+
+                console.log(`fetch contract ${base32} error`, e);
+                await sleep(1000);
+            }
+        }
+
+        if ((i + 1) % 100 === 0) {
+            console.log(`${i + 1} contracts processed`);
+        }
     }
+
+    console.log(`done! ${list.length} contracts processed`);
 }
