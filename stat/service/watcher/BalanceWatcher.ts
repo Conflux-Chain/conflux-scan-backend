@@ -14,6 +14,7 @@ import {formatUnits} from "ethers";
 export class BalanceWatcher{
     //
     static watcherMap = new Map<string, BalanceWatcher>()
+    static fractionDecimalsCache = new Map<string, number>()
     //
     public cfx: Conflux;
     protected fraction = BigInt(1e+18) // hard code, please search 1e+18 globally when fixing it.
@@ -54,7 +55,13 @@ export class BalanceWatcher{
     }
 
     private static fractionToDecimals(fraction): number {
-        let value = BigInt(fraction)
+        const key = BigInt(fraction).toString()
+        const cached = BalanceWatcher.fractionDecimalsCache.get(key)
+        if (cached !== undefined) {
+            return cached
+        }
+
+        let value = BigInt(key)
         if (value <= 0n) {
             throw new Error(`invalid fraction: ${fraction}`)
         }
@@ -69,6 +76,7 @@ export class BalanceWatcher{
             throw new Error(`fraction must be power of 10: ${fraction}`)
         }
 
+        BalanceWatcher.fractionDecimalsCache.set(key, decimals)
         return decimals
     }
 }
