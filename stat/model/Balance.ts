@@ -47,13 +47,13 @@ export async function createTokenBalanceTable(seq) {
 // table for each token
 export interface IBalance{
     addressId: number
-    balance:number
+    balance:string
 }
 const registeredTable = new Set<{}>()
 export const T_BALANCE = 'balance'
 export class Balance extends Model<IBalance> implements IBalance{
     addressId: number
-    balance:number
+    balance:string
     static register(seq:Sequelize, clz, tableName) {
         // Balance.init({
         if (registeredTable.has(clz)) {
@@ -72,14 +72,14 @@ export class Balance extends Model<IBalance> implements IBalance{
 }
 export const T_CFX_BALANCE = 'cfx_balance'
 export interface ICfxBalance extends IBalance{
-    stakingBalance:number
-    total:number
+    stakingBalance:string
+    total:string
 }
 export class CfxBalance extends Model<ICfxBalance> implements ICfxBalance{
     addressId: number
-    balance:number
-    stakingBalance:number
-    total:number
+    balance:string
+    stakingBalance:string
+    total:string
     static register(seq){
         CfxBalance.init({
             addressId: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
