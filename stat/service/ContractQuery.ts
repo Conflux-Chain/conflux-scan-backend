@@ -1442,14 +1442,17 @@ export class ContractQuery {
         }
 
         const run = async () => {
+            const timer = this.scheduleTimers[taskName];
             try {
                 await runner();
             } finally {
-                this.scheduleTimers[taskName] = setTimeout(run, delay);
+                if (this.scheduleTimers[taskName] === timer) {
+                    this.scheduleTimers[taskName] = setTimeout(run, delay);
+                }
             }
         }
 
-        run().then();
+        this.scheduleTimers[taskName] = setTimeout(run, 0);
     }
 
     public stopSchedule(taskName: string) {
