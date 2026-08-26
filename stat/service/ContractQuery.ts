@@ -75,7 +75,7 @@ export function getContractQuery() {
 }
 
 export class ContractQuery {
-    static verifyEnable: boolean;
+    private readonly verifyEnable: boolean;
     private cfx: Conflux;
     private traceCreate: ContractTraceCreateQuery;
     private readonly verifyUrl: string;
@@ -85,6 +85,7 @@ export class ContractQuery {
     private CACHE_VERIFY_DETAIL: any  // hex => Contract
     private readonly cacheCompilerTtl: number
     private CACHE_COMPILER_VERSIONS: any  // solc | vyper => {}
+    private scheduleTimers: Record<string, NodeJS.Timeout> = {}
 
     constructor(
         {cfx, config}: { cfx: Conflux; config: VerificationOptions; },
@@ -98,7 +99,7 @@ export class ContractQuery {
 
         this.cfx = cfx;
         this.traceCreate = new ContractTraceCreateQuery(cfx);
-        ContractQuery.verifyEnable = enable;
+        this.verifyEnable = enable;
         this.verifyUrl = url;
 
         this.cacheTtl = verifyCacheTTL || DEFAULT_VERIFY_CACHE_TTL
@@ -183,7 +184,12 @@ export class ContractQuery {
         if(verified?.libraries){
             const libs = [];
             if(typeof verified.libraries === 'string') {
-                verified.libraries = JSON.parse(verified.libraries)
+                try {
+                    verified.libraries = JSON.parse(verified.libraries)
+                } catch (error) {
+                    await safeAddErrorLog('contract-query', 'query-verify-parse-libraries', error as any);
+                    verified.libraries = {};
+                }
             }
             lodash.forIn(verified.libraries, (lib, libKey) =>{
                 if(typeof lib === 'object'){
@@ -224,41 +230,56 @@ export class ContractQuery {
             throw Error(`Contract addresses up to ${this.MAX_CONTRACTS} at a time`);
         }
 
-        let internals = [];
-        let contracts = [];
-        addresses.map(format.hexAddress).forEach(address => {
+        const normalizedAddresses: string[] = [...new Set(addresses.map(item => format.hexAddress(item) as string))];
+        const internals = new Map<string, { address: string, name: string }>();
+        const contracts: string[] = [];
+        normalizedAddresses.forEach((address: string) => {
             if (this.isInternalContract(address)) {
-                internals.push(address);
+                internals.set(address, {
+                    address: format.address(address, StatApp.networkId),
+                    name: CONST.INTERNAL_ADDR_CONTRACT_MAP[address].name,
+                });
             } else {
                 contracts.push(address);
             }
         });
 
-        const verified: { address: string, name: string, }[] = [];
+        const verifiedMap = new Map<string, { address: string, name: string }>();
         if (contracts.length) {
-            const hits = contracts.map(item=>this._getCache(item, false)).filter(Boolean);
-            if (hits.length === contracts.length) {
-                verified.push(...hits);
-            } else {
-                verified.push(...(await this.listVerifyByDB(contracts)));
+            const missed: string[] = [];
+            contracts.forEach(contract => {
+                const hit = this._getCache(contract, false);
+                if (hit) {
+                    verifiedMap.set(format.hexAddress(hit.address), hit);
+                } else {
+                    missed.push(contract);
+                }
+            });
 
-                if (verified.length < contracts.length) {
-                    const founded = verified.map(item => format.hexAddress(item.address));
-                    const fetched = await this.listVerifyBySourcify(contracts.filter(item => !founded.includes(item)));
-                    verified.push(...fetched);
+            if (missed.length) {
+                const fromDB = await this.listVerifyByDB(missed);
+                fromDB.forEach(item => verifiedMap.set(format.hexAddress(item.address), item));
+
+                const stillMissed = missed.filter(item => !verifiedMap.has(item));
+                if (stillMissed.length) {
+                    const fromRemote = await this.listVerifyBySourcify(stillMissed);
+                    fromRemote.forEach(item => verifiedMap.set(format.hexAddress(item.address), item));
                 }
 
-                verified.forEach(item => this._addCache(format.hexAddress(item.address), item));
+                verifiedMap.forEach(item => this._addCache(format.hexAddress(item.address), item));
             }
         }
 
-        return [
-            ...internals.map(item => ({
-                address: format.address(item, StatApp.networkId),
-                name: CONST.INTERNAL_ADDR_CONTRACT_MAP[item].name,
-            })),
-            ...verified,
-        ];
+        const result: { address: string, name: string }[] = [];
+        normalizedAddresses.forEach((address: string) => {
+            if (internals.has(address)) {
+                result.push(internals.get(address)!);
+            } else if (verifiedMap.has(address)) {
+                result.push(verifiedMap.get(address)!);
+            }
+        });
+
+        return result;
     }
 
     public async listVerifyByCursor(
@@ -522,7 +543,7 @@ export class ContractQuery {
         }
 
         const fields = `?fields=compilation${withDetail ? ',stdJsonInput,abi,creationBytecode.transformationValues' : ''}`;
-        const resp = await ContractQuery._getJsonRequest({
+        const resp = await this._getJsonRequest({
             url: `${this.verifyUrl}/contract/${StatApp.networkId}/${hex}${fields}`
         });
         if (!resp) {
@@ -633,7 +654,7 @@ export class ContractQuery {
     private async listVerifyBySourcify(addresses: string[]) {
         const addressesParam = addresses.map(item => ethers.getAddress(format.hexAddress(item))).join(',');
 
-        const resp = await ContractQuery._getJsonRequest({
+        const resp = await this._getJsonRequest({
             url: `${this.verifyUrl}/contracts/${StatApp.networkId}?addresses=${addressesParam}`,
         });
 
@@ -817,33 +838,27 @@ export class ContractQuery {
     }
 
     async scheduleUpdateCompilerVersions(delay: number = 1000 * 60 * 60 * 12) { // update every 12 hours
-        const that = this;
-
-        async function repeat() {
-            await that.updateSolcVersions().catch(e => {
+        this.startLoopSchedule('contract_compiler_version', delay, async () => {
+            await this.updateSolcVersions().catch(e => {
                 safeAddErrorLog('ContractQuery', 'updateSolcVersions', e).then();
                 console.log('Schedule update compiler versions fail', e);
             });
 
-            await that.updateSolcVulnerabilities().catch(e => {
+            await this.updateSolcVulnerabilities().catch(e => {
                 safeAddErrorLog('ContractQuery', 'updateSolcVulnerabilities', e).then();
                 console.log('Schedule update compiler vulnerabilities fail', e);
             });
 
-            await that.updateVyperVersions().catch(e => {
+            await this.updateVyperVersions().catch(e => {
                 safeAddErrorLog('ContractQuery', 'updateVyperVersions', e).then();
                 console.log('Schedule update compiler versions fail', e);
             });
 
-            await that.updateFeVersions().catch(e => {
+            await this.updateFeVersions().catch(e => {
                 safeAddErrorLog('ContractQuery', 'updateFeVersions', e).then();
                 console.log('Schedule update compiler versions fail', e);
             });
-
-            setTimeout(repeat, delay);
-        }
-
-        repeat().then();
+        });
         console.log(`[contract_compiler_version]schedule in ${delay/1000}s interval`);
     }
 
@@ -876,7 +891,7 @@ export class ContractQuery {
         let page = 1;
 
         while (true) {
-            const resp = await ContractQuery._getJsonRequest({
+            const resp = await this._getJsonRequest({
                 url: `https://api.github.com/repos/vyperlang/vyper/tags?page=${page}&per_page=100`,
                 headers: {
                     'User-Agent': 'Vyper-Version-Checker'
@@ -920,7 +935,7 @@ export class ContractQuery {
         let page = 1;
 
         while (true) {
-            const resp = await ContractQuery._getJsonRequest({
+            const resp = await this._getJsonRequest({
                 url: `https://api.github.com/repos/argotorg/fe/tags?page=${page}&per_page=100`,
                 headers: {
                     'User-Agent': 'Fe-Version-Checker'
@@ -1160,7 +1175,7 @@ export class ContractQuery {
     private async verifyFromJsonInput(
         input: VerifyFromJsonInput,
     ): Promise<VerifyResponse | VerifyErrorResponse> {
-        const result = await ContractQuery._postJsonRequest({
+        const result = await this._postJsonRequest({
             url: `${this.verifyUrl}/verify/${input.chainId}/${input.address}`,
             body: {
                 stdJsonInput: input.jsonInput,
@@ -1188,7 +1203,7 @@ export class ContractQuery {
     private async verifyFromCrossChain(
         input: VerifyFromCrossChain
     ): Promise<VerifyResponse | VerifyErrorResponse> {
-        const result = await ContractQuery._postJsonRequest({
+        const result = await this._postJsonRequest({
             url: `${this.verifyUrl}/verify/crosschain/${input.chainId}/${input.address}`,
             body: {
                 linkChainIds: input.linkChainIds?.join(","),
@@ -1234,7 +1249,7 @@ export class ContractQuery {
     public async checkVerification(
         verificationId: string
     ): Promise<VerificationJob> {
-        const result = await ContractQuery._getJsonRequest({
+        const result = await this._getJsonRequest({
             url: `${this.verifyUrl}/verify/${verificationId}`,
         });
 
@@ -1277,7 +1292,7 @@ export class ContractQuery {
         };
     }
 
-    static async _postJsonRequest(
+    private async _postJsonRequest(
         {
             url,
             body,
@@ -1286,7 +1301,7 @@ export class ContractQuery {
             handleError = true,
         }) {
         try {
-            if (!ContractQuery.verifyEnable) {
+            if (!this.verifyEnable) {
                 return null;
             }
 
@@ -1312,7 +1327,7 @@ export class ContractQuery {
         }
     }
 
-    static async _getJsonRequest(
+    private async _getJsonRequest(
         {
             url,
             headers = {},
@@ -1320,7 +1335,7 @@ export class ContractQuery {
             handleError = true,
         }) {
         try {
-            if (!ContractQuery.verifyEnable) {
+            if (!this.verifyEnable) {
                 return null;
             }
 
@@ -1421,24 +1436,47 @@ export class ContractQuery {
         return (withDetail ? this.CACHE_VERIFY_DETAIL : this.CACHE_VERIFY_ADDRESS).get(key);
     }
 
-    async scheduleVerifyByAuto(delay: number = 1000) {
-        const that = this;
+    private startLoopSchedule(taskName: string, delay: number, runner: () => Promise<void>) {
+        if (this.scheduleTimers[taskName]) {
+            return;
+        }
 
-        async function repeat() {
-            await that.verifyByTrace().catch(e => {
+        const run = async () => {
+            try {
+                await runner();
+            } finally {
+                this.scheduleTimers[taskName] = setTimeout(run, delay);
+            }
+        }
+
+        run().then();
+    }
+
+    public stopSchedule(taskName: string) {
+        const timer = this.scheduleTimers[taskName];
+        if (!timer) {
+            return;
+        }
+        clearTimeout(timer);
+        delete this.scheduleTimers[taskName];
+    }
+
+    public stopAllSchedules() {
+        Object.keys(this.scheduleTimers).forEach(taskName => this.stopSchedule(taskName));
+    }
+
+    async scheduleVerifyByAuto(delay: number = 1000) {
+        this.startLoopSchedule('auto_verify', delay, async () => {
+            await this.verifyByTrace().catch(e => {
                 safeAddErrorLog('ContractQuery', 'verifyByTrace', e).then();
                 console.log('Schedule verify by auto fail', e);
             });
 
-            await that.verifyByVerification().catch(e => {
+            await this.verifyByVerification().catch(e => {
                 safeAddErrorLog('ContractQuery', 'verifyByVerification', e).then();
                 console.log('Schedule verify by auto fail', e);
             });
-
-            setTimeout(repeat, delay);
-        }
-
-        repeat().then();
+        });
         console.log(`[auto_verify]schedule in ${delay/1000}s interval`);
     }
 
@@ -1550,11 +1588,11 @@ export class ContractQuery {
     }
 
     private heartBeat() {
-        if (!ContractQuery.verifyEnable) {
+        if (!this.verifyEnable) {
             return;
         }
 
-        setInterval(async () => {
+        this.startLoopSchedule('verification_heartbeat', 10_000, async () => {
             const url = `${this.verifyUrl}/health`;
             try {
                 await superagent.get(url)
@@ -1573,7 +1611,7 @@ export class ContractQuery {
             } catch (e) {
                 console.log(`Failed to check verification health ${url}\n ${e.status} ${e.message}`);
             }
-        }, 10_000);
+        });
     }
 
     static async listMethodABIBySourcify(hash: string, timeout: number = 3000) {
@@ -1611,20 +1649,22 @@ export class ContractQuery {
 
         let lastId = 0;
         const curEpoch = await KV.getNumber(KEY_STAT_TXNS_FOR_VERIFIED_CONTRACTS, 0)
-        while (curEpoch === 0) {
-            const list = await VerifiedContracts.findAll({
-                attributes: ['id', 'addressId'],
-                where: {id: {[Op.gt]: lastId},}, offset: 0, limit: 1000, order: [['id', 'ASC']],
-            });
-            const size = list?.length;
-            if (!size) {
-                break;
-            }
-            console.log(`start to stat txns for ${size} contracts...`);
-            for (let i = 0; i < size; i++) {
-                const {id, addressId} = list[i];
-                await updateTxnsCountById(addressId);
-                lastId = id;
+        if (curEpoch === 0) {
+            while (true) {
+                const list = await VerifiedContracts.findAll({
+                    attributes: ['id', 'addressId'],
+                    where: {id: {[Op.gt]: lastId},}, offset: 0, limit: 1000, order: [['id', 'ASC']],
+                });
+                const size = list?.length;
+                if (!size) {
+                    break;
+                }
+                console.log(`start to stat txns for ${size} contracts...`);
+                for (let i = 0; i < size; i++) {
+                    const {id, addressId} = list[i];
+                    await updateTxnsCountById(addressId);
+                    lastId = id;
+                }
             }
         }
 
@@ -1657,14 +1697,11 @@ export class ContractQuery {
             await KV.upsert({key: KEY_STAT_TXNS_FOR_VERIFIED_CONTRACTS, value: `${maxEpoch}`})
         }
 
-        async function repeat() {
+        this.startLoopSchedule('stat_txns_of_verified_contracts', interval, async () => {
             await updateTxnsCount().catch(e => {
                 console.log('Schedule stat_txns_of_verified_contracts fail', e);
             });
-            setTimeout(repeat, interval);
-        }
-
-        repeat().then();
+        });
         console.log(`[stat_txns_of_verified_contracts]schedule in ${interval / 1000}s interval`);
     }
 
@@ -1712,14 +1749,11 @@ export class ContractQuery {
             await KV.upsert({key: KEY_STAT_NAME_TAG_FOR_VERIFIED_CONTRACTS, value: `${maxEpochNametag}`});
         }
 
-        async function repeat() {
+        this.startLoopSchedule('stat_withNametag_of_verified_contracts', interval, async () => {
             await updateWithNametag().catch(e => {
                 console.log('Schedule stat_withNametag_of_verified_contracts fail', e);
             });
-            setTimeout(repeat, interval);
-        }
-
-        repeat().then();
+        });
         console.log(`[stat_withNametag_of_verified_contracts]schedule in ${interval / 1000}s interval`);
     }
 
@@ -1845,23 +1879,18 @@ export class ContractQuery {
     }
 
     async scheduleLatestVerified(interval: number = 3000) {
-        const that = this;
-
-        async function repeat() {
-            await that.syncLatestVerified().catch(e => {
+        this.startLoopSchedule('sync_latest_verified', interval, async () => {
+            await this.syncLatestVerified().catch(e => {
                 console.log('Schedule sync_latest_verified fail', e);
             });
-            setTimeout(repeat, interval);
-        }
-
-        repeat().then();
+        });
         console.log(`[sync_latest_verified]schedule in ${interval / 1000}s interval`);
     }
 
     private async syncLatestVerified() {
         const curMatchId = await KV.getNumber(KEY_VERIFIED_MATCH_ID, 0);
 
-        const resp = await ContractQuery._getJsonRequest({
+        const resp = await this._getJsonRequest({
             url: `${this.verifyUrl}/contracts/${StatApp.networkId}?sort=asc&afterMatchId=${curMatchId}&limit=10`
         });
         if (!resp) {
