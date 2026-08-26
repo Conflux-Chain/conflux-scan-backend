@@ -188,8 +188,11 @@ export class FullBlockQuery {
                 if (!blockExt || !blockExt.extra) {
                     continue
                 }
-                // if(blockExt?.extra) // cpu bursts 100% here, amazing.
-                epochBlockExtMap[`${blockExt.epoch}-${blockExt.position}`] = JSON.parse(blockExt.extra);
+                try {
+                    epochBlockExtMap[`${blockExt.epoch}-${blockExt.position}`] = JSON.parse(blockExt.extra);
+                } catch (error) {
+                    await safeAddErrorLog('open-api', 'list-block-parse-block-ext-extra', error);
+                }
             }
             if(StatApp.isEVM && !NoCoreSpace) {
                 const txCounts = await FullTransaction.sequelize.query(
@@ -513,17 +516,17 @@ export class FullBlockQuery {
 
     async computeTxCount({accountAddressId, sort, options}) {
         let finalCount: number;
+        const isDescSort = sort === 'DESC' || sort === 'desc';
         let [list, pruneInfo, countCache, newestTx] = await Promise.all([
             AddressTransactionIndex.findAll(options),
             PruneInfo.findOne({where: {addressId: accountAddressId, type: PruneType.ADDR_TX}, raw: true,}),
             TransferCount.findOne({where: {addressId: accountAddressId, type: 'TX'}, raw: true,}),
             new Promise(r=>{
-                if (sort === 'DESC' || sort === 'desc') {
+                if (isDescSort) {
                     r(undefined);
                 } else {
-                    // options.order = [['epoch', sort], ['blockPosition', sort], ['txPosition', sort]];
-                    options.order.forEach(o=>o[1] = 'DESC');
-                    const queryParam = {...options, limit: 1}
+                    const queryOrder = options.order?.map(item => [item[0], 'DESC']);
+                    const queryParam = {...options, limit: 1, order: queryOrder}
                     delete queryParam.offset;
                     AddressTransactionIndex.findOne(queryParam).then(row=>{
                         r(row);
@@ -531,7 +534,7 @@ export class FullBlockQuery {
                 }
             })
         ]);
-        if (sort === 'DESC' || sort === 'desc') {
+        if (isDescSort) {
             newestTx = list[0];
         }
         if (countCache
@@ -906,7 +909,14 @@ export class FullBlockQuery {
 
         // tx pool content
         const sdk = eth as JsonRpcProvider
-        const {pending} = await eth.send('txpool_contentFrom', [accountAddress])
+        const result = await eth.send('txpool_contentFrom', [accountAddress])
+        if (!result || typeof result !== 'object') {
+            return new AccountPendingInfo()
+        }
+        const {pending} = result as {pending?: Record<string, any>}
+        if (!pending || typeof pending !== 'object') {
+            return new AccountPendingInfo()
+        }
         if (!Object.keys(pending).length) {
             return new AccountPendingInfo()
         }
@@ -924,7 +934,7 @@ export class FullBlockQuery {
                     message: 'The nonce in [stateNonce, txNonce) is skipped',
                     params: {txNonce: `${parseInt(nonce)}`, stateNonce: nextNonce}
                 }
-                return new AccountPendingInfo(pending, {pending: "futureNonce"}, pendingDetail)
+                return new AccountPendingInfo(pending as any, {pending: "futureNonce"}, pendingDetail)
             }
         }
 
@@ -951,7 +961,7 @@ export class FullBlockQuery {
                 } else {
                     pendingDetail['code'] = 20
                 }
-                return new AccountPendingInfo(pending, {pending: "notEnoughCash"}, pendingDetail)
+                return new AccountPendingInfo(pending as any, {pending: "notEnoughCash"}, pendingDetail)
             }
         }
 
@@ -961,15 +971,21 @@ export class FullBlockQuery {
                 code: 32,
                 message: 'The transaction execution can be speed up by increasing the gasPrice appropriately',
             };
-            return new AccountPendingInfo(pending, "ready", pendingDetail)
+            return new AccountPendingInfo(pending as any, "ready", pendingDetail)
         }
     }
 }
 
 class AccountPendingInfo {
     pendingCount: number
-    constructor(public pendingTransactions: any[] = [], public firstTxStatus: any = null, public pendingDetail: any = undefined) {
-        this.pendingCount = pendingTransactions.length
+    constructor(public pendingTransactions: any = [], public firstTxStatus: any = null, public pendingDetail: any = undefined) {
+        if (Array.isArray(pendingTransactions)) {
+            this.pendingCount = pendingTransactions.length
+        } else if (pendingTransactions && typeof pendingTransactions === 'object') {
+            this.pendingCount = Object.keys(pendingTransactions).length
+        } else {
+            this.pendingCount = 0
+        }
     }
 }
 
@@ -996,9 +1012,15 @@ async function queryBlockByEpochRangeRpc(epochMin: number, epochMax: number) {
         return {}
     }
     let ret = {}
-    const tasks = []
-	  function fetch(epoch: number) {
-        const task = rpc.getBlocksByEpochNumber(epoch).then(blocks=>{
+    const epochArray: number[] = [];
+    let cursor = epochMin;
+    while (cursor <= epochMax) {
+        epochArray.push(cursor);
+        cursor ++;
+    }
+
+    await limitMap(epochArray, async (epoch: number) => {
+        return rpc.getBlocksByEpochNumber(epoch).then(blocks=>{
             return Promise.all(blocks.map(hash=>{
                 return rpc.getBlockByHash(hash, false)
             })).then(blockArr=>{
@@ -1007,13 +1029,6 @@ async function queryBlockByEpochRangeRpc(epochMin: number, epochMax: number) {
         }).catch(e=>{
             console.log(`failed to get block info, epoch ${epoch} . `, e)
         });
-        tasks.push(task);
-    }
-    let cursor = epochMin;
-    while(cursor <= epochMax) {
-        fetch(cursor);
-        cursor ++;
-    }
-    await Promise.all(tasks);
+    }, {limit: 10});
     return ret;
 }
