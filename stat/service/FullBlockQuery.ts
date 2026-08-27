@@ -914,10 +914,13 @@ export class FullBlockQuery {
             return new AccountPendingInfo()
         }
         const {pending} = result as {pending?: Record<string, any>}
-        if (!pending || typeof pending !== 'object') {
+        if (!pending || typeof pending !== 'object' || Array.isArray(pending)) {
             return new AccountPendingInfo()
         }
-        if (!Object.keys(pending).length) {
+        const pendingEntries = Object.entries(pending)
+        if (!pendingEntries.length || pendingEntries.some(([nonce, tx]) =>
+            !/^\d+$/.test(nonce) || !tx || typeof tx !== 'object' || Array.isArray(tx)
+        )) {
             return new AccountPendingInfo()
         }
 
