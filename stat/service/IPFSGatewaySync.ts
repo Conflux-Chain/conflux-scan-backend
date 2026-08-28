@@ -20,15 +20,41 @@ export class IPFSGatewaySync {
   private CID_FOR_SAMPLE = 'bafybeifx7yeb55armcsxwwitkymga5xf53dxiarykms3ygqic223w5sk3m'; // Hello from IPFS Gateway Checker
   private tick = 0; // 1 min per tick
   private stuckGateway: StuckChecker;
+  private timer: any;
+  private running = false;
+  private runId = 0;
 
-  constructor() {
-    this.init().then();
+  constructor(autoStart = true) {
     this.stuckGateway = new StuckChecker(`detect-ipfs-gateway`, 10);
+    if (autoStart) {
+      this.start().then();
+    }
   }
 
-  private async init() {
-    IPFSGatewaySync.fastest = await KV.getString(KEY_FASTEST_IPFS_GATEWAY, '');
-    await this.schedule();
+  public async start() {
+    if (this.running) {
+      return;
+    }
+    this.running = true;
+    const runId = ++this.runId;
+    try {
+      IPFSGatewaySync.fastest = await KV.getString(KEY_FASTEST_IPFS_GATEWAY, '');
+      await this.schedule(runId);
+    } catch (e) {
+      if (runId === this.runId) {
+        this.running = false;
+      }
+      throw e;
+    }
+  }
+
+  public stop() {
+    this.running = false;
+    this.runId += 1;
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = undefined;
+    }
   }
 
   public static tmplFromGateway(userGateway) {
@@ -48,21 +74,26 @@ export class IPFSGatewaySync {
     return target;
   }
 
-  public async schedule(delay: number = 1000 * 60) {
+  private async schedule(runId: number, delay: number = 1000 * 60) {
     console.log(`schedule detect_gateway sync with delay: ${delay}`);
 
     const that = this;
     async function repeat() {
+      if (!that.running || runId !== that.runId) {
+        return;
+      }
       await that.detectGateways().then(()=>{
         that.stuckGateway.ok();
       }).catch(err=>{
         console.log(`sync detect_gateway fail: `, err)
         that.stuckGateway.push(`failed to detect_gateways: \n ${err.name} ${err.message}`);
       });
-      setTimeout(repeat, delay);
+      if (that.running && runId === that.runId) {
+        that.timer = setTimeout(repeat, delay);
+      }
     }
 
-    repeat().then();
+    await repeat();
   }
 
   public async detectGateways() {

@@ -121,7 +121,7 @@ export class TokenQuery {
                         orderBy = 'transferCount';
                     }
                 }
-                const rev = reverse === 'true' ? 'DESC' : 'ASC';
+                const rev = reverse === true || reverse === 'true' ? 'DESC' : 'ASC';
                 if (orderBy === 'totalPrice')
                     options.order = [Sequelize.fn('ISNULL', Sequelize.col('totalPrice')),
                         ['totalPrice', rev], ['securityCredits', rev], ['transfer', rev]];
@@ -166,12 +166,12 @@ export class TokenQuery {
         let detectedTokens;
         if (rawList) {
             detectedTokens = rawList.map(item => item.address);
-            const verifiedTokens = await (contractQuery || service.contractQuery).listVerifyInBatch(detectedTokens)
-                .then(list => list.map(item => fmtAddr(item.address, StatApp.networkId)));
+            const verifiedTokens = new Set(await (contractQuery || service.contractQuery).listVerifyInBatch(detectedTokens)
+                .then(list => list.map(item => fmtAddr(item.address, StatApp.networkId))));
             rawList.forEach(row => {
                 row['address'] = fmtAddr(row['address'], StatApp.networkId);
                 row['transferType'] = lodash.toUpper(row['transferType']);
-                row['verified'] = lodash.includes(verifiedTokens, row['address']);
+                row['verified'] = verifiedTokens.has(row['address']);
                 row['isRegistered'] = true;
                 if (lodash.includes(fields, 'icon')) {
                     row['icon'] = row['icon'] ? decodeTokenIcon(row['icon']) : undefined;
@@ -254,7 +254,7 @@ export class TokenQuery {
         const tableNameConverter = {
             [CONST.TRANSFER_TYPE.ERC20]: T_ADDRESS_ERC20TRANSFER,
             [CONST.TRANSFER_TYPE.ERC721]: T_ADDRESS_ERC721_TRANSFER,
-            [CONST.TRANSFER_TYPE.ERC721]: T_ADDRESS_ERC1155_TRANSFER,
+            [CONST.TRANSFER_TYPE.ERC1155]: T_ADDRESS_ERC1155_TRANSFER,
         };
         const tableName = tableNameConverter[type];
         if (!tableName) {
@@ -316,43 +316,51 @@ export class TokenQuery {
         });
 
         let cond = 'where auditResult=1 and destroyed=0';
+        const normalizedTypes = types?.map(type => type.replace('CRC', 'ERC')) || [];
+        const supportedTypes = [CONST.TRANSFER_TYPE.ERC20, CONST.TRANSFER_TYPE.ERC721, CONST.TRANSFER_TYPE.ERC1155];
+        const unsupportedType = normalizedTypes.find(type => !supportedTypes.includes(type));
+        if (unsupportedType) {
+            throw new Errors.ParameterError(`Token type ${unsupportedType} not supported.`);
+        }
         if(types?.length) {
-            cond = `${cond} and (${types.map(type => `t.type = '${type.replace('CRC', 'ERC')}'`).join(' or ')})`;
+            cond = `${cond} and t.type in (:types)`;
         }
 
         const total = token ?  maxOfAllType : (await TokenBalance.sequelize.query(`
             select count(*) cntr
-            from (select * from token_balance where addressId = ?) b
+            from (select * from token_balance where addressId = :addressId) b
             left join token t on b.contractId = t.hex40id
             ${cond};
         `, {
             type: QueryTypes.SELECT,
-            replacements: [addressId],
+            replacements: {addressId, types: normalizedTypes},
         }).then(list => list[0]['cntr']));
 
         const fields = `b.balance, t.base32 as contract, t.type, t.name, t.symbol, t.decimals, t.iconUrl, t.webSite, 
             t.price, t.quoteUrl, t.transfer as totalTransfer`
 
-        let contractIds = "";
+        let contractIdCondition = "";
+        const listReplacements: any = {addressId, types: normalizedTypes, maxOfAllType, skip, limit};
         if (addresses?.length) {
             const ids = await getAddrIdArray(addresses);
             if (!ids?.length) {
                 return {total: 0, list: []};
             }
-            contractIds = `and contractId in (${ids.join(",")})`
+            contractIdCondition = `and contractId in (:contractIds)`;
+            listReplacements.contractIds = ids;
         }
 
         const list = await TokenBalance.sequelize.query(`
             select 
             ${fields}
-            from (select * from token_balance where addressId = ? ${contractIds} order by updatedAt desc limit ?) b
+            from (select * from token_balance where addressId = :addressId ${contractIdCondition} order by updatedAt desc limit :maxOfAllType) b
             left join token t on b.contractId = t.hex40id
             ${cond}
             order by b.updatedAt desc
-            limit ?, ?;
+            limit :skip, :limit;
         `, {
             type: QueryTypes.SELECT,
-            replacements: [addressId, maxOfAllType, skip, limit],
+            replacements: listReplacements,
         });
 
         list.forEach((token: any) => {
@@ -404,7 +412,7 @@ export class TokenQuery {
         // add recent transferred token , in case balance table is not updated in time.
         await Promise.all([T_ADDRESS_ERC20TRANSFER, T_ADDRESS_ERC721_TRANSFER, T_ADDRESS_ERC1155_TRANSFER]
             .map(tableName => {
-                TokenBalance.sequelize.query(`select distinct(contractId) from ( select contractId from ${tableName} 
+                return TokenBalance.sequelize.query(`select distinct(contractId) from ( select contractId from ${tableName}
                         where addressId = ${addressId} order by epoch desc limit 10) tmp;`,
                     {type: QueryTypes.SELECT,})
                     .then(transfers => transfers?.forEach(transfer =>

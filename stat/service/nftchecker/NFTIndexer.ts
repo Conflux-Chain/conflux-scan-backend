@@ -6,13 +6,13 @@ import {KV, KEY_FASTEST_IPFS_GATEWAY, NFT_META_POS_EPOCH} from "../../model/KV";
 import {CONST} from "../common/constant";
 import {initCfxSdk} from "../common/utils";
 import {init} from "../tool/FixDailyTokenStat";
-import {TokenQuery} from "../TokenQuery";
 import {IPFSGatewaySync} from "../IPFSGatewaySync";
 import {format} from "js-conflux-sdk";
 import {regExitHook} from "../tool/ProcessTool";
 import {listenPort} from "../../monitor/serverApi";
 import {StuckChecker} from "../../monitor/Monitor";
 import {getNFTMeta, replaceMetaAttributes} from "./NFTMetaUtil";
+import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 
 const lodash = require('lodash');
 
@@ -30,6 +30,7 @@ export interface INftMeta {
     error: string
     uri: string    //  url/ipfs         base64          json
     content: string // content          decoded         ''
+    updatedAt?: Date
 }
 
 export class NftMeta extends Model<INftMeta> implements INftMeta {
@@ -43,6 +44,7 @@ export class NftMeta extends Model<INftMeta> implements INftMeta {
     error: string
     uri: string    //  url/ipfs         base64          json
     content: string // content          decoded         ''
+    updatedAt?: Date
 
     static register(seq: Sequelize) {
         NftMeta.init({
@@ -160,6 +162,10 @@ const rateInfo = {
     maxLimit: 10,
 }
 
+const MAX_META_RETRIES = 3
+const META_RETRY_BASE_DELAY_MS = 60_000
+const RETRYABLE_META_ERRORS = [50600, 50601, 50602]
+
 // ----------------------- fetch once command ----------------------------
 async function fetchOnce(gateway, rpc, contract, tokenID) {
     await setup(gateway, {url: rpc})
@@ -178,14 +184,16 @@ async function fetchOnce(gateway, rpc, contract, tokenID) {
 
 // ------------------------- gateway command -----------------------------
 async function bestGateway() {
-    await new IPFSGatewaySync().detectGateways()
+    await new IPFSGatewaySync(false).detectGateways()
 }
 
 // --------------------------- run command -------------------------------
 async function run(gateway) {
     regExitHook();
+    process.once('exit', stopNFTMeta)
     await setup(gateway)
-    await syncNFTMeta()
+    gatewaySync = new IPFSGatewaySync()
+    await startNFTMeta()
 }
 
 async function setup(gateway: string = undefined, confluxConfig: any = undefined) {
@@ -196,12 +204,39 @@ async function setup(gateway: string = undefined, confluxConfig: any = undefined
     console.log(`networkId ${cfx.networkId}`)
 
     context.cmdGateway = gateway
-    new IPFSGatewaySync()
     console.log(`setup gateway ${gateway}`)
 }
 
 let stuckMeta: StuckChecker;
+let gatewaySync: IPFSGatewaySync;
+let syncTimer: any;
+let syncRunning = false;
+let syncInProgress = false;
+
+export async function startNFTMeta() {
+    if (syncRunning) {
+        return;
+    }
+    syncRunning = true;
+    if (!syncInProgress) {
+        await syncNFTMeta()
+    }
+}
+
+export function stopNFTMeta() {
+    syncRunning = false;
+    if (syncTimer) {
+        clearTimeout(syncTimer)
+        syncTimer = undefined
+    }
+    gatewaySync?.stop()
+}
+
 async function syncNFTMeta() {
+    if (syncInProgress) {
+        return;
+    }
+    syncInProgress = true;
     if (!stuckMeta) {
         stuckMeta = new StuckChecker(`sync-nft-meta`, 10);
     }
@@ -229,45 +264,72 @@ async function syncNFTMeta() {
         stuckMeta.push(`failed to sync nft meta : ${e.message}`);
     }
 
-    setTimeout(() => syncNFTMeta(), delay)
+    syncInProgress = false;
+    if (syncRunning) {
+        syncTimer = setTimeout(() => {
+            syncTimer = undefined
+            syncNFTMeta()
+        }, delay)
+    }
 }
 
 // ----------------------------- sync biz --------------------------------
 async function syncNFTMetaOnce() {
     const start = Date.now()
     const lastEpoch = await KV.getNumber(NFT_META_POS_EPOCH, 0)
-    const tasks = await NftMeta.findAll({
+    const retryConditions = Array.from({length: MAX_META_RETRIES}, (_, retry) => ({
+        retry,
+        updatedAt: {[Op.lte]: new Date(Date.now() - META_RETRY_BASE_DELAY_MS * (2 ** retry))}
+    }))
+    const retryTasks = await NftMeta.findAll({
+        where: {
+            status: MetaStatus.FAILURE,
+            errorType: {[Op.in]: RETRYABLE_META_ERRORS},
+            retry: {[Op.lt]: MAX_META_RETRIES},
+            [Op.or]: retryConditions
+        },
+        order: [['updatedAt', 'asc']],
+        limit: rateInfo.limit,
+        raw: true
+    })
+    const initLimit = rateInfo.limit - retryTasks.length
+    const initTasks = initLimit > 0 ? await NftMeta.findAll({
         where: {epochNumber: {[Op.gte]: lastEpoch}, status: MetaStatus.INIT},
         order: [['epochNumber', 'asc']],
-        limit: rateInfo.limit,
+        limit: initLimit,
         raw: true,
-    })
+    }) : []
+    const tasks = [...retryTasks, ...initTasks]
     if (!tasks.length) {
         return Code.NO_TASK
     }
 
     const contractMap = await getContractByIds(tasks.map(bean => Number(bean.contractId)))
     const results = await batchFetchNFTMeta(tasks, contractMap)
-    const metaFtsArray = results.map(nftMeta => {
-        const nftMetaFts = lodash.pick(nftMeta, ['contractId', 'tokenId', 'name'])
-        nftMetaFts.name = !nftMetaFts.name ? nftMetaFts.name : nftMetaFts.name?.substring(0, 256)
-        return nftMetaFts
-    })
+    const metaFtsArray = results
+        .filter((nftMeta: any) => nftMeta.status === MetaStatus.SUCCESS && nftMeta.name?.trim())
+        .map((nftMeta: any) => {
+            const nftMetaFts = lodash.pick(nftMeta, ['contractId', 'tokenId', 'name'])
+            nftMetaFts.name = nftMetaFts.name.substring(0, 256)
+            return nftMetaFts
+        })
 
-    const {epochNumber} = tasks[tasks.length - 1]
+    const epochNumber = initTasks.length ? initTasks[initTasks.length - 1].epochNumber : lastEpoch
     await NftMeta.sequelize.transaction(async dbTx => {
         await KV.upsert({
             key: NFT_META_POS_EPOCH,
             value: `${epochNumber}`
-        })
+        }, {transaction: dbTx})
         await NftMeta.bulkCreate(results as NftMeta[], {
-            updateOnDuplicate: ['epochNumber', 'status', 'retry', 'errorType', 'error', 'uri', 'content'],
+            updateOnDuplicate: ['epochNumber', 'status', 'retry', 'errorType', 'error', 'uri', 'content', 'updatedAt'],
             transaction: dbTx
         })
-        await NftMetaFts.bulkCreate(metaFtsArray as NftMetaFts[], {
-            updateOnDuplicate: ['name'],
-            transaction: dbTx
-        })
+        if (metaFtsArray.length) {
+            await NftMetaFts.bulkCreate(metaFtsArray as NftMetaFts[], {
+                updateOnDuplicate: ['name'],
+                transaction: dbTx
+            })
+        }
     })
 
     adjustBatchSize(Date.now() - start)
@@ -283,37 +345,80 @@ async function syncNFTMetaOnce() {
 
 async function getContractByIds(contractIds: number[]) {
     contractIds = [...new Set(contractIds)]
-    const contractArray = await Promise.all(contractIds.map(async contractId =>{
-        const hex = await Hex40Map.findByPk(contractId)
-        const typeInfo = await TokenQuery.detectTokenType({hex40id: contractId})
-        const token = await Token.findOne({attributes: ["ipfsGateway"], where: {hex40id: contractId}})
+    const [hexArray, tokenArray, erc1155Array] = await Promise.all([
+        Hex40Map.findAll({attributes: ['id', 'hex'], where: {id: {[Op.in]: contractIds}}, raw: true}),
+        Token.findAll({attributes: ['hex40id', 'ipfsGateway'], where: {hex40id: {[Op.in]: contractIds}}, raw: true}),
+        Erc1155Transfer.findAll({
+            attributes: ['contractId'],
+            where: {contractId: {[Op.in]: contractIds}},
+            group: ['contractId'],
+            raw: true
+        })
+    ])
+    const hexMap = lodash.keyBy(hexArray, 'id')
+    const tokenMap = lodash.keyBy(tokenArray, 'hex40id')
+    const erc1155ContractIds = new Set(erc1155Array.map(item => Number(item.contractId)))
+    const contractArray = contractIds.map(contractId => {
+        const hex = hexMap[contractId]
+        if (!hex) {
+            return {contractId, error: `contract address mapping ${contractId} not found`}
+        }
+        const token = tokenMap[contractId]
         return {
             contractId,
             hex: '0x' + hex.hex,
-            is1155: typeInfo?.type === CONST.TRANSFER_TYPE.ERC1155,
+            is1155: erc1155ContractIds.has(contractId),
             ipfsGateway: token?.ipfsGateway
         }
-    }))
+    })
     return lodash.keyBy(contractArray, 'contractId')
 }
 
+function buildFailedNFTMeta({epochNumber, contractId, tokenId, status, retry = 0}, cause) {
+    const message = String(cause?.message || cause || 'failed to fetch NFT metadata')
+    const errorType = cause?.code >= 50601 && cause?.code <= 50605 ? cause.code : 50600
+    return {
+        contractId,
+        tokenId,
+        epochNumber,
+        status: MetaStatus.FAILURE,
+        errorType,
+        error: message.substr(0, 1024),
+        uri: '',
+        content: '',
+        name: '',
+        retry: status === MetaStatus.FAILURE ? Number(retry) + 1 : Number(retry)
+    }
+}
+
 async function batchFetchNFTMeta(tasks, contracts) {
-    return Promise.all(tasks.map(async ({epochNumber, contractId, tokenId}) => {
-        const {hex, is1155, ipfsGateway} = contracts[Number(contractId)]
-        const gateway = await getIPFSGateway(ipfsGateway)
-        const {uri, content, name, errorType, error: e} = await fetchNFTMeta(hex, tokenId, is1155, gateway)
-        const [status, error] = errorType ? [MetaStatus.FAILURE, e.substr(0, 1024)] : [MetaStatus.SUCCESS, e]
-        return {
-            contractId,
-            tokenId,
-            epochNumber,
-            status,
-            errorType,
-            error,
-            uri,
-            content,
-            name,
-            retry: 0
+    return Promise.all(tasks.map(async task => {
+        const {contractId, tokenId} = task
+        try {
+            const contract = contracts[Number(contractId)]
+            if (!contract?.hex) {
+                return buildFailedNFTMeta(task, contract?.error || `contract ${contractId} not found`)
+            }
+            const {hex, is1155, ipfsGateway} = contract
+            const gateway = await getIPFSGateway(ipfsGateway)
+            const {uri, content, name, errorType, error: e} = await fetchNFTMeta(hex, tokenId, is1155, gateway)
+            const [status, error] = errorType ? [MetaStatus.FAILURE, e.substr(0, 1024)] : [MetaStatus.SUCCESS, e]
+            return {
+                contractId,
+                tokenId,
+                epochNumber: task.epochNumber,
+                status,
+                errorType,
+                error,
+                uri,
+                content,
+                name,
+                retry: status === MetaStatus.FAILURE && task.status === MetaStatus.FAILURE
+                    ? Number(task.retry) + 1
+                    : 0
+            }
+        } catch (e) {
+            return buildFailedNFTMeta(task, e)
         }
     }))
 }

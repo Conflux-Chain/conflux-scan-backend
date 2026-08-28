@@ -7,6 +7,7 @@ import {CONST} from "../../stat/service/common/constant";
 import {CensorService} from "../../stat/service/censor/CensorService";
 import {patchPocketAddress} from "../../stat/model/HexMap";
 import {getCfxTransfer} from "../../stat/CfxTransferSync";
+import {safeAddErrorLog} from "../../stat/monitor/ErrorMonitor";
 
 const lodash = require('lodash');
 const limitMap = require('limit-map');
@@ -15,6 +16,18 @@ const {extractActualGasCost} = require("../../stat/service/common/utils");
 const BigFixed = require('bigfixed');
 
 let _instance: TransactionService | undefined;
+
+function stableStringify(value: any): string {
+  return JSON.stringify(value, (_key, item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      return item;
+    }
+    return Object.keys(item).sort().reduce((sorted, key) => {
+      sorted[key] = item[key];
+      return sorted;
+    }, {});
+  });
+}
 
 export function getTransactionService(): TransactionService | undefined {
   return _instance;
@@ -61,14 +74,22 @@ export class TransactionService {
     const censorResult = await CensorService.getCensorResult(hash);
     if (censorResult && (censorResult.censorStatus === CONST.CENSOR_STATUS.REJECT
         || censorResult.censorStatus === CONST.CENSOR_STATUS.SUSPECT)) {
-      const {data} = hexToUtf8(transaction.data.substr(2));
-      const mosaicData = CensorService.mosaicText(data);
-      txInputData = `0x${utf8ToHex(mosaicData).data}`;
+      const isHexData = typeof transaction.data === 'string'
+          && /^0x(?:[0-9a-fA-F]{2})*$/.test(transaction.data);
+      if (isHexData) {
+        const decoded = hexToUtf8(transaction.data.substr(2));
+        if (decoded.success) {
+          const encoded = utf8ToHex(CensorService.mosaicText(decoded.data));
+          if (encoded.success) {
+            txInputData = `0x${encoded.data}`;
+          }
+        }
+      }
     }
 
     let baseFeePerGas
     if(transaction?.blockHash) {
-      const block = await service.conflux.getBlockByEpochNumber(transaction.epochNumber, false)
+      const block = await service.conflux.getBlockByHash(transaction.blockHash, false)
       baseFeePerGas = block?.baseFeePerGas
     }
 
@@ -117,23 +138,26 @@ export class TransactionService {
       app: {service},
     } = this as ScanCtx;
 
-    const result = await service.conflux.getTransactionTrace(txHash);
+    const result = await service.conflux.getTransactionTrace(txHash).catch(error => {
+      safeAddErrorLog('scan-api', `get-cfx-transfers-${txHash}`, error).then();
+      return undefined;
+    });
     return TransactionService.buildCfxTransfersFromTraceObj(result);
   }
 
   static buildCfxTransfersFromTraceObj(result) {
-    const traces = result.traceArray;
-    if (!traces) {
+    const traces = result?.traceArray;
+    if (!Array.isArray(traces)) {
       return {total: 0, list: []};
     }
 
     const list = [];
     for (let traceIdx = 0; traceIdx < traces.length; traceIdx++) {
       const trace = traces[traceIdx];
-      let {action: {from, to, fromPocket, toPocket}, valid} = trace;
-      if (!valid) {
+      if (!trace?.valid || !trace.action) {
         continue;
       }
+      const {from, to, fromPocket, toPocket} = trace.action;
 
       trace.from = patchPocketAddress(fromPocket, from);
       trace.to = patchPocketAddress(toPocket, to);
@@ -155,30 +179,34 @@ export class TransactionService {
     return {total: list.length, list: list.slice(0, TransactionService.MAX_RECORDS_CFX_TRANSFER)};
   }
 
-  private MAX_RECORDS_TOKEN_TRANSFER = 100;
+  private static MAX_RECORDS_TOKEN_TRANSFER = 100;
 
   async getTokenTransfers(txHash: string) {
     const {
       app: {service},
     } = this as ScanCtx;
 
-    const tokenTransfers = await service.conflux.getTransactionTokenTransferArray(txHash);
+    const tokenTransfers = await service.conflux.getTransactionTokenTransferArray(txHash).catch(error => {
+      safeAddErrorLog('scan-api', `get-token-transfers-${txHash}`, error).then();
+      return [];
+    });
     const list = tokenTransfers.map((item: any) => {
-      delete item.epochNumber;
-      delete item.transactionHash;
-      delete item.data;
-      delete item.topics;
-      delete item.blockHash;
-      delete item.logIndex;
-      delete item.space;
-      delete item.transactionIndex;
-      item.from = fmtAddr(item.from, StatApp.networkId);
-      item.to = fmtAddr(item.to, StatApp.networkId);
-      item.address = fmtAddr(item.address, StatApp.networkId);
-      return item;
+      const out = {...item};
+      delete out.epochNumber;
+      delete out.transactionHash;
+      delete out.data;
+      delete out.topics;
+      delete out.blockHash;
+      delete out.logIndex;
+      delete out.space;
+      delete out.transactionIndex;
+      out.from = fmtAddr(out.from, StatApp.networkId);
+      out.to = fmtAddr(out.to, StatApp.networkId);
+      out.address = fmtAddr(out.address, StatApp.networkId);
+      return out;
     });
 
-    return {total: list.length, list: list.slice(0, this.MAX_RECORDS_TOKEN_TRANSFER)};
+    return {total: list.length, list: list.slice(0, TransactionService.MAX_RECORDS_TOKEN_TRANSFER)};
   }
 
   // --------------------------------------------------------------------------
@@ -187,7 +215,7 @@ export class TransactionService {
       app: { ttlMap },
     } = this;
 
-    const { total } = await ttlMap.cache(`TransactionService.count(${JSON.stringify(options)})`,
+    const { total } = await ttlMap.cache(`TransactionService.count(${stableStringify(options)})`,
       () => this.countAndList({ ...options, limit: 0 }),
       { ttl: 5 * 1000 },
     );
@@ -250,7 +278,7 @@ export class TransactionService {
 
     const receiptGasUsed = Number(receipt?.gasUsed || 0);
     let gasCharged = NoCoreSpace ? receiptGasUsed : Math.max(receiptGasUsed, Math.ceil((Number(txGas) * 3) / 4));
-    let gasFee = receipt?.gasFee || Number(gasPrice) * gasCharged;
+    let gasFee = receipt?.gasFee || BigFixed(gasPrice).mul(BigFixed(gasCharged));
     // using actualGasCost as gasFee when NotEnoughCash error occurs
     // e.g. "txExecErrorMsg": "NotEnoughCash { required: 10000000000000000000, got: 0, actual_gas_cost: 0, max_storage_limit_cost: 0 }"
     const actualGasCost = extractActualGasCost(txExecErrorMsg);
