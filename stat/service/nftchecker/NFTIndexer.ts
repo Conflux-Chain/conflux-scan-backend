@@ -218,6 +218,7 @@ export async function startNFTMeta() {
         return;
     }
     syncRunning = true;
+    await gatewaySync?.start();
     if (!syncInProgress) {
         await syncNFTMeta()
     }
