@@ -5,7 +5,8 @@ import {
     LEGACY_NFTS,
     getNFTMeta,
     normalizeIpfsURI,
-    replaceMetaAttributes
+    replaceMetaAttributes,
+    isDynamicNFT
 } from './NFTMetaUtil';
 import {Desensitizer} from "../Desensitizer";
 import {NftMint, Token} from "../../model/Token";
@@ -123,9 +124,11 @@ export class NFTPreviewService {
 
             replaceMetaAttributes(address, meta);
 
-            await this.setCache(hex40id, String(tokenId), rawURI, meta).catch(e => {
-                safeAddErrorLog('nft-preview', 'set-metadata-cache', e).then();
-            });
+            if (!isDynamicNFT(meta)) {
+                await this.setCache(hex40id, String(tokenId), rawURI, meta).catch(e => {
+                    safeAddErrorLog('nft-preview', 'set-metadata-cache', e).then();
+                });
+            }
 
             const nft = this.buildNFTMeta(address, method, tokenId, gateway, rawURI, meta);
             return nft;

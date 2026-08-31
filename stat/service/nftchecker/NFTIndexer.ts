@@ -11,7 +11,7 @@ import {format} from "js-conflux-sdk";
 import {regExitHook} from "../tool/ProcessTool";
 import {listenPort} from "../../monitor/serverApi";
 import {StuckChecker} from "../../monitor/Monitor";
-import {getNFTMeta, replaceMetaAttributes} from "./NFTMetaUtil";
+import { getNFTMeta, isDynamicNFT, replaceMetaAttributes } from "./NFTMetaUtil";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 
 const lodash = require('lodash');
@@ -314,6 +314,8 @@ async function syncNFTMetaOnce() {
             nftMetaFts.name = nftMetaFts.name.substring(0, 256)
             return nftMetaFts
         })
+    const dynamicResults = results.filter((nftMeta: any) => nftMeta.dynamic === true)
+    const staticResults = results.filter((nftMeta: any) => nftMeta.dynamic !== true)
 
     const epochNumber = initTasks.length ? initTasks[initTasks.length - 1].epochNumber : lastEpoch
     await NftMeta.sequelize.transaction(async dbTx => {
@@ -321,10 +323,20 @@ async function syncNFTMetaOnce() {
             key: NFT_META_POS_EPOCH,
             value: `${epochNumber}`
         }, {transaction: dbTx})
-        await NftMeta.bulkCreate(results as NftMeta[], {
-            updateOnDuplicate: ['epochNumber', 'status', 'retry', 'errorType', 'error', 'uri', 'content', 'updatedAt'],
-            transaction: dbTx
-        })
+        if (staticResults.length) {
+            await NftMeta.bulkCreate(staticResults as NftMeta[], {
+                updateOnDuplicate: ['epochNumber', 'status', 'retry', 'errorType', 'error', 'uri', 'content', 'updatedAt'],
+                transaction: dbTx
+            })
+        }
+        if (dynamicResults.length) {
+            await NftMeta.destroy({
+                where: {
+                    [Op.or]: dynamicResults.map(({contractId, tokenId}) => ({contractId, tokenId}))
+                },
+                transaction: dbTx
+            })
+        }
         if (metaFtsArray.length) {
             await NftMetaFts.bulkCreate(metaFtsArray as NftMetaFts[], {
                 updateOnDuplicate: ['name'],
@@ -402,7 +414,7 @@ async function batchFetchNFTMeta(tasks, contracts) {
             }
             const {hex, is1155, ipfsGateway} = contract
             const gateway = await getIPFSGateway(ipfsGateway)
-            const {uri, content, name, errorType, error: e} = await fetchNFTMeta(hex, tokenId, is1155, gateway)
+            const {uri, content, name, dynamic, errorType, error: e} = await fetchNFTMeta(hex, tokenId, is1155, gateway)
             const [status, error] = errorType ? [MetaStatus.FAILURE, e.substr(0, 1024)] : [MetaStatus.SUCCESS, e]
             return {
                 contractId,
@@ -414,6 +426,7 @@ async function batchFetchNFTMeta(tasks, contracts) {
                 uri,
                 content,
                 name,
+                dynamic,
                 retry: status === MetaStatus.FAILURE && task.status === MetaStatus.FAILURE
                     ? Number(task.retry) + 1
                     : 0
@@ -425,7 +438,7 @@ async function batchFetchNFTMeta(tasks, contracts) {
 }
 
 async function fetchNFTMeta(contract: string, tokenId: string, is1155: boolean, ipfsGateway?: string)
-    : Promise<{ uri: string, content: string, name: string, error: string, errorType?: number }> {
+    : Promise<{ uri: string, content: string, name: string, dynamic: boolean, error: string, errorType?: number }> {
     let tokenURI = ''
     let timer: any
     let json: any
@@ -448,13 +461,13 @@ async function fetchNFTMeta(contract: string, tokenId: string, is1155: boolean, 
         // code refers to LogicError.ts
         const errorType = (e.code && e.code >= 50601 && e.code <= 50605) ? e.code : 50600;
         console.log(`fetch fail, ${logBasic} ${tokenURI}, ${e.message}`)
-        return {uri: tokenURI, content: '', name: '', error: `${e.message}`, errorType}
+        return {uri: tokenURI, content: '', name: '', dynamic: false, error: `${e.message}`, errorType}
     } finally {
         timer && clearTimeout(timer)
     }
 
     console.log(`ok ${logBasic} ${tokenURI}`)
-    return {uri: tokenURI, content: jsonStr, name, error: ''}
+    return { uri: tokenURI, content: jsonStr, name, dynamic: isDynamicNFT(json), error: '' }
 }
 
 const defaultGateway = 'https://ipfs.io'

@@ -109,6 +109,10 @@ export function replaceMetaAttributes(address, meta) {
     }
 }
 
+export function isDynamicNFT(meta: any): boolean {
+    return meta.dynamic === true || meta.mutable === true;
+}   
+
 export const LEGACY_NFTS = {
     'cfx:ach7c9fr2skv5fft98cygac0g93999z1refedecnn1': {
         imageName: {
