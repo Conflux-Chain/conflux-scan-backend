@@ -1,4 +1,6 @@
 import * as dns from 'dns';
+import * as http from 'http';
+import * as https from 'https';
 import * as net from 'net';
 import {URL} from 'url';
 import axios, {AxiosResponse} from 'axios';
@@ -10,7 +12,7 @@ export interface SafeFetchOptions {
 }
 
 const DEFAULT_TIMEOUT_MS = 5000;
-const DEFAULT_MAX_BYTES = 1024 * 1024; // 1MB
+export const DEFAULT_SAFE_FETCH_MAX_BYTES = 1024 * 1024; // 1MB
 
 function ipToLong(ip: string): number {
     return ip.split('.').reduce((acc, octet) => {
@@ -98,7 +100,7 @@ function assertAllowedHost(hostname: string, allowedHosts?: string[]): void {
     }
 }
 
-export async function validateFetchUrl(rawUrl: string, options: SafeFetchOptions = {}): Promise<string> {
+async function validateFetchTarget(rawUrl: string, options: SafeFetchOptions = {}) {
     let parsed: URL;
     try {
         parsed = new URL(rawUrl);
@@ -114,23 +116,52 @@ export async function validateFetchUrl(rawUrl: string, options: SafeFetchOptions
 
     assertAllowedHost(parsed.hostname, options.allowedHosts);
 
-    await resolvePublicAddresses(parsed.hostname);
+    const addresses = await resolvePublicAddresses(parsed.hostname);
 
-    return parsed.toString();
+    return {finalUrl: parsed.toString(), hostname: parsed.hostname, addresses};
+}
+
+export async function validateFetchUrl(rawUrl: string, options: SafeFetchOptions = {}): Promise<string> {
+    return (await validateFetchTarget(rawUrl, options)).finalUrl;
+}
+
+function createPinnedLookup(expectedHostname: string, addresses: string[]) {
+    return (hostname: string, lookupOptions: any, callback: Function) => {
+        if (hostname.toLowerCase() !== expectedHostname.toLowerCase()) {
+            callback(new Error(`unexpected lookup hostname: ${hostname}`));
+            return;
+        }
+
+        const family = typeof lookupOptions === 'number' ? lookupOptions : lookupOptions?.family;
+        const candidates = family ? addresses.filter(address => net.isIP(address) === family) : addresses;
+        if (!candidates.length) {
+            callback(new Error(`no validated address for address family ${family}`));
+            return;
+        }
+        if (lookupOptions?.all) {
+            callback(null, candidates.map(address => ({address, family: net.isIP(address)})));
+            return;
+        }
+        callback(null, candidates[0], net.isIP(candidates[0]));
+    };
 }
 
 export async function safeFetch(
     rawUrl: string,
     options: SafeFetchOptions = {}
 ) {
-    const finalUrl = await validateFetchUrl(rawUrl, options);
+    const {finalUrl, hostname, addresses} = await validateFetchTarget(rawUrl, options);
+    const lookup = createPinnedLookup(hostname, addresses);
 
     const response: AxiosResponse<string> = await axios.get(finalUrl, {
         timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
         responseType: 'text',
         maxRedirects: 0, // critical: do not follow redirects
-        maxContentLength: options.maxBytes ?? DEFAULT_MAX_BYTES,
-        maxBodyLength: options.maxBytes ?? DEFAULT_MAX_BYTES,
+        maxContentLength: options.maxBytes ?? DEFAULT_SAFE_FETCH_MAX_BYTES,
+        maxBodyLength: options.maxBytes ?? DEFAULT_SAFE_FETCH_MAX_BYTES,
+        httpAgent: new http.Agent({lookup} as any),
+        httpsAgent: new https.Agent({lookup} as any),
+        proxy: false,
     });
 
     return response.data;

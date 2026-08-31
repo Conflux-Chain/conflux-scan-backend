@@ -158,7 +158,7 @@ export async function getNFTPreview(ctx) {
     const data = {
         contract, tokenId,
         name: nftInfo?.imageName?.en, image: nftInfo?.imageUri, description: nftInfo?.imageDesc, creator: nftInfo.creator,
-        mintTimestamp: nftInfo?.mintTime.getTime() / 1000, owner: nftInfo?.owner, type: nftInfo?.type?.replace('ERC', 'CRC')
+        mintTimestamp: nftInfo?.mintTime?.getTime() / 1000, owner: nftInfo?.owner, type: nftInfo?.type?.replace('ERC', 'CRC')
     };
     const metadata = withMetadata === 'true' ? {rawData: nftInfo?.detail} : undefined;
     lodash.defaults(data, {...metadata, error: nftInfo?.error});

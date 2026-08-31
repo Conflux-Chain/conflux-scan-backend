@@ -11,7 +11,7 @@ import {Desensitizer} from "../Desensitizer";
 import {NftMint, Token} from "../../model/Token";
 import {formatToBase32, Hex40Map} from "../../model/HexMap";
 import {format} from "js-conflux-sdk";
-import {QueryTypes} from "sequelize";
+import {Op, QueryTypes} from "sequelize";
 import {Erc721Transfer} from "../../model/Erc721Transfer";
 import {Errors} from "../common/LogicError";
 import {CONST} from "../common/constant"
@@ -19,15 +19,25 @@ import {IPFSGatewaySync} from "../IPFSGatewaySync";
 import {TokenQuery} from "../TokenQuery";
 import {MetaStatus, NftMeta} from "./NFTIndexer";
 import {safeFetch} from "../common/security/safeFetch";
+import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
 
 const lodash = require('lodash');
 
 export class NFTPreviewService {
     private cfx;
+    private ipfsGatewaySync: IPFSGatewaySync;
 
-    constructor({cfx}) {
+    constructor({cfx, ipfsGatewaySync = new IPFSGatewaySync()}) {
         this.cfx = cfx;
-        new IPFSGatewaySync();
+        this.ipfsGatewaySync = ipfsGatewaySync;
+    }
+
+    public start() {
+        return this.ipfsGatewaySync.start();
+    }
+
+    public stop() {
+        this.ipfsGatewaySync.stop();
     }
 
     public async getNFTInfo ({
@@ -37,7 +47,7 @@ export class NFTPreviewService {
         forceFlush = false,
     }: {
         contractAddress: string;
-        tokenId: BigInt;
+        tokenId: bigint;
         withDetail?: boolean;
         forceFlush?: boolean;
     }): Promise<NFTInfoType> {
@@ -46,17 +56,18 @@ export class NFTPreviewService {
         const typeInfo = await TokenQuery.detectTokenType({base32: address}) as Token;
         if (!token) {
             token = typeInfo;
-        } else {
+        } else if (typeInfo.type === CONST.TRANSFER_TYPE.ERC1155
+            || typeInfo.type === CONST.TRANSFER_TYPE.ERC721) {
             token.type = typeInfo.type; // support hybrid nft
         }
 
-        if (token.type !== CONST.TRANSFER_TYPE.ERC1155 && token.type !== CONST.TRANSFER_TYPE.ERC721) {
+        if (!token || (token.type !== CONST.TRANSFER_TYPE.ERC1155 && token.type !== CONST.TRANSFER_TYPE.ERC721)) {
             throw new Errors.ParameterError(`The contract ${contractAddress} not a NFT contract`);
         }
 
-        let nftInfo;
+        let nftInfo: NFTInfoType;
         if (LEGACY_NFTS[address]) {
-            nftInfo = lodash.cloneDeep(LEGACY_NFTS[address]);
+            nftInfo = lodash.cloneDeep(LEGACY_NFTS[address]) as NFTInfoType;
         } else {
             const {hex40id, type, ipfsGateway: gateway} = token;
             const method = LEGACY_NFT_URIS[address] || (type === CONST.TRANSFER_TYPE.ERC1155 ? "uri" : "tokenURI");
@@ -68,8 +79,7 @@ export class NFTPreviewService {
             ownerInfo = await this.getNFTOwnerInfo({address, hex40id: token.hex40id, tokenId, type: token.type});
         }
 
-        const imageUri = nftInfo.imageUri;
-        const imageGateway = imageUri?.startsWith('http') ? imageUri.substring(0, imageUri.indexOf('/ipfs/')) : '';
+        const imageGateway = getImageGateway(nftInfo.imageUri);
 
         lodash.assign(nftInfo, ownerInfo, {imageGateway});
 
@@ -90,7 +100,7 @@ export class NFTPreviewService {
     }: {
         address: string,
         hex40id: number,
-        tokenId: BigInt,
+        tokenId: bigint,
         gateway?: string,
         method?: string,
         forceFlush?: boolean
@@ -99,8 +109,13 @@ export class NFTPreviewService {
             if (!forceFlush) {
                 const cache = await this.getCache(hex40id, String(tokenId));
                 if (cache) {
-                    const nft = this.buildNFTMeta(address, method, tokenId, gateway, cache.uri, JSON.parse(cache.content));
-                    return nft;
+                    try {
+                        return await this.buildNFTMeta(
+                            address, method, tokenId, gateway, cache.uri, JSON.parse(cache.content)
+                        );
+                    } catch (e) {
+                        safeAddErrorLog('nft-preview', 'build-cached-metadata', e).then();
+                    }
                 }
             }
 
@@ -108,7 +123,9 @@ export class NFTPreviewService {
 
             replaceMetaAttributes(address, meta);
 
-            this.setCache(hex40id, String(tokenId), rawURI, meta);
+            await this.setCache(hex40id, String(tokenId), rawURI, meta).catch(e => {
+                safeAddErrorLog('nft-preview', 'set-metadata-cache', e).then();
+            });
 
             const nft = this.buildNFTMeta(address, method, tokenId, gateway, rawURI, meta);
             return nft;
@@ -120,12 +137,12 @@ export class NFTPreviewService {
         }
     };
 
-    private async buildNFTMeta(address, method, tokenId, gateway, rawTokenURI, meta) {
+    private async buildNFTMeta(address, method, tokenId, gateway, rawTokenURI, meta): Promise<NFTInfoType> {
         const gatewayTokenURI = normalizeIpfsURI(rawTokenURI, gateway);
         const legacyName = LEGACY_NFT_NAMES[address] && LEGACY_NFT_NAMES[address](meta);
         const legacyImage = LEGACY_NFT_IMAGES[address] && LEGACY_NFT_IMAGES[address](meta);
         return {
-            imageName: legacyName || await this.getNFTName(meta) || {},
+            imageName: legacyName || await this.getNFTName(meta, gateway) || {},
             imageUri: legacyImage || (meta.image ? normalizeIpfsURI(meta.image, gateway) : meta.image_data),
             imageDesc: meta.description,
             detail: {
@@ -136,26 +153,22 @@ export class NFTPreviewService {
         }
     }
 
-    private async getNFTName(meta) {
+    private async getNFTName(meta, gateway?: string) {
+        const nftName = {
+            en: meta.name,
+            zh: meta.name
+        };
         try {
-            const nftName = {
-                en: meta.name
-            };
-
-            let zh: string | undefined;
             if (meta?.localization?.uri) { // try 1155
                 const zhUri = meta.localization.uri.replace('{locale}', 'zh-cn');
-                const data = await safeFetch(zhUri);
+                const data = await safeFetch(normalizeIpfsURI(zhUri, gateway));
                 const json = JSON.parse(data);
-                zh = json.name;
-
+                nftName.zh = json.name || meta.name;
             }
-            lodash.assign(nftName, {zh: zh ? zh : meta.name});
-
-            return nftName;
         } catch (e) {
-            throw new Errors.QueryNFTLocalNameError(`${meta?.localization?.uri} ${e.message}`)
+            safeAddErrorLog('nft-preview', 'get-localized-name', e).then();
         }
+        return nftName;
     };
 
     private async getCache(contractId: number, tokenId: string) {
@@ -166,8 +179,8 @@ export class NFTPreviewService {
         return nftMeta;
     }
 
-    private setCache(contractId: number, tokenId: string, uri: string, metadata: string) {
-        NftMeta.upsert({
+    private setCache(contractId: number, tokenId: string, uri: string, metadata: any) {
+        return NftMeta.bulkCreate([{
             contractId: contractId,
             tokenId,
             epochNumber: 0,
@@ -177,56 +190,97 @@ export class NFTPreviewService {
             error: '',
             uri,
             content: JSON.stringify(metadata)
-        }).then();
+        }] as NftMeta[], {
+            updateOnDuplicate: ['status', 'retry', 'errorType', 'error', 'uri', 'content', 'updatedAt']
+        });
     }
 
     private async getNFTOwnerInfo({address, hex40id, tokenId, type}) {
         const hex = format.hexAddress(address);
 
-        const sql = `select * from hex40 where id = (select \`from\` from trace_create_contract where \`to\` = (select
-            id from hex40 where hex = ?));`;
-        const creator = await Hex40Map.sequelize
-            .query(sql, {type: QueryTypes.SELECT, replacements: [hex.substr(2)]})
-            .then(hexBeanArray => {
-                return hexBeanArray?.length ? formatToBase32(`0x${hexBeanArray[0]['hex']}`) : undefined;
-            });
-
-        const sql1 = `select * from ${NftMint.getTableName()} where contractId =(select id from hex40 where hex = ?) 
-            and tokenId = ?;`;
-        const minter = await NftMint.sequelize
-            .query(sql1, {type: QueryTypes.SELECT, replacements: [hex.substr(2), `${tokenId}`]})
-            .then(async nftMinterArray => {
-                if (!nftMinterArray?.length) return undefined;
-                const nftMinter = nftMinterArray[0];
-                const ownerHex = await Hex40Map.findOne({where: {id: nftMinter['toId']}});
-                const owner = formatToBase32(`0x${ownerHex['hex']}`);
-                const mintTime = nftMinter['createdAt'];
-                return {owner, mintTime};
-            });
-
-        let owner;
-        if (type === CONST.TRANSFER_TYPE.ERC721) {
-            const ownerId = await Erc721Transfer.findOne({
+        const creatorSql = `select hex from hex40 where id = (select \`from\` from trace_create_contract where \`to\` = (select
+            id from hex40 where hex = ?)) limit 1;`;
+        const latestTransferPromise = type === CONST.TRANSFER_TYPE.ERC721
+            ? Erc721Transfer.findOne({
                 where: {contractId: hex40id, tokenId: `${tokenId}`},
                 order: [['epoch', 'DESC']],
-                limit: 1,
+                attributes: ['toId'],
                 raw: true
-            }).then(item => item.toId);
-            const ownerHex = await Hex40Map.findOne({where: {id: ownerId}});
-            owner = formatToBase32(`0x${ownerHex['hex']}`);
-        }
+            })
+            : Promise.resolve(undefined);
+        const [creatorRows, mint, latestTransfer] = await Promise.all([
+            Hex40Map.sequelize.query(creatorSql, {
+                type: QueryTypes.SELECT,
+                replacements: [hex.substr(2)]
+            }),
+            NftMint.findOne({
+                attributes: ['toId', 'createdAt'],
+                where: {contractId: hex40id, tokenId: `${tokenId}`},
+                raw: true
+            }),
+            latestTransferPromise
+        ]);
 
-        return {creator, ...minter, owner, type};
+        const addressIds = [mint?.toId, latestTransfer?.toId].filter(Boolean);
+        const addressRows = addressIds.length ? await Hex40Map.findAll({
+            attributes: ['id', 'hex'],
+            where: {id: {[Op.in]: addressIds}},
+            raw: true
+        }) : [];
+        const addressMap = lodash.keyBy(addressRows, 'id');
+        const formatAddressId = (id) => addressMap[id]
+            ? formatToBase32(`0x${addressMap[id].hex}`)
+            : undefined;
+        const creator = creatorRows?.length
+            ? formatToBase32(`0x${creatorRows[0]['hex']}`)
+            : undefined;
+        const mintOwner = formatAddressId(mint?.toId);
+        const owner = type === CONST.TRANSFER_TYPE.ERC721
+            ? formatAddressId(latestTransfer?.toId)
+            : mintOwner;
+
+        return {creator, mintTime: mint?.['createdAt'], owner, type};
     }
 }
+
+function getImageGateway(imageUri?: string): string {
+    if (!imageUri) {
+        return '';
+    }
+    try {
+        const url = new URL(imageUri);
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+            return '';
+        }
+        const markerIndex = url.pathname.indexOf('/ipfs/');
+        return markerIndex < 0 ? '' : `${url.origin}${url.pathname.substring(0, markerIndex)}`;
+    } catch (e) {
+        return '';
+    }
+}
+
+export type NFTImageName = {
+    en?: string;
+    zh?: string;
+};
+
+export type NFTDetail = {
+    funcCall: string;
+    tokenUri: {raw: string; gateway: string};
+    metadata: Record<string, unknown>;
+};
 
 export type NFTInfoType = {
     imageMinHeight?: number;
     imageUri?: string;
-    imageName?: any;
-    imageDesc?: any;
-    detail?: any;
+    imageName: NFTImageName;
+    imageDesc?: unknown;
+    detail?: NFTDetail;
     code?: number;
-    error?: any;
+    error?: unknown;
     externalMs?: number;
-} | null;
+    creator?: string;
+    mintTime?: Date;
+    owner?: string;
+    type?: string;
+};

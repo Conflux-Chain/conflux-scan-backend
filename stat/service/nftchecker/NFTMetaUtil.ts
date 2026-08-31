@@ -1,7 +1,7 @@
 import {Errors} from "../common/LogicError";
 import {abi} from "../abi/Crc1155Core";
 import {IPFSGatewaySync} from "../IPFSGatewaySync";
-import {safeFetch} from "../common/security/safeFetch";
+import {DEFAULT_SAFE_FETCH_MAX_BYTES, safeFetch} from "../common/security/safeFetch";
 import {fmtAddr, StatApp} from "../../StatApp";
 import {CONST} from "../common/constant";
 
@@ -63,7 +63,17 @@ async function getMetadataByURI(tokenURI: string) {
         }
 
         if (tokenURI.startsWith('data:application/json;base64')) {
-            return Buffer.from(tokenURI.substring(29), 'base64').toString();
+            const encoded = tokenURI.substring(29);
+            const padding = encoded.endsWith('==') ? 2 : encoded.endsWith('=') ? 1 : 0;
+            const estimatedBytes = Math.floor(encoded.length * 3 / 4) - padding;
+            if (estimatedBytes > DEFAULT_SAFE_FETCH_MAX_BYTES) {
+                throw new Error('inline metadata exceeds size limit');
+            }
+            const decoded = Buffer.from(encoded, 'base64');
+            if (decoded.byteLength > DEFAULT_SAFE_FETCH_MAX_BYTES) {
+                throw new Error('inline metadata exceeds size limit');
+            }
+            return decoded.toString();
         }
 
         const meta = await safeFetch(tokenURI);
