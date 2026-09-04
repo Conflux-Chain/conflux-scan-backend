@@ -12,6 +12,13 @@ export const DataTimeTableList = {
 	daily_contract_stat: {ignore: false,},
 	daily_nft_holder: {ignore: false,},
 	daily_nft_stat: {ignore: false,},
+	// roster is a rolling window written by the same job as daily_partner_stat,
+	// so that table's freshness already covers it
+	daily_partner_addr: {ignore: true,},
+	daily_partner_stat: {ignore: false,},
+	// gaps are legitimate here: a snapshot is skipped rather than faked when the
+	// job runs too far from the day boundary
+	daily_partner_tvl: {ignore: true,},
 	daily_pos_reward_stat: {ignore: false,},
 	daily_pow_reward_stat: {ignore: false,},
 	daily_token: {ignore: false,},
@@ -53,6 +60,7 @@ export const DataTimeTableList = {
 	'ens': {ignore: true },
 	'nft_id': {ignore: true },
 	'rate_key': {ignore: true },
+	'partner_audit': {ignore: true },
 	'search_text': {ignore: true },
 	'stat_token_transfer': {ignore: true },
 	'token2': {ignore: true },
