@@ -39,11 +39,18 @@ async function getTokenURI(cfx, address, tokenId, method) {
 }
 
 export function normalizeIpfsURI(rawURI: string, userGateway: string): string {
-    if (!rawURI || typeof rawURI !== 'string') {
-        throw new Errors.QueryNFTMetadataError('invalid metadata uri');
+    if (typeof rawURI !== 'string') {
+        throw new Errors.QueryNFTMetadataError(`invalid metadata uri: expected string, got ${typeof rawURI}`);
+    }
+    if (!rawURI) {
+        throw new Errors.QueryNFTMetadataError('invalid metadata uri: empty value');
     }
 
     const trimmed = rawURI.trim();
+
+    if (!trimmed) {
+        throw new Errors.QueryNFTMetadataError('invalid metadata uri: blank value');
+    }
 
     if (trimmed.startsWith('ipfs://')) {
         const gateway = IPFSGatewaySync.tmplFromGateway(userGateway) || IPFSGatewaySync.fastest || "https://ipfs.io";

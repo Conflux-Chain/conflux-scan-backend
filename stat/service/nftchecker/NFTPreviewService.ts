@@ -115,7 +115,7 @@ export class NFTPreviewService {
                             address, method, tokenId, gateway, cache.uri, JSON.parse(cache.content)
                         );
                     } catch (e) {
-                        safeAddErrorLog('nft-preview', 'build-cached-metadata', e).then();
+                        safeAddNFTPreviewExceptionLog('build-cached-metadata', e);
                     }
                 }
             }
@@ -126,7 +126,7 @@ export class NFTPreviewService {
 
             if (!isDynamicNFT(meta)) {
                 await this.setCache(hex40id, String(tokenId), rawURI, meta).catch(e => {
-                    safeAddErrorLog('nft-preview', 'set-metadata-cache', e).then();
+                    safeAddNFTPreviewExceptionLog('set-metadata-cache', e);
                 });
             }
 
@@ -169,7 +169,7 @@ export class NFTPreviewService {
                 nftName.zh = json.name || meta.name;
             }
         } catch (e) {
-            safeAddErrorLog('nft-preview', 'get-localized-name', e).then();
+            safeAddNFTPreviewExceptionLog('get-localized-name', e);
         }
         return nftName;
     };
@@ -244,6 +244,20 @@ export class NFTPreviewService {
 
         return {creator, mintTime: mint?.['createdAt'], owner, type};
     }
+}
+
+function safeAddNFTPreviewExceptionLog(biz: string, error: any): void {
+    if (isExpectedNFTBusinessError(error)) {
+        return;
+    }
+    safeAddErrorLog('nft-preview', biz, error).then();
+}
+
+function isExpectedNFTBusinessError(error: any): boolean {
+    return error?.code === 50601
+        || error?.code === 50602
+        || error?.code === 50603
+        || error?.code === 50605;
 }
 
 function getImageGateway(imageUri?: string): string {
