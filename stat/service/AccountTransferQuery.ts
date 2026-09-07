@@ -1,6 +1,6 @@
 // @ts-ignore
 import {format} from "js-conflux-sdk";
-import {TransferQueryBase} from "./TransferQueryBase";
+import {TransferQueryApp, TransferQueryBase} from "./TransferQueryBase";
 import {getAddrTransferCount} from "../model/TransferCount";
 import {AddressTransfer} from "../model/AddrTransfer";
 import {CONST} from "./common/constant";
@@ -10,10 +10,10 @@ import {PruneType} from "../model/PruneInfo";
 const lodash = require('lodash');
 
 export class AccountTransferQuery extends TransferQueryBase{
-    protected app;
+    protected app: TransferQueryApp;
     protected CODE_TYPE_MAP;
 
-    constructor(app: any) {
+    constructor(app: TransferQueryApp) {
         super(app);
         this.app = app;
         this.CODE_TYPE_MAP = lodash.keyBy(Object.values(CONST.ADDRESS_TRANSFER_TYPE), 'code');

@@ -1,14 +1,14 @@
 import {Op, QueryTypes} from 'sequelize'
 import {FullBlock, FullTransaction} from "../../model/FullBlock";
 import {fmtDtUTC} from "../../model/Utils";
-import {StatType, TimerStat} from "./TimerStat";
+import {StatType, TimerStat, TimerStatApp} from "./TimerStat";
 import {DailyGasStat} from "../../model/DailyGasStat";
 
 const BigFixed = require('bigfixed');
 
 export class StatDailyGas extends TimerStat{
 
-    constructor(app: any, interval: number = 1000 * 60) {
+    constructor(app: TimerStatApp, interval: number = 1000 * 60) {
         super(app);
         this.baseInterval = StatType.HOUR;
         this.schedule(interval).then();

@@ -2,11 +2,11 @@ import {QueryTypes} from 'sequelize'
 import {CfxBalance} from "../../model/Balance";
 import {DailyCfxHolder} from "../../model/DailyCfxHolder";
 import {EpochHashCfxTransfer} from "../../CfxTransferSync";
-import {StatType, TimerStat} from "./TimerStat";
+import {StatType, TimerStat, TimerStatApp} from "./TimerStat";
 
 export class StatTotalCfxHolder extends TimerStat{
 
-    constructor(app: any, interval: number = 1000 * 60) {
+    constructor(app: TimerStatApp, interval: number = 1000 * 60) {
         super(app);
         this.baseInterval = StatType.TEN_MIN;
         this.schedule(interval).then();

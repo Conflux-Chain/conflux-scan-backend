@@ -2,7 +2,7 @@ import {CfxTransfer, pagingFullCfxTransfer, AddressCfxTransfer} from "../model/C
 import {TraceCreateContract} from "../model/TraceCreateContract";
 import {KEY_FULL_CFX_TRANSFER_COUNT, KV} from "../model/KV";
 import {Op} from "sequelize";
-import {TransferQueryBase} from "./TransferQueryBase";
+import {TransferQueryApp, TransferQueryBase} from "./TransferQueryBase";
 import {getAddrTransferCount} from "../model/TransferCount";
 import {CONST} from "./common/constant"
 import {Errors} from "./common/LogicError";
@@ -10,7 +10,7 @@ import {FullTransaction} from "../model/FullBlock";
 import {PruneType} from "../model/PruneInfo";
 
 export class CfxTransferQuery extends TransferQueryBase{
-    constructor(app: any) {
+    constructor(app: TransferQueryApp) {
         super(app);
         this.addrPruneType = PruneType.ADDR_CFX_TRANSFER;
         this.transferType = CONST.TRANSFER_TYPE.CFX;

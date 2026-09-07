@@ -20,7 +20,7 @@ const HttpClient = require("baidu-aip-sdk").HttpClient;
 const {CENSOR_STATUS} = CONST;
 
 export class CensorService {
-    private cfx: any;
+    private cfx: Conflux;
     private opt: CensorOptions;
     private censorClient;
     private initialized = false;

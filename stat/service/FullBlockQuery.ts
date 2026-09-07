@@ -1,5 +1,5 @@
 // @ts-ignore
-import {CONST as SDK_CONST, format} from "js-conflux-sdk";
+import {CONST as SDK_CONST, Conflux, format} from "js-conflux-sdk";
 import {Op, QueryTypes} from "sequelize"
 import {
     AddressTransactionIndex,
@@ -31,10 +31,15 @@ import limitMap = require("../../common/lib/limitMap");
 const lodash = require('lodash');
 const BigFixed = require('bigfixed');
 
+interface FullBlockQueryApp {
+    cfx: Conflux;
+    eth?: any;
+}
+
 export class FullBlockQuery {
-    protected app;
+    protected app: FullBlockQueryApp;
     protected sponsorContract;
-    public constructor(app: any) {
+    public constructor(app: FullBlockQueryApp) {
         this.app = app;
         this.sponsorContract = app.cfx.InternalContract('SponsorWhitelistControl');
     }
@@ -642,7 +647,7 @@ export class FullBlockQuery {
     }
 
     public async listPendingTx({accountAddress}){
-        const{ cfx } = this.app;
+        const{ cfx } = this.app as any;
 
         // check
         const result =  await cfx.getAccountPendingTransactions(accountAddress, undefined, 10);

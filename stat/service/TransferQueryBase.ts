@@ -1,5 +1,5 @@
 // @ts-ignore
-import {format} from "js-conflux-sdk";
+import {Conflux, format} from "js-conflux-sdk";
 import {IndexHints, Op} from "sequelize"
 import {idHex40Map, Hex40Map} from "../model/HexMap";
 import {FailedTx, FullTransaction} from "../model/FullBlock";
@@ -15,14 +15,21 @@ import {fillMethodInfo} from "./contract/contractTool";
 
 const lodash = require('lodash');
 
+export interface TransferQueryApp {
+    cfx?: Conflux;
+    config?: any;
+    networkId?: number;
+    service?: any;
+}
+
 export abstract class TransferQueryBase {
-    protected app;
+    protected app: TransferQueryApp;
     protected NAME_TYPE_MAP;
     protected transferType;
     protected addrPruneType;
     protected addrModel;
 
-    protected constructor(app: any) {
+    protected constructor(app: TransferQueryApp) {
         this.app = app;
         this.NAME_TYPE_MAP = lodash.keyBy(Object.values(CONST.ADDRESS_TRANSFER_TYPE), 'name');
     }

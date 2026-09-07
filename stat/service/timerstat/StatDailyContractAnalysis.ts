@@ -9,12 +9,12 @@ import {Erc721Transfer} from "../../model/Erc721Transfer";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
 import {makeId} from "../../model/HexMap";
 import {CONST} from "../common/constant"
-import {StatType, TimerStat} from "./TimerStat";
+import {StatType, TimerStat, TimerStatApp} from "./TimerStat";
 import {ConfigInstance, NoCoreSpace} from "../../config/StatConfig";
 
 export class StatDailyContractAnalysis extends TimerStat{
 
-    constructor(app: any, interval: number = 1000 * 60 * 10) {
+    constructor(app: TimerStatApp, interval: number = 1000 * 60 * 10) {
         super(app);
         this.baseInterval = StatType.DAY;
         this.schedule(interval).then();

@@ -1,6 +1,6 @@
 // @ts-ignore
 import {Conflux, format} from "js-conflux-sdk";
-import {TransferQueryBase} from "./TransferQueryBase";
+import {TransferQueryApp, TransferQueryBase} from "./TransferQueryBase";
 import {getAddrTransferCount} from "../model/TransferCount";
 import {fmtAddr, StatApp} from "../StatApp";
 import {Token} from "../model/Token";
@@ -14,9 +14,9 @@ import {PruneType} from "../model/PruneInfo";
 import {initCfxSdk} from "./common/utils";
 
 export class Crc3525TransferQuery extends TransferQueryBase{
-    protected app;
+    protected app: TransferQueryApp;
 
-    constructor(app: any) {
+    constructor(app: TransferQueryApp) {
         super(app);
         this.app = app;
     }
