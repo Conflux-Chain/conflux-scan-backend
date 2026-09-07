@@ -21,11 +21,28 @@ import {BatchBalanceWatcher} from "./watcher/BatchBalanceWatcher";
 
 const lodash = require('lodash');
 
-interface TokenQueryApp {
-    accountQuery?: any;
-    contractQuery?: any;
-    service?: any;
+interface TokenContractQuery {
+    listVerifyInBatch(addresses: string[]): Promise<{address: string}[]>;
 }
+
+interface TokenAccountQuery {
+    cautionLabels: Set<string>;
+}
+
+interface TokenQueryService {
+    accountQuery?: TokenAccountQuery;
+    contractQuery: TokenContractQuery;
+}
+
+type TokenQueryApp = {
+    accountQuery?: TokenAccountQuery;
+    contractQuery: TokenContractQuery;
+    service?: Partial<TokenQueryService>;
+} | {
+    accountQuery?: TokenAccountQuery;
+    contractQuery?: TokenContractQuery;
+    service: TokenQueryService;
+};
 
 export class TokenQuery {
     static wrappedCFXAddr: string;
@@ -37,6 +54,20 @@ export class TokenQuery {
     constructor(app: TokenQueryApp) {
         this.app = app;
         this.scheduleWrappedToken().then();
+    }
+
+    private getContractQuery(): TokenContractQuery {
+        const {contractQuery, service} = this.app;
+        const resolvedContractQuery = contractQuery || service?.contractQuery;
+        if (!resolvedContractQuery) {
+            throw new Errors.BizError('TokenQuery requires contractQuery');
+        }
+        return resolvedContractQuery;
+    }
+
+    private getAccountQuery(): TokenAccountQuery | undefined {
+        const {accountQuery, service} = this.app;
+        return accountQuery || service?.accountQuery;
     }
 
     public async query({address}) {
@@ -78,9 +109,8 @@ export class TokenQuery {
             limit?: number,
         }
     ) {
-        const {
-            app: {accountQuery, contractQuery, service},
-        } = this;
+        const contractQuery = this.getContractQuery();
+        const accountQuery = this.getAccountQuery();
 
         // fields
         const options: any = {raw: true};
@@ -172,7 +202,7 @@ export class TokenQuery {
         let detectedTokens;
         if (rawList) {
             detectedTokens = rawList.map(item => item.address);
-            const verifiedTokens = new Set(await (contractQuery || service.contractQuery).listVerifyInBatch(detectedTokens)
+            const verifiedTokens = new Set(await contractQuery.listVerifyInBatch(detectedTokens)
                 .then(list => list.map(item => fmtAddr(item.address, StatApp.networkId))));
             rawList.forEach(row => {
                 row['address'] = fmtAddr(row['address'], StatApp.networkId);
@@ -217,7 +247,7 @@ export class TokenQuery {
                 nameTag["address"] = fmtAddr(nameTag['address'], StatApp.networkId);
                 if (nameTag?.labels) {
                     const hasCautionLabel = nameTag.labels.split(NAME_TAG_SPLIT)
-                        .find(label => (accountQuery || service.accountQuery)?.cautionLabels.has(label));
+                        .find(label => accountQuery?.cautionLabels.has(label));
                     nameTag.caution = hasCautionLabel ? 1 : 0;
                     delete nameTag.labels;
                 }
