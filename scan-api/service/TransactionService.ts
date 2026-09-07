@@ -8,9 +8,9 @@ import {CensorService} from "../../stat/service/censor/CensorService";
 import {patchPocketAddress} from "../../stat/model/HexMap";
 import {getCfxTransfer} from "../../stat/CfxTransferSync";
 import {safeAddErrorLog} from "../../stat/monitor/ErrorMonitor";
+import limitMap = require("../../common/lib/limitMap");
 
 const lodash = require('lodash');
-const limitMap = require('limit-map');
 const {hexToUtf8, utf8ToHex} = require("../../stat/service/tool/CensorTool");
 const {extractActualGasCost} = require("../../stat/service/common/utils");
 const BigFixed = require('bigfixed');

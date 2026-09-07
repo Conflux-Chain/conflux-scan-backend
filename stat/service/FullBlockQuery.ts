@@ -26,8 +26,7 @@ import {detectFishingAddress} from "./tool/phishingAddress";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import {JsonRpcProvider} from "@ethersproject/providers/src.ts/json-rpc-provider";
 import {fillMethodInfo} from "./contract/contractTool";
-
-const limitMap = require('limit-map');
+import limitMap = require("../../common/lib/limitMap");
 
 const lodash = require('lodash');
 const BigFixed = require('bigfixed');
