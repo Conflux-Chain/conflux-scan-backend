@@ -34,13 +34,29 @@ export function getAccountQuery() {
     return _accountQuery;
 }
 
-interface AccountQueryApp {
+interface AccountENSCheckerQuery {
+    nameBatch(addresses: string[]): Promise<Record<string, {name?: string}>>;
+}
+
+interface AccountQueryService {
+    tokenQuery: TokenQuery;
+    contractQuery: ContractQuery;
+    ensCheckerQuery: AccountENSCheckerQuery;
+}
+
+type AccountQueryApp = {
+    cfx: Conflux;
+    tokenQuery: TokenQuery;
+    contractQuery: ContractQuery;
+    ensCheckerQuery: AccountENSCheckerQuery;
+    service?: Partial<AccountQueryService>;
+} | {
     cfx: Conflux;
     tokenQuery?: TokenQuery;
     contractQuery?: ContractQuery;
-    ensCheckerQuery?: any;
-    service?: any;
-}
+    ensCheckerQuery?: AccountENSCheckerQuery;
+    service: AccountQueryService;
+};
 
 export class AccountQuery {
     public cautionLabels: Set<string> = new Set<string>();
@@ -52,6 +68,33 @@ export class AccountQuery {
     constructor(app: AccountQueryApp) {
         this.app = app;
         _accountQuery = this;
+    }
+
+    private getContractQuery(): ContractQuery {
+        const {contractQuery, service} = this.app;
+        const resolvedContractQuery = contractQuery || service?.contractQuery;
+        if (!resolvedContractQuery) {
+            throw new Error('AccountQuery requires contractQuery');
+        }
+        return resolvedContractQuery;
+    }
+
+    private getTokenQuery(): TokenQuery {
+        const {tokenQuery, service} = this.app;
+        const resolvedTokenQuery = tokenQuery || service?.tokenQuery;
+        if (!resolvedTokenQuery) {
+            throw new Error('AccountQuery requires tokenQuery');
+        }
+        return resolvedTokenQuery;
+    }
+
+    private getENSCheckerQuery(): AccountENSCheckerQuery {
+        const {ensCheckerQuery, service} = this.app;
+        const resolvedENSCheckerQuery = ensCheckerQuery || service?.ensCheckerQuery;
+        if (!resolvedENSCheckerQuery) {
+            throw new Error('AccountQuery requires ensCheckerQuery');
+        }
+        return resolvedENSCheckerQuery;
     }
 
     async list(
@@ -231,16 +274,12 @@ export class AccountQuery {
         withProxyImplInfo: boolean = false,
         realtimeProxyImpl: boolean = false
     ) {
-        const {
-            app: {tokenQuery, contractQuery, service},
-        } = this;
-
         const addresses = await TraceCreateContract.findAll({
             where: {to: {[Op.in]: Object.keys(mapIdToHex)}}
         }).then(list => list.map(item => mapIdToHex[item.to]));
 
-        const contractSrv: ContractQuery = contractQuery || service.contractQuery;
-        const tokenSrv: TokenQuery = tokenQuery || service.tokenQuery;
+        const contractSrv = this.getContractQuery();
+        const tokenSrv = this.getTokenQuery();
 
         let impls;
         if (withProxyImplInfo) {
@@ -330,11 +369,7 @@ export class AccountQuery {
 
     // hex => {name}
     private async _listENSInfos(mapIdToHex: {[id: number]: string}) {
-        const {
-            app: {ensCheckerQuery, service},
-        } = this;
-
-        return (ensCheckerQuery || service.ensCheckerQuery).nameBatch(Object.values(mapIdToHex));
+        return this.getENSCheckerQuery().nameBatch(Object.values(mapIdToHex));
     }
 
     // hex => {nameTag, website, desc, labels, caution}
