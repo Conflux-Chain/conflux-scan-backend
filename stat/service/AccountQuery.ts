@@ -1,5 +1,5 @@
 import {Op} from "sequelize";
-import {format} from "js-conflux-sdk";
+import {Conflux, format} from "js-conflux-sdk";
 import {fmtAddr, StatApp} from "../StatApp";
 import {TraceCreateContract} from "../model/TraceCreateContract";
 import {
@@ -35,7 +35,7 @@ export function getAccountQuery() {
 }
 
 interface AccountQueryApp {
-    cfx: any;
+    cfx: Conflux;
     tokenQuery?: TokenQuery;
     contractQuery?: ContractQuery;
     ensCheckerQuery?: any;

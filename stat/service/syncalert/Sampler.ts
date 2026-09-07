@@ -5,6 +5,7 @@ import {PosBlock} from "../../model/PoS";
 import {Errors} from "../common/LogicError";
 import {EpochHashCfxTransfer} from "../../CfxTransferSync";
 import {EpochHashTokenTransfer} from "../../TokenTransferSync";
+import {Conflux} from "js-conflux-sdk";
 
 export interface IMetric {
     tags: {syncType: string},
@@ -16,7 +17,7 @@ export interface IMetric {
 }
 
 export interface SamplerApp {
-    cfx: any;
+    cfx: Conflux;
 }
 
 export abstract class Sampler {

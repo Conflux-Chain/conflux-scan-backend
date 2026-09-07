@@ -1,5 +1,5 @@
 import {Op} from "sequelize";
-import {CONST as SDK_CONST} from "js-conflux-sdk";
+import {CONST as SDK_CONST, Conflux} from "js-conflux-sdk";
 import {Epoch} from "../../model/Epoch";
 import {sleep} from "../tool/ProcessTool";
 import {FullBlock} from "../../model/FullBlock";
@@ -9,7 +9,7 @@ import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
 const moment = require('moment');
 
 export interface TimerStatApp {
-    cfx: any;
+    cfx: Conflux;
 }
 
 export abstract class TimerStat {
