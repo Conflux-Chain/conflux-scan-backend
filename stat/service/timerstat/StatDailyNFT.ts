@@ -1,6 +1,6 @@
 import {QueryTypes} from 'sequelize'
 import {fmtDtUTC} from "../../model/Utils";
-import {StatType, TimerStat} from "./TimerStat";
+import {StatType, TimerStat, TimerStatApp} from "./TimerStat";
 import {DailyNFTStat} from "../../model/DailyNFTStat";
 import {NftMint, Token} from "../../model/Token";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
@@ -12,7 +12,7 @@ const lodash = require('lodash');
 
 export class StatDailyNFT extends TimerStat{
 
-    constructor(app: any, interval: number = 1000 * 60) {
+    constructor(app: TimerStatApp, interval: number = 1000 * 60) {
         super(app);
         this.baseInterval = StatType.HOUR;
         this.schedule(interval).then();

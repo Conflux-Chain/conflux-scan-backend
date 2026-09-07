@@ -34,14 +34,22 @@ export function getAccountQuery() {
     return _accountQuery;
 }
 
+interface AccountQueryApp {
+    cfx: any;
+    tokenQuery?: TokenQuery;
+    contractQuery?: ContractQuery;
+    ensCheckerQuery?: any;
+    service?: any;
+}
+
 export class AccountQuery {
     public cautionLabels: Set<string> = new Set<string>();
 
-    private app: any;
+    private app: AccountQueryApp;
     private CAUTION_LABEL_FLUSH_INTERVAL = 180_000; // 3 min
     private cautionLabelLoadTimestamp;
 
-    constructor(app: any) {
+    constructor(app: AccountQueryApp) {
         this.app = app;
         _accountQuery = this;
     }

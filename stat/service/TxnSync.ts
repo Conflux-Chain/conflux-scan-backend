@@ -13,15 +13,20 @@ import { MINUTE } from "./common/utils";
 
 const BigFixed = require('bigfixed');
 
+interface TxnSyncApp {
+    cfx: Conflux;
+    accountQuery: any;
+}
+
 /**
  * sync tx
  */
 export class TxnSync {
-    private app: StatApp;
+    private app: TxnSyncApp;
     private cfx: Conflux;
     // refreshed in TxnSync.scheduleCache()
     private rankCache: Map<string, Object>
-    constructor(app:any) {
+    constructor(app: TxnSyncApp) {
         this.app = app;
         this.cfx = app.cfx
         this.rankCache = new Map<string, Object>()

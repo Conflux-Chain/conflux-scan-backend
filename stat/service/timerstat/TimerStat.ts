@@ -8,15 +8,19 @@ import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
 
 const moment = require('moment');
 
+export interface TimerStatApp {
+    cfx: any;
+}
+
 export abstract class TimerStat {
-    protected app: any;
+    protected app: TimerStatApp;
     protected baseInterval: StatType;
     protected debug = false;
     protected KEEP_ROWS = 2000;
     protected EVICT_ROWS_PER_TIME = 5000;
     minDbTime: Date
 
-    protected constructor(app: any) {
+    protected constructor(app: TimerStatApp) {
         this.app = app;
     }
 

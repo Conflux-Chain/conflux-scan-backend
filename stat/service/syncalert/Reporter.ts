@@ -4,7 +4,7 @@ import {
     CfxTransferSampler,
     EpochMiscSampler,
     PosBlockSampler, RpcSampler,
-    Sampler,
+    Sampler, SamplerApp,
     TokenTransferSampler
 } from "./Sampler";
 import {StatApp} from "../../StatApp";
@@ -15,12 +15,12 @@ const lodash = require('lodash');
 
 export class Reporter{
 
-    private readonly app: any;
+    private readonly app: SamplerApp & {config: any};
     private measurement: string;
     private influx: InfluxDB;
     private samplerArray: Sampler[];
 
-    public constructor(app: any) {
+    public constructor(app: SamplerApp & {config: any}) {
         this.app = app;
         this.initInflux();
         this.registerSampler();

@@ -2,7 +2,7 @@ import {Op, QueryTypes} from 'sequelize'
 import {FullBlock, FullTransaction} from "../../model/FullBlock";
 import {DailyBlockDataStat} from "../../model/DailyBlockDataStat";
 import {fmtDtUTC} from "../../model/Utils";
-import {StatType, TimerStat} from "./TimerStat";
+import {StatType, TimerStat, TimerStatApp} from "./TimerStat";
 import {KEY_EVICTED_STAT_BLOCK_DATA, KV} from "../../model/KV";
 
 const BigFixed = require('bigfixed');
@@ -10,7 +10,7 @@ const lodash = require('lodash');
 
 export class StatDailyBlockData extends TimerStat{
 
-    constructor(app: any, interval: number = 1000 * 60) {
+    constructor(app: TimerStatApp, interval: number = 1000 * 60) {
         super(app);
         this.baseInterval = StatType.MIN;
         this.schedule(interval).then();

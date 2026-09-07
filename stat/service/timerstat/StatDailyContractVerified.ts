@@ -2,7 +2,7 @@ import {Op, QueryTypes} from 'sequelize'
 import {DailyContractVerified} from "../../model/DailyContractStat";
 import {Epoch} from "../../model/Epoch";
 import {fmtDtUTC} from "../../model/Utils";
-import {StatType, TimerStat} from "./TimerStat";
+import {StatType, TimerStat, TimerStatApp} from "./TimerStat";
 import {VerifiedContracts} from "../../model/VerifiedContracts";
 
 const BigFixed = require('bigfixed');
@@ -11,7 +11,7 @@ const timeBufferWaitVerifiedSync = 3 * 60 * 1000; // 3 minutes buffer for verifi
 
 export class StatDailyContractVerified extends TimerStat{
 
-    constructor(app: any, interval: number = 1000 * 60) {
+    constructor(app: TimerStatApp, interval: number = 1000 * 60) {
         super(app);
         this.baseInterval = StatType.TEN_MIN;
         this.schedule(interval).then();

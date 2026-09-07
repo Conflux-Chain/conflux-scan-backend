@@ -1,6 +1,6 @@
 import {Op} from 'sequelize'
 import {NFTBalance} from "../../model/Balance";
-import {StatType, TimerStat} from "./TimerStat";
+import {StatType, TimerStat, TimerStatApp} from "./TimerStat";
 import {DailyNFTHolder} from "../../model/DailyNFTStat";
 import {Erc721Transfer} from "../../model/Erc721Transfer";
 import {Erc1155Transfer} from "../../model/Erc1155Transfer";
@@ -11,7 +11,7 @@ const lodash = require('lodash');
 
 export class StatTotalNFTHolder extends TimerStat{
 
-    constructor(app: any, interval: number = 1000 * 300) {
+    constructor(app: TimerStatApp, interval: number = 1000 * 300) {
         super(app);
         this.baseInterval = StatType.HOUR;
         this.schedule(interval).then();

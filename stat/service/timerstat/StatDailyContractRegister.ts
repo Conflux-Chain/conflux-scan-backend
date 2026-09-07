@@ -3,14 +3,14 @@ import {DailyContractRegister} from "../../model/DailyContractStat";
 import {Contract} from "../../model/Contract";
 import {Epoch} from "../../model/Epoch";
 import {fmtDtUTC} from "../../model/Utils";
-import {StatType, TimerStat} from "./TimerStat";
+import {StatType, TimerStat, TimerStatApp} from "./TimerStat";
 
 const BigFixed = require('bigfixed');
 const lodash = require('lodash');
 
 export class StatDailyContractRegister extends TimerStat{
 
-    constructor(app: any, interval: number = 1000 * 60) {
+    constructor(app: TimerStatApp, interval: number = 1000 * 60) {
         super(app);
         this.baseInterval = StatType.TEN_MIN;
         this.schedule(interval).then();

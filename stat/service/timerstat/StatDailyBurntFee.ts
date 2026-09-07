@@ -1,5 +1,5 @@
 import {Op} from 'sequelize'
-import {StatType, TimerStat} from "./TimerStat";
+import {StatType, TimerStat, TimerStatApp} from "./TimerStat";
 import {DailyBurntFeeStat} from "../../model/DailyBurntFeeStat";
 import {Epoch} from "../../model/Epoch";
 import {StatApp} from "../../StatApp";

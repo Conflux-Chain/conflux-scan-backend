@@ -1,6 +1,6 @@
 import {Op, QueryTypes} from 'sequelize'
 import {fmtDtUTC} from "../../model/Utils";
-import {StatType, TimerStat} from "./TimerStat";
+import {StatType, TimerStat, TimerStatApp} from "./TimerStat";
 import {DailyPosRewardStat} from "../../model/DailyReward";
 import {PosEpochRewardHash, PosReward} from "../../model/PoS";
 import {Drip} from "js-conflux-sdk";
@@ -10,7 +10,7 @@ const lodash = require('lodash');
 
 export class StatDailyPosReward extends TimerStat{
 
-    constructor(app: any, interval: number = 1000 * 60 * 10) {
+    constructor(app: TimerStatApp, interval: number = 1000 * 60 * 10) {
         super(app);
         this.baseInterval = StatType.HOUR;
         this.schedule(interval).then();

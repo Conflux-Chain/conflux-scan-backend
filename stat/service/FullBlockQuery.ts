@@ -31,10 +31,15 @@ import limitMap = require("../../common/lib/limitMap");
 const lodash = require('lodash');
 const BigFixed = require('bigfixed');
 
+interface FullBlockQueryApp {
+    cfx: any;
+    eth?: any;
+}
+
 export class FullBlockQuery {
-    protected app;
+    protected app: FullBlockQueryApp;
     protected sponsorContract;
-    public constructor(app: any) {
+    public constructor(app: FullBlockQueryApp) {
         this.app = app;
         this.sponsorContract = app.cfx.InternalContract('SponsorWhitelistControl');
     }

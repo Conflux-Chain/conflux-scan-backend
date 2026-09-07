@@ -15,14 +15,21 @@ import {fillMethodInfo} from "./contract/contractTool";
 
 const lodash = require('lodash');
 
+export interface TransferQueryApp {
+    cfx?: any;
+    config?: any;
+    networkId?: number;
+    service?: any;
+}
+
 export abstract class TransferQueryBase {
-    protected app;
+    protected app: TransferQueryApp;
     protected NAME_TYPE_MAP;
     protected transferType;
     protected addrPruneType;
     protected addrModel;
 
-    protected constructor(app: any) {
+    protected constructor(app: TransferQueryApp) {
         this.app = app;
         this.NAME_TYPE_MAP = lodash.keyBy(Object.values(CONST.ADDRESS_TRANSFER_TYPE), 'name');
     }

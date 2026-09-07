@@ -20,10 +20,12 @@ import {ResultCache, TopUniqueCache} from "../model/ResultCache";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import {HomepageDashboard} from "./HomepageDashboard";
 
+type RankServiceApp = object;
+
 export class RankService{
-    private app: any;
+    private app: RankServiceApp;
     txnMap = new Map<number, any>()
-    constructor(app) {
+    constructor(app: RankServiceApp) {
         this.app = app;
     }
 

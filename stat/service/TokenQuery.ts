@@ -21,14 +21,20 @@ import {BatchBalanceWatcher} from "./watcher/BatchBalanceWatcher";
 
 const lodash = require('lodash');
 
+interface TokenQueryApp {
+    accountQuery?: any;
+    contractQuery?: any;
+    service?: any;
+}
+
 export class TokenQuery {
     static wrappedCFXAddr: string;
     static wrappedBTCAddr: string;
     static wrappedCFX: Token;
     static wrappedBTC: Token;
-    private app: any;
+    private app: TokenQueryApp;
 
-    constructor(app: any) {
+    constructor(app: TokenQueryApp) {
         this.app = app;
         this.scheduleWrappedToken().then();
     }

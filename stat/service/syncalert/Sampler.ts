@@ -15,11 +15,15 @@ export interface IMetric {
     }
 }
 
+export interface SamplerApp {
+    cfx: any;
+}
+
 export abstract class Sampler {
 
-    protected app: any;
+    protected app: SamplerApp;
 
-    protected constructor(app: any) {
+    protected constructor(app: SamplerApp) {
         this.app = app;
     }
 
@@ -63,7 +67,7 @@ export abstract class Sampler {
 //------------------------------------------------------------------------
 export class BlockTxSampler extends Sampler{
 
-    public constructor(app: any) {
+    public constructor(app: SamplerApp) {
         super(app);
     }
 
@@ -83,7 +87,7 @@ export class RpcSampler extends Sampler{
 
     previousState:Promise<number>;
 
-    public constructor(app: any) {
+    public constructor(app: SamplerApp) {
         super(app);
         this.updateState();
     }
@@ -106,7 +110,7 @@ export class RpcSampler extends Sampler{
 //------------------------------------------------------------------------
 export class CfxTransferSampler extends Sampler{
 
-    public constructor(app: any) {
+    public constructor(app: SamplerApp) {
         super(app);
     }
 
@@ -123,7 +127,7 @@ export class CfxTransferSampler extends Sampler{
 //------------------------------------------------------------------------
 export class TokenTransferSampler extends Sampler{
 
-    public constructor(app: any) {
+    public constructor(app: SamplerApp) {
         super(app);
     }
 
@@ -140,7 +144,7 @@ export class TokenTransferSampler extends Sampler{
 //------------------------------------------------------------------------
 export class EpochMiscSampler extends Sampler{
 
-    public constructor(app: any) {
+    public constructor(app: SamplerApp) {
         super(app);
     }
 
@@ -157,7 +161,7 @@ export class EpochMiscSampler extends Sampler{
 //------------------------------------------------------------------------
 export class PosBlockSampler extends Sampler{
 
-    public constructor(app: any) {
+    public constructor(app: SamplerApp) {
         super(app);
     }
 

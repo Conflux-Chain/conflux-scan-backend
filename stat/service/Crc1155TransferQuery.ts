@@ -1,7 +1,7 @@
 // @ts-ignore
 import {format} from "js-conflux-sdk";
 import {Erc1155Transfer, AddressErc1155Transfer} from "../model/Erc1155Transfer";
-import {patchTokenTxQueryRange, TransferQueryBase} from "./TransferQueryBase";
+import {patchTokenTxQueryRange, TransferQueryApp, TransferQueryBase} from "./TransferQueryBase";
 import {getAddrTransferCount} from "../model/TransferCount";
 import {fmtAddr, StatApp} from "../StatApp";
 import {Token} from "../model/Token";
@@ -10,7 +10,7 @@ import {FullTransaction} from "../model/FullBlock";
 import {PruneType} from "../model/PruneInfo";
 
 export class Crc1155TransferQuery extends TransferQueryBase{
-    constructor(app: any) {
+    constructor(app: TransferQueryApp) {
         super(app);
         this.addrPruneType = PruneType.ADDR_ERC1155_TRANSFER;
         this.transferType = CONST.TRANSFER_TYPE.ERC1155;
