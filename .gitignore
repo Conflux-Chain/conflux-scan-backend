@@ -34,3 +34,5 @@ scan-api/tsconfig.tsbuildinfo
 **/*.d.ts.map
 stat/**/*.js
 tsconfig.tsbuildinfo
+
+common/lib/limitMap.js

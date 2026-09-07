@@ -1,9 +1,9 @@
 import {ScanApp, ScanCtx} from "./index";
 import {QueryTypes} from "sequelize";
 import {NoCoreSpace} from "../../stat/config/StatConfig";
+import limitMap = require("../../common/lib/limitMap");
 
 const lodash = require('lodash');
-const limitMap = require('limit-map');
 const BigFixed = require('bigfixed');
 const {StatApp} = require("../../stat/StatApp");
 const {FullBlockExt} = require( "../../stat/model/FullBlock")

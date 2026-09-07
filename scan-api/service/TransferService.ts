@@ -1,8 +1,8 @@
 import {ScanApp, ScanCtx} from "./index";
 import {CONST} from "../../stat/service/common/constant";
+import limitMap = require("../../common/lib/limitMap");
 
 const lodash = require('lodash');
-const limitMap = require('limit-map');
 
 const TOKEN_FIELDS = ['name', 'symbol', 'decimals', 'granularity'];
 

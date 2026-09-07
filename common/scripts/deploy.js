@@ -1,4 +1,6 @@
-const {sleepMs} = require('limit-map');
+function sleepMs(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 const {ethers, ethers:{utils:{parseEther, formatEther}}} = require('ethers')
 const {format} = require('js-conflux-sdk');
 const {initCfxSdk} = require('../../stat/service/common/utils');
