@@ -1258,6 +1258,8 @@ export class ContractQuery {
                     console.log(`Failed to get verified abi ${address}`, error);
                 }
                 if(verified?.abi) {
+                    const hexId = contractId ?? await makeIdV(normalizedAddress);
+                    await saveAbiSigs(verified.abi, hexId, false, this.durableAbiSave);
                     if (taskKey) {
                         await KV.destroy({where: {key: taskKey}});
                     }
