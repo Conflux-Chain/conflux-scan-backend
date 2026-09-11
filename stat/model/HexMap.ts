@@ -216,8 +216,10 @@ export async function getAddrId(addr:string, defaultV = -1) {
     if (!addr) {
         return defaultV;
     }
-    if (addr.startsWith('0x')) {
-    } else if (addr.startsWith('cfx') || addr.startsWith('net')){
+    if (addr === '0x0') {
+        return 0;
+    }
+    if (/^(0x|cfx|net)/i.test(addr)) {
         addr = formatToHex(addr)
     }
     return Hex40Map.findOne({

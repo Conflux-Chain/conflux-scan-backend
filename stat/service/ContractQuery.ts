@@ -34,6 +34,7 @@ import {
     KEY_SOLC_VULNERABILITIES,
     KEY_STAT_ANNOUNCE_NAME_FOR_VERIFIED_CONTRACTS,
     KEY_STAT_NAME_TAG_FOR_VERIFIED_CONTRACTS,
+    KEY_STAT_TASK_ABI_SAVE_PREFIX,
     KEY_STAT_TXNS_FOR_VERIFIED_CONTRACTS,
     KEY_VERIFIED_MATCH_ID,
     KEY_VYPER_VERSIONS,
@@ -61,6 +62,7 @@ const abi = require('./tool/abi');
 const NodeCache = require( "node-cache" );
 const DEFAULT_VERIFY_CACHE_TTL: number = 60 * 60 * 24 * 7 // 7 days
 const DEFAULT_COMPILER_CACHE_TTL: number = 60 * 3 // 3 min
+const PENDING_ABI_SAVE_INTERVAL = 10_000;
 const ZERO_LABS_PROXY_BEACON_MAP = {
     "0xea224dbb52f57752044c0c86ad50930091f561b9":"0x0e9cc1be1060e3dd036f16977a186a8185acc513",
     "0x712a30816a8756c8fdb78de63db55aa70d3cf3b4":"0x335ae8961fface946c25900aa689d793dc3ff1bf",
@@ -76,6 +78,7 @@ export function getContractQuery() {
 
 export class ContractQuery {
     private readonly verifyEnable: boolean;
+    private readonly durableAbiSave: boolean;
     private cfx: Conflux;
     private traceCreate: ContractTraceCreateQuery;
     private readonly verifyUrl: string;
@@ -88,7 +91,7 @@ export class ContractQuery {
     private scheduleTimers: Record<string, NodeJS.Timeout> = {}
 
     constructor(
-        {cfx, config}: { cfx: Conflux; config: VerificationOptions; },
+        {cfx, config, durableAbiSave = false}: { cfx: Conflux; config: VerificationOptions; durableAbiSave?: boolean; },
         verifyCacheTTL?: number,
         compilerCacheTTL?: number
     ) {
@@ -98,6 +101,7 @@ export class ContractQuery {
         }
 
         this.cfx = cfx;
+        this.durableAbiSave = durableAbiSave;
         this.traceCreate = new ContractTraceCreateQuery(cfx);
         this.verifyEnable = enable;
         this.verifyUrl = url;
@@ -631,6 +635,7 @@ export class ContractQuery {
         } as VerifiedContracts;
 
         const libraries = JSON.stringify(verified.libraries);
+        await this.persistAbiSaveTask(address);
         this.traceCreate.query(contractAddress).then(async item => {
             const {epochNumber, from} = item;
             verified.deployer = from;
@@ -646,7 +651,11 @@ export class ContractQuery {
 
         this._addCache(hex, verified);
 
-        this.saveABI(address, abi).then();
+        if (this.durableAbiSave) {
+            await this.saveABI(address, abi);
+        } else {
+            this.saveABI(address, abi).then();
+        }
 
         return verified;
     }
@@ -1151,7 +1160,11 @@ export class ContractQuery {
         };
 
         const verifyResult = await this.verifyFromJsonInput(input);
-        this.saveABI(contractAddress).then();
+        if (this.durableAbiSave) {
+            await this.saveABI(contractAddress);
+        } else {
+            this.saveABI(contractAddress).then();
+        }
         return verifyResult;
     }
 
@@ -1167,7 +1180,11 @@ export class ContractQuery {
         };
         const verifyResult = await this.verifyFromCrossChain(input);
 
-        this.saveABI(contractAddress).then();
+        if (this.durableAbiSave) {
+            await this.saveABI(contractAddress);
+        } else {
+            this.saveABI(contractAddress).then();
+        }
 
         return verifyResult;
     }
@@ -1228,22 +1245,84 @@ export class ContractQuery {
         interval: number = 1000,
         retries: number = 4,
     ) {
+        const normalizedAddress = format.hexAddress(address);
+        const contractId = this.durableAbiSave ? await makeIdV(normalizedAddress) : undefined;
+        const taskKey = await this.persistAbiSaveTask(normalizedAddress, contractId);
+
         for (let attempts = 0; attempts < retries; attempts++) {
             if(!abi) {
-                const verified = await this.getVerifyBySourcify(address, true).catch()
+                let verified;
+                try {
+                    verified = await this.getVerifyBySourcify(normalizedAddress, true);
+                } catch (error) {
+                    console.log(`Failed to get verified abi ${address}`, error);
+                }
                 if(verified?.abi) {
+                    const hexId = contractId ?? await makeIdV(normalizedAddress);
+                    await saveAbiSigs(verified.abi, hexId, false, this.durableAbiSave);
+                    if (taskKey) {
+                        await KV.destroy({where: {key: taskKey}});
+                    }
                     return
                 }
             } else {
-                const hexId = await getAddrId(address)
-                saveAbiSigs(abi, hexId).catch(e => {
-                    console.log(`Failed to save abi sig ${address}`, e)
-                })
+                const hexId = contractId ?? await getAddrId(normalizedAddress);
+                await saveAbiSigs(abi, hexId, false, this.durableAbiSave);
+                if (taskKey) {
+                    await KV.destroy({where: {key: taskKey}});
+                }
                 return
             }
             await sleep(interval)
             interval *= 2
         }
+
+        if (this.durableAbiSave) {
+            throw new Error(`Failed to save abi after ${retries} attempts: ${normalizedAddress}`);
+        }
+    }
+
+    private async persistAbiSaveTask(address: string, contractId?: number): Promise<string | undefined> {
+        if (!this.durableAbiSave) {
+            return;
+        }
+        const normalizedAddress = format.hexAddress(address);
+        const addressId = contractId ?? await makeIdV(normalizedAddress);
+        const taskKey = `${KEY_STAT_TASK_ABI_SAVE_PREFIX}${addressId}`;
+        await KV.upsert({key: taskKey, value: normalizedAddress});
+        return taskKey;
+    }
+
+    private async replayPendingAbiSaves() {
+        const tasks = await KV.findAll({
+            where: {key: {[Op.like]: `${KEY_STAT_TASK_ABI_SAVE_PREFIX}%`}},
+            order: [['key', 'ASC']],
+            raw: true,
+        });
+
+        for (const task of tasks) {
+            if (!task.value) {
+                await KV.destroy({where: {key: task.key}});
+                continue;
+            }
+            await this.saveABI(task.value)
+                .then(() => KV.destroy({where: {key: task.key}}))
+                .catch(error => {
+                    console.log(`Failed to replay abi save task ${task.key}`, error);
+                });
+        }
+    }
+
+    async schedulePendingAbiSaves(interval: number = PENDING_ABI_SAVE_INTERVAL) {
+        if (!this.durableAbiSave) {
+            return;
+        }
+        this.startLoopSchedule('pending_abi_save', interval, async () => {
+            await this.replayPendingAbiSaves().catch(error => {
+                console.log('Schedule pending abi saves fail', error);
+            });
+        });
+        console.log(`[pending_abi_save]schedule in ${interval / 1000}s interval`);
     }
 
     public async checkVerification(
