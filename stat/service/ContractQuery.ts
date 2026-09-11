@@ -1245,7 +1245,8 @@ export class ContractQuery {
         interval: number = 1000,
         retries: number = 4,
     ) {
-        const taskKey = await this.persistAbiSaveTask(address);
+        const contractId = this.durableAbiSave ? await getAddrId(address) : undefined;
+        const taskKey = await this.persistAbiSaveTask(address, contractId);
 
         for (let attempts = 0; attempts < retries; attempts++) {
             if(!abi) {
@@ -1262,7 +1263,7 @@ export class ContractQuery {
                     return
                 }
             } else {
-                const hexId = await getAddrId(address)
+                const hexId = contractId || await getAddrId(address);
                 await saveAbiSigs(abi, hexId, false, this.durableAbiSave);
                 if (taskKey) {
                     await KV.destroy({where: {key: taskKey}});
@@ -1278,12 +1279,13 @@ export class ContractQuery {
         }
     }
 
-    private async persistAbiSaveTask(address: string): Promise<string | undefined> {
+    private async persistAbiSaveTask(address: string, contractId?: number): Promise<string | undefined> {
         if (!this.durableAbiSave) {
             return;
         }
         const normalizedAddress = format.hexAddress(address);
-        const taskKey = `${KEY_STAT_TASK_ABI_SAVE_PREFIX}${normalizedAddress}`;
+        const addressId = contractId || await getAddrId(normalizedAddress);
+        const taskKey = `${KEY_STAT_TASK_ABI_SAVE_PREFIX}${addressId}`;
         await KV.upsert({key: taskKey, value: normalizedAddress});
         return taskKey;
     }
@@ -1300,9 +1302,11 @@ export class ContractQuery {
                 await KV.destroy({where: {key: task.key}});
                 continue;
             }
-            await this.saveABI(task.value).catch(error => {
-                console.log(`Failed to replay abi save task ${task.key}`, error);
-            });
+            await this.saveABI(task.value)
+                .then(() => KV.destroy({where: {key: task.key}}))
+                .catch(error => {
+                    console.log(`Failed to replay abi save task ${task.key}`, error);
+                });
         }
     }
 
