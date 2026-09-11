@@ -6,7 +6,7 @@ const CONTRACT_ABI_SIGNATURE_BATCH_SIZE = 100;
 const CONTRACT_ABI_SIGNATURE_MAX_RETRIES = 5;
 const CONTRACT_ABI_SIGNATURE_RETRY_DELAY_MS = 200;
 
-let contractAbiSignatureWriteQueue: Promise<void> = Promise.resolve();
+let abiSignatureWriteQueue: Promise<void> = Promise.resolve();
 
 export enum SignatureType {
     Function = "function",
@@ -101,6 +101,33 @@ async function bulkCreateContractAbiSignatures(list: {contractId: number, abiId:
         }
     }
 }
+
+function enqueueAbiSignatureWrite(task: () => Promise<void>): Promise<void> {
+    const write = abiSignatureWriteQueue.then(task);
+    abiSignatureWriteQueue = write.then(() => undefined, () => undefined);
+    return write;
+}
+
+async function saveContractAbiSigsInternal(list: AbiSignature[], contractId: number) {
+    const sigs = await Promise.all(list.map(item => AbiSignature
+        .findOne({where: {type: item.type, fullFormatHash: item.fullFormatHash}})
+        .then(found => found ? ({contractId, abiId: found.id}) : null)
+    ));
+
+    const uniqueSigs = Array.from(
+        new Map(
+            sigs
+                .filter((item): item is {contractId: number, abiId: number} => !!item && item.abiId != null)
+                .map(item => [`${item.contractId}:${item.abiId}`, item])
+        ).values()
+    );
+
+    if (uniqueSigs.length === 0) {
+        return;
+    }
+
+    await bulkCreateContractAbiSignatures(uniqueSigs);
+}
 export class ContractAbiSignature extends Model<IContractAbiSignature> implements IContractAbiSignature {
     id?:number;
     contractId:number;
@@ -155,12 +182,14 @@ export async function saveAbiSigs(abiObj: any, contractId?: number, dryRun = fal
     }
 
     try {
-        await AbiSignature.bulkCreate(list as AbiSignature[], {
-            updateOnDuplicate: ['updatedAt'],
+        await enqueueAbiSignatureWrite(async () => {
+            await AbiSignature.bulkCreate(list as AbiSignature[], {
+                updateOnDuplicate: ['updatedAt'],
+            });
+            if (contractId) {
+                await saveContractAbiSigsInternal(list, contractId);
+            }
         });
-        if (contractId) {
-            await saveContractAbiSigs(list, contractId);
-        }
         console.log(`Succeed to save abi info: ${list.length}`);
     } catch (err) {
         safeAddErrorLog('DB', `bulk-create-abi-info`, err).then();
@@ -191,26 +220,7 @@ export function getSignature(type: SignatureType, signature: string, fullFormat:
 }
 
 export async function saveContractAbiSigs(list: AbiSignature[], contractId: number) {
-    const sigs = await Promise.all(list.map(item => AbiSignature
-        .findOne({where: {type: item.type, fullFormatHash: item.fullFormatHash}})
-        .then(found => found ? ({contractId, abiId: found.id}) : null)
-    ));
-
-    const uniqueSigs = Array.from(
-        new Map(
-            sigs
-                .filter((item): item is {contractId: number, abiId: number} => !!item && item.abiId != null)
-                .map(item => [`${item.contractId}:${item.abiId}`, item])
-        ).values()
-    );
-
-    if (uniqueSigs.length === 0) {
-        return;
-    }
-
-    const write = contractAbiSignatureWriteQueue.then(() => bulkCreateContractAbiSignatures(uniqueSigs));
-    contractAbiSignatureWriteQueue = write.then(() => undefined, () => undefined);
-    return write;
+    return enqueueAbiSignatureWrite(() => saveContractAbiSigsInternal(list, contractId));
 }
 
 export function parseAbiStr(str: string) {
