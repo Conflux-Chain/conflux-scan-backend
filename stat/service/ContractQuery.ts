@@ -1245,14 +1245,15 @@ export class ContractQuery {
         interval: number = 1000,
         retries: number = 4,
     ) {
-        const contractId = this.durableAbiSave ? await getAddrId(address) : undefined;
-        const taskKey = await this.persistAbiSaveTask(address, contractId);
+        const normalizedAddress = format.hexAddress(address);
+        const contractId = this.durableAbiSave ? await makeIdV(normalizedAddress) : undefined;
+        const taskKey = await this.persistAbiSaveTask(normalizedAddress, contractId);
 
         for (let attempts = 0; attempts < retries; attempts++) {
             if(!abi) {
                 let verified;
                 try {
-                    verified = await this.getVerifyBySourcify(address, true);
+                    verified = await this.getVerifyBySourcify(normalizedAddress, true);
                 } catch (error) {
                     console.log(`Failed to get verified abi ${address}`, error);
                 }
@@ -1263,7 +1264,7 @@ export class ContractQuery {
                     return
                 }
             } else {
-                const hexId = contractId || await getAddrId(address);
+                const hexId = contractId ?? await getAddrId(normalizedAddress);
                 await saveAbiSigs(abi, hexId, false, this.durableAbiSave);
                 if (taskKey) {
                     await KV.destroy({where: {key: taskKey}});
@@ -1275,7 +1276,7 @@ export class ContractQuery {
         }
 
         if (this.durableAbiSave) {
-            throw new Error(`Failed to save abi after ${retries} attempts: ${address}`);
+            throw new Error(`Failed to save abi after ${retries} attempts: ${normalizedAddress}`);
         }
     }
 
@@ -1284,7 +1285,7 @@ export class ContractQuery {
             return;
         }
         const normalizedAddress = format.hexAddress(address);
-        const addressId = contractId || await getAddrId(normalizedAddress);
+        const addressId = contractId ?? await makeIdV(normalizedAddress);
         const taskKey = `${KEY_STAT_TASK_ABI_SAVE_PREFIX}${addressId}`;
         await KV.upsert({key: taskKey, value: normalizedAddress});
         return taskKey;
