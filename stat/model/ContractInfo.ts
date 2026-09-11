@@ -148,7 +148,12 @@ export class ContractAbiSignature extends Model<IContractAbiSignature> implement
     }
 }
 
-export async function saveAbiSigs(abiObj: any, contractId?: number, dryRun = false) {
+export async function saveAbiSigs(
+    abiObj: any,
+    contractId?: number,
+    dryRun = false,
+    rethrowOnError = false,
+) {
     const abi = (typeof abiObj === 'string') ? JSON.parse(abiObj) : abiObj;
 
     let iFace: Interface;
@@ -194,6 +199,9 @@ export async function saveAbiSigs(abiObj: any, contractId?: number, dryRun = fal
     } catch (err) {
         safeAddErrorLog('DB', `bulk-create-abi-info`, err).then();
         console.log("Failed to save abi info", err);
+        if (rethrowOnError) {
+            throw err;
+        }
     }
 }
 

@@ -104,12 +104,13 @@ async function main() {
     new TokenAutoDetect(cfx);
     new CensorService(cfx, config.censor, {tx: 10, token: 10, nft: 10, ens: 10});
 
-    const contractQuery = new ContractQuery({cfx, config: config.verification});
+    const contractQuery = new ContractQuery({cfx, config: config.verification, durableAbiSave: true});
     contractQuery.scheduleUpdateCompilerVersions().then();
     contractQuery.scheduleVerifyByAuto().then();
     contractQuery.scheduleStatTxnVolume().then();
     contractQuery.scheduleWithNametag().then();
     contractQuery.scheduleLatestVerified().then();
+    contractQuery.schedulePendingAbiSaves().then();
 
     if (!StatApp.isEVM) {
         let fullCfx = cfx;
