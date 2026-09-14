@@ -1169,7 +1169,8 @@ export class ContractQuery {
     }
 
     public async verifyByLink(
-        verifyInput: VerifyByLinkInput
+        verifyInput: VerifyByLinkInput,
+        saveAbi: boolean = true,
     ) {
         const contractAddress = verifyInput.contractAddress;
 
@@ -1180,10 +1181,12 @@ export class ContractQuery {
         };
         const verifyResult = await this.verifyFromCrossChain(input);
 
-        if (this.durableAbiSave) {
-            await this.saveABI(contractAddress);
-        } else {
-            this.saveABI(contractAddress).then();
+        if (saveAbi) {
+            if (this.durableAbiSave) {
+                await this.saveABI(contractAddress);
+            } else {
+                this.saveABI(contractAddress).then();
+            }
         }
 
         return verifyResult;
@@ -1291,6 +1294,14 @@ export class ContractQuery {
         const taskKey = `${KEY_STAT_TASK_ABI_SAVE_PREFIX}${addressId}`;
         await KV.upsert({key: taskKey, value: normalizedAddress});
         return taskKey;
+    }
+
+    private async removeAbiSaveTask(address: string): Promise<void> {
+        if (!this.durableAbiSave) {
+            return;
+        }
+        const contractId = await makeIdV(format.hexAddress(address));
+        await KV.destroy({where: {key: `${KEY_STAT_TASK_ABI_SAVE_PREFIX}${contractId}`}});
     }
 
     private async replayPendingAbiSaves() {
@@ -1646,7 +1657,9 @@ export class ContractQuery {
                 linkChainIds: [StatApp.networkId],
             };
 
-            const submit: any = await this.verifyByLink(input);
+            // Submission only starts an asynchronous job. Do not wait for ABI
+            // persistence until the verification job has produced a match.
+            const submit: any = await this.verifyByLink(input, false);
             if (submit.message) {
                 await sleep(intervalMs);
                 continue; // retry
@@ -1657,10 +1670,24 @@ export class ContractQuery {
             if (error?.includes("internal_error")) {
                 throw new Error(error);
             }
-            if (match
-                || error?.includes("already_verified")
+            if (match) {
+                if (this.durableAbiSave) {
+                    await this.saveABI(address).catch(saveError => {
+                        console.log(`Failed to save matched abi ${address}`, saveError);
+                    });
+                } else {
+                    this.saveABI(address).catch(saveError => {
+                        console.log(`Failed to save matched abi ${address}`, saveError);
+                    });
+                }
+                break;
+            }
+            if (error?.includes("already_verified")
                 || error?.includes("contract_not_deployed")
                 || error?.includes("no_similar_match_found")) {
+                await this.removeAbiSaveTask(address).catch(removeError => {
+                    console.log(`Failed to remove terminal abi save task ${address}`, removeError);
+                });
                 break;
             }
             if (error?.includes("Pending in queue")) {
