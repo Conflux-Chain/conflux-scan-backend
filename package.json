@@ -1,6 +1,9 @@
 {
   "name": "conflux-stat",
   "version": "0.0.7",
+  "engines": {
+    "node": "24.x"
+  },
   "description": "conflux-statistics",
   "main": "index.js",
   "scripts": {
