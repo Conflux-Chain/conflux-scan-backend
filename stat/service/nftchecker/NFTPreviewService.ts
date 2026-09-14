@@ -257,7 +257,10 @@ function isExpectedNFTBusinessError(error: any): boolean {
     return error?.code === 50601
         || error?.code === 50602
         || error?.code === 50603
-        || error?.code === 50605;
+        || error?.code === 50605
+        // NFT metadata is fetched from third-party hosts; an invalid remote
+        // certificate should not page for an optional localized name.
+        || error?.code === 'CERT_HAS_EXPIRED';
 }
 
 function getImageGateway(imageUri?: string): string {
