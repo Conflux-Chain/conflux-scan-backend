@@ -9,7 +9,7 @@ NODE24_IMAGE="node:24.15.0"
 install_node_deps_with_node24() {
   local target_dir="$1"
   echo "install dependencies with ${NODE24_IMAGE} in:${target_dir}"
-  cd "$target_dir" || (echo "path $target_dir not found!" && exit 1)
+  cd "$target_dir" || { echo "path $target_dir not found!" >&2; exit 1; }
   if [ -f package-lock.json ]; then
     docker run --rm \
       --user "$(id -u):$(id -g)" \
