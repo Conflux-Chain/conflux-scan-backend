@@ -4,6 +4,29 @@
 ROOT_PATH_TO_DEPLOY=
 HOST_PORT_SCAN_API=
 SCRIPT_PATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+NODE24_IMAGE="node:24.15.0"
+
+install_node_deps_with_node24() {
+  local target_dir="$1"
+  echo "install dependencies with ${NODE24_IMAGE} in:${target_dir}"
+  cd "$target_dir" || (echo "path $target_dir not found!" && exit 1)
+  if [ -f package-lock.json ]; then
+    docker run --rm \
+      --user "$(id -u):$(id -g)" \
+      -v "$target_dir:/workspace" \
+      -w /workspace \
+      "$NODE24_IMAGE" \
+      npm ci
+  else
+    docker run --rm \
+      --user "$(id -u):$(id -g)" \
+      -v "$target_dir:/workspace" \
+      -w /workspace \
+      "$NODE24_IMAGE" \
+      npm install
+  fi
+}
+
 echo "step-01.path for script is set:$SCRIPT_PATH"
 while getopts "p:P:" opt; do
   case $opt in
@@ -33,7 +56,7 @@ cd "$ROOT_PATH_TO_DEPLOY/conflux-scan-backend"
 echo "step-05.switch dir to:$ROOT_PATH_TO_DEPLOY/conflux-scan-backend"
 mkdir -p stat/dist
 echo "step-06.make dir dir: stat/dist"
-npm install
+install_node_deps_with_node24 "$ROOT_PATH_TO_DEPLOY/conflux-scan-backend"
 
 cd "$ROOT_PATH_TO_DEPLOY"
 echo "step-07.switch dir to:$ROOT_PATH_TO_DEPLOY"
@@ -48,7 +71,7 @@ echo "step-11.generate soft link:$ROOT_PATH_TO_DEPLOY/conflux-scan-backend/stat/
 
 cd "$ROOT_PATH_TO_DEPLOY/conflux-scan-statistics"
 echo "step-12.switch dir to:$ROOT_PATH_TO_DEPLOY/conflux-scan-statistics"
-npm install
+install_node_deps_with_node24 "$ROOT_PATH_TO_DEPLOY/conflux-scan-statistics"
 echo "step-13.npm installed"
 npm run compile
 echo "step-14.npm run compiled"
