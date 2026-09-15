@@ -19,11 +19,12 @@ class LogicError extends Error {
     }
 }
 export const UnhandledErrorCode = 50001;
+export const ParameterErrorCode = 50101;
 export const Errors = {
     // common error
     UnhandledError: LogicError.extend({ code: UnhandledErrorCode, name: 'Unhandled error' }),
     BizError: LogicError.extend({ code: 50100, name: 'Unknown error, please try again later, or submit a ticket' }),
-    ParameterError: LogicError.extend({ code: 50101, name: 'The parameter is wrong, please confirm it is correct' }),
+    ParameterError: LogicError.extend({ code: ParameterErrorCode, name: 'The parameter is wrong, please confirm it is correct' }),
     PermissionError: LogicError.extend({ code: 50102, name: 'Permission Error' }),
     ApiBusyError: LogicError.extend({ code: 50103, name: 'The system is too busy now, please try again later' }),
     RpcBusyError: LogicError.extend({ code: 50104, name: 'The underlying service(full-node) is too busy now. CODE[RPC]' }),

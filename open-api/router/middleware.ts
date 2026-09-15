@@ -8,6 +8,7 @@ import {CODE_PARAMETER_ERROR, CODE_PARAMETER_ERROR_MSG, CODE_RATE_LIMITED} from 
 import {safeAddErrorLog} from "../../stat/monitor/ErrorMonitor";
 import {EtherOption} from "../../stat/config/StatConfig";
 import {DAY} from "../../stat/service/common/constant";
+import {ParameterErrorCode} from "../../stat/service/common/LogicError";
 
 const superagent = require('superagent');
 const yamljs = require('yamljs');
@@ -35,6 +36,10 @@ export async function handleException(ctx, next) {
         }
         if (err instanceof InvalidParamError) {
             setBody(ctx, ctx.request.query, CODE_PARAMETER_ERROR, err.message)
+            return
+        }
+        if (err?.code === ParameterErrorCode && err?.status === 600) {
+            setBody(ctx, undefined, err.code, err.toString())
             return
         }
         if (/many requests/.test(err.message)){
