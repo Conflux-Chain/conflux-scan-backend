@@ -1,6 +1,9 @@
 {
   "name": "conflux-stat",
   "version": "0.0.7",
+  "engines": {
+    "node": "24.x"
+  },
   "description": "conflux-statistics",
   "main": "index.js",
   "scripts": {
@@ -52,7 +55,7 @@
     "graphql-request": "^5.0.0",
     "influx": "5.9.3",
     "inspector-influx": "2.10.0",
-    "inspector-metrics": "1.23.0",
+    "inspector-metrics": "file:vendor/inspector-metrics-1.23.0-node24.tgz",
     "js-conflux-sdk": "^2.4.12",
     "koa": "2.13.1",
     "koa-bodyparser": "~4.3.0",

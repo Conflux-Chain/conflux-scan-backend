@@ -168,17 +168,22 @@ if [ "not found" == "${_NODE}" ]; then
 		# load nvm env
 		fn_loadNVM
 		# download and install Node.js (you may need to restart the terminal)
-		nvm install 20
+		nvm install 24.15.0
 		# verifies the right Node.js version is in the environment
-		node -v # should print `v20.17.0`
+		node -v # should print `v24.15.0`
 		# verifies the right npm version is in the environment
-		npm -v # should print `10.8.2`
+		npm -v
 	else
 		exit
 	fi
 else
 	echo "node version is:"
 	node -v
+	_NODE_MAJOR=$(node -p "process.versions.node.split('.')[0]")
+	if [ "$_NODE_MAJOR" != "24" ]; then
+		echo "Node.js 24.x is required. Current version: $(node -v)"
+		exit
+	fi
 fi
 
 which jq || sudo apt install jq
@@ -310,10 +315,26 @@ which cargo || sudo apt  install cargo
 which make || sudo apt install make
 which g++|| sudo apt install g++
 
-if [ -s "./node_modules" ]; then
-	echo "node_modules exists"
+_NPM_LOCK_FINGERPRINT_FILE="./node_modules/.package-lock.fingerprint"
+_NPM_LOCK_FINGERPRINT=""
+if [ -s "./package-lock.json" ]; then
+	_NPM_LOCK_FINGERPRINT=$(cat package-lock.json package.json | sha256sum | awk '{print $1}')
+fi
+
+if [ ! -d "./node_modules" ]; then
+	echo "node_modules not found, installing dependencies..."
+	npm ci
+	if [ "" != "$_NPM_LOCK_FINGERPRINT" ]; then
+		echo "$_NPM_LOCK_FINGERPRINT" > "$_NPM_LOCK_FINGERPRINT_FILE"
+	fi
+elif [ -s "$_NPM_LOCK_FINGERPRINT_FILE" ] && [ "" != "$_NPM_LOCK_FINGERPRINT" ] && [ "$_NPM_LOCK_FINGERPRINT" == "$(cat "$_NPM_LOCK_FINGERPRINT_FILE")" ]; then
+	echo "node_modules matches lockfile fingerprint"
 else
-	npm i
+	echo "dependency metadata changed, reinstalling dependencies..."
+	npm ci
+	if [ "" != "$_NPM_LOCK_FINGERPRINT" ]; then
+		echo "$_NPM_LOCK_FINGERPRINT" > "$_NPM_LOCK_FINGERPRINT_FILE"
+	fi
 fi
 
 if [ -s "./stat/config/Prod.js" ]; then
