@@ -79,7 +79,7 @@ import {
     listCoreTransactionStat,
     listContractVerifiedStats,
 } from "../service/OpenStatService";
-import {checkPresent, mustBeAddressParamIfPresent,} from "../../stat/service/common/utils";
+import {checkPresent, InvalidParamError, mustBeAddressParamIfPresent,} from "../../stat/service/common/utils";
 import {
     checkApiKey,
     checkRateByAddress,
@@ -90,7 +90,6 @@ import {
 import {CIP1559StatType} from "../../stat/service/StatsQuery";
 import {ConfigInstance, NoCoreSpace} from "../../stat/config/StatConfig";
 import {listAccountsByCursor} from "../service/OpenDataService";
-import {Errors} from "../../stat/service/common/LogicError";
 
 const path = require('path');
 const cors = require('@koa/cors');
@@ -106,7 +105,7 @@ async function getTokenInfo(ctx) {
 
     const token = await getToken(contract);
     if (!token) {
-        throw new Errors.ParameterError(`Token ${contract} not found.`);
+        throw new InvalidParamError(`Token ${contract} not found.`);
     }
 
     setBody(ctx, token)

@@ -6,13 +6,13 @@ import {Token} from "../../stat/model/Token";
 import {
     checkPresent,
     formatPrice,
+    InvalidParamError,
     mustBeAddressArrayParamIfPresent,
     mustBeAddressParamIfPresent
 } from "../../stat/service/common/utils";
 import {setBody} from "../router/middleware";
 import {fixIconUrl} from "./OpenAccountService";
 import {CONST} from "../../stat/service/common/constant";
-import {Errors} from "../../stat/service/common/LogicError";
 import {TokenAutoDetect} from "../../stat/service/TokenAutoDetect";
 import {Hex40Map} from "../../stat/model/HexMap";
 import {tokenCond} from "../../stat/router/StatRouter";
@@ -48,7 +48,7 @@ export async function getToken(address) {
 export async function validERC20Token(address) {
     const token = await getApiService().tokenQuery.query({address})
     if(!token || token.transferType !== CONST.TRANSFER_TYPE.ERC20) {
-        throw new Errors.ParameterError(`ERC20 token ${address} not found.`);
+        throw new InvalidParamError(`ERC20 token ${address} not found.`);
     }
 }
 
