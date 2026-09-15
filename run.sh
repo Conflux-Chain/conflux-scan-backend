@@ -315,10 +315,26 @@ which cargo || sudo apt  install cargo
 which make || sudo apt install make
 which g++|| sudo apt install g++
 
-if [ -s "./node_modules" ]; then
-	echo "node_modules exists"
+_NPM_LOCK_FINGERPRINT_FILE="./node_modules/.package-lock.fingerprint"
+_NPM_LOCK_FINGERPRINT=""
+if [ -s "./package-lock.json" ]; then
+	_NPM_LOCK_FINGERPRINT=$(cat package-lock.json package.json | sha256sum | awk '{print $1}')
+fi
+
+if [ ! -d "./node_modules" ]; then
+	echo "node_modules not found, installing dependencies..."
+	npm ci
+	if [ "" != "$_NPM_LOCK_FINGERPRINT" ]; then
+		echo "$_NPM_LOCK_FINGERPRINT" > "$_NPM_LOCK_FINGERPRINT_FILE"
+	fi
+elif [ -s "$_NPM_LOCK_FINGERPRINT_FILE" ] && [ "" != "$_NPM_LOCK_FINGERPRINT" ] && [ "$_NPM_LOCK_FINGERPRINT" == "$(cat "$_NPM_LOCK_FINGERPRINT_FILE")" ]; then
+	echo "node_modules matches lockfile fingerprint"
 else
-	npm i
+	echo "dependency metadata changed, reinstalling dependencies..."
+	npm ci
+	if [ "" != "$_NPM_LOCK_FINGERPRINT" ]; then
+		echo "$_NPM_LOCK_FINGERPRINT" > "$_NPM_LOCK_FINGERPRINT_FILE"
+	fi
 fi
 
 if [ -s "./stat/config/Prod.js" ]; then
