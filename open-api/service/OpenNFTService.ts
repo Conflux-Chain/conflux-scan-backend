@@ -4,13 +4,13 @@ import {setBody} from "../router/middleware";
 import {format} from "js-conflux-sdk";
 import {
     checkPresent,
-    InvalidParamError,
     mustBeAddressArrayParamIfPresent,
     mustBeAddressParamIfPresent,
     mustBeEnumParamIfPresent,
     mustBeIntParamIfPresent
 } from "../../stat/service/common/utils";
 import {paginateCore} from "../../stat/router/ParamChecker";
+import {Errors} from "../../stat/service/common/LogicError";
 import {TokenQuery} from "../../stat/service/TokenQuery";
 
 const lodash = require('lodash');
@@ -52,7 +52,7 @@ export async function listNFTTokens(ctx) {
     const {owner, contract, tokenId, withBrief, withMetadata, suppressMetadataError, sort, sortField, cursor} = ctx.request.query;
     const {skip, limit} = paginateCore(ctx.request.query, owner ? {skipMax: undefined} : undefined); // no skipMax limit for owner
     if(!contract && !owner) {
-        throw new InvalidParamError(`At least one of the parameters 'contract' and 'owner' is required.`);
+        throw new Errors.ParameterError(`At least one of the parameters 'contract' and 'owner' is required.`);
     }
 
     const data = await getApiService().nftCheckerService.listNftTokensForOpenApi({

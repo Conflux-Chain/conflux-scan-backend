@@ -2,7 +2,6 @@ import {setBody} from "../router/middleware";
 import {CODE_PARAMETER_ABSENT, CODE_PARAMETER_ABSENT_MSG} from "../common/Def";
 import {
     checkPresent,
-    InvalidParamError,
     mustBeAddressParamIfPresent,
     mustBeEnumParamIfPresent,
     mustBeIntParamIfPresent,
@@ -15,6 +14,7 @@ import {CONST} from "../../stat/service/common/constant";
 import {TokenQuery} from "../../stat/service/TokenQuery";
 import {paginateCore} from "../../stat/router/ParamChecker";
 import {Op} from "sequelize";
+import {Errors} from "../../stat/service/common/LogicError";
 const lodash = require('lodash');
 
 export async function listAccountCfxTransfer(ctx) {
@@ -81,7 +81,7 @@ export async function listNFTTransfers(ctx) {
             service = getApiService().crc3525transferQuery;
             break;
         default:
-            throw new InvalidParamError(`The contract ${contract} not a NFT contract`);
+            throw new Error(`The contract ${contract} not a NFT contract`);
     }
 
     cursor = cursor === undefined ? 0 : cursor;
@@ -135,10 +135,10 @@ export async function listTransfer(ctx, service, cursor = undefined, cursorField
     if(startEpoch !== undefined && endEpoch !== undefined && Number(startEpoch) > Number(endEpoch)) {
         const errMsg = StatApp.isEVM ? `StartBlock ${startEpoch} should not greater than endBlock ${endEpoch}.`
             : `MinEpochNumber ${minEpochNumber} should not greater than maxEpochNumber ${maxEpochNumber}.`;
-        throw new InvalidParamError(errMsg);
+        throw new Errors.ParameterError(errMsg);
     }
     if(minTimestamp !== undefined && maxTimestamp !== undefined && Number(minTimestamp) > Number(maxTimestamp)) {
-        throw new InvalidParamError(`MinTimestamp ${minTimestamp} should not greater than maxTimestamp ${maxTimestamp}.`);
+        throw new Errors.ParameterError(`MinTimestamp ${minTimestamp} should not greater than maxTimestamp ${maxTimestamp}.`);
     }
 
     const page = await service.listTransfer(

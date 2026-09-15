@@ -80,7 +80,6 @@ import {
 import {
     calCount,
     checkPresent,
-    InvalidParamError,
     mustBeAddressParamIfPresent, mustBeDateParamIfPresent,
     mustBeEnumParamIfPresent,
     mustBeHex64ParamIfPresent,
@@ -93,6 +92,7 @@ import {ethers} from "ethers";
 import {CIP1559StatType} from "../../stat/service/StatsQuery";
 import {registerDataApi} from "./ApiRouter";
 import {detectAccountType} from "../../stat/service/eip/eip7702";
+import {Errors} from "../../stat/service/common/LogicError";
 import {TokenQuery, TokenType} from "../../stat/service/TokenQuery";
 import {NFTType} from "../../stat/service/nftchecker/NFTCheckerService";
 import {HomepageDashboard} from "../../stat/service/HomepageDashboard";
@@ -312,7 +312,7 @@ async function listBalance(ctx) {
     const addressArray = address?.split(',') || [];
     addressArray.forEach(item => {
         if (!/0x[0-9a-fA-F]{40}/.test(item)) {
-            throw new InvalidParamError(`Invalid address parameter [${item}] with value [${item}].`);
+            throw new Error(`Invalid address parameter [${item}] with value [${item}].`);
         }
     });
 
@@ -373,7 +373,7 @@ async function listTx(ctx) {
 async function listTransferCfx(ctx) {
     const {txhash, address, startblock, endblock, sort, page, offset} = parseListTransferParam(ctx);
     if(!(txhash !== undefined ||  address !== undefined || (startblock !== undefined && endblock !== undefined))){
-        throw new InvalidParamError(`The txhash or address and/or block range parameters are required.`);
+        throw new Error(`The txhash or address and/or block range parameters are required.`);
     }
 
     let options;
@@ -457,7 +457,7 @@ async function listTransfer1155(ctx) {
 async function listAddressTransfer(ctx, queryFunc, converterFunc) {
     const {contractaddress, address, startblock, endblock, sort, page, offset} = parseListTransferParam(ctx);
     if(contractaddress === undefined && address === undefined){
-        throw new InvalidParamError(`The contractaddress and/or address parameters are required.`);
+        throw new Error(`The contractaddress and/or address parameters are required.`);
     }
 
     const skip = (page - 1) * offset;
@@ -504,7 +504,7 @@ async function getBalanceHistory(ctx) {
         // code: -32602,
         // message: 'Invalid parameters: num',
         // data: '"Specified epoch 226979060 is not executed, the latest state epoch is 134633298"'
-        throw new InvalidParamError(`${e?.data ? e.data : e?.message}`);
+        throw new Errors.ParameterError(`${e?.data ? e.data : e?.message}`);
     }
 
     setBody(ctx, result)
@@ -610,10 +610,10 @@ async function listLogs(ctx) {
 
     // check block range param
     if(fromBlock === undefined || (!/^[0-9]+$/.test(fromBlock) && fromBlock !== 'latest')) {
-        throw new InvalidParamError(`Invalid fromBlock parameter with value [${fromBlock}].`);
+        throw new Error(`Invalid fromBlock parameter with value [${fromBlock}].`);
     }
     if(toBlock === undefined || (!/^[0-9]+$/.test(toBlock) && toBlock !== 'latest')) {
-        throw new InvalidParamError(`Invalid toBlock parameter with value [${toBlock}].`);
+        throw new Error(`Invalid toBlock parameter with value [${toBlock}].`);
     }
     fromBlock = fromBlock === 'latest' ? fromBlock : parseInt(fromBlock);
     toBlock = toBlock === 'latest' ? toBlock : parseInt(toBlock);
@@ -621,7 +621,7 @@ async function listLogs(ctx) {
     // check address param and topic param
     if(address === undefined && topic0 === undefined && topic1 === undefined && topic2 === undefined
         && topic3 === undefined){
-        throw new InvalidParamError(`An address and/or topic(X) parameters are required.`);
+        throw new Error(`An address and/or topic(X) parameters are required.`);
     }
 
     const topics = [null, null, null, null];
@@ -688,7 +688,7 @@ async function listTokenTopHolders(ctx) {
 
     const limit = offset || DEFAULT_TOP_HOLDERS;
     if (limit > MAX_TOP_HOLDERS) {
-        throw new InvalidParamError(`Parameter offset exceeds ${MAX_TOP_HOLDERS}`);
+        throw new Errors.ParameterError(`Parameter offset exceeds ${MAX_TOP_HOLDERS}`);
     }
 
     const data = await getApiService().balanceService.rankHolder(contractaddress, 0, limit)
@@ -714,7 +714,7 @@ async function getTokenInfo(ctx) {
 
     const token = await getToken(contractaddress);
     if (!token) {
-        throw new InvalidParamError(`Token ${contractaddress} not found.`);
+        throw new Errors.ParameterError(`Token ${contractaddress} not found.`);
     }
 
     const result = [token];
@@ -786,7 +786,7 @@ async function listAddressTokenInventory(ctx) {
     if(contract) {
         const typeInfo = await TokenQuery.detectTokenType({base32: contract})
         if(typeInfo?.type !== CONST.TRANSFER_TYPE.ERC721) {
-            throw new InvalidParamError(`Contract ${contract} not ERC721 token`);
+            throw new Errors.ParameterError(`Contract ${contract} not ERC721 token`);
         }
     }
 
@@ -985,7 +985,7 @@ function parseStatParam(ctx) {
     const minTimestamp = new Date(startdate).getTime() / 1000;
     const maxTimestamp = new Date(enddate).getTime() / 1000;
     if(maxTimestamp <= minTimestamp) {
-        throw new InvalidParamError('Invalid date parameter. Should enddate > startdate');
+        throw new Errors.ParameterError('Invalid date parameter. Should enddate > startdate');
     }
 
     const recordCount = calCount({
@@ -994,7 +994,7 @@ function parseStatParam(ctx) {
         intervalType: INTERVAL_TYPE.day,
     });
     if(recordCount > LIMIT_MAX_STAT) {
-        throw new InvalidParamError(`Invalid date parameter. Maximum ${LIMIT_MAX_STAT} records`);
+        throw new Errors.ParameterError(`Invalid date parameter. Maximum ${LIMIT_MAX_STAT} records`);
     }
 
     return {startdate, enddate, sort, minTimestamp, maxTimestamp, recordCount};

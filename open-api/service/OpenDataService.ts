@@ -1,9 +1,10 @@
-import {intParam, InvalidParamError, mustBeEnumParamIfPresent, mustBeIntParamIfPresent} from "../../stat/service/common/utils";
+import {intParam, mustBeEnumParamIfPresent, mustBeIntParamIfPresent} from "../../stat/service/common/utils";
 import {Hex40Map} from "../../stat/model/HexMap";
 import {Op} from "sequelize";
 import {fmtAddr, StatApp} from "../../stat/StatApp";
 import {setBody} from "../router/middleware";
 import {LIMIT_MAX} from "../../stat/router/ParamChecker";
+import {Errors} from "../../stat/service/common/LogicError";
 
 export async function listAccountsByCursor(ctx) {
 	mustBeIntParamIfPresent(ctx.request.query, "id", "limit");
@@ -11,7 +12,7 @@ export async function listAccountsByCursor(ctx) {
 	let {id, sort = 'DESC'} = ctx.request.query;
 	const limit = intParam(ctx.request.query, "limit", 10);
 	if (limit > LIMIT_MAX) {
-		throw new InvalidParamError(`Parameter <limit exceeds ${LIMIT_MAX}`);
+		throw new Errors.ParameterError(`Parameter <limit exceeds ${LIMIT_MAX}`);
 	}
 	const idOption = { id: { [sort == "ASC" || sort == "asc" ? Op.gt : Op.lt]: id } };
 	if (id == undefined) {

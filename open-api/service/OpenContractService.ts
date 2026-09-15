@@ -4,7 +4,6 @@ import {fmtAddr, StatApp} from "../../stat/StatApp";
 import {format} from "js-conflux-sdk";
 import {
     checkPresent,
-    InvalidParamError,
     mustBeAddressArrayParamIfPresent,
     mustBeAddressParamIfPresent,
     mustBeEnumParamArrayIfPresent,
@@ -19,6 +18,7 @@ import {QueryTypes} from "sequelize";
 import {VerificationJob, VerifyInput} from "../../stat/service/ContractQuery";
 import {formatToBase32} from "../../stat/model/HexMap";
 import {paginateCore} from "../../stat/router/ParamChecker";
+import {Errors} from "../../stat/service/common/LogicError";
 import {SignatureType} from "../../stat/model/ContractInfo";
 
 const lodash = require('lodash');
@@ -377,7 +377,7 @@ export async function batchGetSignaturesByName(ctx) {
 
     const {signature: name = "", type: types} = ctx.request.query;
     if (!/^[a-zA-Z0-9$_()[\],*?]+$/.test(name)) {
-        throw new InvalidParamError(`Invalid search pattern '${name}'. Query must be a valid signature name but may include '*' and '?' wildcards.`);
+        throw new Errors.ParameterError(`Invalid search pattern '${name}'. Query must be a valid signature name but may include '*' and '?' wildcards.`);
     }
 
     const data = await getApiService().contractQuery.batchGetSignaturesByName(name, types);
