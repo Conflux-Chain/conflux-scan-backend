@@ -3,7 +3,7 @@ version: "3"
 services:
   open_api_1:
     container_name: ${SPACE}_OPEN_API_${OPEN_API_PORT_1}
-    image: node:14.17.5
+    image: node:24.15.0
     volumes:
       - ../:/scan
     working_dir: /scan
@@ -14,7 +14,7 @@ services:
     command: node ./open-api/ApiServer.js
   open_api_2:
     container_name: ${SPACE}_OPEN_API_${OPEN_API_PORT_2}
-    image: node:14.17.5
+    image: node:24.15.0
     volumes:
       - ../:/scan
     working_dir: /scan
@@ -25,7 +25,7 @@ services:
     command: node ./open-api/ApiServer.js
   open_api_3:
     container_name: ${SPACE}_OPEN_API_${OPEN_API_PORT_3}
-    image: node:14.17.5
+    image: node:24.15.0
     volumes:
       - ../:/scan
     working_dir: /scan

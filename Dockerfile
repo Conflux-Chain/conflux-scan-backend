@@ -15,6 +15,7 @@ WORKDIR /scan
 
 # install dependencies
 COPY package*.json ./
+COPY vendor/inspector-metrics-1.23.0-node24.tgz ./vendor/inspector-metrics-1.23.0-node24.tgz
 RUN npm install
 
 # compile

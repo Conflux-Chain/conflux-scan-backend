@@ -168,17 +168,22 @@ if [ "not found" == "${_NODE}" ]; then
 		# load nvm env
 		fn_loadNVM
 		# download and install Node.js (you may need to restart the terminal)
-		nvm install 20
+		nvm install 24.15.0
 		# verifies the right Node.js version is in the environment
-		node -v # should print `v20.17.0`
+		node -v # should print `v24.15.0`
 		# verifies the right npm version is in the environment
-		npm -v # should print `10.8.2`
+		npm -v
 	else
 		exit
 	fi
 else
 	echo "node version is:"
 	node -v
+	_NODE_MAJOR=$(node -p "process.versions.node.split('.')[0]")
+	if [ "$_NODE_MAJOR" != "24" ]; then
+		echo "Node.js 24.x is required. Current version: $(node -v)"
+		exit
+	fi
 fi
 
 which jq || sudo apt install jq
