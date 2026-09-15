@@ -8,14 +8,13 @@ import {CODE_PARAMETER_ERROR, CODE_PARAMETER_ERROR_MSG, CODE_RATE_LIMITED} from 
 import {safeAddErrorLog} from "../../stat/monitor/ErrorMonitor";
 import {EtherOption} from "../../stat/config/StatConfig";
 import {DAY} from "../../stat/service/common/constant";
+import {ParameterErrorCode} from "../../stat/service/common/LogicError";
 
 const superagent = require('superagent');
 const yamljs = require('yamljs');
 const swStats = require('swagger-stats');
 const e2k = require('express-to-koa');
 const swsProcessor = require('swagger-stats/lib/swsProcessor.js');
-
-const LOGIC_PARAMETER_ERROR_CODE = 50101;
 
 export async function executionTime(ctx, next) {
     const start = Date.now()
@@ -39,7 +38,7 @@ export async function handleException(ctx, next) {
             setBody(ctx, ctx.request.query, CODE_PARAMETER_ERROR, err.message)
             return
         }
-        if (err?.code === LOGIC_PARAMETER_ERROR_CODE && err?.status === 600) {
+        if (err?.code === ParameterErrorCode && err?.status === 600) {
             setBody(ctx, undefined, err.code, err.toString())
             return
         }
