@@ -15,6 +15,8 @@ const swStats = require('swagger-stats');
 const e2k = require('express-to-koa');
 const swsProcessor = require('swagger-stats/lib/swsProcessor.js');
 
+const LOGIC_PARAMETER_ERROR_CODE = 50101;
+
 export async function executionTime(ctx, next) {
     const start = Date.now()
     return next().finally(()=>{
@@ -35,6 +37,10 @@ export async function handleException(ctx, next) {
         }
         if (err instanceof InvalidParamError) {
             setBody(ctx, ctx.request.query, CODE_PARAMETER_ERROR, err.message)
+            return
+        }
+        if (err?.code === LOGIC_PARAMETER_ERROR_CODE && err?.status === 600) {
+            setBody(ctx, undefined, err.code, err.toString())
             return
         }
         if (/many requests/.test(err.message)){
