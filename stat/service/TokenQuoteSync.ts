@@ -28,6 +28,11 @@ function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function shouldRetryBNRequestError(error) {
+    const status = error?.status || error?.response?.status;
+    return !status || status === 408 || status === 429 || status >= 500;
+}
+
 export class TokenQuoteSync {
     private config: QuoteOptions;
     private cfx: Conflux;
@@ -166,9 +171,11 @@ export class TokenQuoteSync {
                 return lodash.get(resp, ['body']);
             } catch (e) {
                 lastError = e;
-                if (attempt < BN_REQUEST_MAX_ATTEMPTS) {
+                if (attempt < BN_REQUEST_MAX_ATTEMPTS && shouldRetryBNRequestError(e)) {
                     console.log(`Failed to fetch token quote from BN, retry ${attempt}/${BN_REQUEST_MAX_ATTEMPTS}`, e);
                     await sleep(BN_REQUEST_RETRY_DELAY_MS);
+                } else {
+                    break;
                 }
             }
         }
