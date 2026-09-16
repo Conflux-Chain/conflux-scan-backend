@@ -81,8 +81,20 @@ export async function loadSetAuth(netProvider: JsonRpcProvider, blockNumber: num
 		}
 		throw e;
 	});
+	if (!Array.isArray(result)) {
+		console.log(`${__filename} , ${method} returned invalid result for block ${blockNumber}`, result);
+		return null;
+	}
 	const txMap = new Map<string, any>();
 	const blockDetail = await netProvider.send('eth_getBlockByNumber', [blockHex, true]);
+	if (!blockDetail || !Array.isArray(blockDetail.transactions)) {
+		console.log(`${__filename} , eth_getBlockByNumber returned invalid block for ${blockNumber}`, blockDetail);
+		return null;
+	}
+	if (blockDetail.transactions.some(transaction => !transaction?.hash)) {
+		console.log(`${__filename} , eth_getBlockByNumber returned invalid transactions for ${blockNumber}`, blockDetail.transactions);
+		return null;
+	}
 	blockDetail.transactions.forEach(transaction => {
 		txMap.set(transaction.hash, transaction);
 	})
@@ -193,6 +205,9 @@ export async function process7702AuthStub() {
 	}
 	console.log(`process block `, stub.blockNumber, ' stub id ', stub.id);
 	const rpcResult = await loadSetAuth(ctx.netProvider, stub.blockNumber) as any[];
+	if (!rpcResult) {
+		return {code: 500, message: `failed to load auth block detail at ${stub.blockNumber}`};
+	}
 	const dbBeanArr: IAuthAction[] = [];
 	let authIndex = -1;
 	for (const entry of rpcResult) {
