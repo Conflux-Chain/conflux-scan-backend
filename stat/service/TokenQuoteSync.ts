@@ -15,8 +15,8 @@ const BigFixed = require('bigfixed');
 const {abi: abiSwappiFarmController} = require('./abi/SwappiFarmController');
 const {abi: abiSwappiPair} = require('./abi/SwappiPair');
 const {abi: abiSwappiRouter} = require('./abi/SwappiRouter');
-const response = 3_000;
-const deadline = 3_000;
+const response = 13_000;
+const deadline = 13_000;
 const PEER_URLS = {
     1029: 'https://www.confluxscan.org',
     1030: 'https://evm.confluxscan.org',
