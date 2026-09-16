@@ -79,10 +79,7 @@ export class BatchBalanceWatcher {
         }
         return BatchBalanceWatcher.allTokenContract.getBalances(account, tokens).catch(async err=>{
             if (!hasRetry) {
-                const retryResult = await BatchBalanceWatcher.getBalances(account, tokens, true);
-                if (retryResult !== undefined) {
-                    return retryResult;
-                }
+                return BatchBalanceWatcher.getBalances(account, tokens, true);
             }
             safeAddErrorLog('batch-balance-watcher', `get-balances`, err);
             console.log(` getBalances fail: `, err.data)
