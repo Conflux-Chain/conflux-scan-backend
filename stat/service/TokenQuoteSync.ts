@@ -31,13 +31,13 @@ function sleep(ms: number) {
 
 function shouldRetryBNRequestError(error) {
     const status = error?.status || error?.response?.status;
-    return !status || status === 408 || status === 429 || status >= 500;
+    return !status || status === 408 || status === 418 || status === 429 || status >= 500;
 }
 
 function getBNRequestRetryAfterMs(error) {
     const status = error?.status || error?.response?.status;
     const retryAfter = error?.response?.headers?.['retry-after'];
-    return status === 429 ? parseRetryAfterMs(retryAfter) : null;
+    return status === 418 || status === 429 ? parseRetryAfterMs(retryAfter) : null;
 }
 
 function parseRetryAfterMs(retryAfter) {
