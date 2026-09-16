@@ -34,6 +34,12 @@ function shouldRetryBNRequestError(error) {
     return !status || status === 408 || status === 429 || status >= 500;
 }
 
+function getBNRequestRetryAfterMs(error) {
+    const status = error?.status || error?.response?.status;
+    const retryAfter = error?.response?.headers?.['retry-after'];
+    return status === 429 ? parseRetryAfterMs(retryAfter) : null;
+}
+
 function parseRetryAfterMs(retryAfter) {
     if (!retryAfter) {
         return null;
@@ -53,9 +59,7 @@ function parseRetryAfterMs(retryAfter) {
 }
 
 function getBNRequestRetryDelayMs(error, attempt: number) {
-    const status = error?.status || error?.response?.status;
-    const retryAfter = error?.response?.headers?.['retry-after'];
-    const retryAfterMs = status === 429 ? parseRetryAfterMs(retryAfter) : null;
+    const retryAfterMs = getBNRequestRetryAfterMs(error);
     if (retryAfterMs !== null) {
         return retryAfterMs <= BN_REQUEST_MAX_RETRY_DELAY_MS ? retryAfterMs : null;
     }
@@ -75,6 +79,7 @@ export class TokenQuoteSync {
     private readonly cmcIntervalSec: number;
     private readonly resetIntervalSec: number;
     private readonly disableAlertPullPeer: boolean;
+    private bnRequestCooldownUntilMs = 0;
 
     constructor(cfx: Conflux, config: QuoteOptions) {
         if(config.enable && (!config.binanceAccessToken || !config.coinMarketCapAccessToken)) {
@@ -168,6 +173,11 @@ export class TokenQuoteSync {
     private async updateByBN(tokenList) {
         if (!tokenList?.length || this.IS_BJ_REGION) return;
 
+        if (Date.now() < this.bnRequestCooldownUntilMs) {
+            console.log(`Skip token quote from BN until ${new Date(this.bnRequestCooldownUntilMs).toISOString()}`);
+            return;
+        }
+
         const tokenArray = tokenList?.filter((token) => token.bnId);
         if (!tokenArray?.length) {
             return;
@@ -206,6 +216,11 @@ export class TokenQuoteSync {
                 if (attempt < BN_REQUEST_MAX_ATTEMPTS && shouldRetryBNRequestError(e)) {
                     const delayMs = getBNRequestRetryDelayMs(e, attempt);
                     if (delayMs === null) {
+                        const retryAfterMs = getBNRequestRetryAfterMs(e);
+                        if (retryAfterMs !== null) {
+                            this.bnRequestCooldownUntilMs = Date.now() + retryAfterMs;
+                            console.log(`Pause token quote from BN until ${new Date(this.bnRequestCooldownUntilMs).toISOString()}`, e);
+                        }
                         break;
                     }
                     console.log(`Failed to fetch token quote from BN, retry ${attempt}/${BN_REQUEST_MAX_ATTEMPTS} after ${delayMs}ms`, e);
