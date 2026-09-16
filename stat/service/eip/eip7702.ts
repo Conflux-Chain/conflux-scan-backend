@@ -91,6 +91,10 @@ export async function loadSetAuth(netProvider: JsonRpcProvider, blockNumber: num
 		console.log(`${__filename} , eth_getBlockByNumber returned invalid block for ${blockNumber}`, blockDetail);
 		return null;
 	}
+	if (blockDetail.transactions.some(transaction => !transaction?.hash)) {
+		console.log(`${__filename} , eth_getBlockByNumber returned invalid transactions for ${blockNumber}`, blockDetail.transactions);
+		return null;
+	}
 	blockDetail.transactions.forEach(transaction => {
 		txMap.set(transaction.hash, transaction);
 	})
