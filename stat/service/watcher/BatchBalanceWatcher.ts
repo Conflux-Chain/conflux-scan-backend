@@ -77,12 +77,17 @@ export class BatchBalanceWatcher {
             }
             return Promise.all(taskArr);
         }
-        return BatchBalanceWatcher.allTokenContract.getBalances(account, tokens).catch(err=>{
+        return BatchBalanceWatcher.allTokenContract.getBalances(account, tokens).catch(async err=>{
             if (!hasRetry) {
-                safeAddErrorLog('batch-balance-watcher', `get-balances`, err);
+                const retryResult = await BatchBalanceWatcher.getBalances(account, tokens, true);
+                if (retryResult !== undefined) {
+                    return retryResult;
+                }
             }
+            safeAddErrorLog('batch-balance-watcher', `get-balances`, err);
             console.log(` getBalances fail: `, err.data)
             console.log(` getBalances fail: `, err)
+            return undefined;
         });
     }
 }
