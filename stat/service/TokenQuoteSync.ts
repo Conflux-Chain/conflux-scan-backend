@@ -19,6 +19,7 @@ const response = 13_000;
 const deadline = 13_000;
 const BN_REQUEST_MAX_ATTEMPTS = 5;
 const BN_REQUEST_RETRY_DELAY_MS = 1_000;
+const BN_REQUEST_MAX_RETRY_DELAY_MS = 60_000;
 const PEER_URLS = {
     1029: 'https://www.confluxscan.org',
     1030: 'https://evm.confluxscan.org',
@@ -31,6 +32,37 @@ function sleep(ms: number) {
 function shouldRetryBNRequestError(error) {
     const status = error?.status || error?.response?.status;
     return !status || status === 408 || status === 429 || status >= 500;
+}
+
+function parseRetryAfterMs(retryAfter) {
+    if (!retryAfter) {
+        return null;
+    }
+
+    const retryAfterSec = Number(retryAfter);
+    if (Number.isFinite(retryAfterSec)) {
+        return Math.max(0, retryAfterSec * 1000);
+    }
+
+    const retryAfterDateMs = Date.parse(retryAfter);
+    if (Number.isFinite(retryAfterDateMs)) {
+        return Math.max(0, retryAfterDateMs - Date.now());
+    }
+
+    return null;
+}
+
+function getBNRequestRetryDelayMs(error, attempt: number) {
+    const status = error?.status || error?.response?.status;
+    const retryAfter = error?.response?.headers?.['retry-after'];
+    const retryAfterMs = status === 429 ? parseRetryAfterMs(retryAfter) : null;
+    if (retryAfterMs !== null) {
+        return Math.min(retryAfterMs, BN_REQUEST_MAX_RETRY_DELAY_MS);
+    }
+
+    const backoffMs = BN_REQUEST_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
+    const jitterMs = Math.floor(Math.random() * BN_REQUEST_RETRY_DELAY_MS);
+    return Math.min(backoffMs + jitterMs, BN_REQUEST_MAX_RETRY_DELAY_MS);
 }
 
 export class TokenQuoteSync {
@@ -172,8 +204,9 @@ export class TokenQuoteSync {
             } catch (e) {
                 lastError = e;
                 if (attempt < BN_REQUEST_MAX_ATTEMPTS && shouldRetryBNRequestError(e)) {
-                    console.log(`Failed to fetch token quote from BN, retry ${attempt}/${BN_REQUEST_MAX_ATTEMPTS}`, e);
-                    await sleep(BN_REQUEST_RETRY_DELAY_MS);
+                    const delayMs = getBNRequestRetryDelayMs(e, attempt);
+                    console.log(`Failed to fetch token quote from BN, retry ${attempt}/${BN_REQUEST_MAX_ATTEMPTS} after ${delayMs}ms`, e);
+                    await sleep(delayMs);
                 } else {
                     break;
                 }
