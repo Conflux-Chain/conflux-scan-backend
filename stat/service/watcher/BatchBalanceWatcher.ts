@@ -83,10 +83,10 @@ export class BatchBalanceWatcher {
                 if (retryResult !== undefined) {
                     return retryResult;
                 }
-                safeAddErrorLog('batch-balance-watcher', `get-balances`, err);
-                console.log(` getBalances fail: `, err.data)
-                console.log(` getBalances fail: `, err)
             }
+            safeAddErrorLog('batch-balance-watcher', `get-balances`, err);
+            console.log(` getBalances fail: `, err.data)
+            console.log(` getBalances fail: `, err)
             return undefined;
         });
     }
