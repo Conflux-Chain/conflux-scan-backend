@@ -2,18 +2,24 @@
 set -euo pipefail
 
 BOUNDARY_TAG="v3.1.73"
-TAGS_TO_DELETE="/tmp/tags_to_delete.txt"
+TAGS_TO_DELETE="$(mktemp)"
+
+cleanup() {
+    rm -f "${TAGS_TO_DELETE}"
+}
+trap cleanup EXIT
 
 git fetch --tags --prune
 
-if ! git rev-parse -q --verify "refs/tags/${BOUNDARY_TAG}" >/dev/null; then
-    echo "Boundary tag ${BOUNDARY_TAG} not found. Abort." >&2
+if ! git ls-remote --exit-code --tags origin "refs/tags/${BOUNDARY_TAG}" >/dev/null; then
+    echo "Boundary tag ${BOUNDARY_TAG} not found on origin. Abort." >&2
     exit 1
 fi
 
-git tag -l 'v*' \
+git ls-remote --tags origin 'refs/tags/v*' \
+| awk '{sub("refs/tags/", "", $2); sub("\\^\\{\\}$", "", $2); print $2}' \
 | sort -V \
-| awk -v boundary="${BOUNDARY_TAG}" '$0==boundary{exit} {print}' \
+| awk -v boundary="${BOUNDARY_TAG}" '$0==boundary{found=1} !found{print}' \
 > "${TAGS_TO_DELETE}"
 
 echo "Deleting local tags..."
