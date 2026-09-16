@@ -17,10 +17,16 @@ const {abi: abiSwappiPair} = require('./abi/SwappiPair');
 const {abi: abiSwappiRouter} = require('./abi/SwappiRouter');
 const response = 13_000;
 const deadline = 13_000;
+const BN_REQUEST_MAX_ATTEMPTS = 5;
+const BN_REQUEST_RETRY_DELAY_MS = 1_000;
 const PEER_URLS = {
     1029: 'https://www.confluxscan.org',
     1030: 'https://evm.confluxscan.org',
 };
+
+function sleep(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 export class TokenQuoteSync {
     private config: QuoteOptions;
@@ -147,14 +153,27 @@ export class TokenQuoteSync {
         symbolArray = [...new Set(symbolArray)];
         const symbols = `[${symbolArray.map(symbol => `"${symbol}${convert}"`).join(",")}]`;
 
-        const resp = await superagent.get('https://api.binance.com/api/v3/ticker/price')
-            .set('X-MBX-APIKEY', this.config.binanceAccessToken)
-            .timeout({response, deadline})
-            .query({
-                symbols,
-            });
+        let lastError;
+        for (let attempt = 1; attempt <= BN_REQUEST_MAX_ATTEMPTS; attempt++) {
+            try {
+                const resp = await superagent.get('https://api.binance.com/api/v3/ticker/price')
+                    .set('X-MBX-APIKEY', this.config.binanceAccessToken)
+                    .timeout({response, deadline})
+                    .query({
+                        symbols,
+                    });
 
-        return lodash.get(resp, ['body']);
+                return lodash.get(resp, ['body']);
+            } catch (e) {
+                lastError = e;
+                if (attempt < BN_REQUEST_MAX_ATTEMPTS) {
+                    console.log(`Failed to fetch token quote from BN, retry ${attempt}/${BN_REQUEST_MAX_ATTEMPTS}`, e);
+                    await sleep(BN_REQUEST_RETRY_DELAY_MS);
+                }
+            }
+        }
+
+        throw lastError;
     }
 
     //======================================================================
