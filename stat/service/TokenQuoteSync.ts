@@ -57,7 +57,7 @@ function getBNRequestRetryDelayMs(error, attempt: number) {
     const retryAfter = error?.response?.headers?.['retry-after'];
     const retryAfterMs = status === 429 ? parseRetryAfterMs(retryAfter) : null;
     if (retryAfterMs !== null) {
-        return Math.min(retryAfterMs, BN_REQUEST_MAX_RETRY_DELAY_MS);
+        return retryAfterMs <= BN_REQUEST_MAX_RETRY_DELAY_MS ? retryAfterMs : null;
     }
 
     const backoffMs = BN_REQUEST_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
@@ -205,6 +205,9 @@ export class TokenQuoteSync {
                 lastError = e;
                 if (attempt < BN_REQUEST_MAX_ATTEMPTS && shouldRetryBNRequestError(e)) {
                     const delayMs = getBNRequestRetryDelayMs(e, attempt);
+                    if (delayMs === null) {
+                        break;
+                    }
                     console.log(`Failed to fetch token quote from BN, retry ${attempt}/${BN_REQUEST_MAX_ATTEMPTS} after ${delayMs}ms`, e);
                     await sleep(delayMs);
                 } else {
