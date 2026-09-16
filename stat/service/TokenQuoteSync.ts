@@ -15,12 +15,59 @@ const BigFixed = require('bigfixed');
 const {abi: abiSwappiFarmController} = require('./abi/SwappiFarmController');
 const {abi: abiSwappiPair} = require('./abi/SwappiPair');
 const {abi: abiSwappiRouter} = require('./abi/SwappiRouter');
-const response = 3_000;
-const deadline = 3_000;
+const response = 13_000;
+const deadline = 13_000;
+const BN_REQUEST_MAX_ATTEMPTS = 5;
+const BN_REQUEST_RETRY_DELAY_MS = 1_000;
+const BN_REQUEST_MAX_RETRY_DELAY_MS = 60_000;
 const PEER_URLS = {
     1029: 'https://www.confluxscan.org',
     1030: 'https://evm.confluxscan.org',
 };
+
+function sleep(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function shouldRetryBNRequestError(error) {
+    const status = error?.status || error?.response?.status;
+    return !status || status === 408 || status === 418 || status === 429 || status >= 500;
+}
+
+function getBNRequestRetryAfterMs(error) {
+    const status = error?.status || error?.response?.status;
+    const retryAfter = error?.response?.headers?.['retry-after'];
+    return status === 418 || status === 429 ? parseRetryAfterMs(retryAfter) : null;
+}
+
+function parseRetryAfterMs(retryAfter) {
+    if (!retryAfter) {
+        return null;
+    }
+
+    const retryAfterSec = Number(retryAfter);
+    if (Number.isFinite(retryAfterSec)) {
+        return Math.max(0, retryAfterSec * 1000);
+    }
+
+    const retryAfterDateMs = Date.parse(retryAfter);
+    if (Number.isFinite(retryAfterDateMs)) {
+        return Math.max(0, retryAfterDateMs - Date.now());
+    }
+
+    return null;
+}
+
+function getBNRequestRetryDelayMs(error, attempt: number) {
+    const retryAfterMs = getBNRequestRetryAfterMs(error);
+    if (retryAfterMs !== null) {
+        return retryAfterMs <= BN_REQUEST_MAX_RETRY_DELAY_MS ? retryAfterMs : null;
+    }
+
+    const backoffMs = BN_REQUEST_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
+    const jitterMs = Math.floor(Math.random() * BN_REQUEST_RETRY_DELAY_MS);
+    return Math.min(backoffMs + jitterMs, BN_REQUEST_MAX_RETRY_DELAY_MS);
+}
 
 export class TokenQuoteSync {
     private config: QuoteOptions;
@@ -32,6 +79,7 @@ export class TokenQuoteSync {
     private readonly cmcIntervalSec: number;
     private readonly resetIntervalSec: number;
     private readonly disableAlertPullPeer: boolean;
+    private bnRequestCooldownUntilMs = 0;
 
     constructor(cfx: Conflux, config: QuoteOptions) {
         if(config.enable && (!config.binanceAccessToken || !config.coinMarketCapAccessToken)) {
@@ -125,6 +173,11 @@ export class TokenQuoteSync {
     private async updateByBN(tokenList) {
         if (!tokenList?.length || this.IS_BJ_REGION) return;
 
+        if (Date.now() < this.bnRequestCooldownUntilMs) {
+            console.log(`Skip token quote from BN until ${new Date(this.bnRequestCooldownUntilMs).toISOString()}`);
+            return;
+        }
+
         const tokenArray = tokenList?.filter((token) => token.bnId);
         if (!tokenArray?.length) {
             return;
@@ -147,14 +200,38 @@ export class TokenQuoteSync {
         symbolArray = [...new Set(symbolArray)];
         const symbols = `[${symbolArray.map(symbol => `"${symbol}${convert}"`).join(",")}]`;
 
-        const resp = await superagent.get('https://api.binance.com/api/v3/ticker/price')
-            .set('X-MBX-APIKEY', this.config.binanceAccessToken)
-            .timeout({response, deadline})
-            .query({
-                symbols,
-            });
+        let lastError;
+        for (let attempt = 1; attempt <= BN_REQUEST_MAX_ATTEMPTS; attempt++) {
+            try {
+                const resp = await superagent.get('https://api.binance.com/api/v3/ticker/price')
+                    .set('X-MBX-APIKEY', this.config.binanceAccessToken)
+                    .timeout({response, deadline})
+                    .query({
+                        symbols,
+                    });
 
-        return lodash.get(resp, ['body']);
+                return lodash.get(resp, ['body']);
+            } catch (e) {
+                lastError = e;
+                if (attempt < BN_REQUEST_MAX_ATTEMPTS && shouldRetryBNRequestError(e)) {
+                    const delayMs = getBNRequestRetryDelayMs(e, attempt);
+                    if (delayMs === null) {
+                        const retryAfterMs = getBNRequestRetryAfterMs(e);
+                        if (retryAfterMs !== null) {
+                            this.bnRequestCooldownUntilMs = Date.now() + retryAfterMs;
+                            console.log(`Pause token quote from BN until ${new Date(this.bnRequestCooldownUntilMs).toISOString()}`, e);
+                        }
+                        break;
+                    }
+                    console.log(`Failed to fetch token quote from BN, retry ${attempt}/${BN_REQUEST_MAX_ATTEMPTS} after ${delayMs}ms`, e);
+                    await sleep(delayMs);
+                } else {
+                    break;
+                }
+            }
+        }
+
+        throw lastError;
     }
 
     //======================================================================
