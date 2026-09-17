@@ -18,7 +18,7 @@ fi
 
 git ls-remote --tags origin 'refs/tags/v*' \
 | awk '{sub("refs/tags/", "", $2); sub("\\^\\{\\}$", "", $2); print $2}' \
-| sort -V \
+| sort -Vu \
 | awk -v boundary="${BOUNDARY_TAG}" '$0==boundary{found=1} !found{print}' \
 > "${TAGS_TO_DELETE}"
 
