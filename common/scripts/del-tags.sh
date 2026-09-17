@@ -22,12 +22,12 @@ git fetch "${REMOTE}" --tags --prune
 
 git ls-remote --tags "${REMOTE}" 'refs/tags/v*' > "${REMOTE_TAGS}"
 
-awk '{sub("refs/tags/", "", $2); sub("\\^\\{\\}$", "", $2); print $2}' "${REMOTE_TAGS}" \
-| sort -Vu \
+awk '$2 !~ /\^\{\}$/ {sub("refs/tags/", "", $2); print $2 "\t" $1}' "${REMOTE_TAGS}" \
+| sort -t "$(printf '\t')" -k1,1V -u \
 > "${NORMALIZED_TAGS}"
 
 awk -v boundary="${BOUNDARY_TAG}" '
-    $0 == boundary { found=1 }
+    $1 == boundary { found=1 }
     !found { print }
     END {
         if (!found) {
@@ -40,12 +40,16 @@ awk -v boundary="${BOUNDARY_TAG}" '
 > "${TAGS_TO_DELETE}"
 
 echo "Deleting local tags..."
-while read -r tag; do
-    git tag -d "${tag}"
+while IFS=$'\t' read -r tag oid; do
+    if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+        git tag -d "${tag}"
+    else
+        echo "Local tag ${tag} not found; skip local delete."
+    fi
 done < "${TAGS_TO_DELETE}"
 
 echo "Deleting remote tags..."
-while read -r tag; do
+while IFS=$'\t' read -r tag oid; do
     echo "Deleting remote tag: ${tag}"
-    git push "${REMOTE}" ":refs/tags/${tag}"
+    git push --force-with-lease="refs/tags/${tag}:${oid}" "${REMOTE}" ":refs/tags/${tag}"
 done < "${TAGS_TO_DELETE}"
