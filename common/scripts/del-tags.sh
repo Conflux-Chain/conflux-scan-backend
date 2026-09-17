@@ -1,32 +1,51 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BOUNDARY_TAG="v3.1.73"
+REMOTE="${1:-origin}"
+BOUNDARY_TAG="${2:-v3.1.73}"
+if [[ $# -gt 2 ]]; then
+    echo "Usage: $0 [remote] [boundary-tag]" >&2
+    exit 2
+fi
+
+REMOTE_TAGS="$(mktemp)"
+NORMALIZED_TAGS="$(mktemp)"
 TAGS_TO_DELETE="$(mktemp)"
 
 cleanup() {
-    rm -f "${TAGS_TO_DELETE}"
+    rm -f "${REMOTE_TAGS}" "${NORMALIZED_TAGS}" "${TAGS_TO_DELETE}"
 }
 trap cleanup EXIT
 
-git fetch --tags --prune
+git remote get-url "${REMOTE}" >/dev/null
+git fetch "${REMOTE}" --tags --prune
 
-if ! git ls-remote --exit-code --tags origin "refs/tags/${BOUNDARY_TAG}" >/dev/null; then
-    echo "Boundary tag ${BOUNDARY_TAG} not found on origin. Abort." >&2
-    exit 1
-fi
+git ls-remote --tags "${REMOTE}" 'refs/tags/v*' > "${REMOTE_TAGS}"
 
-git ls-remote --tags origin 'refs/tags/v*' \
-| awk '{sub("refs/tags/", "", $2); sub("\\^\\{\\}$", "", $2); print $2}' \
+awk '{sub("refs/tags/", "", $2); sub("\\^\\{\\}$", "", $2); print $2}' "${REMOTE_TAGS}" \
 | sort -Vu \
-| awk -v boundary="${BOUNDARY_TAG}" '$0==boundary{found=1} !found{print}' \
+> "${NORMALIZED_TAGS}"
+
+awk -v boundary="${BOUNDARY_TAG}" '
+    $0 == boundary { found=1 }
+    !found { print }
+    END {
+        if (!found) {
+            print "Boundary tag " boundary " not found on remote." > "/dev/stderr"
+            exit 1
+        }
+    }
+' "${NORMALIZED_TAGS}" \
+| sort -V \
 > "${TAGS_TO_DELETE}"
 
 echo "Deleting local tags..."
-xargs -t -r git tag -d < "${TAGS_TO_DELETE}"
+while read -r tag; do
+    git tag -d "${tag}"
+done < "${TAGS_TO_DELETE}"
 
 echo "Deleting remote tags..."
 while read -r tag; do
     echo "Deleting remote tag: ${tag}"
-    git push origin ":refs/tags/${tag}"
+    git push "${REMOTE}" ":refs/tags/${tag}"
 done < "${TAGS_TO_DELETE}"
