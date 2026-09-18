@@ -4,7 +4,9 @@ import {
     mustBeAddressArrayParamIfPresent,
     mustBeAddressParamIfPresent,
     mustBeEnumParamArrayIfPresent,
-    mustBeIntParamIfPresent
+    mustBeIntParamIfPresent,
+    nativeTokenName,
+    nativeTokenSymbol
 } from "../../stat/service/common/utils";
 import {setBody} from "../router/middleware";
 import {getApiService} from "../ApiServer";
@@ -32,8 +34,8 @@ export async function listAccountAssets(ctx) {
                 type: TAG_NATIVE,
                 amount: account.balance,
                 stakingAmount: StatApp.isEVM ? undefined : account.stakingBalance,
-                name: 'Conflux Network Token',
-                symbol: 'CFX',
+                name: nativeTokenName(),
+                symbol: nativeTokenSymbol(),
                 decimals: 18,
                 iconUrl: TokenQuery.wrappedCFX?.iconUrl,
                 priceInUSDT: formatPrice(TokenQuery.wrappedCFX?.price),

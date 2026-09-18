@@ -40,6 +40,7 @@ import {buildTxSenderReceiverHourly} from "./PeriodTxnSummary";
 import {safeAddErrorLog} from "./monitor/ErrorMonitor";
 import {checkAllTableDataTime} from "./monitor/DataTimeChecker";
 import {StatDailyGas} from "./service/timerstat/StatDailyGas";
+import {StatDailyPartner} from "./service/timerstat/StatDailyPartner";
 import {ContractQuery} from "./service/ContractQuery";
 
 async function runTools() {
@@ -99,6 +100,9 @@ async function main() {
     //
     const statDailyTxn = new StatDailyTxn({cfx});
     statDailyTxn.schedule(1000 * 60).then();
+    //
+    const statDailyPartner = new StatDailyPartner({cfx});
+    statDailyPartner.schedule(1000 * 60 * 10).then();
     //
     const statDailyNFT = new StatDailyNFT({cfx});
     statDailyNFT.schedule(1000 * 60).then();
