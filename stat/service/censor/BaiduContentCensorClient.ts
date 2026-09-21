@@ -107,11 +107,11 @@ export class BaiduContentCensorClient {
             try {
                 result = JSON.parse(text) as T;
             } catch {
-                throw new Error(`Baidu censor returned invalid JSON (HTTP ${response.status})`);
+                throw new Error(`Baidu API returned invalid JSON (HTTP ${response.status})`);
             }
 
             if (!response.ok) {
-                throw new Error(`Baidu censor request failed with HTTP ${response.status}`);
+                throw new Error(`Baidu API request failed with HTTP ${response.status}`);
             }
 
             return result;
@@ -119,7 +119,7 @@ export class BaiduContentCensorClient {
         const timeoutPromise = new Promise<never>((_, reject) => {
             timeout = setTimeout(() => {
                 controller.abort();
-                reject(new Error(`Baidu censor request timed out after ${this.timeoutMs}ms`));
+                reject(new Error(`Baidu API request timed out after ${this.timeoutMs}ms`));
             }, this.timeoutMs);
         });
 
@@ -127,7 +127,7 @@ export class BaiduContentCensorClient {
             return await Promise.race([requestPromise, timeoutPromise]);
         } catch (error) {
             if (controller.signal.aborted) {
-                throw new Error(`Baidu censor request timed out after ${this.timeoutMs}ms`);
+                throw new Error(`Baidu API request timed out after ${this.timeoutMs}ms`);
             }
             throw error;
         } finally {
