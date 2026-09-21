@@ -34,7 +34,11 @@ export async function resolveCoreSpaceAddress(ctx) {
 	}
 
 	const normalizedHex = eSpaceAddress.slice(2).toLowerCase();
-	const mapped = await ESpaceHex40Map.findOne({where: {hex: normalizedHex}, raw: true});
+	const coreHex = await Hex40Map.findOne({where: {hex: normalizedHex}, raw: true});
+	if (!coreHex) {
+		throw new Errors.ParameterError('Cross-space mapped address not found');
+	}
+	const mapped = await ESpaceHex40Map.findOne({where: {hexId: coreHex.id}, raw: true});
 	if (!mapped) {
 		throw new Errors.ParameterError('Cross-space mapped address not found');
 	}
