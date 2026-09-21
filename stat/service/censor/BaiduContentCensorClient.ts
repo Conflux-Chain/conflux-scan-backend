@@ -111,7 +111,15 @@ export class BaiduContentCensorClient {
             }
 
             if (!response.ok) {
-                throw new Error(`Baidu API request failed with HTTP ${response.status}`);
+                const errorBody = result as Record<string, unknown>;
+                const errorCode = errorBody.error ?? errorBody.error_code;
+                const errorDescription = errorBody.error_description ?? errorBody.error_msg;
+                const details = [errorCode, errorDescription]
+                    .filter(value => value !== undefined && value !== null)
+                    .join(': ');
+                throw new Error(
+                    `Baidu API request failed with HTTP ${response.status}${details ? `: ${details}` : ''}`,
+                );
             }
 
             return result;
