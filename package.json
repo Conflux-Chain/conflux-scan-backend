@@ -43,7 +43,6 @@
     "@web3identity/address-encoder": "^0.2.20",
     "agentkeepalive": "^4.1.4",
     "ali-oss": "^6.23.0",
-    "baidu-aip-sdk": "^4.16.10",
     "big.js": "^6.2.1",
     "bigfixed": "0.0.2",
     "cbor": "5.1.0",

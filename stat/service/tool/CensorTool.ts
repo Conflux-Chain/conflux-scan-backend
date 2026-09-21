@@ -1,6 +1,5 @@
-const AipContentCensorClient = require("baidu-aip-sdk").contentCensor;
-const HttpClient = require("baidu-aip-sdk").HttpClient;
 const {loadConfig} = require("../../config/StatConfig");
+import {BaiduContentCensorClient} from "../censor/BaiduContentCensorClient";
 
 let client;
 
@@ -11,8 +10,7 @@ function init() {
         console.log("Censor service disabled!");
         return;
     }
-    HttpClient.setRequestOptions({timeout: 3000});
-    client = new AipContentCensorClient(appId, apiKey, secretKey);
+    client = new BaiduContentCensorClient(appId, apiKey, secretKey);
 }
 
 export async function censor(text, debug = false) {
