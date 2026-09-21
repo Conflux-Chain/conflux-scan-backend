@@ -61,15 +61,14 @@ export class BaiduContentCensorClient {
     }
 
     private async fetchAccessToken(): Promise<string> {
-        const body = new URLSearchParams({
+        const tokenUrl = new URL(TOKEN_URL);
+        tokenUrl.search = new URLSearchParams({
             grant_type: 'client_credentials',
             client_id: this.apiKey,
             client_secret: this.secretKey,
-        });
-        const result = await this.request<BaiduTokenResponse>(TOKEN_URL, {
+        }).toString();
+        const result = await this.request<BaiduTokenResponse>(tokenUrl.toString(), {
             method: 'POST',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body,
         });
 
         if (!result.access_token) {
