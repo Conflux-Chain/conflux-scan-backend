@@ -58,6 +58,8 @@ tags:
     description: "NFT endpoints for balances, tokens, owners, and transfers."
   - name: "Utils"
     description: "Utility endpoints such as transaction input decoding."
+  - name: "Cross Space"
+    description: "Cross-space address resolution endpoints."
   - name: "Stats"
     description: "On-chain statistics and ranking data."
   - name: "data"
@@ -1645,6 +1647,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TxsByTypeStat"
+  /crossspace/resolveCoreSpaceAddress:
+    get:
+      tags:
+        - 'Cross Space'
+      summary: "Resolve the mapped Core Space address from an eSpace address."
+      operationId: resolveCoreSpaceAddress
+      description: "Resolve Core Space CIP-37 address by eSpace mapped address."
+      parameters:
+        - name: eSpaceAddress
+          in: query
+          required: true
+          description: "eSpace mapped address, 0x-prefixed 20-byte hex address."
+          schema:
+            type: string
+            pattern: '^0x[0-9a-fA-F]{40}$'
+      responses:
+        200:
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResolveCoreSpaceAddressResponse"
   /data/accounts:
     get:
       tags:
@@ -1688,6 +1712,20 @@ components:
               properties:
                 version:
                   type: string
+    ResolveCoreSpaceAddressResponse:
+      allOf:
+        - $ref: "#/components/schemas/ResponseBase"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                eSpaceAddress:
+                  type: string
+                  description: "Input eSpace mapped address."
+                coreSpaceAddress:
+                  type: string
+                  description: "Resolved Core Space CIP-37/Base32 address."
     AddressInfo:
       type: object
       additionalProperties:
