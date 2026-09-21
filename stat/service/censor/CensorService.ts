@@ -13,10 +13,9 @@ import {CensorOptions} from "../../config/StatConfig";
 import {ENS} from "../../model/NameTag";
 import {sleep} from "../tool/ProcessTool";
 import {CONST} from "../common/constant";
+import {BaiduContentCensorClient} from "./BaiduContentCensorClient";
 
 const lodash = require('lodash');
-const AipContentCensorClient = require("baidu-aip-sdk").contentCensor;
-const HttpClient = require("baidu-aip-sdk").HttpClient;
 const {CENSOR_STATUS} = CONST;
 
 export class CensorService {
@@ -98,10 +97,8 @@ export class CensorService {
     }
 
     private async init() {
-        HttpClient.setRequestOptions({timeout: 3000});
-
         const {appId, apiKey, secretKey} = this.opt;
-        this.censorClient = new AipContentCensorClient(appId, apiKey, secretKey);
+        this.censorClient = new BaiduContentCensorClient(appId, apiKey, secretKey);
 
         this.callCount = await KV.getNumber(KEY_CENSOR_CALL_COUNT, 0);
 
