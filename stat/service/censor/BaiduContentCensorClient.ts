@@ -36,7 +36,7 @@ export class BaiduContentCensorClient {
     async textCensorUserDefined(text: string): Promise<BaiduCensorResponse> {
         const accessToken = await this.getAccessToken();
         const body = new URLSearchParams({text});
-        return this.request<BaiduCensorResponse>(
+        const result = await this.request<BaiduCensorResponse>(
             `${API_BASE_URL}${TEXT_CENSOR_PATH}?access_token=${encodeURIComponent(accessToken)}`,
             {
                 method: 'POST',
@@ -44,6 +44,12 @@ export class BaiduContentCensorClient {
                 body,
             },
         );
+
+        if (result.error_code === 110 || result.error_code === 111) {
+            this.invalidateAccessToken(accessToken);
+        }
+
+        return result;
     }
 
     private async getAccessToken(): Promise<string> {
@@ -81,6 +87,13 @@ export class BaiduContentCensorClient {
         this.accessToken = result.access_token;
         this.tokenExpiresAt = Date.now() + Math.max(result.expires_in || 0, 0) * 1000;
         return result.access_token;
+    }
+
+    private invalidateAccessToken(token: string): void {
+        if (this.accessToken === token) {
+            this.accessToken = undefined;
+            this.tokenExpiresAt = 0;
+        }
     }
 
     private async request<T>(url: string, init: RequestInit): Promise<T> {
