@@ -89,7 +89,7 @@ import {
 } from "../../stat/router/RateLimiter";
 import {CIP1559StatType} from "../../stat/service/StatsQuery";
 import {ConfigInstance, NoCoreSpace} from "../../stat/config/StatConfig";
-import {listAccountsByCursor} from "../service/OpenDataService";
+import {listAccountsByCursor, resolveCoreSpaceAddress} from "../service/OpenDataService";
 import {Errors} from "../../stat/service/common/LogicError";
 
 const path = require('path');
@@ -205,6 +205,7 @@ function registerRouter(router: Router) {
     // utils
     router.get('/util/decode/method', abiDecode);
     router.get('/util/decode/method/raw', abiDecodeRaw);
+    router.get('/crossspace/resolveCoreSpaceAddress', resolveCoreSpaceAddress);
 
     // statistics
     router.get('/statistics/supply', getSupplyStat);
