@@ -36,7 +36,7 @@ export class BaiduContentCensorClient {
     async textCensorUserDefined(text: string): Promise<BaiduCensorResponse> {
         const accessToken = await this.getAccessToken();
         const body = new URLSearchParams({text});
-        const response = await this.request(
+        return this.request<BaiduCensorResponse>(
             `${API_BASE_URL}${TEXT_CENSOR_PATH}?access_token=${encodeURIComponent(accessToken)}`,
             {
                 method: 'POST',
@@ -44,8 +44,6 @@ export class BaiduContentCensorClient {
                 body,
             },
         );
-
-        return this.parseJson<BaiduCensorResponse>(response);
     }
 
     private async getAccessToken(): Promise<string> {
@@ -68,12 +66,11 @@ export class BaiduContentCensorClient {
             client_id: this.apiKey,
             client_secret: this.secretKey,
         });
-        const response = await this.request(TOKEN_URL, {
+        const result = await this.request<BaiduTokenResponse>(TOKEN_URL, {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
             body,
         });
-        const result = await this.parseJson<BaiduTokenResponse>(response);
 
         if (!result.access_token) {
             throw new Error(
@@ -86,12 +83,35 @@ export class BaiduContentCensorClient {
         return result.access_token;
     }
 
-    private async request(url: string, init: RequestInit): Promise<Response> {
+    private async request<T>(url: string, init: RequestInit): Promise<T> {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+        let timeout: ReturnType<typeof setTimeout>;
+        const requestPromise = (async () => {
+            const response = await fetch(url, {...init, signal: controller.signal});
+            const text = await response.text();
+            let result: T;
+
+            try {
+                result = JSON.parse(text) as T;
+            } catch {
+                throw new Error(`Baidu censor returned invalid JSON (HTTP ${response.status})`);
+            }
+
+            if (!response.ok) {
+                throw new Error(`Baidu censor request failed with HTTP ${response.status}`);
+            }
+
+            return result;
+        })();
+        const timeoutPromise = new Promise<never>((_, reject) => {
+            timeout = setTimeout(() => {
+                controller.abort();
+                reject(new Error(`Baidu censor request timed out after ${this.timeoutMs}ms`));
+            }, this.timeoutMs);
+        });
 
         try {
-            return await fetch(url, {...init, signal: controller.signal});
+            return await Promise.race([requestPromise, timeoutPromise]);
         } catch (error) {
             if (controller.signal.aborted) {
                 throw new Error(`Baidu censor request timed out after ${this.timeoutMs}ms`);
@@ -100,22 +120,5 @@ export class BaiduContentCensorClient {
         } finally {
             clearTimeout(timeout);
         }
-    }
-
-    private async parseJson<T>(response: Response): Promise<T> {
-        const text = await response.text();
-        let result: T;
-
-        try {
-            result = JSON.parse(text) as T;
-        } catch {
-            throw new Error(`Baidu censor returned invalid JSON (HTTP ${response.status})`);
-        }
-
-        if (!response.ok) {
-            throw new Error(`Baidu censor request failed with HTTP ${response.status}`);
-        }
-
-        return result;
     }
 }
