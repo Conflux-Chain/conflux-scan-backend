@@ -249,11 +249,14 @@ export async function verifySourcecode(ctx) {
             submit.message ? 'NOTOK' : 'OK'
         );
     } catch (error) {
+        const remoteDetails = error?.remoteRespText
+            ? `${error.toString()}, remoteUrl: '${error?.remoteUrl || ''}', remoteRespText: '${error.remoteRespText}'`
+            : error.toString();
         console.log(
             `verifySourcecode failed, contract ${input.contractAddress}, remoteUrl ${error?.remoteUrl || 'unknown'}`,
             error,
         );
-        throw error;
+        setBody(ctx, undefined, 500, remoteDetails);
     }
 }
 

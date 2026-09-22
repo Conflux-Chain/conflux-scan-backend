@@ -46,10 +46,7 @@ export async function handleException(ctx, next) {
             setBody(ctx, undefined, CODE_RATE_LIMITED, err.toString())
             return
         }
-        const remoteDetails = err?.remoteRespText
-            ? `${err.toString()}, remoteUrl: '${err?.remoteUrl || ''}', remoteRespText: '${err.remoteRespText}'`
-            : err.toString();
-        setBody(ctx, undefined, 500, remoteDetails)
+        setBody(ctx, undefined, 500, err.toString())
         if (err.code == 500) {
             safeAddErrorLog('open', `open-500-${err.message}`, err);
         }
