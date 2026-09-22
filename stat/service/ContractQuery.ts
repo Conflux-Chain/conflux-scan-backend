@@ -1027,6 +1027,7 @@ export class ContractQuery {
         } = verifyInput;
         checkPresent({contractAddress, sourceCode, compilerVersion, fullQualifiedName},
             ['contractAddress', 'sourceCode', 'compilerVersion', 'fullQualifiedName']);
+        contractAddress = format.hexAddress(contractAddress);
 
         checkCodeFormat(codeFormat);
 
@@ -1139,7 +1140,7 @@ export class ContractQuery {
             "select concat('0x',txHash) as txHash from trace_create_contract where `to` = (select id from hex40 where hex=?)",
             {
                 type: QueryTypes.SELECT,
-                replacements: [contractAddress.substr(2)]
+                replacements: [contractAddress.slice(2)]
             }).then(traces => {
             return traces?.length ? traces[0] : undefined
         });
@@ -1172,7 +1173,7 @@ export class ContractQuery {
         verifyInput: VerifyByLinkInput,
         saveAbi: boolean = true,
     ) {
-        const contractAddress = verifyInput.contractAddress;
+        const contractAddress = format.hexAddress(verifyInput.contractAddress);
 
         const input: VerifyFromCrossChain = {
             chainId: StatApp.networkId,
@@ -1483,10 +1484,13 @@ export class ContractQuery {
     }
 
     static _handleHttpError(url, error) {
+        const remoteRespText = error?.response?.text
         const err = new Error(error.message || 'HTTP request failed')
         err['code'] = error.status
         err['stack'] = error.stack
         err['location'] = __filename
+        err['remoteUrl'] = url
+        err['remoteRespText'] = remoteRespText
 
         if (err['code'] === 404) {
             return null
