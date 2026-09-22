@@ -1487,6 +1487,8 @@ export class ContractQuery {
         err['code'] = error.status
         err['stack'] = error.stack
         err['location'] = __filename
+        err['remoteUrl'] = url
+        err['remoteRespText'] = error?.response?.text
 
         if (err['code'] === 404) {
             return null

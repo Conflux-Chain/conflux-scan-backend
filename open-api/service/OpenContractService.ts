@@ -239,14 +239,22 @@ export async function verifySourcecode(ctx) {
         ...libraries(body),
     }
 
-    const submit: any = await getApiService().contractQuery.verify(input)
+    try {
+        const submit: any = await getApiService().contractQuery.verify(input)
 
-    setBody(
-        ctx,
-        submit.message ? submit.message : submit.verificationId,
-        submit.message ? 1 : 0,
-        submit.message ? 'NOTOK' : 'OK'
-    );
+        setBody(
+            ctx,
+            submit.message ? submit.message : submit.verificationId,
+            submit.message ? 1 : 0,
+            submit.message ? 'NOTOK' : 'OK'
+        );
+    } catch (error) {
+        console.log(
+            `verifySourcecode failed, contract ${input.contractAddress}, remoteUrl ${error?.remoteUrl || 'unknown'}`,
+            error,
+        );
+        throw error;
+    }
 }
 
 export async function checkVerifyStatus(ctx) {
