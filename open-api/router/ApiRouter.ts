@@ -79,7 +79,13 @@ import {
     listCoreTransactionStat,
     listContractVerifiedStats,
 } from "../service/OpenStatService";
-import {checkPresent, mustBeAddressParamIfPresent,} from "../../stat/service/common/utils";
+import {closestEpochByTimeStamp, ClosestType} from "../../stat/model/Epoch";
+import {
+    checkPresent,
+    mustBeAddressParamIfPresent,
+    mustBeEnumParamIfPresent,
+    mustBeIntParamIfPresent,
+} from "../../stat/service/common/utils";
 import {
     checkApiKey,
     checkRateByAddress,
@@ -110,6 +116,23 @@ async function getTokenInfo(ctx) {
     }
 
     setBody(ctx, token)
+}
+
+async function getBlockNoByTime(ctx) {
+    mustBeIntParamIfPresent(ctx.request.query, 'timestamp');
+    mustBeEnumParamIfPresent(ctx.request.query, 'closest', ['before', 'after']);
+    const {timestamp, closest} = ctx.request.query;
+    checkPresent({timestamp}, ['timestamp']);
+
+    const closestType = (closest === 'before' || closest === undefined) ? ClosestType.BEFORE : ClosestType.AFTER
+    const resolvedClosest = closestType === ClosestType.BEFORE ? 'before' : 'after'
+    const epochNumber = await closestEpochByTimeStamp(closestType, timestamp)
+    if (!Number.isInteger(epochNumber)) {
+        setBody(ctx, undefined, 1, `blockno ${resolvedClosest} timestamp ${timestamp} not found, epoch ${epochNumber}`)
+        return;
+    }
+
+    setBody(ctx, epochNumber)
 }
 
 export async function register(app: Koa, apiServer: ApiServer, port:string|number) {
@@ -188,6 +211,9 @@ function registerRouter(router: Router) {
     router.get('/contract/verified/latest', listVerifiedContractsLatest)
     router.get('/contract/lookupAbi', batchGetSignaturesByHashes)
     router.get('/contract/searchAbi', batchGetSignaturesByName)
+
+    // block
+    router.get('/block/getblocknobytime', getBlockNoByTime)
 
     // token
     router.get('/token/tokeninfo', getTokenInfo);

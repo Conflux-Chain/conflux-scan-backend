@@ -52,6 +52,8 @@ tags:
     description: "Account-related endpoints for transactions, transfers, assets, approvals, and account information."
   - name: "Contracts"
     description: "Contract endpoints for ABI, source code, deployment, verification, and signature lookup."
+  - name: "Blocks"
+    description: "Block-related endpoints such as timestamp-to-epoch lookup."
   - name: "Tokens"
     description: "Token information and refresh endpoints."
   - name: "NFT Assets"
@@ -639,6 +641,23 @@ paths:
               examples:
                 successful_lookup:
                   $ref: "#/components/examples/SignatureSearchResults"
+  /block/getblocknobytime:
+    get:
+      tags:
+        - "Blocks"
+      summary: "Get the closest epoch number before or after a given Unix timestamp."
+      operationId: getEpochNumberClosestToTimestamp
+      description: "Get epoch number by timestamp."
+      parameters:
+        - $ref: "#/components/parameters/timestampMust"
+        - $ref: "#/components/parameters/closest"
+      responses:
+        200:
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BlockNoByTimeResponse"
   /token/tokeninfos:
     get:
       tags:
@@ -3461,6 +3480,13 @@ components:
           properties:
             data:
               type: string
+    BlockNoByTimeResponse:
+      allOf:
+        - $ref: "#/components/schemas/ResponseBase"
+        - type: object
+          properties:
+            data:
+              type: integer
     ContractInfo:
       allOf:
         - $ref: "#/components/schemas/ResponseBase"
@@ -4020,6 +4046,24 @@ components:
       required: false
       schema:
         type: integer
+    timestampMust:
+      description: "The integer representing the Unix timestamp in seconds."
+      name: timestamp
+      in: query
+      required: true
+      schema:
+        type: integer
+    closest:
+      description: "The closest available block to the provided timestamp, either before or after."
+      name: closest
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+          - before
+          - after
+        default: before
     nonceParam:
       description: "Nonce used in a transaction."
       name: nonce
