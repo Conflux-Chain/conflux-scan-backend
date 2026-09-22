@@ -125,9 +125,10 @@ async function getBlockNoByTime(ctx) {
     checkPresent({timestamp}, ['timestamp']);
 
     const closestType = (closest === 'before' || closest === undefined) ? ClosestType.BEFORE : ClosestType.AFTER
+    const resolvedClosest = closestType === ClosestType.BEFORE ? 'before' : 'after'
     const epochNumber = await closestEpochByTimeStamp(closestType, timestamp)
     if (!Number.isInteger(epochNumber)) {
-        setBody(ctx, undefined, 1, `blockno ${closest} timestamp ${timestamp} not found`)
+        setBody(ctx, undefined, 1, `blockno ${resolvedClosest} timestamp ${timestamp} not found, epoch ${epochNumber}`)
         return;
     }
 

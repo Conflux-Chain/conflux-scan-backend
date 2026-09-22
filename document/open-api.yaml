@@ -657,7 +657,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CommonResponse"
+                $ref: "#/components/schemas/BlockNoByTimeResponse"
   /token/tokeninfos:
     get:
       tags:
@@ -3480,6 +3480,13 @@ components:
           properties:
             data:
               type: string
+    BlockNoByTimeResponse:
+      allOf:
+        - $ref: "#/components/schemas/ResponseBase"
+        - type: object
+          properties:
+            data:
+              type: integer
     ContractInfo:
       allOf:
         - $ref: "#/components/schemas/ResponseBase"
