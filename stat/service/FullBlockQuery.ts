@@ -24,7 +24,7 @@ import {extractActualGasCost} from "./common/utils";
 import {CoreDB, NoCoreSpace} from "../config/StatConfig";
 import {detectFishingAddress} from "./tool/phishingAddress";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
-import {JsonRpcProvider} from "@ethersproject/providers/src.ts/json-rpc-provider";
+import {JsonRpcProvider} from "ethers";
 import {fillMethodInfo} from "./contract/contractTool";
 import limitMap = require("../../common/lib/limitMap");
 

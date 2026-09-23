@@ -6,6 +6,23 @@ import {getVipInfo, getWeb3pay} from "web3pay-sdk-js/lib/rpc";
 
 const lodash = require('lodash');
 
+async function resolveWeb3payAppAddress() {
+    const appContract: any = getWeb3pay().appContract;
+    if (!appContract) {
+        return '';
+    }
+    if (typeof appContract.address === 'string') {
+        return appContract.address;
+    }
+    if (typeof appContract.target === 'string') {
+        return appContract.target;
+    }
+    if (typeof appContract.getAddress === 'function') {
+        return await appContract.getAddress();
+    }
+    return '';
+}
+
 export interface IRateConfig {
     id?: number;
     name: string;
@@ -180,7 +197,10 @@ export async function checkApiKey(path: string, key: string, dryRun = false) {
         return {ok: false, result: {}};
     }
     try {
-        const app = getWeb3pay().appContract.address;
+        const app = await resolveWeb3payAppAddress();
+        if (!app) {
+            return {ok: false, result: {error: 'missing app contract address'}};
+        }
         const account = decodeApiKey(app, key, true);
         const vipInfo = await getVipInfo(account);
         const expireSecond = vipInfo.expireAt;
@@ -421,7 +441,10 @@ export async function checkApiKeyByLevel(path, apiKey: string) {
     }
 
     try {
-        const app = getWeb3pay().appContract.address;
+        const app = await resolveWeb3payAppAddress();
+        if (!app) {
+            return {ok: false, result: {error: 'missing app contract address'}};
+        }
         const account = decodeApiKey(app, apiKey, true);
         const vipInfo = await getVipInfo(account);
         const expireSecond = vipInfo.expireAt;
