@@ -157,12 +157,6 @@ export async function register(app: Koa, apiServer: ApiServer, port:string|numbe
     let middleware = router.routes();
     app.use(middleware)
 
-    if(!StatApp.isEVM){
-        const coreHardhatRouter = new Router();
-        registerCoreHardhatVerifyRouter(coreHardhatRouter);
-        app.use(coreHardhatRouter.routes());
-    }
-
     app.proxy = true
     let startTime = new Date().toLocaleTimeString();
     router.get('/', async (ctx)=>{
@@ -185,6 +179,7 @@ export async function register(app: Koa, apiServer: ApiServer, port:string|numbe
     })
 
    if(!StatApp.isEVM){
+       registerCoreHardhatVerifyRouter(router);
        registerRouter(router);
    } else{
        registerRouterESpace(router);

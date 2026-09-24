@@ -204,6 +204,6 @@ async function gateway(ctx) {
 }
 
 export function registerCoreHardhatVerifyRouter(router: Router) {
-    router.get('/v1/evm/api', gateway);
-    router.post('/v1/evm/api', gateway);
+    router.get('/api', gateway);
+    router.post('/api', gateway);
 }
