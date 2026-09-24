@@ -51,7 +51,9 @@ async function reportError(eLog: ErrorLog, error: Error) {
 		return
 	}
 	const {module, biz, detail, count: times} = eLog;
-	await dingMsg(`There was an error:\n${error.message}\nmodule: ${module
+	const code = (error as any)?.code || (error as any)?.errno || 'N/A';
+	const name = error?.name || 'Error';
+	await dingMsg(`There was an error:\n${name}: ${error.message}\ncode: ${code}\nmodule: ${module
 	}\nbusiness: ${biz}\ntimes: ${times}\ndetail: ${detail}`, dingToken);
 }
 
@@ -71,31 +73,57 @@ export function isKnownError(e) {
 		;
 }
 
-export async function safeAddErrorLog(module: string, biz: string, error: Error) {
+export async function safeAddErrorLog(module: string, biz: string, error: Error, context?: object) {
 	if (!error || isKnownError(error)) {
 		return;
 	}
 	try {
-		await addErrorLog(module, biz, error);
+		await addErrorLog(module, biz, error, context);
 	} catch (e) {
 		console.log(`failed to record error`, e)
 	}
 }
 
-async function addErrorLog(module: string, biz: string, error: Error) {
+function buildErrorDetail(error: any, context?: object) {
+	const detail = {
+		name: error?.name,
+		message: error?.message,
+		code: error?.code,
+		errno: error?.errno,
+		syscall: error?.syscall,
+		address: error?.address,
+		port: error?.port,
+		status: error?.status,
+		statusCode: error?.statusCode,
+		responseStatus: error?.response?.status,
+		responseText: error?.response?.text,
+		cause: error?.cause,
+		stack: error?.stack,
+		context,
+	};
+
+	let text = JSON.stringify(detail, null, 2);
+	if (!text || text.length < 3 || text === '{}') {
+		text = `${error}`;
+	}
+	if (!text || text.length < 3 || text === '{}') {
+		text = `${error?.message || ''}\n${error?.stack || ''}`;
+	}
+	if (text.length > 12000) {
+		text = `${text.slice(0, 12000)}...`;
+	}
+
+	return text;
+}
+
+async function addErrorLog(module: string, biz: string, error: Error, context?: object) {
 	if (!ErrorLog.sequelize) {
 		return;
 	}
 	if (biz.length > 256) {
 		biz = biz.substring(0, 256);
 	}
-	let detail = JSON.stringify(error, null, 4);
-	if (detail.length < 3) {
-		detail = `${error}`;
-	}
-	if (detail.length < 3) {
-		detail = `${error.message}\n${error.stack}`;
-	}
+	let detail = buildErrorDetail(error, context);
 	let bean = await ErrorLog.findOne({where: {module, biz}}).catch(e=>{
 		console.log(`failed to find error log bean`, e.message);
 		return null;

@@ -9,7 +9,7 @@ import {fmtDtUTC} from "../../model/Utils";
 import {KEY_CENSOR_CALL_COUNT, KV} from "../../model/KV";
 import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
-import {CensorOptions} from "../../config/StatConfig";
+import {CensorOptions, ConfigInstance} from "../../config/StatConfig";
 import {ENS} from "../../model/NameTag";
 import {sleep} from "../tool/ProcessTool";
 import {CONST} from "../common/constant";
@@ -32,6 +32,8 @@ export class CensorService {
     private CENSOR_CACHE = {}; // key: text-to-censor, value: {censorStatus: 1-accept, 2-reject, 3-suspect, latestCensorTime: datetime}
     private readonly CENSOR_CACHE_MAX_SIZE = 10000;
     private readonly MAX_CENSOR_TEXT_LEN = 6666; // Text length limit: 20,000 bytes (approximately 6,666 characters)
+    private readonly CENSOR_API_MAX_RETRIES = 3;
+    private readonly CENSOR_API_BASE_RETRY_DELAY_MS = 500;
 
     public constructor(cfx: Conflux, opt: CensorOptions, itemsPerTime: {
         tx?: number,
@@ -73,7 +75,11 @@ export class CensorService {
 
         async function repeat() {
             await that.doCensor().catch(e => {
-                safeAddErrorLog('stat-task', 'censor-service', e).then();
+                safeAddErrorLog('stat-task', 'censor-service', e, {
+                    serverTag: ConfigInstance?.serverTag,
+                    callCount: that.callCount,
+                    censorInterval: that.censorInterval,
+                }).then();
                 console.log(`censor error: `, e)
             });
             setTimeout(repeat, delay);
@@ -311,25 +317,74 @@ export class CensorService {
     }
 
     private async censor(text) {
-        const result = await this.censorClient.textCensorUserDefined(text);
-        if (this.debug) {
-            console.log(`censor ---> ${text}`);
-            console.log(`result --->`);
-            console.log(result);
+        let lastError;
+        for (let attempt = 1; attempt <= this.CENSOR_API_MAX_RETRIES; attempt++) {
+            try {
+                const result = await this.censorClient.textCensorUserDefined(text);
+                if (this.debug) {
+                    console.log(`censor ---> ${text}`);
+                    console.log(`result --->`);
+                    console.log(result);
+                }
+
+                const {error_code, error_msg} = result || {};
+                if (error_code) {
+                    const error: any = new Error(`Baidu censor error ${error_code}: ${error_msg}`);
+                    error.code = `BAIDU_${error_code}`;
+                    error.detail = result;
+                    throw error;
+                }
+
+                this.callCount++;
+                await KV.upsert({key: KEY_CENSOR_CALL_COUNT, value: this.callCount.toString()});
+                if (this.callCount % 100 === 0) {
+                    console.log(`[sensitive_word_censor] launchTime ${this.launchTime} callCount ${this.callCount} cacheSize ${Object.keys(this.CENSOR_CACHE).length}`);
+                }
+
+                return result;
+            } catch (e) {
+                lastError = e;
+                const retryable = this.shouldRetryCensorError(e);
+                if (!retryable || attempt >= this.CENSOR_API_MAX_RETRIES) {
+                    break;
+                }
+
+                const delayMs = this.CENSOR_API_BASE_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
+                console.log(`[sensitive_word_censor] censor request failed, retry ${attempt}/${this.CENSOR_API_MAX_RETRIES} after ${delayMs}ms`, e?.message || e);
+                await sleep(delayMs);
+            }
         }
 
-        const {error_code, error_msg} = result || {};
-        if (error_code) {
-            throw new Error(error_msg);
+        if (lastError) {
+            (lastError as any).censorContext = {
+                retries: this.CENSOR_API_MAX_RETRIES,
+                textLength: text?.length || 0,
+                callCount: this.callCount,
+            };
         }
 
-        this.callCount++;
-        await KV.upsert({key: KEY_CENSOR_CALL_COUNT, value: this.callCount.toString()});
-        if (this.callCount % 100 === 0) {
-            console.log(`[sensitive_word_censor] launchTime ${this.launchTime} callCount ${this.callCount} cacheSize ${Object.keys(this.CENSOR_CACHE).length}`);
+        throw lastError;
+    }
+
+    private shouldRetryCensorError(error: any) {
+        const code = `${error?.code || error?.errno || ''}`.toUpperCase();
+        if (code === 'ETIMEDOUT' || code === 'ECONNRESET' || code === 'ECONNREFUSED' || code === 'ECONNABORTED' || code === 'ABORT_ERR') {
+            return true;
+        }
+        if (code === 'BAIDU_18') {
+            return true;
         }
 
-        return result;
+        const msg = `${error?.message || ''}`.toLowerCase();
+        return msg.includes('timed out')
+            || msg.includes('timeout')
+            || msg.includes('fetch failed')
+            || msg.includes('socket hang up')
+            || msg.includes('network')
+            || msg.includes('econnreset')
+            || msg.includes('etimedout')
+            || msg.includes('http 429')
+            || msg.includes('http 503');
     }
 
     private evictLru(items, orderKey, cacheMaxSize = this.CENSOR_CACHE_MAX_SIZE) {
