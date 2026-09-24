@@ -9,7 +9,7 @@ import {fmtDtUTC} from "../../model/Utils";
 import {KEY_CENSOR_CALL_COUNT, KV} from "../../model/KV";
 import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
-import {CensorOptions, ConfigInstance} from "../../config/StatConfig";
+import {CensorOptions} from "../../config/StatConfig";
 import {ENS} from "../../model/NameTag";
 import {sleep} from "../tool/ProcessTool";
 import {CONST} from "../common/constant";
@@ -75,11 +75,7 @@ export class CensorService {
 
         async function repeat() {
             await that.doCensor().catch(e => {
-                safeAddErrorLog('stat-task', 'censor-service', e, {
-                    serverTag: ConfigInstance?.serverTag,
-                    callCount: that.callCount,
-                    censorInterval: that.censorInterval,
-                }).then();
+                safeAddErrorLog('stat-task', 'censor-service', e).then();
                 console.log(`censor error: `, e)
             });
             setTimeout(repeat, delay);
@@ -332,6 +328,7 @@ export class CensorService {
                     const error: any = new Error(`Baidu censor error ${error_code}: ${error_msg}`);
                     error.code = `BAIDU_${error_code}`;
                     error.detail = result;
+                    error.retryable = error_code === 18;
                     throw error;
                 }
 
@@ -360,6 +357,8 @@ export class CensorService {
                 retries: this.CENSOR_API_MAX_RETRIES,
                 textLength: text?.length || 0,
                 callCount: this.callCount,
+                censorInterval: this.censorInterval,
+                cacheSize: Object.keys(this.CENSOR_CACHE).length,
             };
         }
 
