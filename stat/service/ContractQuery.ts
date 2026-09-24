@@ -1566,12 +1566,12 @@ export class ContractQuery {
         this.startLoopSchedule('auto_verify', delay, async () => {
             await this.verifyByTrace().catch(e => {
                 safeAddErrorLog('ContractQuery', 'verifyByTrace', e).then();
-                console.log('Schedule verify by auto fail', e);
+                console.log('Schedule verify by auto fail', this.formatErrorForLog(e));
             });
 
             await this.verifyByVerification().catch(e => {
                 safeAddErrorLog('ContractQuery', 'verifyByVerification', e).then();
-                console.log('Schedule verify by auto fail', e);
+                console.log('Schedule verify by auto fail', this.formatErrorForLog(e));
             });
         });
         console.log(`[auto_verify]schedule in ${delay/1000}s interval`);
@@ -1597,7 +1597,13 @@ export class ContractQuery {
             return;
         }
 
-        await this.verifyByAuto(trace.address);
+        await this.verifyByAuto(trace.address).catch(error => {
+            throw this.wrapVerifyError('verifyByTrace failed', {
+                cursor,
+                traceId: trace.id,
+                address: trace.address,
+            }, error);
+        });
         await KV.saveNumber(KEY_AUTO_VERIFY_TRACE_ID, trace.id);
     }
 
@@ -1628,7 +1634,15 @@ export class ContractQuery {
         }).then((list: any[]) => list.map(item => item.address));
 
         for (const address of addresses) {
-            await this.verifyByAuto(address);
+            await this.verifyByAuto(address).catch(error => {
+                throw this.wrapVerifyError('verifyByVerification failed', {
+                    cursor,
+                    verifiedId: verified.id,
+                    sourceAddress: verified.address,
+                    targetAddress: address,
+                    codeHash,
+                }, error);
+            });
         }
 
         await KV.saveNumber(KEY_AUTO_VERIFY_VERIFY_ID, verified.id);
@@ -1670,9 +1684,19 @@ export class ContractQuery {
             }
 
             const {error, match} = await this.getVerificationResult(submit.verificationId);
+            const parsedError = this.parseVerifyServiceError(error);
 
-            if (error?.includes("internal_error")) {
-                throw new Error(error);
+            if (parsedError?.customCode === "internal_error") {
+                throw this.wrapVerifyError('verifyByAuto internal_error', {
+                    address,
+                    attempt: i + 1,
+                    retry,
+                    intervalMs,
+                    verificationId: submit.verificationId,
+                    verifyInput: input,
+                    verificationError: error,
+                    parsedError,
+                });
             }
             if (match) {
                 if (this.durableAbiSave) {
@@ -1698,6 +1722,45 @@ export class ContractQuery {
                 await sleep(intervalMs); // retry
             }
         }
+    }
+
+    private parseVerifyServiceError(error?: string) {
+        if (!error) {
+            return null;
+        }
+        const index = error.indexOf(':');
+        if (index <= 0) {
+            return {customCode: error, message: ''};
+        }
+        return {
+            customCode: error.slice(0, index),
+            message: error.slice(index + 1),
+        };
+    }
+
+    private wrapVerifyError(message: string, context: Record<string, unknown>, cause?: any) {
+        const source: any = cause instanceof Error ? cause : new Error(`${cause || 'Unknown error'}`);
+        const wrapped: any = new Error(message);
+        wrapped.name = 'ContractQueryVerifyError';
+        wrapped.code = source?.code;
+        wrapped.context = context;
+        wrapped.causeMessage = source?.message;
+        wrapped.causeStack = source?.stack;
+        return wrapped;
+    }
+
+    private formatErrorForLog(error: any) {
+        if (!error) {
+            return error;
+        }
+        return {
+            name: error.name,
+            message: error.message,
+            code: error.code,
+            context: error.context,
+            causeMessage: error.causeMessage,
+            stack: error.stack,
+        };
     }
 
     private heartBeat() {
