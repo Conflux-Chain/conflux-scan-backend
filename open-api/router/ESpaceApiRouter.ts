@@ -65,6 +65,16 @@ import {
     listCoreTransactionStat,
 } from "../service/OpenStatService";
 import {
+    getPartnerChainSummary,
+    getPartnerTvlSnapshot,
+    listPartnerChainMetrics,
+    listPartnerTvlHistory,
+    listPartnerContracts,
+    registerPartnerContracts,
+    deregisterPartnerContracts,
+} from "../service/OpenPartnerChainService";
+import {requireScope, SCOPE_PARTNER_READ, SCOPE_PARTNER_WRITE} from "./partnerAuth";
+import {
     calCount,
     checkPresent,
     mustBeAddressParamIfPresent, mustBeDateParamIfPresent,
@@ -792,6 +802,9 @@ async function getCfxSupply(ctx) {
     setBody(ctx, totalEspaceTokens);
 }
 
+// `cfxbtc` / `cfxusd` are 0G prices despite the name. Downstream services read these
+// keys, so they are kept as they are: do not rename them to 0g* while renaming display
+// text elsewhere. Same for the `cfxprice` action that routes here.
 async function getCfxPrice(ctx) {
     setBody(ctx, {
         cfxbtc: `${TokenQuery.wrappedCFX.price / TokenQuery.wrappedBTC.price}`,
@@ -837,6 +850,9 @@ async function listDailyTx(ctx) {
     }));
 }
 
+// `transactionFee_CFX` carries a fee in whole 0G despite the name. Downstream services
+// read this key, so it is kept as it is: do not rename it to transactionFee_0G while
+// renaming display text elsewhere.
 async function listDailyTxnFee(ctx) {
     return listEvmTransactionStat(ctx, (item: any) => ({
         transactionFee_CFX: new Drip(item.gasFee).toCFX(),
@@ -1074,6 +1090,18 @@ export function registerRouter(router: Router) {
 
     // token
     router.get('/token/tokeninfos', listTokens);
+
+    // partner chain metrics (Solutions Hub). Envelope and date/amount
+    // conventions follow the Router's admin usage APIs, not the scan defaults.
+    const partnerRead = requireScope(SCOPE_PARTNER_READ);
+    const partnerWrite = requireScope(SCOPE_PARTNER_WRITE);
+    router.get('/partner/chain-metrics', partnerRead, listPartnerChainMetrics);
+    router.get('/partner/chain-metrics/summary', partnerRead, getPartnerChainSummary);
+    router.get('/partner/tvl', partnerRead, getPartnerTvlSnapshot);
+    router.get('/partner/tvl/history', partnerRead, listPartnerTvlHistory);
+    router.get('/partner/contracts', partnerRead, listPartnerContracts);
+    router.post('/partner/contracts', partnerWrite, registerPartnerContracts);
+    router.delete('/partner/contracts', partnerWrite, deregisterPartnerContracts);
 
     registerDataApi(router)
 }

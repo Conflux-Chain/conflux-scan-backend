@@ -2,6 +2,7 @@ import {QueryTypes} from "sequelize";
 import {
     ADDR_INFO_STATE_OK,
     buildHexSet,
+    hex40IdMap,
     idHex40Map, mapProp,
 } from "../model/HexMap";
 // @ts-ignore
@@ -19,12 +20,52 @@ import { ethers } from "ethers";
 import {ResultCache, TopUniqueCache} from "../model/ResultCache";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
 import {HomepageDashboard} from "./HomepageDashboard";
+import {CONST} from "./common/constant";
+
+/**
+ * Denominator of the native token rankings, in drip. Undefined until the homepage
+ * dashboard has filled in its first supply snapshot.
+ *
+ * `calculateEvmPosSupply()` reports `totalIssued = genesis + blockWithdraw + totalStakes`,
+ * but on 0G those last two terms already sit inside `balance(0x0)`: staking burns on the
+ * eSpace side into 0x0 and mints on the consensus side, unstaking emits a block withdrawal
+ * and burns on the consensus side. So `balance(0x0)` is the cumulative amount ever staked
+ * and `totalIssued` counts part of it a second time.
+ *
+ * Only the part that actually came back -- as a block withdrawal or as consensus layer
+ * balance -- is the double count, so that is all we take off. The remainder of
+ * `balance(0x0)` was burned and credited nowhere yet (pending activation, slashed, or not
+ * reported by `effective_balance`), and subtracting it would remove supply that was never
+ * added. This also keeps the denominator usable where the block withdrawal sync is not
+ * running or `validatorRpc` is unset and both terms read 0, instead of reporting shares
+ * above 100%.
+ */
+export function rankTotalSupplyDrip(supplyInfo: any): bigint | undefined {
+    if (supplyInfo?.calculateEvmPosSupply) {
+        const staked = BigInt(supplyInfo.nullAddressBalance || 0);
+        const credited = BigInt(supplyInfo.sumBlockWithdrawal || 0) + BigInt(supplyInfo.totalStakes || 0);
+        return BigInt(supplyInfo.totalIssued) - (credited < staked ? credited : staked);
+    }
+    // Conflux eSpace, or any node that answers cfx_getSupplyInfo itself.
+    const total = supplyInfo?.totalEspaceTokens || supplyInfo?.totalCirculating;
+    return total === undefined || total === null ? undefined : BigInt(total);
+}
 
 export class RankService{
     private app: any;
     txnMap = new Map<number, any>()
+    // `hex40` only exists after initModel() has run, so this is resolved on first use.
+    private zeroAddressId: number;
     constructor(app) {
         this.app = app;
+    }
+
+    private async getZeroAddressId() {
+        if (!this.zeroAddressId) {
+            const map = await hex40IdMap([CONST.ZERO_ADDRESS]);
+            this.zeroAddressId = map.get(CONST.ZERO_ADDRESS.substr(2));
+        }
+        return this.zeroAddressId;
     }
 
     public repeatUpdateTxnCache() {
@@ -53,12 +94,18 @@ export class RankService{
         })
     }
     async rankCfxBalance(order:string, limit, updateTxnCache=false) {
-        const sql = ` 
+        // 0x0 is not a holder: staking burns into it, so its balance is the cumulative
+        // amount ever staked and only ever grows -- it would sit at rank 1 with a share
+        // that eventually passes 100% no matter what denominator is used.
+        const zeroAddressId = await this.getZeroAddressId();
+        const replacements = zeroAddressId ? [zeroAddressId, limit] : [limit];
+        const excludeZero = zeroAddressId ? 'and addressId <> ?' : '';
+        const sql = `
             select h.hex, addressId, ${order}, balance as value2, stakingBalance as value3, total as value4 from
-            (select * from cfx_balance where ${order} > 1 order by ${order} desc, cfx_balance.addressId asc limit ?) b
+            (select * from cfx_balance where ${order} > 1 ${excludeZero} order by ${order} desc, cfx_balance.addressId asc limit ?) b
             left join hex40 h on h.id = b.addressId
         `
-        const list = await CfxBalance.sequelize.query(sql, {type: QueryTypes.SELECT, replacements:[limit],
+        const list = await CfxBalance.sequelize.query(sql, {type: QueryTypes.SELECT, replacements,
             // logging: console.log, benchmark: true,
         })
         if (updateTxnCache) {
@@ -149,20 +196,19 @@ export class RankService{
         let totalCfx: any;
         if (isEvm) {
             const data = HomepageDashboard.getData() as any;
-            const maybe = (data?.supplyInfo?.totalEspaceTokens || data?.supplyInfo?.totalCirculating);
-            totalCfx = BigInt(maybe) ?? BigInt(1e18);
-            if (data?.supplyInfo?.calculateEvmPosSupply && data.supplyInfo.nullAddressBalance) {
-                // NG 0 addr holds more value, which was excluded from total.
-                totalCfx += data.supplyInfo.nullAddressBalance
-            }
-            totalCfx = Number(totalCfx / BigInt(1e18));
+            const drip = rankTotalSupplyDrip(data?.supplyInfo);
+            totalCfx = drip === undefined ? undefined : Number(drip / BigInt(1e18));
         } else {
             totalCfx = networkId === 1029 ? 50_0000_0000 : 5000000000000000 * 2;
         }
         list.forEach((b,idx)=>{
-            b['totalNative'] = totalCfx;
             b['rank'] = idx+1
-            b['percent'] = b[order] / totalCfx * 100
+            // The dashboard fills its first supply snapshot a few seconds after boot;
+            // report the ranking without a share rather than a made up one.
+            if (totalCfx) {
+                b['totalNative'] = totalCfx;
+                b['percent'] = b[order] / totalCfx * 100
+            }
         })
         return this.fillInfo(list, networkId)
     }

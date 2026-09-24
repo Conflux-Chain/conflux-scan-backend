@@ -1,7 +1,7 @@
 import {Conflux, format as sdk_format, sign} from "js-conflux-sdk";
 import {Errors} from "./LogicError";
 import {ScanHttpProvider} from "./ScanHttpProvider";
-import {ConfluxOption} from "../../config/StatConfig";
+import {ConfluxOption, NoCoreSpace} from "../../config/StatConfig";
 import {networkInterfaces} from 'os';
 import {ethers} from "ethers";
 import {ConsortiumConflux} from "./ConsortiumConflux";
@@ -12,6 +12,21 @@ import {keccak256} from "ethers/lib/utils";
 
 const lodash = require('lodash');
 const {isValidCfxAddress, decodeCfxAddress} = require('js-conflux-sdk/src/util/address');
+
+/**
+ * Display text for the native token. Conflux vocabulary stays put in identifiers and in
+ * the API contract -- route names, response field names, `transferType: 'CFX'` -- so only
+ * text a user actually reads goes through these: token names, CSV column headers and the
+ * names of exported files. Call them, never cache the value: `NoCoreSpace` is assigned by
+ * `loadConfig()` and reads as its default before that.
+ */
+export function nativeTokenSymbol() {
+    return NoCoreSpace ? '0G' : 'CFX';
+}
+
+export function nativeTokenName() {
+    return NoCoreSpace ? '0G' : 'Conflux Network Token';
+}
 
 export function pageParam(obj: object, skipKey: string, limitKey: string, defaultLimit: number) {
     const param = {
