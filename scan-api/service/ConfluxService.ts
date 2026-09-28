@@ -639,6 +639,25 @@ export class ConfluxService {
       throw new Errors.RPCError('ETH RPC provider not configured');
     }
 
+    // Validate before computing the cache key: JSON.stringify(undefined) yields the
+    // value `undefined`, and crypto hash.update(undefined) throws ERR_INVALID_ARG_TYPE
+    // ("The 'data' argument must be ... Received undefined"). This also guards against
+    // a missing `params` (ParameterError instead of an unhandled 500).
+    if (!Array.isArray(params)) {
+      throw new error.ParameterError("Provide the first parameter at least. [callParams, blockNumber?, tracerOptions?].");
+    }
+    const len = params.length;
+    if (len < 1) {
+      throw new error.ParameterError("Provide the first parameter at least. [callParams, blockNumber?, tracerOptions?].");
+    }
+    if (len > 3) {
+      throw new error.ParameterError("Accepts maximum 3 parameters. [callParams, blockNumber?, tracerOptions?].");
+    }
+    const [callParams] = params;
+    if (!callParams || !Object.keys(callParams)?.length) {
+      throw new error.ParameterError("The first parameter is an empty object. [callParams, blockNumber?, tracerOptions?].");
+    }
+
     const paramsHash = crypto
         .createHash('sha256')
         .update(JSON.stringify(params))
@@ -646,18 +665,7 @@ export class ConfluxService {
 
     return ttlMap.cache(`ConfluxService.getCallTrace(${paramsHash}, ${formatParams})`,
         async () => {
-          const len = params?.length || 0;
-          if (len < 1) {
-            throw new error.ParameterError("Provide the first parameter at least. [callParams, blockNumber?, tracerOptions?].");
-          }
-          if (len > 3) {
-            throw new error.ParameterError("Accepts maximum 3 parameters. [callParams, blockNumber?, tracerOptions?].");
-          }
-
           const [callParams, blockNumber, tracerOptions] = params;
-          if (!Object.keys(callParams)?.length) {
-            throw new error.ParameterError("The first parameter is an empty object. [callParams, blockNumber?, tracerOptions?].");
-          }
 
           const rpcParams: any[] = [formatParams ? formatCallParams(callParams) : callParams];
           if (blockNumber) {
