@@ -72,11 +72,14 @@ router_get(router, '/path',
   `skip` (e.g. `99999999999999999999`) overflows MySQL's offset → SQL parse error.
   Fix: bound `skip` (e.g. `'<=100000000'` validator in `jsonrpc.ts`, and
   `maximum` in `v1.ts` OpenAPI schema). Same applies to any `skip`/`limit` exposed.
-- **#2 — contract verify `compiler` needs a `v` prefix.** The verify service only
-  accepts solc versions starting with `v` (`v0.8.24+commit...`). Clients send
-  `0.8.24+commit...` (no `v`) → "solc version ... not supported". Fix: in the
-  `v1.ts` `/contract/verify` route, prepend `v` when missing, before the handler
-  runs.
+- **#2 — contract verify `compiler` needs a `v` prefix (Solidity only).** The
+  verify service expects Solidity versions prefixed with `v`
+  (`v0.8.24+commit...`). Clients send the raw full form `0.8.24+commit...` (no
+  `v`) → "solc version ... not supported". Fix: in the `v1.ts` `/contract/verify`
+  route, prepend `v` **only** for the Solidity full-with-commit form
+  (`/^\d.*\+commit/`); explicitly leave `vyper:`/`fe:` prefixes and short Solidity
+  versions like `0.8.24` (resolved by key lookup) untouched — prepending `v` to
+  those breaks them.
 - **#3 — unsupported/garbage solc version → 500.** `checkSolcVersion`
   (`stat/service/common/utils.ts`) throws a *bare `Error`* ("...not supported",
   "...required", "Invalid parameter") for bad versions → surfaces as `json-rpc-500`.

@@ -689,11 +689,19 @@ router_post(router, '/contract/verify',
 
   toArray,
   function (input) {
-    // solc version must be prefixed with 'v' (e.g. 'v0.8.24+commit.e11b9ed9');
-    // the verify service rejects versions without the leading 'v', so normalize it here.
-    if (Array.isArray(input) && input[0] && typeof input[0].compiler === 'string'
-      && input[0].compiler && !input[0].compiler.startsWith('v')) {
-      input[0].compiler = 'v' + input[0].compiler;
+    // The verify service expects Solidity versions prefixed with 'v'
+    // (e.g. 'v0.8.24+commit.e11b9ed9'). Clients often send the raw full form
+    // '0.8.24+commit.e11b9ed9' (no 'v'), which is rejected as "not supported".
+    // Only prepend 'v' for that Solidity full form; leave vyper:/fe: prefixes
+    // alone (handled by their own checks) and leave short Solidity versions like
+    // '0.8.24' untouched (those are resolved by key lookup, not the full form).
+    if (Array.isArray(input) && input[0] && typeof input[0].compiler === 'string') {
+      const compiler = input[0].compiler;
+      if (compiler && !compiler.startsWith('v')
+        && !compiler.startsWith('vyper') && !compiler.startsWith('fe')
+        && /^\d.*\+commit/.test(compiler)) {
+        input[0].compiler = 'v' + compiler;
+      }
     }
     return input;
   },
