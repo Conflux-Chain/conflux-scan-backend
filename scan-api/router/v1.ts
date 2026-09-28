@@ -687,7 +687,17 @@ router_post(router, '/contract/verify',
     },
   }),
 
-  toArray, jsonrpc_verifyContract,
+  toArray,
+  function (input) {
+    // solc version must be prefixed with 'v' (e.g. 'v0.8.24+commit.e11b9ed9');
+    // the verify service rejects versions without the leading 'v', so normalize it here.
+    if (Array.isArray(input) && input[0] && typeof input[0].compiler === 'string'
+      && input[0].compiler && !input[0].compiler.startsWith('v')) {
+      input[0].compiler = 'v' + input[0].compiler;
+    }
+    return input;
+  },
+  jsonrpc_verifyContract,
 );
 
 router_post(router, '/contract/verify/cross-space',
