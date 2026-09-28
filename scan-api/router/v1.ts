@@ -272,7 +272,7 @@ router_get(router,'/block',
       minEpochNumber: { in: 'query', type: 'integer', minimum: 0 },
       maxEpochNumber: { in: 'query', type: 'integer', minimum: 0 },
       reverse: { in: 'query', type: 'boolean', default: true }, // XXX: front-end is lazy to input 'true'
-      skip: { in: 'query', type: 'integer', minimum: 0, default: 0 },
+      skip: { in: 'query', type: 'integer', minimum: 0, maximum: 100000000, default: 0 },
       limit: { in: 'query', type: 'integer', minimum: 0, maximum: 100, default: 10 },
       fields: {
         in: 'query', type: 'array', default: ['avgGasPrice', 'pivotHash', 'risk', 'totalReward'],
@@ -425,7 +425,7 @@ router_get(router,'/transaction',
       maxEpochNumber: { in: 'query', type: 'integer', minimum: 0 },
       nonce: { in: 'query', type: 'integer', minimum: 0 },
       reverse: { in: 'query', type: 'boolean', default: true }, // XXX: front-end is lazy to input 'true'
-      skip: { in: 'query', type: 'integer', minimum: 0, default: 0 },
+      skip: { in: 'query', type: 'integer', minimum: 0, maximum: 100000000, default: 0 },
       limit: { in: 'query', type: 'integer', minimum: 0, maximum: 100, default: 10 },
       fields: {
         in: 'query', type: 'array', default: ['risk', 'gasFee'],
@@ -687,7 +687,25 @@ router_post(router, '/contract/verify',
     },
   }),
 
-  toArray, jsonrpc_verifyContract,
+  toArray,
+  function (input) {
+    // The verify service expects Solidity versions prefixed with 'v'
+    // (e.g. 'v0.8.24+commit.e11b9ed9'). Clients often send the raw full form
+    // '0.8.24+commit.e11b9ed9' (no 'v'), which is rejected as "not supported".
+    // Only prepend 'v' for that Solidity full form; leave vyper:/fe: prefixes
+    // alone (handled by their own checks) and leave short Solidity versions like
+    // '0.8.24' untouched (those are resolved by key lookup, not the full form).
+    if (Array.isArray(input) && input[0] && typeof input[0].compiler === 'string') {
+      const compiler = input[0].compiler;
+      if (compiler && !compiler.startsWith('v')
+        && !compiler.startsWith('vyper') && !compiler.startsWith('fe')
+        && /^\d.*\+commit/.test(compiler)) {
+        input[0].compiler = 'v' + compiler;
+      }
+    }
+    return input;
+  },
+  jsonrpc_verifyContract,
 );
 
 router_post(router, '/contract/verify/cross-space',
@@ -905,7 +923,7 @@ router_get(router,'/token',
       name: { in: 'query', type: 'string', description: 'regex' },
       orderBy: { in: 'query', type: 'string', default: 'transferCount' },
       reverse: { in: 'query', type: 'boolean', default: true },
-      skip: { in: 'query', type: 'integer', minimum: 0, default: 0 },
+      skip: { in: 'query', type: 'integer', minimum: 0, maximum: 100000000, default: 0 },
       limit: { in: 'query', type: 'integer', minimum: 0, maximum: 100, default: 100 },
       fields: {
         in: 'query', type: 'array', default: ['price'],
@@ -979,7 +997,7 @@ router_get(router,'/transfer',
       minEpochNumber: { in: 'query', type: 'integer', minimum: 0 },
       maxEpochNumber: { in: 'query', type: 'integer', minimum: 0 },
       reverse: { in: 'query', type: 'boolean', default: true }, // XXX: front-end is lazy to input 'true'
-      skip: { in: 'query', type: 'integer', minimum: 0, default: 0 },
+      skip: { in: 'query', type: 'integer', minimum: 0, maximum: 100000000, default: 0 },
       limit: { in: 'query', type: 'integer', minimum: 0, maximum: 100, default: 10 },
     },
     output: {
@@ -1319,7 +1337,7 @@ router_get(router,'/report/transfer',
       minEpochNumber: { in: 'query', type: 'integer', minimum: 0 },
       maxEpochNumber: { in: 'query', type: 'integer', minimum: 0 },
       reverse: { in: 'query', type: 'boolean', default: true },
-      skip: { in: 'query', type: 'integer', minimum: 0, default: 0 },
+      skip: { in: 'query', type: 'integer', minimum: 0, maximum: 100000000, default: 0 },
       limit: { in: 'query', type: 'integer', minimum: 0, maximum: 100, default: 10 },
       token: { in: 'query', type: 'string' },
     },
