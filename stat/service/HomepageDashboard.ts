@@ -147,6 +147,38 @@ export class HomepageDashboard {
     }
 }
 
+/**
+ * How much of `balance(0x0)` has been credited back into the reported supply, in drip.
+ * Subtract it from a gross figure to get a net one:
+ *
+ *     total       = totalIssued      - creditedStakeDrip(supplyInfo)
+ *     circulating = totalCirculating - creditedStakeDrip(supplyInfo)
+ *
+ * On 0G, staking burns into 0x0 on the eSpace side and mints on the consensus side, and
+ * unstaking emits a block withdrawal and burns on the consensus side. So `balance(0x0)`
+ * is the cumulative amount ever staked, and `calculateEvmPosSupply()`'s
+ * `totalIssued = genesis + blockWithdraw + totalStakes` counts part of it a second time.
+ *
+ * Only the part that actually came back -- as a block withdrawal or as consensus layer
+ * balance -- is that double count, so that is all we take off. The rest of
+ * `balance(0x0)` was burned and credited nowhere yet (pending activation, slashed, or not
+ * reported by `effective_balance`); subtracting it would remove supply that was never
+ * added. The clamp is what keeps these figures sane when `validatorRpc` or the block
+ * withdrawal sync drops out and those terms read 0 -- without it, a `totalStakes` of 0
+ * once took the published circulating supply down by 73%.
+ *
+ * Core space is unchanged: there `getSupplyInfo()` answers for itself, there is no double
+ * count to clamp, and the whole zero address balance comes off as it always did.
+ */
+export function creditedStakeDrip(supplyInfo: any): bigint {
+    const staked = BigInt(supplyInfo?.nullAddressBalance || 0);
+    if (!supplyInfo?.calculateEvmPosSupply) {
+        return staked;
+    }
+    const credited = BigInt(supplyInfo.sumBlockWithdrawal || 0) + BigInt(supplyInfo.totalStakes || 0);
+    return credited < staked ? credited : staked;
+}
+
 export async function patchSupplyInfo(supplyInfo: SupplyInfo, balanceOfZero: bigint): Promise<SupplyInfo&any> {
     if (supplyInfo?.totalCirculating == 0n && ConfigInstance.noCoreSpace && ConfigInstance.isEvm) {
         return calculateEvmPosSupply(balanceOfZero);

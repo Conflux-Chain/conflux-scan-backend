@@ -10,9 +10,26 @@ const moment = require('moment');
 
 // 1. 配置数据库连接
 let sequelize: Sequelize;
+
+/**
+ * 判定为断更的滞后阈值。
+ *
+ * 原先写成 `const oneDayAgo = moment().subtract(2, 'days')` —— 变量名说一天、
+ * 实际两天，而告警文案又写死"一天前"。三处各说一套，排查时无从判断到底落后多久。
+ */
+const STALE_AFTER_DAYS = 2;
+
 // 2. 报警函数
-function sendAlert(tableName, lastRecord) {
-	const msg = `[ALERT] 表 ${tableName} 的最后一条记录创建于一天前!`;
+function sendAlert(tableName, lastRecord, recordTime) {
+	// 带上真实滞后时长：原先是写死的"一天前"，无论落后 2 天还是 5 个月都一样，
+	// 看告警的人必须自己去查表才知道严重程度
+	const lagHours = moment().diff(recordTime, 'hours');
+	const days = Math.floor(lagHours / 24), hours = lagHours % 24;
+	const lagText = days
+		? (hours ? `${days} 天 ${hours} 小时` : `${days} 天`)
+		: `${lagHours} 小时`;
+	const msg = `[ALERT] 表 ${tableName} 的最后一条记录已滞后 ${lagText}`
+		+ `（阈值 ${STALE_AFTER_DAYS} 天，最后记录时间 ${recordTime.format('YYYY-MM-DD HH:mm:ss')}）!`;
 	console.error(msg);
 	console.error(`记录详情:`, JSON.stringify(lastRecord, null, 2));
 	// 这里可以加入邮件、短信等报警逻辑
@@ -109,13 +126,12 @@ async function checkTable(schema, tableName:string) {
 			return;
 		}
 
-		// 检查时间是否是一天前
-		const oneDayAgo = moment().subtract(2, 'days');
+		const staleBefore = moment().subtract(STALE_AFTER_DAYS, 'days');
 		const recordTime = moment(createdAt);
 
-		if (recordTime.isBefore(oneDayAgo)) {
+		if (recordTime.isBefore(staleBefore)) {
 			delayedCount ++;
-			sendAlert(tableName, lastRecord);
+			sendAlert(tableName, lastRecord, recordTime);
 		} else {
 			normalCount ++;
 			if (showNormalTable) {
@@ -123,8 +139,17 @@ async function checkTable(schema, tableName:string) {
 			}
 		}
 	} catch (error) {
-		console.error(`检查表 ${tableName} 时出错:`, error.message);
-		throw error;
+		/*
+		 * 不再 rethrow。原先一张表出错会冒泡到 checkAllTableDataTime 的 try，
+		 * 中断整个 for 循环 —— 排在它后面的表全部不再被检查，而唯一的痕迹是一行
+		 * "主流程出错"。一个配置失误就能让监控静默失明，且失明范围取决于
+		 * information_schema 返回的表顺序。
+		 *
+		 * 典型触发条件：某张表配了 ignore:false 但没有 createdAt 列，又没给
+		 * `time` 覆盖（unique_addr 就是这种情况）。
+		 */
+		errorCount ++;
+		console.error(`检查表 ${tableName} 时出错（跳过该表，继续检查其余）:`, error.message);
 	}
 }
 
@@ -148,7 +173,7 @@ export async function checkAllTableDataTime() {
 		for (const table of tables) {
 			await checkTable(schema, table);
 		}
-		console.log(`table count: ${tableCount} , ignore ${ignoreCount} , normal count: ${normalCount}, delayed count: ${delayedCount}`);
+		console.log(`table count: ${tableCount} , ignore ${ignoreCount} , normal count: ${normalCount}, delayed count: ${delayedCount}, error count: ${errorCount}`);
 	} catch (error) {
 		console.error('主流程出错:', error);
 	}
@@ -159,6 +184,7 @@ function reset() {
 	ignoreCount = 0;
 	normalCount = 0;
 	delayedCount = 0;
+	errorCount = 0;
 }
 
 let showEmptyTable = false;
@@ -168,6 +194,7 @@ let tableCount = 0;
 let ignoreCount = 0;
 let normalCount = 0;
 let delayedCount = 0;
+let errorCount = 0;
 let sendAlert0 = true;
 
 if (module === require.main) {
