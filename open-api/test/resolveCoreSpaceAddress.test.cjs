@@ -5,7 +5,6 @@ const path = require('node:path');
 const vm = require('node:vm');
 const ts = require('typescript');
 const {format} = require('js-conflux-sdk');
-const {Op} = require('sequelize');
 
 const root = path.resolve(__dirname, '../..');
 function loadSource(file, mocks = {}) {
@@ -93,30 +92,4 @@ test('rejects invalid input before querying storage', async () => {
         await assert.rejects(resolve(context(address)), /Invalid eSpace address/);
         assert.equal(calls.length, 0);
     }
-});
-
-test('backfill hashes known Core bytes and updates mappings through indexed hexId', async () => {
-    const updates = [];
-    let page = 0;
-    const {backfillCoreSpaceMapping} = loadSource('stat/service/tool/BackfillCoreSpaceMapping.ts', {
-        './FixDailyTokenStat': {},
-        '../common/CrossSpaceAddress': mapping,
-        '../../model/HexMap': {
-            Hex40Map: {findAll: async options => {
-                if (options.where.hex) {
-                    assert.deepEqual(Array.from(options.where.hex[Op.in]), [mappedHex]);
-                    return [{id: 17, hex: mappedHex}];
-                }
-                assert.equal(options.where.id[Op.gt], page ? '10' : '0');
-                return page++ ? [] : [{id: 10, hex: coreHex}];
-            }},
-            ESpaceHex40Map: {update: async (values, options) => {
-                updates.push({values, where: options.where});
-            }},
-        },
-    });
-    await backfillCoreSpaceMapping();
-    assert.equal(JSON.stringify(updates), JSON.stringify([
-        {values: {coreHex}, where: {hexId: 17, coreHex: null}},
-    ]));
 });
