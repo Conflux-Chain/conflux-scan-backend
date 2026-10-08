@@ -60,8 +60,8 @@ router_get(router, '/path',
 - MySQL `LIMIT`/`OFFSET` maximum is 2^63-1 (signed BIGINT). Keep `skip`/`limit`
   within a safe range or the query throws `ER_PARSE_ERROR`.
 - `safeFetch` (`stat/service/common/security/safeFetch.ts`) sets `maxRedirects: 0`,
-  so a 3xx response is returned as a body (often an HTML "moved" page), NOT
-  followed, and `response.data` is raw text. Never `JSON.parse` it blindly.
+  so 3xx responses are not followed and are rejected by Axios's default status
+  validation. For successful responses, `response.data` is raw text.
 
 ## Gotchas (with fixes)
 - **#A — `OpenAPI.flow` does NOT validate.** It only picks parameters and applies
