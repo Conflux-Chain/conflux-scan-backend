@@ -55,7 +55,7 @@ export class StatisticService {
     // trend over the real metric keys and coerce each value to BigFixed, otherwise
     // `prev.isZero()`/`value.div()` throw ("prev.isZero is not a function").
     const toBF = (v: any) => (v == null ? BigFixed(0) : BigFixed(String(v)));
-    const metrics = ['tps', 'difficulty', 'blockTime', 'hashRate', 'transactionGasPrice'];
+    const metrics = ['tps', 'difficulty', 'blockTime', 'hashRate'];
 
     const out: any = {};
     for (const key of metrics) {
@@ -66,4 +66,3 @@ export class StatisticService {
     return out;
   }
 }
-

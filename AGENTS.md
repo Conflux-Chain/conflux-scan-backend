@@ -90,8 +90,8 @@ router_get(router, '/path',
   did `lodash.mapValues(current, ...)` over *all* keys of a stat row. Rows carry
   `statTime`/`timestamp` metadata (Date/string) and DECIMAL metrics come back as
   **strings** (`raw: true`). Both break `prev.isZero()`/`value.div()`. Fix: iterate
-  only the real metric keys (`tps`, `difficulty`, `blockTime`, `hashRate`,
-  `transactionGasPrice`) and coerce with `BigFixed(String(v))`.
+  only the real metric keys (`tps`, `difficulty`, `blockTime`, `hashRate`)
+  and coerce with `BigFixed(String(v))`.
 - **#5 — NFT `get-localized-name` `JSON.parse` of non-JSON.** `safeFetch` returns
   redirect/HTML bodies; `JSON.parse` then throws `Unexpected token ...`. Fix:
   `try/catch` the parse and fall back to `meta.name` (`NFTPreviewService.getNFTName`).
