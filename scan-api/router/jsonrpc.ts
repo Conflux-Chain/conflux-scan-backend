@@ -419,7 +419,7 @@ export const jsonrpc_verifyContract = jsonrpc.method_('verifyContract',
       // invalid code format, etc.) are thrown as plain Errors from checkSolcVersion
       // and surface as unhandled json-rpc-500. Convert them to a ParameterError so
       // clients get a clean 600 instead.
-      if (e instanceof Error && /not supported|version required|Invalid parameter/i.test(e.message)) {
+      if (e instanceof Error && /not supported|version required|matching pair required|Invalid parameter/i.test(e.message)) {
         throw new error.ParameterError(e.message);
       }
       throw e;
