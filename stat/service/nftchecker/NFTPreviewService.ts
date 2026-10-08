@@ -165,8 +165,18 @@ export class NFTPreviewService {
             if (meta?.localization?.uri) { // try 1155
                 const zhUri = meta.localization.uri.replace('{locale}', 'zh-cn');
                 const data = await safeFetch(normalizeIpfsURI(zhUri, gateway));
-                const json = JSON.parse(data);
-                nftName.zh = json.name || meta.name;
+                // The gateway may return a non-JSON body (e.g. a redirect/"This URL has
+                // moved" HTML page, since safeFetch does not follow redirects) or a
+                // malformed/truncated payload. Parsing that would throw, so guard it and
+                // fall back to meta.name instead of logging an exception.
+                if (typeof data === 'string') {
+                    try {
+                        const json = JSON.parse(data);
+                        nftName.zh = json?.name || meta.name;
+                    } catch {
+                        // non-JSON / malformed localization body -> keep meta.name
+                    }
+                }
             }
         } catch (e) {
             safeAddNFTPreviewExceptionLog('get-localized-name', e);

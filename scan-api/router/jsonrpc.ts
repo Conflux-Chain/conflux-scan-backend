@@ -203,7 +203,7 @@ export const jsonrpc_listBlock = jsonrpc.method_('countAndListBlock',
     minEpochNumber: { path: '0', type: type.uint },
     maxEpochNumber: { path: '0', type: type.uint },
     limit: { path: '0', type: type.uint, default: 10, '<=100': (v) => v <= 100 },
-    skip: { path: '0', type: type.uint, default: 0 },
+    skip: { path: '0', type: type.uint, default: 0, '<=100000000': (v) => v <= 100000000 },
     reverse: { path: '0', type: type.bool },
     fields: { path: '0', type: type([type.string]).$parse(type.arr) },
   })),
@@ -276,7 +276,7 @@ export const jsonrpc_countAndListTransaction = jsonrpc.method_('countAndListTran
     maxEpochNumber: { path: '0', type: type.uint },
     nonce: { path: '0', type: type.uint },
     limit: { path: '0', type: type.uint, default: 10, '<=100': (v) => v <= 100 },
-    skip: { path: '0', type: type.uint, default: 0 },
+    skip: { path: '0', type: type.uint, default: 0, '<=100000000': (v) => v <= 100000000 },
     reverse: { path: '0', type: type.bool },
     fields: { path: '0', type: type([type.string]).$parse(type.arr) },
   })),
@@ -409,10 +409,21 @@ export const jsonrpc_verifyContract = jsonrpc.method_('verifyContract',
   cacheFlow(5 * 1000),
   async function (options) {
     const {
-      app: { service },
+      app: { service, error },
     } = this as ScanCtx;
 
-    return service.contract.verifySourcecode(options)
+    try {
+      return await service.contract.verifySourcecode(options)
+    } catch (e) {
+      // Validation failures (unsupported/garbage compiler version, missing version,
+      // invalid code format, etc.) are thrown as plain Errors from checkSolcVersion
+      // and surface as unhandled json-rpc-500. Convert them to a ParameterError so
+      // clients get a clean 600 instead.
+      if (e instanceof Error && /not supported|version required|matching pair required|Invalid parameter/i.test(e.message)) {
+        throw new error.ParameterError(e.message);
+      }
+      throw e;
+    }
   },
 
   buildFlow((app) => type({
@@ -476,7 +487,7 @@ export const jsonrpc_countAndListToken = jsonrpc.method_('countAndListToken',
     name: { path: '0', type: type.string },
     orderBy: { path: '0', type: type.string },
     limit: { path: '0', type: type.uint, default: 10, '<=100': (v) => v <= 100 },
-    skip: { path: '0', type: type.uint },
+    skip: { path: '0', type: type.uint, default: 0, '<=100000000': (v) => v <= 100000000 },
     reverse: { path: '0', type: type.bool },
     fields: { path: '0', type: type([type.string]).$parse(type.arr), default: [] },
     detail: { path: '0', type: type.bool },
@@ -527,7 +538,7 @@ export const jsonrpc_countAndListTransfer = jsonrpc.method_('countAndListTransfe
     minEpochNumber: { path: '0', type: type.uint },
     maxEpochNumber: { path: '0', type: type.uint },
     limit: { path: '0', type: type.uint, default: 10, '<=100': (v) => v <= 100 },
-    skip: { path: '0', type: type.uint, default: 0 },
+    skip: { path: '0', type: type.uint, default: 0, '<=100000000': (v) => v <= 100000000 },
     reverse: { path: '0', type: type.bool },
     fields: { path: '0', type: type([type.string]).$parse(type.arr), default: [] },
 
@@ -582,7 +593,7 @@ export const jsonrpc_exportTransaction = jsonrpc.method_('exportTransaction',
     minEpochNumber: { path: '0', type: type.uint },
     maxEpochNumber: { path: '0', type: type.uint },
     limit: { path: '0', type: type.uint, default: 10, '<=10000': (v) => v <= 10000 },
-    skip: { path: '0', type: type.uint, default: 0 },
+    skip: { path: '0', type: type.uint, default: 0, '<=100000000': (v) => v <= 100000000 },
     reverse: { path: '0', type: type.bool },
 
     blockHash: { path: '0', type: type.hex64 },
@@ -682,7 +693,7 @@ export const jsonrpc_exportTransfer = jsonrpc.method_('exportTransfer',
     minEpochNumber: { path: '0', type: type.uint },
     maxEpochNumber: { path: '0', type: type.uint },
     limit: { path: '0', type: type.uint, default: 10, '<=10000': (v) => v <= 10000 },
-    skip: { path: '0', type: type.uint, default: 0 },
+    skip: { path: '0', type: type.uint, default: 0, '<=100000000': (v) => v <= 100000000 },
     reverse: { path: '0', type: type.bool },
     token: { path: '0', type: type.string },
   })),

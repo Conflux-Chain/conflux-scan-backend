@@ -50,11 +50,19 @@ export class StatisticService {
   async trend({ interval } = {} as any) {
     const {list: [previous = {}, current = {}]} = await this.plot({limit: 2, interval});
 
-    return lodash.mapValues(current, (value, key) => {
-      const prev = previous[key];
-      const trend = !prev || prev.isZero() ? BigFixed(0) : value.div(prev).sub(1);
-      return { value, trend };
-    });
+    // The query returns raw DECIMAL values as strings (raw: true) plus non-metric
+    // metadata fields (statTime, timestamp) that are not BigFixed. Only compute the
+    // trend over the real metric keys and coerce each value to BigFixed, otherwise
+    // `prev.isZero()`/`value.div()` throw ("prev.isZero is not a function").
+    const toBF = (v: any) => (v == null ? BigFixed(0) : BigFixed(String(v)));
+    const metrics = ['tps', 'difficulty', 'blockTime', 'hashRate'];
+
+    const out: any = {};
+    for (const key of metrics) {
+      const v = toBF(current[key]);
+      const p = toBF(previous[key]);
+      out[key] = { value: v, trend: p.isZero() ? BigFixed(0) : v.div(p).sub(1) };
+    }
+    return out;
   }
 }
-
