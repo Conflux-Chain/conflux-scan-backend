@@ -1,11 +1,10 @@
 import {intParam, mustBeEnumParamIfPresent, mustBeIntParamIfPresent} from "../../stat/service/common/utils";
-import {ESpaceHex40Map, Hex40Map} from "../../stat/model/HexMap";
+import {Hex40Map} from "../../stat/model/HexMap";
 import {Op} from "sequelize";
 import {fmtAddr, StatApp} from "../../stat/StatApp";
 import {setBody} from "../router/middleware";
 import {LIMIT_MAX} from "../../stat/router/ParamChecker";
 import {Errors} from "../../stat/service/common/LogicError";
-import {mappedEspaceHex} from "../../stat/service/common/CrossSpaceAddress";
 
 export async function listAccountsByCursor(ctx) {
 	mustBeIntParamIfPresent(ctx.request.query, "id", "limit");
@@ -26,27 +25,4 @@ export async function listAccountsByCursor(ctx) {
 	})
 
 	setBody(ctx, addr)
-}
-
-export async function resolveCoreSpaceAddress(ctx) {
-	const {eSpaceAddress} = ctx.request.query;
-	if (typeof eSpaceAddress !== 'string' || !/^0x[0-9a-fA-F]{40}$/.test(eSpaceAddress)) {
-		throw new Errors.ParameterError('Invalid eSpace address');
-	}
-
-	const normalizedHex = eSpaceAddress.slice(2).toLowerCase();
-	const eSpaceHex = await Hex40Map.findOne({where: {hex: normalizedHex}, raw: true});
-	if (!eSpaceHex) {
-		throw new Errors.ParameterError('Cross-space mapped address not found');
-	}
-	const mapped = await ESpaceHex40Map.findOne({where: {hexId: eSpaceHex.id}, raw: true});
-	if (!mapped?.coreHex || !/^[018][0-9a-f]{39}$/.test(mapped.coreHex)
-		|| mappedEspaceHex(mapped.coreHex) !== normalizedHex) {
-		throw new Errors.ParameterError('Cross-space mapped address not found');
-	}
-
-	setBody(ctx, {
-		eSpaceAddress,
-		coreSpaceAddress: fmtAddr(`0x${mapped.coreHex}`, StatApp.networkId),
-	});
 }

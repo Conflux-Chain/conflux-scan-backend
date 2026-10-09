@@ -5,7 +5,6 @@ import {format} from "js-conflux-sdk";
 import {StatApp} from "../StatApp";
 import {Contract} from "./Contract";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
-import {mappedEspaceHex} from "../service/common/CrossSpaceAddress";
 const NodeCache = require( "node-cache" );
 const lodash = require('lodash');
 
@@ -97,14 +96,12 @@ export interface ESpaceHexMapAttributes {
     id?: number;
     hexId: number;
     hex: string
-    coreHex?: string
     createdAt?: Date
 }
 export class ESpaceHex40Map extends Model<ESpaceHexMapAttributes> implements ESpaceHexMapAttributes {
     public id?: number;
     public hexId: number;
     public hex: string;
-    public coreHex?: string;
     createdAt?: Date
     static register(sequelize) {
         ESpaceHex40Map.init(
@@ -112,7 +109,6 @@ export class ESpaceHex40Map extends Model<ESpaceHexMapAttributes> implements ESp
                 id: {type: DataTypes.BIGINT, primaryKey: true, autoIncrement: true},
                 hexId: {type: DataTypes.BIGINT, allowNull: false,},
                 hex: {type: DataTypes.CHAR(40), allowNull: false,},
-                coreHex: {type: DataTypes.CHAR(40), allowNull: true,},
                 createdAt: {type: DataTypes.DATE, allowNull: true,},
             },
             {
@@ -129,12 +125,6 @@ export class ESpaceHex40Map extends Model<ESpaceHexMapAttributes> implements ESp
             }
         )
     }
-}
-export async function buildCoreSpaceMapping(coreAddress: string, dt: Date, resultArr: ESpaceHexMapAttributes[]) {
-    const coreHex = format.hexAddress(coreAddress).slice(2).toLowerCase();
-    const hex = mappedEspaceHex(coreHex);
-    const {id} = await makeId(`0x${hex}`, undefined, {dt});
-    resultArr.push({hex, hexId: id, coreHex, createdAt: dt});
 }
 const cacheTtl = 60 * 10 // 10 minutes
 const base32toHexCache = new NodeCache({ maxKeys: 10000,  stdTTL: cacheTtl, checkperiod: 60})
