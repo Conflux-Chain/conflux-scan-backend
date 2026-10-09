@@ -18,9 +18,6 @@ module.exports = {
             listNFTTokens: '/nft/tokens',
             getNFTPreview: '/nft/preview',
 
-            // cross space
-            resolveCoreSpaceAddress: '/crossspace/resolveCoreSpaceAddress',
-
             // statistics
             listMiningStats: '/statistics/mining',
             getSupplyStat: '/statistics/supply',
