@@ -6,9 +6,8 @@ import {batchTraceBlock, getCodeHash, initCfxSdk} from "./service/common/utils";
 import {Measure} from "./service/common/Measure";
 import {FullBlock, FullTransaction, loadMaxBlockEpoch} from "./model/FullBlock";
 import {
-    buildCrossAddr, buildCoreSpaceMapping, ESpaceHex40Map,
+    buildCrossAddr, ESpaceHex40Map,
     ESpaceHexMapAttributes,
-    formatToHex,
     idHex40Map,
     makeId,
     makeIdV,
@@ -202,10 +201,6 @@ export async function getCfxTransferTraces(epoch: number)
                 let {action: {outcome, from, to, value, callType, fromPocket, toPocket, fromSpace, toSpace, space, addr}, type, valid} = traceArr[traceIdx]
                 if (!valid) {
                     continue
-                }
-                if (type === 'call' && space === 'native' && callType === 'call'
-                    && to && formatToHex(to).toLowerCase() === '0x0888000000000000000000000000000000000006') {
-                    await buildCoreSpaceMapping(from, dbPivotBlock.createdAt, crossSpaceAddrArr);
                 }
                 from = patchPocketAddress(fromPocket, from);
                 to = patchPocketAddress(toPocket, to)
@@ -431,12 +426,7 @@ async function save(data:CfxTransferEpochData) {
                 updateOnDuplicate: ['createdAt']}),
             TraceCreateContract.bulkCreate(batchData.contractCreationArr, { transaction: dbTx,
                 updateOnDuplicate: ["epochNumber", "blockTime", "txHash", "traceIndex"]}),
-        ]).then(async ()=>{
-            // Ordinary eSpace observations have no coreHex. Never let them erase a known mapping.
-            const mappings = batchData.crossSpaceAddrArr.filter(row => row.coreHex);
-            if (mappings.length) {
-                await ESpaceHex40Map.bulkCreate(mappings, {transaction: dbTx, updateOnDuplicate: ['coreHex']});
-            }
+        ]).then(()=>{
             batchData.reset();
         })
     })

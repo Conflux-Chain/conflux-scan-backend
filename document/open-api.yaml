@@ -1672,7 +1672,7 @@ paths:
         - 'Cross Space'
       summary: "Resolve the mapped Core Space address from an eSpace address."
       operationId: resolveCoreSpaceAddress
-      description: "Resolve the original Core Space CIP-37 address from a recorded eSpace mapping. The Core address bytes must hash to the supplied mapped address; unknown mappings return a parameter error."
+      description: "Resolve Core Space CIP-37 address by eSpace mapped address."
       parameters:
         - name: eSpaceAddress
           in: query
