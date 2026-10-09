@@ -121,7 +121,7 @@ export async function checkConfura(config?: EtherOption) {
         process.exit(9);
     }
 
-    async function fetchExpireAt(config) {
+    async function fetchKeyInfo(config) {
         const requestBody = {
             jsonrpc: "2.0",
             method: "diagnostic_getRateLimitStatus",
@@ -138,7 +138,8 @@ export async function checkConfura(config?: EtherOption) {
             .timeout(config.timeout || 3000)
             .send(JSON.stringify(requestBody));
 
-        const expireAtStr = response?.body?.result?.info?.web3payInfo?.expireAt;
+        const web3payInfo = response?.body?.result?.info?.web3payInfo;
+        const expireAtStr = web3payInfo?.expireAt;
         if (!expireAtStr) {
             throw new Error("field expireAt not found in confura response");
         }
@@ -149,10 +150,10 @@ export async function checkConfura(config?: EtherOption) {
         }
 
         console.log(`Succeed to get confura key expireAt ${expireAt.toISOString()}`);
-        return expireAt;
+        return {expireAt, account: web3payInfo.id || "unknown"};
     }
 
-    function checkExpiration(expireAt) {
+    function checkExpiration({expireAt, account}) {
         const preAlertDays = 7; // 7 days
         const alertTime = new Date(expireAt.getTime() - preAlertDays * DAY);
 
@@ -163,18 +164,18 @@ export async function checkConfura(config?: EtherOption) {
         safeAddErrorLog(
             "openapi",
             "confura-key",
-            new Error(`The confura key has entered the ${preAlertDays}-day pre-alert window, expireAt=${expireAt.toISOString()}`)
+            new Error(`The confura key has entered the ${preAlertDays}-day pre-alert window, expireAt=${expireAt.toISOString()}, account=${account}`)
         ).then();
         console.log("Succeed to alert confura key expiration");
     }
 
     try {
-        const expireAt = await fetchExpireAt(config);
+        const keyInfo = await fetchKeyInfo(config);
 
-        checkExpiration(expireAt);
+        checkExpiration(keyInfo);
 
         setInterval(() => {
-            checkExpiration(expireAt)
+            checkExpiration(keyInfo)
         }, DAY);
     } catch (e) {
         safeAddErrorLog("openapi", "confura-key", e).then();
