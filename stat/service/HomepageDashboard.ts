@@ -147,6 +147,30 @@ export class HomepageDashboard {
     }
 }
 
+/**
+ * What comes off a gross supply figure to give the published one:
+ *
+ *     total       = totalIssued      - supplyDeductionDrip(supplyInfo)
+ *     circulating = totalCirculating - supplyDeductionDrip(supplyInfo)
+ *
+ * On 0G that is nothing. `calculateEvmPosSupply()` counts from genesis and issuance
+ * alone -- `totalIssued = genesisSupply + sumBlockReward` -- so every token is already
+ * counted exactly once and there is nothing left to net out.
+ *
+ * Core space still subtracts the zero address balance: there `getSupplyInfo()` answers
+ * for itself, and that balance is supply held out of circulation rather than a ledger
+ * transfer.
+ */
+export function supplyDeductionDrip(supplyInfo: any): bigint {
+    // Nothing: calculateEvmPosSupply() already counts every token exactly once, from
+    // genesis and issuance alone. Taking balance(0x0) off on top would remove staked
+    // supply that was never added.
+    if (supplyInfo?.calculateEvmPosSupply) {
+        return BigInt(0);
+    }
+    return BigInt(supplyInfo?.nullAddressBalance || 0);
+}
+
 export async function patchSupplyInfo(supplyInfo: SupplyInfo, balanceOfZero: bigint): Promise<SupplyInfo&any> {
     if (supplyInfo?.totalCirculating == 0n && ConfigInstance.noCoreSpace && ConfigInstance.isEvm) {
         return calculateEvmPosSupply(balanceOfZero);

@@ -19,6 +19,7 @@ import {
   listEVMVersion
 } from "./jsonrpc";
 import {CONST} from "../../stat/service/common/constant";
+import {nativeTokenSymbol} from "../../stat/service/common/utils";
 const lodash = require('lodash');
 import * as KoaRouter from "koa-router";
 import {getClientIP} from "../../stat/router/RateLimiter";
@@ -1359,7 +1360,7 @@ router_get(router,'/report/transfer',
     let tag = ''
     switch (transferType){
       case CONST.TRANSFER_TYPE.CFX:
-        tag = 'CFXtransactions';
+        tag = `${nativeTokenSymbol()}transactions`;
         break;
       case CONST.TRANSFER_TYPE.ERC3525:
       case CONST.TRANSFER_TYPE.ERC20:

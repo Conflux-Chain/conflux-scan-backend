@@ -81,8 +81,16 @@ import {TxReceiverDaily, TxReceiverHourly, TxSenderDaily, TxSenderHourly} from "
 import {AuthAction, AuthBlockStub} from "../model/EIP7702model";
 import {ContractImpl} from "../model/ContractImpl";
 import {VerifiedContracts} from "../model/VerifiedContracts";
-import {initBlockWithdrawModel} from "../model/ZG";
+// import {initBlockWithdrawModel} from "../model/ZG"; // block_withdraws retired, see below
 import {DailyGasStat} from "../model/DailyGasStat";
+import {
+    DailyPartnerAddr,
+    DailyPartnerStat,
+    DailyPartnerTvl,
+    Partner,
+    PartnerAudit,
+    PartnerContract,
+} from "../model/PartnerChain";
 
 let conf
 export function createDB(config) {
@@ -216,6 +224,14 @@ export async function initPartialModel(sequelize) {
     NameTag.register(sequelize)
     VoteParams.register(sequelize)
     DailyBurntFeeStat.register(sequelize)
+    // partner chain metrics: registered in the partial set so the open-api
+    // process can serve them without pulling in the full sync model graph
+    Partner.register(sequelize)
+    PartnerContract.register(sequelize)
+    DailyPartnerStat.register(sequelize)
+    DailyPartnerAddr.register(sequelize)
+    DailyPartnerTvl.register(sequelize)
+    PartnerAudit.register(sequelize)
 }
 export async function initModel(sequelize: Sequelize) {
     console.log(`init models ...`)
@@ -266,9 +282,12 @@ export async function initModel(sequelize: Sequelize) {
     NftTransfer.register(sequelize)
     AddressNfts.register(sequelize)
     EpochAddressIds.register(sequelize)
-    if (NoCoreSpace) {
-        initBlockWithdrawModel(sequelize);
-    }
+    // block_withdraws is retired -- the consensus layer publishes the withdrawal totals
+    // directly now, see stat/service/ZGSupply.ts. The table is left in the database with
+    // the rows it has; nothing reads it, so the model is no longer registered.
+    // if (NoCoreSpace) {
+    //     initBlockWithdrawModel(sequelize);
+    // }
     /*await checkApiLogIpField()*/
     console.log(`init models ok`);
     await dropEmptyTables();
@@ -332,6 +351,12 @@ async function migDB(seq: Sequelize) {
     const traceCreateContract = TraceCreateContract.getTableName().toString();
     await changeColumnIfNecessary(qi, traceCreateContract, 'codeHash', {
         type: DataTypes.CHAR(66), allowNull: true,
+    });
+
+    // rate_key predates scopes and already exists, so sync() will not add this
+    const rateKey = RateKey.getTableName().toString();
+    await addColumnIfNotExistsV2(qi, rateKey, 'scope', {
+        type: DataTypes.STRING(255), allowNull: false, defaultValue: '',
     });
 
     const kv = KV.getTableName().toString();

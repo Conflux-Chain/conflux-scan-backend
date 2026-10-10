@@ -65,6 +65,16 @@ import {
     listCoreTransactionStat,
 } from "../service/OpenStatService";
 import {
+    getPartnerChainSummary,
+    getPartnerTvlSnapshot,
+    listPartnerChainMetrics,
+    listPartnerTvlHistory,
+    listPartnerContracts,
+    registerPartnerContracts,
+    deregisterPartnerContracts,
+} from "../service/OpenPartnerChainService";
+import {requireScope, SCOPE_PARTNER_READ, SCOPE_PARTNER_WRITE} from "./partnerAuth";
+import {
     calCount,
     checkPresent,
     mustBeAddressParamIfPresent, mustBeDateParamIfPresent,
@@ -83,6 +93,7 @@ import {Errors} from "../../stat/service/common/LogicError";
 import {TokenQuery, TokenType} from "../../stat/service/TokenQuery";
 import {NFTType} from "../../stat/service/nftchecker/NFTCheckerService";
 import {HomepageDashboard} from "../../stat/service/HomepageDashboard";
+import {rankTotalSupplyDrip} from "../../stat/service/RankService";
 
 const lodash = require('lodash');
 
@@ -787,18 +798,37 @@ async function listAddressTokenInventory(ctx) {
     setBody(ctx, result.list)
 }
 
+// `cfxsupply` is the 0G supply despite the name -- see the note on getCfxPrice below.
 async function getCfxSupply(ctx) {
-    const {totalEspaceTokens} = HomepageDashboard.getData()?.supplyInfo as any;
-    setBody(ctx, totalEspaceTokens);
+    // This used to read `totalEspaceTokens` alone, which calculateEvmPosSupply() blanks on
+    // purpose, so the endpoint answered `{"status":"1","message":"OK"}` with no result at
+    // all here. rankTotalSupplyDrip() still prefers that field where a node reports it, and
+    // otherwise gives the figure /supply/total publishes, so the two cannot disagree.
+    // Reported in drip as a string, the way etherscan's ethsupply does and the way the old
+    // field already was -- a bigint would not survive JSON.stringify.
+    const drip = rankTotalSupplyDrip(HomepageDashboard.getData()?.supplyInfo);
+    setBody(ctx, drip === undefined ? undefined : `${drip}`);
 }
 
+// `cfxbtc` / `cfxusd` are 0G prices despite the name. Downstream services read these
+// keys, so they are kept as they are: do not rename them to 0g* while renaming display
+// text elsewhere. Same for the `cfxprice` action that routes here.
 async function getCfxPrice(ctx) {
-    setBody(ctx, {
-        cfxbtc: `${TokenQuery.wrappedCFX.price / TokenQuery.wrappedBTC.price}`,
-        cfxbtc_timestamp: `${TokenQuery.wrappedBTC['updatedAt'].getTime() / 1000}`,
-        cfxusd: TokenQuery.wrappedCFX.price,
-        cfxusd_timestamp: `${TokenQuery.wrappedCFX['updatedAt'].getTime() / 1000}`,
-    });
+    // Both of these can be absent: `price` is only filled once the quote sync is
+    // configured, and wrappedBTC has no token at all on a chain without a wrapped BTC --
+    // which threw and took the whole endpoint down with it. Report whichever pair really
+    // is priced and leave the other out. Out, not blank: an absent field reads as NaN
+    // downstream, where an empty string would parse as a price of zero.
+    const {wrappedCFX, wrappedBTC} = TokenQuery;
+    const cfxPriced = wrappedCFX?.price != null;
+    const btcPriced = wrappedBTC?.price != null;
+    setBody(ctx, lodash.omitBy({
+        cfxbtc: cfxPriced && btcPriced
+            ? `${Number(wrappedCFX.price) / Number(wrappedBTC.price)}` : undefined,
+        cfxbtc_timestamp: btcPriced ? `${wrappedBTC['updatedAt'].getTime() / 1000}` : undefined,
+        cfxusd: cfxPriced ? wrappedCFX.price : undefined,
+        cfxusd_timestamp: cfxPriced ? `${wrappedCFX['updatedAt'].getTime() / 1000}` : undefined,
+    }, lodash.isNil));
 }
 
 async function getTokenSupply(ctx) {
@@ -837,6 +867,9 @@ async function listDailyTx(ctx) {
     }));
 }
 
+// `transactionFee_CFX` carries a fee in whole 0G despite the name. Downstream services
+// read this key, so it is kept as it is: do not rename it to transactionFee_0G while
+// renaming display text elsewhere.
 async function listDailyTxnFee(ctx) {
     return listEvmTransactionStat(ctx, (item: any) => ({
         transactionFee_CFX: new Drip(item.gasFee).toCFX(),
@@ -1074,6 +1107,18 @@ export function registerRouter(router: Router) {
 
     // token
     router.get('/token/tokeninfos', listTokens);
+
+    // partner chain metrics (Solutions Hub). Envelope and date/amount
+    // conventions follow the Router's admin usage APIs, not the scan defaults.
+    const partnerRead = requireScope(SCOPE_PARTNER_READ);
+    const partnerWrite = requireScope(SCOPE_PARTNER_WRITE);
+    router.get('/partner/chain-metrics', partnerRead, listPartnerChainMetrics);
+    router.get('/partner/chain-metrics/summary', partnerRead, getPartnerChainSummary);
+    router.get('/partner/tvl', partnerRead, getPartnerTvlSnapshot);
+    router.get('/partner/tvl/history', partnerRead, listPartnerTvlHistory);
+    router.get('/partner/contracts', partnerRead, listPartnerContracts);
+    router.post('/partner/contracts', partnerWrite, registerPartnerContracts);
+    router.delete('/partner/contracts', partnerWrite, deregisterPartnerContracts);
 
     registerDataApi(router)
 }

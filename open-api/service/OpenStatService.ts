@@ -47,7 +47,20 @@ export async function listNFTHolderStats(ctx) {
 }
 
 export async function getSupplyStat(ctx) {
-    setBody(ctx, HomepageDashboard.getData()?.supplyInfo);
+    const supplyInfo = HomepageDashboard.getData()?.supplyInfo as any;
+    // TEMPORARY, remove once the explorer frontend has shipped the matching change.
+    //
+    // The explorer subtracts nullAddressBalance from totalCirculating itself. That was
+    // right while this endpoint reported a gross figure, and stopped being right when
+    // circulating moved to the release schedule and started arriving net: the explorer
+    // subtracted a second time, got about -302M, and the bigUInt formatter threw and
+    // blanked /charts entirely.
+    //
+    // Reporting zero here makes the explorer's subtraction a no-op without giving it a
+    // figure to redo, which a gross totalCirculating would. It is a lie in one field on
+    // one endpoint; the real balance stays on the supplyInfo every other reader sees.
+    const shimmed = supplyInfo?.calculateEvmPosSupply ? {...supplyInfo, nullAddressBalance: 0} : supplyInfo;
+    setBody(ctx, shimmed);
 }
 
 export async function listTpsStats(ctx) {

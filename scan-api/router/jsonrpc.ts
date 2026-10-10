@@ -12,6 +12,7 @@ import {NoCoreSpace} from "../../stat/config/StatConfig";
 import {Errors} from "../../stat/service/common/LogicError";
 import {CONST} from "../../stat/service/common/constant";
 import {HomepageDashboard} from "../../stat/service/HomepageDashboard";
+import {nativeTokenSymbol} from "../../stat/service/common/utils";
 
 const lodash = require('lodash');
 const Big = require('big.js');
@@ -589,17 +590,18 @@ export const jsonrpc_exportTransaction = jsonrpc.method_('exportTransaction',
       ? this.app.type.simpleAddress(options.accountAddress) : undefined;
     const { list } = await service.transaction.countAndList(options);
 
+    const unit = nativeTokenSymbol();
     const addressSet = new Set();
     list.forEach((each) => {
-      each['Value(CFX)'] = Big(each.value).div(1e18).toString();
+      each[`Value(${unit})`] = Big(each.value).div(1e18).toString();
       if (accountBase32 && each.from === accountBase32) {
-        each['Value_Out(CFX)'] = each['Value(CFX)'];
+        each[`Value_Out(${unit})`] = each[`Value(${unit})`];
       }
       if (accountBase32 && each.to === accountBase32) {
-        each['Value_In(CFX)'] = each['Value(CFX)'];
+        each[`Value_In(${unit})`] = each[`Value(${unit})`];
       }
-      each['GasPrice(CFX)'] = Big(each.gasPrice).div(1e18).toString();
-      each['GasFee(CFX)'] = Big(each.gasFee).div(1e18).toString();
+      each[`GasPrice(${unit})`] = Big(each.gasPrice).div(1e18).toString();
+      each[`GasFee(${unit})`] = Big(each.gasFee).div(1e18).toString();
       each['Status'] = each.status === 0 ? 'success' : 'fail';
       each['Method'] = each.method === '0x' ? '' : each.method;
       each['DateTime'] = tool.timestampToString(each.timestamp * 1000);
@@ -622,11 +624,11 @@ export const jsonrpc_exportTransaction = jsonrpc.method_('exportTransaction',
           ['to', 'To'],
           'To_AddressName',
           ['contractCreated', 'ContractCreated'],
-          'Value(CFX)',
-          'Value_In(CFX)',
-          'Value_Out(CFX)',
-          'GasPrice(CFX)',
-          'GasFee(CFX)',
+          `Value(${unit})`,
+          `Value_In(${unit})`,
+          `Value_Out(${unit})`,
+          `GasPrice(${unit})`,
+          `GasFee(${unit})`,
           'Status',
           'Method',
           'DateTime',
@@ -735,10 +737,11 @@ export const jsonrpc_exportTransfer = jsonrpc.method_('exportTransfer',
           'To_AddressName',
       ];
       if (transferType === CONST.TRANSFER_TYPE.CFX) {
+          const unit = nativeTokenSymbol();
           exportFields.push(...[
-              ['Value', 'Value(CFX)'],
-              ['Value_In', 'Value_In(CFX)'],
-              ['Value_Out', 'Value_Out(CFX)'],
+              ['Value', `Value(${unit})`],
+              ['Value_In', `Value_In(${unit})`],
+              ['Value_Out', `Value_Out(${unit})`],
               'DateTime',
           ])
       }

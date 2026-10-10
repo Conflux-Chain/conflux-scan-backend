@@ -39,7 +39,9 @@ import {listenPort} from "./monitor/serverApi";
 import {buildTxSenderReceiverHourly} from "./PeriodTxnSummary";
 import {safeAddErrorLog} from "./monitor/ErrorMonitor";
 import {checkAllTableDataTime} from "./monitor/DataTimeChecker";
+import {checkIssuance} from "./monitor/IssuanceChecker";
 import {StatDailyGas} from "./service/timerstat/StatDailyGas";
+import {StatDailyPartner} from "./service/timerstat/StatDailyPartner";
 import {ContractQuery} from "./service/ContractQuery";
 
 async function runTools() {
@@ -99,6 +101,9 @@ async function main() {
     //
     const statDailyTxn = new StatDailyTxn({cfx});
     statDailyTxn.schedule(1000 * 60).then();
+    //
+    const statDailyPartner = new StatDailyPartner({cfx});
+    statDailyPartner.schedule(1000 * 60 * 10).then();
     //
     const statDailyNFT = new StatDailyNFT({cfx});
     statDailyNFT.schedule(1000 * 60).then();
@@ -197,6 +202,10 @@ async function runAllPeriodicStat() {
 
     await checkAllTableDataTime().catch(e=>{
         safeAddErrorLog('stat-task', 'check-data-delay', e).then();
+    })
+
+    await checkIssuance().catch(e=>{
+        safeAddErrorLog('stat-task', 'check-issuance', e).then();
     })
 
     // next round
