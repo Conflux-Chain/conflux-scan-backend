@@ -34,19 +34,6 @@ const axios = require('axios');
 
 const baseUrl = "https://www.confluxscan.net/verification";
 
-const COMMAND = {
-    INIT_CONTRACTS: 'init-contracts',
-    FETCH_COMPILERS: 'fetch-compilers',
-    VERIFY_FROM_SCAN: 'verify-from-scan',
-    REALTIME_PROXY_IMPL: 'realtime-proxy-impl',
-    UPDATE_NAMETAG_HEX_ID: 'update-nametag-hex-id',
-    ADD_VERIFIED_COLUMNS: 'add-verified-columns',
-    EXTRACT_CONTRACT_ABI: 'extract-contract-abi',
-    SYNC_ANNOUNCED_ABI: 'sync-announced-abi',
-    DETECT_TOKEN: 'detect-token',
-    BACKFILL_CONSTRUCTOR_ARGS: 'backfill-constructor-args-for-similar-matches',
-} as const;
-
 /**
  * arguments
  * node stat/service/tool/ContractTool.js <networkId> <command> [argument]
@@ -61,25 +48,25 @@ let lastId = -1
 let compiler
 let dryRun = false;
 let addr;
-if (command === COMMAND.FETCH_COMPILERS) {
+if (command === 'fetch-compilers') {
     compiler = args[2]
 }
-if (command === COMMAND.VERIFY_FROM_SCAN) {
+if (command === 'verify-from-scan') {
     if (args[2] !== undefined) {
         lastId = Number(args[2])
     }
 }
-if (command === COMMAND.EXTRACT_CONTRACT_ABI) {
+if (command === 'extract-contract-abi') {
     if (args[2] !== undefined) {
         lastId = Number(args[2])
     }
 }
-if (command === COMMAND.SYNC_ANNOUNCED_ABI) {
+if (command === 'sync-announced-abi') {
     if (args[2] !== undefined) {
         dryRun = args[2] === 'true';
     }
 }
-if (command === COMMAND.DETECT_TOKEN) {
+if (command === 'detect-token') {
     if (args[2] !== undefined) {
         addr = args[2];
     }
@@ -91,44 +78,56 @@ if (command === COMMAND.DETECT_TOKEN) {
 run().then();
 
 async function run() {
-    if (!Object.values(COMMAND).some(value => value === command)) {
+    const commands = [
+        'init-contracts',
+        'fetch-compilers',
+        'verify-from-scan',
+        'realtime-proxy-impl',
+        'update-nametag-hex-id',
+        'add-verified-columns',
+        'extract-contract-abi',
+        'sync-announced-abi',
+        'detect-token',
+        'backfill-constructor-args-for-similar-matches',
+    ];
+    if (!commands.includes(command)) {
         console.error('Usage: node stat/service/tool/ContractTool.js <networkId> <command> [argument]');
-        console.error(`Commands: ${Object.values(COMMAND).join(', ')}`);
+        console.error(`Commands: ${commands.join(', ')}`);
         process.exitCode = 1;
         return;
     }
 
     await init();
-    if (command === COMMAND.INIT_CONTRACTS) {
+    if (command === 'init-contracts') {
         await initContracts()
         await initPrecompiledAbi()
     }
-    if (command === COMMAND.FETCH_COMPILERS) {
+    if (command === 'fetch-compilers') {
         await fetchCompilers()
     }
-    if (command === COMMAND.VERIFY_FROM_SCAN) {
+    if (command === 'verify-from-scan') {
         await verifyFromScan()
     }
-    if (command === COMMAND.REALTIME_PROXY_IMPL) {
+    if (command === 'realtime-proxy-impl') {
         await realtimeProxyImpl()
     }
-    if (command === COMMAND.UPDATE_NAMETAG_HEX_ID) {
+    if (command === 'update-nametag-hex-id') {
         await updateNametagHexId()
     }
-    if (command === COMMAND.ADD_VERIFIED_COLUMNS) {
+    if (command === 'add-verified-columns') {
         await addVerifiedColumns()
     }
-    if (command === COMMAND.EXTRACT_CONTRACT_ABI) {
+    if (command === 'extract-contract-abi') {
         await extractContractAbi()
     }
-    if (command === COMMAND.SYNC_ANNOUNCED_ABI) {
+    if (command === 'sync-announced-abi') {
         await syncAnnouncedAbi()
     }
-    if (command === COMMAND.DETECT_TOKEN) {
+    if (command === 'detect-token') {
         const t = await TokenAutoDetect.detect(addr, tokenTool, false, true);
         console.log("detect result ==\n", t);
     }
-    if (command === COMMAND.BACKFILL_CONSTRUCTOR_ARGS) {
+    if (command === 'backfill-constructor-args-for-similar-matches') {
         await backfillConstructorArgsForSimilarMatches();
     }
     await close();
