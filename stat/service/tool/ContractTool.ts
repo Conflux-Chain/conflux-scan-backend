@@ -34,35 +34,52 @@ const axios = require('axios');
 
 const baseUrl = "https://www.confluxscan.net/verification";
 
+const COMMAND = {
+    INIT_CONTRACTS: 'init-contracts',
+    FETCH_COMPILERS: 'fetch-compilers',
+    VERIFY_FROM_SCAN: 'verify-from-scan',
+    REALTIME_PROXY_IMPL: 'realtime-proxy-impl',
+    UPDATE_NAMETAG_HEX_ID: 'update-nametag-hex-id',
+    ADD_VERIFIED_COLUMNS: 'add-verified-columns',
+    EXTRACT_CONTRACT_ABI: 'extract-contract-abi',
+    SYNC_ANNOUNCED_ABI: 'sync-announced-abi',
+    DETECT_TOKEN: 'detect-token',
+    BACKFILL_CONSTRUCTOR_ARGS: 'backfill-constructor-args-for-similar-matches',
+} as const;
+
 /**
  * arguments
+ * node stat/service/tool/ContractTool.js <networkId> <command> [argument]
+ * Examples: 1029 fetch-compilers solc
+ *           1029 extract-contract-abi 0
+ *           1029 sync-announced-abi true
  */
 const args = process.argv.slice(2)
 StatApp.networkId = Number(args[0])
-const type = Number(args[1])
+const command = args[1]
 let lastId = -1
 let compiler
 let dryRun = false;
 let addr;
-if (type === 2) {
+if (command === COMMAND.FETCH_COMPILERS) {
     compiler = args[2]
 }
-if (type === 3) {
+if (command === COMMAND.VERIFY_FROM_SCAN) {
     if (args[2] !== undefined) {
         lastId = Number(args[2])
     }
 }
-if (type === 7) {
+if (command === COMMAND.EXTRACT_CONTRACT_ABI) {
     if (args[2] !== undefined) {
         lastId = Number(args[2])
     }
 }
-if (type === 8) {
+if (command === COMMAND.SYNC_ANNOUNCED_ABI) {
     if (args[2] !== undefined) {
         dryRun = args[2] === 'true';
     }
 }
-if (type === 9) {
+if (command === COMMAND.DETECT_TOKEN) {
     if (args[2] !== undefined) {
         addr = args[2];
     }
@@ -74,37 +91,44 @@ if (type === 9) {
 run().then();
 
 async function run() {
+    if (!Object.values(COMMAND).some(value => value === command)) {
+        console.error('Usage: node stat/service/tool/ContractTool.js <networkId> <command> [argument]');
+        console.error(`Commands: ${Object.values(COMMAND).join(', ')}`);
+        process.exitCode = 1;
+        return;
+    }
+
     await init();
-    if (type === 1) {
+    if (command === COMMAND.INIT_CONTRACTS) {
         await initContracts()
         await initPrecompiledAbi()
     }
-    if (type === 2) {
+    if (command === COMMAND.FETCH_COMPILERS) {
         await fetchCompilers()
     }
-    if (type === 3) {
+    if (command === COMMAND.VERIFY_FROM_SCAN) {
         await verifyFromScan()
     }
-    if (type === 4) {
+    if (command === COMMAND.REALTIME_PROXY_IMPL) {
         await realtimeProxyImpl()
     }
-    if (type === 5) {
+    if (command === COMMAND.UPDATE_NAMETAG_HEX_ID) {
         await updateNametagHexId()
     }
-    if (type === 6) {
+    if (command === COMMAND.ADD_VERIFIED_COLUMNS) {
         await addVerifiedColumns()
     }
-    if (type === 7) {
+    if (command === COMMAND.EXTRACT_CONTRACT_ABI) {
         await extractContractAbi()
     }
-    if (type === 8) {
+    if (command === COMMAND.SYNC_ANNOUNCED_ABI) {
         await syncAnnouncedAbi()
     }
-    if (type === 9) {
+    if (command === COMMAND.DETECT_TOKEN) {
         const t = await TokenAutoDetect.detect(addr, tokenTool, false, true);
         console.log("detect result ==\n", t);
     }
-    if (type === 10) {
+    if (command === COMMAND.BACKFILL_CONSTRUCTOR_ARGS) {
         await backfillConstructorArgsForSimilarMatches();
     }
     await close();
