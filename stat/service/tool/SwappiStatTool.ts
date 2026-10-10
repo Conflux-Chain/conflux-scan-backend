@@ -10,7 +10,10 @@ import {PpiLiquidity} from "./PpiLiquidity";
 
 const ADDRESS_SWAPPI = 'net1030:abvnbb3um092w5s2rhu1eep2sg0cknzdaygtpjcjt5';
 
-let type: number;
+const COMMAND = {
+    LIST_ADD_LIQUIDITY: 'list-add-liquidity',
+} as const;
+
 let cfx:Conflux;
 let startEpoch: number;
 let methodIdSet: Set<string> = new Set<string>();
@@ -47,12 +50,16 @@ async function listTxWithAddLiquidity(epoch) {
 }
 
 async function run() {
+    if (!Object.values(COMMAND).some(value => value === command)) {
+        console.error('Usage: node stat/service/tool/SwappiStatTool.js <networkId> <command> <startEpoch> [csv]');
+        console.error(`Commands: ${Object.values(COMMAND).join(', ')}`);
+        process.exitCode = 1;
+        return;
+    }
+
     await init();
-    //
-    // const [,,csv] = process.argv
     const ppi = new PpiLiquidity(cfx)
-    //
-    if(type === 1){
+    if (command === COMMAND.LIST_ADD_LIQUIDITY) {
         const arr = await listTxWithAddLiquidity(startEpoch);
         for(const hash of arr) {
             await ppi.processTx(hash)
@@ -64,19 +71,14 @@ async function run() {
         }
         process.exit(0)
     }
-    if(type === 2){
-    }
-    if(type === 3){
-    }
 }
 
+// node stat/service/tool/SwappiStatTool.js 1030 list-add-liquidity 40397188 [csv]
 const args = process.argv.slice(2)
 StatApp.networkId = Number(args[0]);
-type = Number(args[1]);
-if(type === 1){
+const command = args[1];
+if (command === COMMAND.LIST_ADD_LIQUIDITY) {
     startEpoch = Number(args[2]);
-}
-if(type === 2){
 }
 
 run().then();
