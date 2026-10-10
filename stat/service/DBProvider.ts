@@ -1,4 +1,4 @@
-import {DataType, DataTypes, IndexesOptions, QueryInterface, QueryTypes, Sequelize} from "sequelize";
+import {DataType, IndexesOptions, QueryInterface, QueryTypes, Sequelize} from "sequelize";
 import {ESpaceHex40Map, Hex40Map} from "../model/HexMap";
 import {Epoch, VoteParams} from "../model/Epoch";
 import {PivotSwitch} from "../model/Block";
@@ -302,95 +302,19 @@ export function createMySql(dbConf) {
 }
 
 async function migDB(seq: Sequelize) {
-    const qi = seq.getQueryInterface();
-    const t = Token.getTableName().toString();
-    await addIndexIfNotExistsMySQL(qi, t,'idx_transfer', {fields: ['transfer']});
-    await addIndexIfNotExistsMySQL(qi, t,'idx_type', {fields: ['type']});
-    await addIndexIfNotExistsMySQL(qi, t,'idx_holder', {fields: ['holder']});
-
-    const tokenSecurityAudit = TokenSecurityAudit.getTableName().toString();
-    await addColumnIfNotExistsV2(qi, tokenSecurityAudit, 'officialLabels', {
-        type: DataTypes.CHAR(255),
-        allowNull: true,
-    });
-
-    const verifiedContracts = VerifiedContracts.getTableName().toString();
-    await addColumnIfNotExistsV2(qi, verifiedContracts, 'similarMatchChainId', {
-        type: DataTypes.INTEGER,
-    });
-    await addColumnIfNotExistsV2(qi, verifiedContracts, 'similarMatchAddress', {
-        type: DataTypes.CHAR(64),
-    });
-    await changeColumnIfNecessary(qi, verifiedContracts, 'libraries', {
-        type: DataTypes.STRING(2048),
-    });
-    await addColumnIfNotExistsV2(qi, verifiedContracts, 'addressId', {
-        type: DataTypes.BIGINT, allowNull: false, defaultValue: 0,
-    });
-    await addColumnIfNotExistsV2(qi, verifiedContracts, 'compiler', {
-        type: DataTypes.CHAR(10), allowNull: false, defaultValue: 'solc',
-    });
-    await addColumnIfNotExistsV2(qi, verifiedContracts, 'codeFormat', {
-        type: DataTypes.CHAR(32), allowNull: false, defaultValue: 'Solidity',
-    });
-    await addColumnIfNotExistsV2(qi, verifiedContracts, 'matchId', {
-        type: DataTypes.BIGINT, allowNull: false, defaultValue: 0,
-    });
-    await addColumnIfNotExistsV2(qi, verifiedContracts, 'verifiedAt', {
-        type: DataTypes.DATE, allowNull: false, defaultValue: '1970-01-01 00:00:00',
-    });
-    await addColumnIfNotExistsV2(qi, verifiedContracts, 'deployer', {
-        type: DataTypes.CHAR(64), allowNull: false, defaultValue: '',
-    });
-    await addColumnIfNotExistsV2(qi, verifiedContracts, 'epochNumber', {
-        type: DataTypes.BIGINT, allowNull: false, defaultValue: 0,
-    });
-    await addColumnIfNotExistsV2(qi, verifiedContracts, 'txns', {
-        type: DataTypes.INTEGER, allowNull: false, defaultValue: 0,
-    });
-    await addColumnIfNotExistsV2(qi, verifiedContracts, 'hasNametag', {
-        type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false,
-    });
-    await addColumnIfNotExistsV2(qi, verifiedContracts, 'shortName', {
-        type: DataTypes.CHAR(255),
-    });
-    await addIndexIfNotExistsMySQL(qi, verifiedContracts, 'idx_verifiedAt', {fields: ['verifiedAt']});
-
-    const contract = Contract.getTableName().toString();
-    await addIndexIfNotExistsMySQL(qi, contract, 'idx_epoch', {fields: ['epoch']});
-
-    const dailyNFTStat = DailyNFTStat.getTableName().toString();
-    await changeColumnIfNecessary(qi, dailyNFTStat, 'statType', {
-        type: DataTypes.CHAR(3), allowNull: false, defaultValue: '1d',
-    });
-
-    const dailyPosRewardStat = DailyPosRewardStat.getTableName().toString();
-    await changeColumnIfNecessary(qi, dailyPosRewardStat, 'statType', {
-        type: DataTypes.CHAR(3), allowNull: false, defaultValue: '1d',
-    });
-
-    const dailyPowRewardStat = DailyPowRewardStat.getTableName().toString();
-    await changeColumnIfNecessary(qi, dailyPowRewardStat, 'statType', {
-        type: DataTypes.CHAR(3), allowNull: false, defaultValue: '1d',
-    });
-
-    const traceCreateContract = TraceCreateContract.getTableName().toString();
-    await changeColumnIfNecessary(qi, traceCreateContract, 'codeHash', {
-        type: DataTypes.CHAR(66), allowNull: true,
-    });
-
-    const kv = KV.getTableName().toString();
-    await changeColumnIfNecessary(qi, kv, 'value', {
-        type: DataTypes.STRING(8192)
-    });
-
-    const contractImpl = ContractImpl.getTableName().toString();
-    await changeColumnIfNecessary(qi, contractImpl, 'proxyType', {
-        type: DataTypes.STRING(64), allowNull: false, defaultValue: ''
-    });
-    await addColumnIfNotExistsV2(qi, contractImpl, 'beaconId', {
-        type: DataTypes.BIGINT, allowNull: false, defaultValue: 0
-    });
+    // Deployment baseline: historical migrations have run on all deployed databases.
+    // Their definitions remain in git history; this hook is reserved for future migrations.
+    // Reference examples below are inactive. Import DataTypes from sequelize when needed.
+    //
+    // const qi = seq.getQueryInterface();
+    // const table = Token.getTableName().toString();
+    // await addColumnIfNotExistsV2(qi, table, 'newColumn', {
+    //     type: DataTypes.STRING(255), allowNull: true,
+    // });
+    // await addIndexIfNotExistsMySQL(qi, table, 'idx_newColumn', {fields: ['newColumn']});
+    // await changeColumnIfNecessary(qi, table, 'newColumn', {
+    //     type: DataTypes.STRING(512), allowNull: true,
+    // });
 }
 
 async function dropEmptyTables() {
