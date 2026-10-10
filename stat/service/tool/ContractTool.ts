@@ -36,33 +36,37 @@ const baseUrl = "https://www.confluxscan.net/verification";
 
 /**
  * arguments
+ * node stat/service/tool/ContractTool.js <networkId> <command> [argument]
+ * Examples: 1029 fetch-compilers solc
+ *           1029 extract-contract-abi 0
+ *           1029 sync-announced-abi true
  */
 const args = process.argv.slice(2)
 StatApp.networkId = Number(args[0])
-const type = Number(args[1])
+const command = args[1]
 let lastId = -1
 let compiler
 let dryRun = false;
 let addr;
-if (type === 2) {
+if (command === 'fetch-compilers') {
     compiler = args[2]
 }
-if (type === 3) {
+if (command === 'verify-from-scan') {
     if (args[2] !== undefined) {
         lastId = Number(args[2])
     }
 }
-if (type === 7) {
+if (command === 'extract-contract-abi') {
     if (args[2] !== undefined) {
         lastId = Number(args[2])
     }
 }
-if (type === 8) {
+if (command === 'sync-announced-abi') {
     if (args[2] !== undefined) {
         dryRun = args[2] === 'true';
     }
 }
-if (type === 9) {
+if (command === 'detect-token') {
     if (args[2] !== undefined) {
         addr = args[2];
     }
@@ -74,37 +78,56 @@ if (type === 9) {
 run().then();
 
 async function run() {
+    const commands = [
+        'init-contracts',
+        'fetch-compilers',
+        'verify-from-scan',
+        'realtime-proxy-impl',
+        'update-nametag-hex-id',
+        'add-verified-columns',
+        'extract-contract-abi',
+        'sync-announced-abi',
+        'detect-token',
+        'backfill-constructor-args-for-similar-matches',
+    ];
+    if (!commands.includes(command)) {
+        console.error('Usage: node stat/service/tool/ContractTool.js <networkId> <command> [argument]');
+        console.error(`Commands: ${commands.join(', ')}`);
+        process.exitCode = 1;
+        return;
+    }
+
     await init();
-    if (type === 1) {
+    if (command === 'init-contracts') {
         await initContracts()
         await initPrecompiledAbi()
     }
-    if (type === 2) {
+    if (command === 'fetch-compilers') {
         await fetchCompilers()
     }
-    if (type === 3) {
+    if (command === 'verify-from-scan') {
         await verifyFromScan()
     }
-    if (type === 4) {
+    if (command === 'realtime-proxy-impl') {
         await realtimeProxyImpl()
     }
-    if (type === 5) {
+    if (command === 'update-nametag-hex-id') {
         await updateNametagHexId()
     }
-    if (type === 6) {
+    if (command === 'add-verified-columns') {
         await addVerifiedColumns()
     }
-    if (type === 7) {
+    if (command === 'extract-contract-abi') {
         await extractContractAbi()
     }
-    if (type === 8) {
+    if (command === 'sync-announced-abi') {
         await syncAnnouncedAbi()
     }
-    if (type === 9) {
+    if (command === 'detect-token') {
         const t = await TokenAutoDetect.detect(addr, tokenTool, false, true);
         console.log("detect result ==\n", t);
     }
-    if (type === 10) {
+    if (command === 'backfill-constructor-args-for-similar-matches') {
         await backfillConstructorArgsForSimilarMatches();
     }
     await close();
