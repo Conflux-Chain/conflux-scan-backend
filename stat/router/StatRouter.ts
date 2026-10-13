@@ -760,6 +760,9 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
 
     router.get('/ens/resolveName', async (ctx)=>{
         const {name} = ctx.query
+        if (!name || typeof name !== 'string') {
+            throw new Errors.ParameterError(`param <name> is invalid`);
+        }
 
         const data = await statApp.ensCheckerQuery.resolveName(name);
         ctx.body = data

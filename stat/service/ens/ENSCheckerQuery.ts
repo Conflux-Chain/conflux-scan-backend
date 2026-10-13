@@ -126,8 +126,16 @@ export class ENSCheckerQuery {
     }
 
     public async resolveName(name) {
-        const nameHash = ethers.namehash(name);
-        const label = this.extractLabelFromName(name);
+        const resolvedName = String(name || '').trim();
+        if (!resolvedName) {
+            return {};
+        }
+
+        const nameHash = ethers.namehash(resolvedName);
+        const label = this.extractLabelFromName(resolvedName);
+        if (!label) {
+            return {};
+        }
         const labelHash = ethers.keccak256(ethers.toUtf8Bytes(label));
         const tokenId = format.bigInt(labelHash);
 
@@ -135,17 +143,31 @@ export class ENSCheckerQuery {
             this.ens.resolver(nameHash),
             this.ens.owner(nameHash),
             this.baseRegistrar.nameExpires(tokenId),
-            this.baseRegistrar.ownerOf(tokenId),
+            this.baseRegistrar.ownerOf(tokenId).catch(err => {
+                if (this.isRevertedCall(err)) {
+                    return CONST.ZERO_ADDRESS;
+                }
+                throw err;
+            }),
         ]);
 
-        const resolver = this.cfx.Contract({
-            abi: abiResolver,
-            address: resolverAddr,
-        });
-        const coinTypeInstance = formatsByCoinType[CFX_COIN_TYPE]
-        const net1029AddressBytes = await resolver.addr(nameHash, coinTypeInstance.coinType);
-        const net1029Address = coinTypeInstance.encoder(net1029AddressBytes);
-        const resolvedAddress = fmtAddr(format.hexAddress(net1029Address), StatApp.networkId);
+        let resolvedAddress = null;
+        if (resolverAddr && resolverAddr !== CONST.ZERO_ADDRESS) {
+            try {
+                const resolver = this.cfx.Contract({
+                    abi: abiResolver,
+                    address: resolverAddr,
+                });
+                const coinTypeInstance = formatsByCoinType[CFX_COIN_TYPE]
+                const net1029AddressBytes = await resolver.addr(nameHash, coinTypeInstance.coinType);
+                const net1029Address = coinTypeInstance.encoder(net1029AddressBytes);
+                resolvedAddress = fmtAddr(format.hexAddress(net1029Address), StatApp.networkId);
+            } catch (err) {
+                if (!this.isRevertedCall(err)) {
+                    throw err;
+                }
+            }
+        }
 
         return {
             resolvedAddress,
@@ -155,6 +177,10 @@ export class ENSCheckerQuery {
             dnsOwner: owner,
             tokenId: format.bigInt(nameHash),
         };
+    }
+
+    private isRevertedCall(error: any) {
+        return error?.code === -32015 || /transaction reverted/i.test(String(error?.message || ''));
     }
 
     public async lookupAddress(address) {
