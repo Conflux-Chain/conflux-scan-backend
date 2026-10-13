@@ -63,6 +63,7 @@ const NodeCache = require( "node-cache" );
 const DEFAULT_VERIFY_CACHE_TTL: number = 60 * 60 * 24 * 7 // 7 days
 const DEFAULT_COMPILER_CACHE_TTL: number = 60 * 3 // 3 min
 const PENDING_ABI_SAVE_INTERVAL = 10_000;
+const METHOD_SELECTOR_REGEX = /^0x[0-9a-fA-F]{8}$/;
 const ZERO_LABS_PROXY_BEACON_MAP = {
     "0xea224dbb52f57752044c0c86ad50930091f561b9":"0x0e9cc1be1060e3dd036f16977a186a8185acc513",
     "0x712a30816a8756c8fdb78de63db55aa70d3cf3b4":"0x335ae8961fface946c25900aa689d793dc3ff1bf",
@@ -1791,9 +1792,13 @@ export class ContractQuery {
     }
 
     static async listMethodABIBySourcify(hash: string, timeout: number = 3000) {
+        if (!METHOD_SELECTOR_REGEX.test(String(hash || ''))) {
+            return [];
+        }
+
         try {
             const resp = await ContractQuery._getJsonRequestByAxios({
-                url: `${ConfigInstance.verification.url}/abi/${hash}`,
+                url: `${ConfigInstance.verification.url}/abi/${encodeURIComponent(hash)}`,
                 timeout,
             });
 

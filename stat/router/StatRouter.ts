@@ -50,6 +50,7 @@ const lodash = require('lodash');
 
 const dbCache = new NodeCache()
 const cacheTtl = 60 // 1 minutes
+const METHOD_SELECTOR_REGEX = /^0x[0-9a-fA-F]{8}$/;
 
 export const ROUTER_PREFIX = '/stat'
 
@@ -150,8 +151,8 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = {result: 0, message: 'ok'};
     });
     router.get('/list-abi-method', async (ctx)=>{
-        const id = ctx.request.query.id;
-        if (!id || id.length != 10) {
+        const id = String(ctx.request.query.id || '');
+        if (!METHOD_SELECTOR_REGEX.test(id)) {
             throw new Errors.ParameterError(`param <id> is invalid`);
         }
         const list = await AbiSignature.findAll({
