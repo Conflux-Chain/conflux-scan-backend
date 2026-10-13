@@ -298,7 +298,8 @@ export class ENSCheckerQuery {
 
     private isSubgraphNetworkError(error: any) {
         const code = String(error?.code || '');
-        if (['ENOTFOUND', 'ECONNREFUSED', 'ETIMEDOUT', 'ECONNRESET', 'EAI_AGAIN', 'ABORT_ERR'].includes(code)) {
+        if (error?.name === 'AbortError' || error?.type === 'aborted'
+            || ['ENOTFOUND', 'ECONNREFUSED', 'ETIMEDOUT', 'ECONNRESET', 'EAI_AGAIN', 'ABORT_ERR'].includes(code)) {
             return true;
         }
         return /getaddrinfo|network|fetch failed|request failed|timeout/i.test(String(error?.message || ''));
