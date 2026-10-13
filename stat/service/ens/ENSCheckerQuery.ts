@@ -11,6 +11,7 @@ import {abi as abiBaseRegistrar} from "../abi/BaseRegistrar";
 import {abi as abiResolver} from "../abi/Resolver";
 import {abi as abiReverseRecords} from "../abi/ReverseRecords";
 import {CONST} from "../common/constant";
+import {Errors} from "../common/LogicError";
 import {ENS, NameTag} from "../../model/NameTag";
 import {Op, QueryTypes} from "sequelize";
 import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
@@ -126,8 +127,16 @@ export class ENSCheckerQuery {
     }
 
     public async resolveName(name) {
-        const nameHash = ethers.namehash(name);
-        const label = this.extractLabelFromName(name);
+        const resolvedName = String(name || '').trim();
+        if (!resolvedName) {
+            return {};
+        }
+
+        const nameHash = ethers.namehash(resolvedName);
+        const label = this.extractLabelFromName(resolvedName);
+        if (!label) {
+            return {};
+        }
         const labelHash = ethers.keccak256(ethers.toUtf8Bytes(label));
         const tokenId = format.bigInt(labelHash);
 
@@ -135,17 +144,31 @@ export class ENSCheckerQuery {
             this.ens.resolver(nameHash),
             this.ens.owner(nameHash),
             this.baseRegistrar.nameExpires(tokenId),
-            this.baseRegistrar.ownerOf(tokenId),
+            this.baseRegistrar.ownerOf(tokenId).catch(err => {
+                if (this.isRevertedCall(err)) {
+                    return CONST.ZERO_ADDRESS;
+                }
+                throw err;
+            }),
         ]);
 
-        const resolver = this.cfx.Contract({
-            abi: abiResolver,
-            address: resolverAddr,
-        });
-        const coinTypeInstance = formatsByCoinType[CFX_COIN_TYPE]
-        const net1029AddressBytes = await resolver.addr(nameHash, coinTypeInstance.coinType);
-        const net1029Address = coinTypeInstance.encoder(net1029AddressBytes);
-        const resolvedAddress = fmtAddr(format.hexAddress(net1029Address), StatApp.networkId);
+        let resolvedAddress = null;
+        if (resolverAddr && resolverAddr !== CONST.ZERO_ADDRESS) {
+            try {
+                const resolver = this.cfx.Contract({
+                    abi: abiResolver,
+                    address: resolverAddr,
+                });
+                const coinTypeInstance = formatsByCoinType[CFX_COIN_TYPE]
+                const net1029AddressBytes = await resolver.addr(nameHash, coinTypeInstance.coinType);
+                const net1029Address = coinTypeInstance.encoder(net1029AddressBytes);
+                resolvedAddress = fmtAddr(format.hexAddress(net1029Address), StatApp.networkId);
+            } catch (err) {
+                if (!this.isRevertedCall(err)) {
+                    throw err;
+                }
+            }
+        }
 
         return {
             resolvedAddress,
@@ -155,6 +178,10 @@ export class ENSCheckerQuery {
             dnsOwner: owner,
             tokenId: format.bigInt(nameHash),
         };
+    }
+
+    private isRevertedCall(error: any) {
+        return error?.code === -32015 || /transaction reverted/i.test(String(error?.message || ''));
     }
 
     public async lookupAddress(address) {
@@ -243,9 +270,39 @@ export class ENSCheckerQuery {
                 controller.abort();
             }, 3_000);
             return this.graphql.request({ document: query, variables, signal: controller.signal });
+        } catch (e) {
+            if (this.isSubgraphNetworkError(e)) {
+                console.log(`[ENSCheckerQuery] subgraph unavailable: ${this.config?.ensSubGraphUrl}, error: ${e?.message || e}`);
+                const networkErr: any = e instanceof Error ? e : new Error(String(e));
+                networkErr.url = this.config?.ensSubGraphUrl;
+                networkErr.code = e?.code;
+                safeAddErrorLog('ENSCheckerQuery', 'ens-subgraph-unavailable', networkErr).then();
+                throw this.wrapSubgraphError(e);
+            }
+            throw e;
         } finally {
             timer && clearTimeout(timer);
         }
+    }
+
+    private wrapSubgraphError(error: any) {
+        const err: any = new Errors.NetworkError('ENS subgraph unavailable');
+        err.partialData = {
+            source: 'ens-subgraph',
+            url: this.config?.ensSubGraphUrl,
+            code: error?.code,
+            message: error?.message || String(error),
+        };
+        return err;
+    }
+
+    private isSubgraphNetworkError(error: any) {
+        const code = String(error?.code || '');
+        if (error?.name === 'AbortError' || error?.type === 'aborted'
+            || ['ENOTFOUND', 'ECONNREFUSED', 'ETIMEDOUT', 'ECONNRESET', 'EAI_AGAIN', 'ABORT_ERR'].includes(code)) {
+            return true;
+        }
+        return /getaddrinfo|network|fetch failed|request failed|timeout/i.test(String(error?.message || ''));
     }
 
     private extractLabelFromName(name) {
