@@ -1,7 +1,7 @@
 import {Conflux, format as sdk_format, sign} from "js-conflux-sdk";
 import {Errors} from "./LogicError";
 import {ScanHttpProvider} from "./ScanHttpProvider";
-import {ConfluxOption} from "../../config/StatConfig";
+import {ConfluxOption, NoCoreSpace} from "../../config/StatConfig";
 import {networkInterfaces} from 'os';
 import {ethers} from "ethers";
 import {ConsortiumConflux} from "./ConsortiumConflux";
@@ -12,6 +12,21 @@ import {keccak256} from "ethers/lib/utils";
 
 const lodash = require('lodash');
 const {isValidCfxAddress, decodeCfxAddress} = require('js-conflux-sdk/src/util/address');
+
+/**
+ * Display text for the native token. Conflux vocabulary stays put in identifiers and in
+ * the API contract -- route names, response field names, `transferType: 'CFX'` -- so only
+ * text a user actually reads goes through these: token names, CSV column headers and the
+ * names of exported files. Call them, never cache the value: `NoCoreSpace` is assigned by
+ * `loadConfig()` and reads as its default before that.
+ */
+export function nativeTokenSymbol() {
+    return NoCoreSpace ? '0G' : 'CFX';
+}
+
+export function nativeTokenName() {
+    return NoCoreSpace ? '0G' : 'Conflux Network Token';
+}
 
 export function pageParam(obj: object, skipKey: string, limitKey: string, defaultLimit: number) {
     const param = {
@@ -193,7 +208,9 @@ export function mustBeAddressParamIfPresent(obj, netId, isEVM, ...keys:string[])
         if (v === undefined || v === null) {
             continue;
         }
-        if (/0x[0-9a-fA-F]{40}/.test(v)) {
+        // Anchored: unanchored, any string merely containing an address passed, so
+        // "validated address" said nothing about the rest of the value.
+        if (typeof v === 'string' && /^0x[0-9a-fA-F]{40}$/.test(v)) {
             continue; // hex 40
         }
         if (!isValidCfxAddress(v)) {
@@ -430,13 +447,29 @@ export function checkCodeFormat(codeFormat) {
     }
 }
 
+/**
+ * `versions` comes from `JSON.parse`, so it carries Object.prototype and a
+ * plain `versions[requestVersion]` lookup answers for keys nobody put there:
+ * `constructor`, `toString`, `__proto__` and `hasOwnProperty` all return a
+ * truthy inherited member and pass the check, handing a function or an object
+ * back as the compiler version. `valueOf` is the one that does not, purely
+ * because it begins with `v` and so takes the branch below instead.
+ *
+ * Reported by probe traffic on 2026-10-13 that tried `prototype` and `valueOf`
+ * -- both rejected, the second by that accident -- alongside `$(sleep 5)` and
+ * `; sleep 8`, which the whitelist rejects as it should.
+ */
+function ownVersion(versions, key) {
+    return Object.prototype.hasOwnProperty.call(versions, key) ? versions[key] : undefined
+}
+
 export function checkSolcVersion(requestVersion, versions) {
     if(!requestVersion) {
         throw new Error('solc version required')
     }
 
     if(!requestVersion.startsWith('v')) {
-        const version = versions[requestVersion]
+        const version = ownVersion(versions, requestVersion)
         if(!version) {
             throw new Error(`solc version ${requestVersion} not supported`)
         }
@@ -470,7 +503,8 @@ export function checkVyperVersion(requestVersion, versions) {
     }
 
     if(!requestVersion.startsWith('vyper')) {
-        const verInfo = versions[requestVersion]
+        // same inherited-key hazard as checkSolcVersion, see ownVersion above
+        const verInfo = ownVersion(versions, requestVersion)
         if(!verInfo) {
             throw new Error(`vyper version ${requestVersion} not supported`)
         }
@@ -485,7 +519,14 @@ export function checkVyperVersion(requestVersion, versions) {
 }
 
 export function convertVyperVersion(versionWithCommit, versions) {
-    return versions[versionWithCommit.split('+')[0]].desc
+    const key = versionWithCommit.split('+')[0]
+    // Was `versions[key].desc`: an unknown key threw TypeError on undefined and
+    // an inherited one read `.desc` off a function. Both become a stated error.
+    const verInfo = ownVersion(versions, key)
+    if(!verInfo) {
+        throw new Error(`vyper version ${key} not supported`)
+    }
+    return verInfo.desc
 }
 
 /**

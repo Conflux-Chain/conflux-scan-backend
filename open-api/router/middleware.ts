@@ -8,7 +8,7 @@ import {KnownError} from "../common/RestTool";
 import {CODE_PARAMETER_ERROR, CODE_PARAMETER_ERROR_MSG, CODE_RATE_LIMITED} from "../common/Def";
 import {getClientIP} from "../../stat/router/RateLimiter";
 import {safeAddErrorLog} from "../../stat/monitor/ErrorMonitor";
-import {Errors} from "../../stat/service/common/LogicError";
+import {DB_ERROR_PUBLIC_MESSAGE, Errors, isDatabaseError} from "../../stat/service/common/LogicError";
 
 
 const yamljs = require('yamljs');
@@ -86,6 +86,15 @@ export async function handleException(ctx, next) {
         }
         if (/many requests/.test(err.message)){
             setBody(ctx, undefined, CODE_RATE_LIMITED, err.toString())
+            return
+        }
+        if (isDatabaseError(err)) {
+            // See DB_ERROR_PUBLIC_MESSAGE. Logged under a fixed key rather than the
+            // message, which quotes the SQL and so would make a new row per query.
+            setBody(ctx, undefined, 500, DB_ERROR_PUBLIC_MESSAGE)
+            err['url'] = ctx.request.url;
+            safeAddErrorLog('open', 'open-db-error', err);
+            console.log(`api db error ${ctx.request.url}`, err)
             return
         }
         setBody(ctx, undefined, 500, err.toString())

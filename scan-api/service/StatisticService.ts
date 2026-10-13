@@ -50,9 +50,21 @@ export class StatisticService {
   async trend({ interval } = {} as any) {
     const {list: [previous = {}, current = {}]} = await this.plot({limit: 2, interval});
 
+    /*
+     * `!prev` only guarded against a missing row. Every row also carries
+     * `statTime` and `timestamp` beside the BigFixed columns -- a Date and a
+     * String -- and both are truthy, so `prev.isZero()` threw
+     * `prev.isZero is not a function` and the whole endpoint answered 500.
+     *
+     * Guard on the method rather than on a list of known keys, so a column
+     * added to the stat rows later cannot bring the TypeError back.
+     */
+    const comparable = (v) => v && typeof v.isZero === 'function' && typeof v.div === 'function';
+
     return lodash.mapValues(current, (value, key) => {
       const prev = previous[key];
-      const trend = !prev || prev.isZero() ? BigFixed(0) : value.div(prev).sub(1);
+      const trend = !comparable(value) || !comparable(prev) || prev.isZero()
+        ? BigFixed(0) : value.div(prev).sub(1);
       return { value, trend };
     });
   }

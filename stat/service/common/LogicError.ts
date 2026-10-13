@@ -1,3 +1,5 @@
+import {BaseError} from "sequelize";
+
 class LogicError extends Error {
     public code: number;
     public status: number;
@@ -19,6 +21,34 @@ class LogicError extends Error {
     }
 }
 export const UnhandledErrorCode = 50001;
+
+/**
+ * What a public caller is told when a request fails inside the database.
+ *
+ * The error itself says far more than that: a SequelizeDatabaseError carries
+ * MySQL's own message, which quotes the failing SQL ("...near 'x' at line 1"),
+ * and the connection errors name the database host and port. Every API surface
+ * used to hand that text straight back -- open-api through `err.toString()`,
+ * /stat and v1 by wrapping it in a BizError whose status of 600 skipped their
+ * "unknown error" rewrite -- which is how the /open/nft/fts injection on testnet
+ * answered a single quote with a syntax error instead of a result.
+ *
+ * The full error still goes to the console and error_log; only the response is
+ * cut down.
+ */
+export const DB_ERROR_PUBLIC_MESSAGE = 'Internal database error';
+
+/**
+ * True for anything Sequelize raised. Matched on the name prefix as well as by
+ * class, because `instanceof` fails across separately loaded copies of the
+ * package, and on the class as well as the name, because AggregateError -- what
+ * bulk operations wrap their failures in -- is the one subclass not named
+ * `Sequelize...`.
+ */
+export function isDatabaseError(e: any): boolean {
+    return !!e && (e instanceof BaseError || /^Sequelize/.test(e.name || ''));
+}
+
 export const Errors = {
     // common error
     UnhandledError: LogicError.extend({ code: UnhandledErrorCode, name: 'Unhandled error' }),

@@ -64,6 +64,8 @@ export const KEY_AUTO_VERIFY_TRACE_ID = "AUTO_VERIFY_TRACE_ID"
 export const KEY_AUTO_VERIFY_VERIFY_ID = "AUTO_VERIFY_VERIFY_ID"
 export const KEY_SOLC_VERSIONS = "SOLC_VERSIONS"
 export const KEY_VYPER_VERSIONS = "VYPER_VERSIONS"
+// Last issuance reading, as {reward, atMs}. See monitor/IssuanceChecker.ts.
+export const KEY_ISSUANCE_LAST_SEEN = "ISSUANCE_LAST_SEEN"
 
 export class KV extends Model<IKV> implements IKV {
     key: string;

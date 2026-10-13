@@ -119,16 +119,16 @@ export class NFTCheckerService {
         }
 
         const cid = contract ? await getAddrId(contract): contract;
-        let sql;
-        if(cid) {
-            sql = `select contractId, tokenId from nft_metadata_fts where contractId = ${cid} and match(name) against('${name}') limit 500;`;
-        } else{
-            sql = `select contractId, tokenId from nft_metadata_fts where match(name) against('${name}') limit 500;`;
-        }
-        let nftFtsList = await NftMetaFts.sequelize.query(sql, {
+        // Bound, never interpolated: `name` comes straight from a public, unauthenticated
+        // query string. It was spliced into this SQL from 2022 until 2026-10, which made
+        // the endpoint injectable.
+        const sql = cid
+            ? `select contractId, tokenId from nft_metadata_fts where contractId = ? and match(name) against(?) limit 500`
+            : `select contractId, tokenId from nft_metadata_fts where match(name) against(?) limit 500`;
+        const nftFtsList = await NftMetaFts.sequelize.query(sql, {
             type: QueryTypes.SELECT,
             raw: true,
-            logging: sql => console.log(`NftMeta group sql ${sql}`)
+            replacements: cid ? [cid, name] : [name],
         }) as any[];
         if(!nftFtsList?.length) {
             return {total: 0, list: []};
@@ -145,7 +145,9 @@ export class NFTCheckerService {
             where: {
                 contractId: {[Op.in]: [...contractIdSet]},
                 tokenId: {[Op.in]: [...tokenIdSet]},
-                name: {[Op.like]: `%${name}%`}
+                // Bound already, but % and _ in the input would still act as wildcards and
+                // widen the match, so escape them to keep this a substring filter.
+                name: {[Op.like]: `%${name.replace(/[\\%_]/g, '\\$&')}%`}
             },
             limit: RESULT_LIMIT_BY_FTS,
             raw: true,

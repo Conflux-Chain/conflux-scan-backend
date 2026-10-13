@@ -73,9 +73,20 @@ import {
     listTransactionSenderTopStat,
     listCoreTransactionStat,
 } from "../service/OpenStatService";
+import {
+    getPartnerChainSummary,
+    listPartnerChainMetrics,
+    getPartnerTvlSnapshot,
+    listPartnerTvlHistory,
+    listPartnerContracts,
+    registerPartnerContracts,
+    deregisterPartnerContracts,
+} from "../service/OpenPartnerChainService";
+import {requireScope, SCOPE_PARTNER_READ, SCOPE_PARTNER_WRITE} from "./partnerAuth";
 import {mustBeAddressParamIfPresent,} from "../../stat/service/common/utils";
 import {
     checkApiKey,
+    checkRate,
     checkRateByAddress,
     checkRateByLevel,
     loadRateConfig,
@@ -183,7 +194,8 @@ function registerRouter(router: Router) {
     router.get('/nft/balances', listAccountNFTs);
     router.get('/nft/tokens', checkRateByAddr, listNFTTokensPro);
     router.get('/nft/preview', getNFTPreview);
-    router.get('/nft/fts', listNFTTokensByFts);
+    // Per-IP on top of the level limiter: public, unauthenticated full-text search.
+    router.get('/nft/fts', checkRate, listNFTTokensByFts);
     router.get('/nft/owners', listNFTOwners);
     router.get('/nft/transfers', listNFTTransfers);
 
@@ -230,6 +242,18 @@ function registerRouter(router: Router) {
     router.get('/statistics/block/avg-priority-fee', listCIP1559Stats(CIP1559StatType.PRIORITY_FEE));
     router.get('/statistics/block/gas-used', listCIP1559Stats(CIP1559StatType.GAS_USED));
     router.get('/statistics/block/txs-by-type', listCIP1559Stats(CIP1559StatType.TXS_BY_TYPE));
+
+    // partner chain metrics (Solutions Hub). Envelope and date/amount
+    // conventions follow the Router's admin usage APIs, not the scan defaults.
+    const partnerRead = requireScope(SCOPE_PARTNER_READ);
+    const partnerWrite = requireScope(SCOPE_PARTNER_WRITE);
+    router.get('/partner/chain-metrics', partnerRead, listPartnerChainMetrics);
+    router.get('/partner/chain-metrics/summary', partnerRead, getPartnerChainSummary);
+    router.get('/partner/tvl', partnerRead, getPartnerTvlSnapshot);
+    router.get('/partner/tvl/history', partnerRead, listPartnerTvlHistory);
+    router.get('/partner/contracts', partnerRead, listPartnerContracts);
+    router.post('/partner/contracts', partnerWrite, registerPartnerContracts);
+    router.delete('/partner/contracts', partnerWrite, deregisterPartnerContracts);
 
     registerDataApi(router)
 }

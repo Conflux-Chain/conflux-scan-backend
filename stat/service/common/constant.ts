@@ -183,6 +183,9 @@ export const CONST = {
   },
 
   TRANSFER_TYPE: {
+    // 'CFX' means a native token transfer, so 0G here. It travels both ways over the
+    // wire -- a request filter and the `transferType` field in responses -- and
+    // downstream services rely on it, so the string is kept as it is.
     CFX: 'CFX',
     ERC20: 'ERC20',
     ERC721: 'ERC721',
@@ -362,6 +365,9 @@ export const CONST = {
     STATS: {
       module: 'stats',
       action: {
+        // 'cfxsupply' and 'cfxprice' report the 0G supply and the 0G price. The strings
+        // are request values on /open/api and downstream services send them, so they are
+        // kept as they are -- only display text says 0G. See getCfxSupply/getCfxPrice.
         CFX_SUPPLY: 'cfxsupply',
         CFX_PRICE: 'cfxprice',
         TOKEN_SUPPLY: 'tokensupply',

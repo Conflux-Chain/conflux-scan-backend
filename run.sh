@@ -99,6 +99,10 @@ OPEN_PORT=9527
 # un-comment if it's a independent evm chain(not a conflux e-space)
 #_NO_CORE_SPACE=true
 #traceNotAvailable=true
+# Consensus layer cumulative withdrawals, for chains that publish a supply figure.
+# Needed by every host that runs stat_task or the api, not just one of them.
+# Without it /supply reports genesis only, and the issuance monitor alerts hourly.
+#_VALIDATOR_RPC="http://127.0.0.1:3500/eth/v1/beacon/blocks/head/total_withdrawals"
 	""" > ./scan.env
 	echo "We have created a config file, scan.env."
 	echo "Edit it and run this script again"
@@ -332,6 +336,9 @@ else
 	if [ "" != "$CORE_RPC" ]; then
 		CORE_RPC="conflux2: '$CORE_RPC',"
 	fi
+	if [ "" != "$_VALIDATOR_RPC" ]; then
+		_VALIDATOR_RPC="validatorRpc: '$_VALIDATOR_RPC',"
+	fi
 	echo """
 'use strict';
 Object.defineProperty(exports, '__esModule', { value: true });
@@ -348,6 +355,7 @@ exports.default = {
     blockSyncRpc: { url: '$_RPC',keepAlive: true,},
     preload: 4,
     $_IS_EVM $_NO_CORE_SPACE $traceNotAvailable $CORE_RPC
+    $_VALIDATOR_RPC
     influxDB: {disable: true},
     database: { USE_MYSQL: true, syncSchema: true, },
   databaseRW: {
