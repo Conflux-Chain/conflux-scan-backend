@@ -273,11 +273,10 @@ export class ENSCheckerQuery {
         } catch (e) {
             if (this.isSubgraphNetworkError(e)) {
                 console.log(`[ENSCheckerQuery] subgraph unavailable: ${this.config?.ensSubGraphUrl}, error: ${e?.message || e}`);
-                safeAddErrorLog('ENSCheckerQuery', 'ens-subgraph-unavailable', {
-                    url: this.config?.ensSubGraphUrl,
-                    code: e?.code,
-                    message: e?.message || String(e),
-                }).then();
+                const networkErr: any = e instanceof Error ? e : new Error(String(e));
+                networkErr.url = this.config?.ensSubGraphUrl;
+                networkErr.code = e?.code;
+                safeAddErrorLog('ENSCheckerQuery', 'ens-subgraph-unavailable', networkErr).then();
                 throw this.wrapSubgraphError(e);
             }
             throw e;

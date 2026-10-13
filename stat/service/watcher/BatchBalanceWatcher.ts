@@ -40,12 +40,12 @@ let _cfx: Conflux = null;
 export class BatchBalanceWatcher {
     public static allTokenContract: {getBalances};
     constructor( cfx:Conflux, utilContract: string | null) {
+        _cfx = cfx;
         if (utilContract) {
             BatchBalanceWatcher.allTokenContract = cfx.Contract({abi: BALANCE_UTIL_ABI, address: utilContract})
         } else {
             console.log(` scan util contract not set, fallback to raw contract call`)
             useRawErc20 = true;
-            _cfx = cfx;
         }
     }
 
@@ -58,34 +58,68 @@ export class BatchBalanceWatcher {
 
     public static async getBalances(account:string|string[]|any, tokens:string|string[]|any, hasRetry = false) {
         if (useRawErc20) {
-            const accArr = Array.isArray(account) ? account : [account];
-            const contractArr = Array.isArray(tokens) ? tokens : [tokens];
-            const taskArr = [];
-            for(const acc of accArr) {
-                for (const contract of contractArr) {
-                    let cInst = miniErc20ContractMap.get(contract);
-                    if (!cInst) {
-                        cInst = _cfx.Contract({abi: miniErc20Abi, address: contract});
-                        miniErc20ContractMap.set(contract, cInst);
-                    }
-                    taskArr.push((cInst['balanceOf'](acc)).catch(e=>{
-                        safeAddErrorLog('batch-balance-watcher',`get-balances-${contract}`, e);
-                        console.log(`${__filename} raw balance of error , account ${acc}, contract ${contract} , `, e)
-                        return BigInt(0);
-                    }));
-                }
-            }
-            return Promise.all(taskArr);
+            return this.getBalancesByRawCall(account, tokens);
         }
         return BatchBalanceWatcher.allTokenContract.getBalances(account, tokens).catch(async err=>{
             if (!hasRetry) {
                 return BatchBalanceWatcher.getBalances(account, tokens, true);
+            }
+            try {
+                return await this.getBalancesByRawCall(account, tokens);
+            } catch (rawErr) {
+                if (!this.shouldIgnoreCallError(account)) {
+                    safeAddErrorLog('batch-balance-watcher', `get-balances-raw-fallback`, rawErr);
+                }
+                console.log(` getBalances raw fallback fail: `, rawErr)
+            }
+
+            if (this.shouldIgnoreCallError(account)) {
+                console.log(` ignore getBalances error for non-evm special account: ${account}`)
+                return undefined;
             }
             safeAddErrorLog('batch-balance-watcher', `get-balances`, err);
             console.log(` getBalances fail: `, err.data)
             console.log(` getBalances fail: `, err)
             return undefined;
         });
+    }
+
+    private static shouldIgnoreCallError(account: string|string[]|any) {
+        if (StatApp.isEVM) {
+            return false;
+        }
+
+        const accounts = Array.isArray(account) ? account : [account];
+        return accounts.every(acc => {
+            const addr = String(acc || '').toLowerCase();
+            if (!addr.startsWith('0x') || addr.length < 3) {
+                return false;
+            }
+            return !(addr.startsWith('0x1') || addr.startsWith('0x8'));
+        });
+    }
+
+    private static async getBalancesByRawCall(account:string|string[]|any, tokens:string|string[]|any) {
+        const accArr = Array.isArray(account) ? account : [account];
+        const contractArr = Array.isArray(tokens) ? tokens : [tokens];
+        const taskArr = [];
+        for(const acc of accArr) {
+            for (const contract of contractArr) {
+                let cInst = miniErc20ContractMap.get(contract);
+                if (!cInst) {
+                    cInst = _cfx.Contract({abi: miniErc20Abi, address: contract});
+                    miniErc20ContractMap.set(contract, cInst);
+                }
+                taskArr.push((cInst['balanceOf'](acc)).catch(e=>{
+                    if (!this.shouldIgnoreCallError(acc)) {
+                        safeAddErrorLog('batch-balance-watcher',`get-balances-${contract}`, e);
+                    }
+                    console.log(`${__filename} raw balance of error , account ${acc}, contract ${contract} , `, e)
+                    return BigInt(0);
+                }));
+            }
+        }
+        return Promise.all(taskArr);
     }
 }
 // ---
