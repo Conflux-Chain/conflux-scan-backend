@@ -11,6 +11,7 @@ import {abi as abiBaseRegistrar} from "../abi/BaseRegistrar";
 import {abi as abiResolver} from "../abi/Resolver";
 import {abi as abiReverseRecords} from "../abi/ReverseRecords";
 import {CONST} from "../common/constant";
+import {Errors} from "../common/LogicError";
 import {ENS, NameTag} from "../../model/NameTag";
 import {Op, QueryTypes} from "sequelize";
 import {safeAddErrorLog} from "../../monitor/ErrorMonitor";
@@ -272,12 +273,23 @@ export class ENSCheckerQuery {
         } catch (e) {
             if (this.isSubgraphNetworkError(e)) {
                 console.log(`[ENSCheckerQuery] subgraph unavailable: ${this.config?.ensSubGraphUrl}, error: ${e?.message || e}`);
-                return;
+                throw this.wrapSubgraphError(e);
             }
             throw e;
         } finally {
             timer && clearTimeout(timer);
         }
+    }
+
+    private wrapSubgraphError(error: any) {
+        const err: any = new Errors.NetworkError('ENS subgraph unavailable');
+        err.partialData = {
+            source: 'ens-subgraph',
+            url: this.config?.ensSubGraphUrl,
+            code: error?.code,
+            message: error?.message || String(error),
+        };
+        return err;
     }
 
     private isSubgraphNetworkError(error: any) {
