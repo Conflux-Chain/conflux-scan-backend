@@ -128,7 +128,7 @@ export class BatchBalanceWatcher {
 
     private static shouldTreatAsZeroBalanceError(error: any) {
         const code = Number(error?.code);
-        if (code === -32000 || code === -32015) {
+        if (code === -32015) {
             return true;
         }
 
