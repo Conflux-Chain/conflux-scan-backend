@@ -111,15 +111,29 @@ export class BatchBalanceWatcher {
                     miniErc20ContractMap.set(contract, cInst);
                 }
                 taskArr.push((cInst['balanceOf'](acc)).catch(e=>{
-                    if (!this.shouldIgnoreCallError(acc)) {
-                        safeAddErrorLog('batch-balance-watcher',`get-balances-${contract}`, e);
+                    if (this.shouldTreatAsZeroBalanceError(e)) {
+                        if (!this.shouldIgnoreCallError(acc)) {
+                            safeAddErrorLog('batch-balance-watcher',`get-balances-${contract}`, e);
+                        }
+                        console.log(`${__filename} raw balance of error , account ${acc}, contract ${contract} , `, e)
+                        return BigInt(0);
                     }
-                    console.log(`${__filename} raw balance of error , account ${acc}, contract ${contract} , `, e)
-                    return BigInt(0);
+
+                    throw e;
                 }));
             }
         }
         return Promise.all(taskArr);
+    }
+
+    private static shouldTreatAsZeroBalanceError(error: any) {
+        const code = Number(error?.code);
+        if (code === -32000 || code === -32015) {
+            return true;
+        }
+
+        const msg = String(error?.message || '').toLowerCase();
+        return msg.includes('transaction reverted') || msg.includes('execution reverted');
     }
 }
 // ---
