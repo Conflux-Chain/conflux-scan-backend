@@ -269,9 +269,23 @@ export class ENSCheckerQuery {
                 controller.abort();
             }, 3_000);
             return this.graphql.request({ document: query, variables, signal: controller.signal });
+        } catch (e) {
+            if (this.isSubgraphNetworkError(e)) {
+                console.log(`[ENSCheckerQuery] subgraph unavailable: ${this.config?.ensSubGraphUrl}, error: ${e?.message || e}`);
+                return;
+            }
+            throw e;
         } finally {
             timer && clearTimeout(timer);
         }
+    }
+
+    private isSubgraphNetworkError(error: any) {
+        const code = String(error?.code || '');
+        if (['ENOTFOUND', 'ECONNREFUSED', 'ETIMEDOUT', 'ECONNRESET', 'EAI_AGAIN', 'ABORT_ERR'].includes(code)) {
+            return true;
+        }
+        return /getaddrinfo|network|fetch failed|request failed|timeout/i.test(String(error?.message || ''));
     }
 
     private extractLabelFromName(name) {
