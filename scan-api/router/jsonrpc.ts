@@ -264,8 +264,9 @@ export const jsonrpc_countAndListTransaction = jsonrpc.method_('countAndListTran
     blockHash: { path: '0', type: type.hex64 },
     accountAddress: { path: '0', type: app.type.address },
 
-    minTimestamp: { path: '0', type: type.uint },
-    maxTimestamp: { path: '0', type: type.uint },
+    // Unix seconds through year 3000, matching the cutoff in mustBeIntParamIfPresent.
+    minTimestamp: { path: '0', type: type.uint, 'timestamp in seconds <=32535215999': (v) => v <= 32535215999 },
+    maxTimestamp: { path: '0', type: type.uint, 'timestamp in seconds <=32535215999': (v) => v <= 32535215999 },
     from: { path: '0', type: app.type.address }, // new add
     to: { path: '0', type: app.type.address }, // new add
     transactionHash: { path: '0', type: type.hex64 }, // new add
