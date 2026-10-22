@@ -1,4 +1,4 @@
-FROM node:24.15.0
+FROM node:24.22.1
 
 # install cargo and rust
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y

@@ -168,9 +168,9 @@ if [ "not found" == "${_NODE}" ]; then
 		# load nvm env
 		fn_loadNVM
 		# download and install Node.js (you may need to restart the terminal)
-		nvm install 24.15.0
+		nvm install 24.22.1
 		# verifies the right Node.js version is in the environment
-		node -v # should print `v24.15.0`
+		node -v # should print `v24.22.1`
 		# verifies the right npm version is in the environment
 		npm -v
 	else
