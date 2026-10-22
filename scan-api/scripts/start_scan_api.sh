@@ -4,7 +4,7 @@
 ROOT_PATH_TO_DEPLOY=
 HOST_PORT_SCAN_API=
 SCRIPT_PATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
-NODE24_IMAGE="node:24.15.0"
+NODE24_IMAGE="node:24.22.1"
 
 install_node_deps_with_node24() {
   local target_dir="$1"
