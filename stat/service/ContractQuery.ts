@@ -63,6 +63,7 @@ const NodeCache = require( "node-cache" );
 const DEFAULT_VERIFY_CACHE_TTL: number = 60 * 60 * 24 * 7 // 7 days
 const DEFAULT_COMPILER_CACHE_TTL: number = 60 * 3 // 3 min
 const PENDING_ABI_SAVE_INTERVAL = 10_000;
+const VERIFY_RATE_LIMIT_DELAY_MS = 30_000;
 const METHOD_SELECTOR_REGEX = /^0x[0-9a-fA-F]{8}$/;
 const ZERO_LABS_PROXY_BEACON_MAP = {
     "0xea224dbb52f57752044c0c86ad50930091f561b9":"0x0e9cc1be1060e3dd036f16977a186a8185acc513",
@@ -1565,14 +1566,20 @@ export class ContractQuery {
 
     async scheduleVerifyByAuto(delay: number = 1000) {
         this.startLoopSchedule('auto_verify', delay, async () => {
-            await this.verifyByTrace().catch(e => {
+            await this.verifyByTrace().catch(async e => {
                 safeAddErrorLog('ContractQuery', 'verifyByTrace', e).then();
                 console.log('Schedule verify by auto fail', this.formatErrorForLog(e));
+                if (e.code === 429) {
+                    await sleep(VERIFY_RATE_LIMIT_DELAY_MS);
+                }
             });
 
-            await this.verifyByVerification().catch(e => {
+            await this.verifyByVerification().catch(async e => {
                 safeAddErrorLog('ContractQuery', 'verifyByVerification', e).then();
                 console.log('Schedule verify by auto fail', this.formatErrorForLog(e));
+                if (e.code === 429) {
+                    await sleep(VERIFY_RATE_LIMIT_DELAY_MS);
+                }
             });
         });
         console.log(`[auto_verify]schedule in ${delay/1000}s interval`);
@@ -1621,7 +1628,7 @@ export class ContractQuery {
             return;
         }
 
-        const {codeHash} = await this.cfx.getAccount(verified.address);
+        const {codeHash} = await this.getAccountForAutoVerify(verified.address);
 
         const addresses = await TraceCreateContract.sequelize.query(`
                 select 
@@ -1654,7 +1661,7 @@ export class ContractQuery {
         retry: number = 3,
         intervalMs: number = 5000,
     ) {
-        const {codeHash} = await this.cfx.getAccount(address);
+        const {codeHash} = await this.getAccountForAutoVerify(address);
         if (codeHash === CONST.CODEHASH_NO_BYTECODE) {
             const hex = await Hex40Map.findOne({where: {hex: address.substr(2)}});
             TraceCreateContract.update({codeHash}, {where: {to: hex.id}}).then();
@@ -1739,12 +1746,26 @@ export class ContractQuery {
         };
     }
 
+    private async getAccountForAutoVerify(address: string) {
+        try {
+            return await this.cfx.getAccount(address);
+        } catch (error) {
+            throw this.wrapVerifyError('auto verification getAccount failed', {
+                address,
+                requestUrl: String(this.cfx.provider?.url || ''),
+            }, error);
+        }
+    }
+
     private wrapVerifyError(message: string, context: Record<string, unknown>, cause?: any) {
         const source: any = cause instanceof Error ? cause : new Error(`${cause || 'Unknown error'}`);
         const wrapped: any = new Error(message);
         wrapped.name = 'ContractQueryVerifyError';
         wrapped.code = source?.code;
-        wrapped.context = context;
+        wrapped.context = {
+            ...context,
+            requestUrl: source.remoteUrl || source.context?.requestUrl || context.requestUrl,
+        };
         wrapped.causeMessage = source?.message;
         wrapped.causeStack = source?.stack;
         return wrapped;
