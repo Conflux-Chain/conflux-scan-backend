@@ -1045,6 +1045,19 @@ export class ContractQuery {
     }
 
     _getCache(key: string, withDetail: boolean = false) {
+        /*
+         * node-cache throws EKEYTYPE for a key that is not a string or a number,
+         * and the address list this is mapped over above comes from request
+         * input. A null in that array surfaced as a flat 500 -- "The key
+         * argument has to be of type `string` or `number`. Found: `undefined`".
+         *
+         * A cache lookup must not be able to fail a request. An unusable key is
+         * a miss, and the database path behind it already copes with an address
+         * it cannot find. `_addCache` has swallowed its own throw all along.
+         */
+        if (typeof key !== 'string' && typeof key !== 'number') {
+            return undefined;
+        }
         return (withDetail ? this.CACHE_VERIFY_DETAIL : this.CACHE_VERIFY_ADDRESS).get(key);
     }
 

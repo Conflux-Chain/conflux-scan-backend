@@ -1,4 +1,4 @@
-import {Errors, UnhandledErrorCode} from "../../../stat/service/common/LogicError";
+import {DB_ERROR_PUBLIC_MESSAGE, Errors, isDatabaseError, UnhandledErrorCode} from "../../../stat/service/common/LogicError";
 import {safeAddErrorLog} from "../../../stat/monitor/ErrorMonitor";
 
 const lodash = require('lodash');
@@ -75,6 +75,14 @@ export class JsonRPCFlow {
         const result = await flow.call(ctx, params);
         return { jsonrpc, id, result };
       } catch (e) {
+        if (isDatabaseError(e)) {
+          // See DB_ERROR_PUBLIC_MESSAGE: the raw message quotes the SQL.
+          e["url"] = ctx.originalUrl;
+          console.log(`json-rpc db error ${ctx.originalUrl} ${method}`, e);
+          safeAddErrorLog('v1', 'json-rpc-db-error', e).then();
+          const error = new JsonRPCError({ code: -32000, message: DB_ERROR_PUBLIC_MESSAGE });
+          return { jsonrpc, id, error };
+        }
         const error = new JsonRPCError({ code: e.code || -32000, message: e.message || 'Server error' });
         return { jsonrpc, id, error };
       }
@@ -104,6 +112,14 @@ export function patchFlowError(ctx) {
     } else if (code === 'INVALID_ARGUMENT'
         || (code === 5200 && message.includes("(Invalid input|args"))) {
       transformError(ctx, new Errors.ParameterError(), ' ', message);
+    } else if (isDatabaseError(ctx.methodFlowError)) {
+      // See DB_ERROR_PUBLIC_MESSAGE. The branch below would put both the class
+      // name and the raw message -- which quotes the SQL -- into the body.
+      const e = ctx.methodFlowError;
+      e["url"] = ctx.originalUrl;
+      console.log(`json-rpc db error ${ctx.originalUrl}`, e);
+      safeAddErrorLog('v1', 'json-rpc-db-error', e).then();
+      transformError(ctx, new Errors.BizError(), ' ', DB_ERROR_PUBLIC_MESSAGE);
     } else {
       transformError(ctx, ctx.methodFlowError, message, '');
     }

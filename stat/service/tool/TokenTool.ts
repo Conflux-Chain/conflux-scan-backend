@@ -817,33 +817,64 @@ function handlerCallError(fn: string, addr: string, err: Error) {
     // console.log(`failed to call ${biz} , message ${err.message}`, err)
 }
 
+/*
+ * getToken calls name() and symbol() in parallel and each failure lands here, so
+ * a contract with neither arrived twice at once. Both found no row and both
+ * upserted, and `contract` has two unique keys (base32, hex40id): two concurrent
+ * INSERT ... ON DUPLICATE KEY UPDATE on one row lock those indexes in opposite
+ * order, and InnoDB rolls one back. Harmless -- the survivor writes the same flag
+ * -- but it paged as a deadlock, once per address.
+ *
+ * In-process only. Two API hosts, or the sync process, can still meet on the same
+ * new contract; that is rare, and the catch below treats it as what it is.
+ */
+const savingNameSymbolFailure = new Set<string>();
+
 async function saveNameSymbolFailure(addr: string) {
-    if (!Contract.sequelize) {
+    // Checked and claimed before the first await, so the second caller in the same
+    // tick already sees it.
+    if (!Contract.sequelize || savingNameSymbolFailure.has(addr)) {
         return
     }
-    const hexId = await getAddrId(addr);
-    if (!hexId) {
-        return;
-    }
-    const contract = await Contract.findOne({where: {base32: addr}});
-    if (contract?.nameSymbolFailed) {
-        return;
-    }
-    if (contract) {
-        contract.nameSymbolFailed = true;
-        contract.save().catch(e=>{
-            console.log(`${__filename} save name-symbol failure:`, e)
-        })
-    } else {
-        const creation = await TraceCreateContract.findOne({where: {to: hexId}, raw: true});
-        if (creation) {
-            Contract.upsert({
-                hex40id: hexId, base32: addr,
-                nameSymbolFailed: true
-            }).catch(e => {
-                safeAddErrorLog('token-tool', `save-name-symbol-failure-${addr}`, e);
-                console.log(`${__filename} upsert name-symbol failure:`, e)
-            })
+    savingNameSymbolFailure.add(addr);
+    try {
+        const hexId = await getAddrId(addr);
+        if (!hexId) {
+            return;
         }
+        const contract = await Contract.findOne({where: {base32: addr}});
+        if (contract?.nameSymbolFailed) {
+            return;
+        }
+        // The writes are awaited so the guard is held until they land; they were
+        // fire-and-forget, which would have released it with the write still open.
+        if (contract) {
+            contract.nameSymbolFailed = true;
+            await contract.save().catch(e=>{
+                console.log(`${__filename} save name-symbol failure:`, e)
+            })
+        } else {
+            const creation = await TraceCreateContract.findOne({where: {to: hexId}, raw: true});
+            if (creation) {
+                await Contract.upsert({
+                    hex40id: hexId, base32: addr,
+                    nameSymbolFailed: true
+                }).catch(e => {
+                    console.log(`${__filename} upsert name-symbol failure:`, e)
+                    // A deadlock means another writer was on this row at the same moment.
+                    // Losing costs one more eth_call the next time this contract is asked
+                    // about, so it is not worth a page.
+                    if (e?.parent?.code === 'ER_LOCK_DEADLOCK') {
+                        return;
+                    }
+                    // Fixed key, address in the detail: keyed per address, every contract
+                    // got its own error_log row and its own alert.
+                    e['address'] = addr;
+                    safeAddErrorLog('token-tool', 'save-name-symbol-failure', e);
+                })
+            }
+        }
+    } finally {
+        savingNameSymbolFailure.delete(addr);
     }
 }

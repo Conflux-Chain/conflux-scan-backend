@@ -32,10 +32,11 @@ import {
     mustBeEnumParamIfPresent,
     mustBeHex64ParamIfPresent,
     mustBeIntParamIfPresent,
+    nativeTokenSymbol,
 } from "../service/common/utils";
 import {limitListOnBody} from "../service/pos/PosStat";
-import {checkRate, getClientIP, loadRateConfig} from "./RateLimiter";
-import {Errors} from "../service/common/LogicError";
+import {checkRate, getClientIP, loadRateConfig, trustProxy} from "./RateLimiter";
+import {DB_ERROR_PUBLIC_MESSAGE, Errors, isDatabaseError} from "../service/common/LogicError";
 import {RateLimiterMemory} from "rate-limiter-flexible";
 import {LIMIT_MAX_STAT, paginateCore, paginateCoreStat} from "./ParamChecker";
 import * as bodyParser from "koa-bodyparser";
@@ -320,6 +321,10 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.body = statApp.txnQuery.topGasUsedCache[span||'24h'];
     })
 
+    // 'cfx' here is the native token, so 0G. The path and the `type` values below
+    // ('rank_address_by_cfx', 'rank_address_by_total_cfx', 'TOP_CFX_HOLD' in ApiDef) are
+    // the API contract and downstream services send them, so they are kept as they are.
+    // Only text a user reads says 0G -- see nativeTokenSymbol() in service/common/utils.
     router.get('/top-cfx-holder', async (ctx)=>{
         const useRemote = await KV.getString(USE_REMOTE_STAT, "");
         if (useRemote) {
@@ -378,7 +383,9 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const {limit: size} = paginateCore(ctx.request.query, {limitMax: 5000});
 
         const {type, lang} = ctx.request.query || {type: 'cfxSend', limit: 10, lang: 'cn'};
-        const name = `${type}`
+        // The `type` values keep saying cfx -- they are request values downstream services
+        // send -- but the name of the file someone downloads is display text.
+        const name = `${type}`.replace(/cfx/gi, nativeTokenSymbol().toLowerCase());
         const key = `top-cfx-holder_${type}_${size}`;
 
         let list = dbCache.get(key);
@@ -398,7 +405,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         ctx.set('Content-type', 'text/csv')
         const s = []
         if (StatApp.isEVM) {
-            s.push(lang === 'cn' ? '序号,地址,地址名称,余额百分比,交易数'
+            s.push(lang === 'cn' ? '序号,地址,地址名称,余额,百分比,交易数'
                 : 'rank,address,address name,balance,percent,transactionCount')
         } else {
             s.push(lang === 'cn' ? '序号,地址,地址名称,余额,质押,总和,百分比,交易数'
@@ -895,7 +902,15 @@ export function register(app:Koa, statApp: StatApp) {
             ctx.body = StatApp.isEVM ? { status: '1', message: '', result: ctx.body } :
                 { code: 0, message: '', data: ctx.body };
         } catch (e) {
-            if(e.code === undefined){
+            if (isDatabaseError(e)) {
+                // See DB_ERROR_PUBLIC_MESSAGE. The branch below would wrap it as a
+                // BizError carrying the raw message, and BizError's status of 600
+                // keeps it out of the "unknown error" rewrite further down.
+                e['url'] = ctx.originalUrl;
+                console.log(`url ${ctx.originalUrl} \ndatabase error caught by router:`, e);
+                safeAddErrorLog('stat-router', 'stat-db-error', e).then()
+                e = new Errors.BizError(DB_ERROR_PUBLIC_MESSAGE);
+            } else if(e.code === undefined){
                 console.log(`url ${ctx.originalUrl} \nunhandled error caught by router:`, e);
                 e = new Errors.BizError(e.message);
             } else if (e.code === 'INVALID_ARGUMENT'
@@ -914,7 +929,7 @@ export function register(app:Koa, statApp: StatApp) {
                 { code: e.code, message: e.message, data: e.partialData };
         }
     })
-    app.proxy = true
+    trustProxy(app)
     loadRateConfig().then()
     router.use(checkRate)
     addRoute(router, statApp);
