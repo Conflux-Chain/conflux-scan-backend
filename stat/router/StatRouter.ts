@@ -231,8 +231,17 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         const {skip, limit} = paginateCore(ctx.request.query, {skipMax: undefined});
 
         const {transferType, fields, orderBy, reverse} = ctx.request.query;
+        console.log('[stat/tokens/list] request', {
+            transferType, fields, orderBy, reverse, skip, limit,
+            onlyStatActiveContract: statApp.config.onlyStatActiveContract,
+        });
         const result = await statApp.tokenQuery.list({transferType, fields, orderBy, reverse, showDestroyed: false,
             skip: skip? parseInt(skip): skip, limit: limit ? parseInt(limit): limit});
+        console.log('[stat/tokens/list] query result', {
+            total: result.total,
+            returned: result.list.length,
+            hex40ids: result.list.map(item => item.hex40id),
+        });
 
         const addresses = result.list.map(item => item.address);
         const ensInfos = await statApp.ensCheckerQuery.nameBatch(addresses);

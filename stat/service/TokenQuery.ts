@@ -187,6 +187,26 @@ export class TokenQuery {
             const page = await Token.findAndCountAll(options);
             rawList = page?.rows;
             total = page?.count || 0;
+            if (!name && total <= 1) {
+                const typeWhere = transferType ? {type: transferType} : {};
+                const auditedWhere = {...typeWhere, auditResult: true};
+                const visibleWhere = {...auditedWhere, destroyed: false};
+                const [allTypes, matchingType, audited, visible, target] = await Promise.all([
+                    Token.count(),
+                    Token.count({where: typeWhere}),
+                    Token.count({where: auditedWhere}),
+                    Token.count({where: visibleWhere}),
+                    Token.findOne({
+                        attributes: ['hex40id', 'type', 'auditResult', 'destroyed', 'transfer'],
+                        where: {hex40id: 507192}, raw: true,
+                    }),
+                ]);
+                console.log('[stat/tokens/list] filter diagnostic', {
+                    transferType, onlyStatActiveContract: ConfigInstance.onlyStatActiveContract,
+                    counts: {allTypes, matchingType, audited, visible, afterActiveFilter: total},
+                    targetHex40id507192: target,
+                });
+            }
         }
 
         // check result size
