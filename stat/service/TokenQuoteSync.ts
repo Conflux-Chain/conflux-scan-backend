@@ -158,8 +158,9 @@ export class TokenQuoteSync {
             this.peerRequestCooldownUntilMs = nowMs + retryDelayMs;
             const firstError = e?.errors?.[0] || e;
             const summary = `${e?.code || firstError?.code || 'UNKNOWN'}: ${firstError?.message || e?.message || 'Peer request failed'}`;
+            const peerUrl = this.config.peerUrl || PEER_URLS[StatApp.networkId];
             const unavailableMinutes = Math.floor((nowMs - this.peerFailureSinceMs) / 60_000);
-            const peerError = new Error(`${summary}; peer unavailable for ${unavailableMinutes}m; retry in ${retryDelayMs}ms`);
+            const peerError = new Error(`${summary}; url: ${peerUrl}/v1/token; peer unavailable for ${unavailableMinutes}m; retry in ${retryDelayMs}ms`);
             if (!this.disableAlertPullPeer &&
                 nowMs - this.peerFailureSinceMs >= PEER_ALERT_AFTER_MS &&
                 nowMs >= this.peerNextAlertAtMs) {
