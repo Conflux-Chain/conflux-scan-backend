@@ -21,7 +21,7 @@ const BN_REQUEST_MAX_ATTEMPTS = 5;
 const BN_REQUEST_RETRY_DELAY_MS = 1_000;
 const BN_REQUEST_MAX_RETRY_DELAY_MS = 60_000;
 const PEER_URLS = {
-    1029: 'https://www.confluxscan.org',
+    1029: 'https://www.confluxscan.net',
     1030: 'https://evm.confluxscan.org',
 };
 
@@ -378,7 +378,7 @@ export class TokenQuoteSync {
 
     //======================================================================
     private async pullPrice(tokenList) {
-        const url = PEER_URLS[StatApp.networkId];
+        const url = this.config.peerUrl || PEER_URLS[StatApp.networkId];
         if (
             !url ||
             !tokenList?.length ||

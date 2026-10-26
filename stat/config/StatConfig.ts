@@ -148,6 +148,7 @@ export interface QuoteOptions {
     binanceFetchIntervalSec?: number;
     coinMarketCapFetchIntervalSec?: number;
     disableAlertPullPeer?: boolean,
+    peerUrl?: string;
 }
 
 export interface VerificationOptions{
