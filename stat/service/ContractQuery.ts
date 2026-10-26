@@ -851,25 +851,34 @@ export class ContractQuery {
         this.startLoopSchedule('contract_compiler_version', delay, async () => {
             await this.updateSolcVersions().catch(e => {
                 safeAddErrorLog('ContractQuery', 'updateSolcVersions', e).then();
-                console.log('Schedule update compiler versions fail', e);
+                console.log('Schedule update compiler versions fail', this.formatCompilerUpdateError(e));
             });
 
             await this.updateSolcVulnerabilities().catch(e => {
                 safeAddErrorLog('ContractQuery', 'updateSolcVulnerabilities', e).then();
-                console.log('Schedule update compiler vulnerabilities fail', e);
+                console.log('Schedule update compiler vulnerabilities fail', this.formatCompilerUpdateError(e));
             });
 
             await this.updateVyperVersions().catch(e => {
                 safeAddErrorLog('ContractQuery', 'updateVyperVersions', e).then();
-                console.log('Schedule update compiler versions fail', e);
+                console.log('Schedule update compiler versions fail', this.formatCompilerUpdateError(e));
             });
 
             await this.updateFeVersions().catch(e => {
                 safeAddErrorLog('ContractQuery', 'updateFeVersions', e).then();
-                console.log('Schedule update compiler versions fail', e);
+                console.log('Schedule update compiler versions fail', this.formatCompilerUpdateError(e));
             });
         });
         console.log(`[contract_compiler_version]schedule in ${delay/1000}s interval`);
+    }
+
+    private formatCompilerUpdateError(error: any) {
+        return {
+            code: error?.code,
+            status: error?.response?.status || error?.status,
+            message: error?.message || String(error),
+            url: error?.config?.url,
+        };
     }
 
     private async updateSolcVersions() {
