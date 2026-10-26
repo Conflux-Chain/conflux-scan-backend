@@ -22,6 +22,8 @@ const BN_REQUEST_RETRY_DELAY_MS = 1_000;
 const BN_REQUEST_MAX_RETRY_DELAY_MS = 60_000;
 const PEER_REQUEST_RETRY_DELAY_MS = 15_000;
 const PEER_REQUEST_MAX_RETRY_DELAY_MS = 300_000;
+const PEER_ALERT_AFTER_MS = 10 * 60_000;
+const PEER_ALERT_INTERVAL_MS = 60 * 60_000;
 const PEER_URLS = {
     1029: 'https://www.confluxscan.net',
     1030: 'https://evm.confluxscan.org',
@@ -84,6 +86,8 @@ export class TokenQuoteSync {
     private bnRequestCooldownUntilMs = 0;
     private peerRequestCooldownUntilMs = 0;
     private peerRequestFailures = 0;
+    private peerFailureSinceMs = 0;
+    private peerNextAlertAtMs = 0;
 
     constructor(cfx: Conflux, config: QuoteOptions) {
         if(config.enable && (!config.binanceAccessToken || !config.coinMarketCapAccessToken)) {
@@ -142,17 +146,25 @@ export class TokenQuoteSync {
         });
 
         await this.pullPrice(tokenList).catch(e => {
+            const nowMs = Date.now();
+            if (!this.peerFailureSinceMs) {
+                this.peerFailureSinceMs = nowMs;
+            }
             this.peerRequestFailures += 1;
             const retryDelayMs = Math.min(
                 PEER_REQUEST_RETRY_DELAY_MS * Math.pow(2, Math.min(this.peerRequestFailures - 1, 5)),
                 PEER_REQUEST_MAX_RETRY_DELAY_MS,
             );
-            this.peerRequestCooldownUntilMs = Date.now() + retryDelayMs;
+            this.peerRequestCooldownUntilMs = nowMs + retryDelayMs;
             const firstError = e?.errors?.[0] || e;
             const summary = `${e?.code || firstError?.code || 'UNKNOWN'}: ${firstError?.message || e?.message || 'Peer request failed'}`;
-            const peerError = new Error(`${summary}; retry in ${retryDelayMs}ms`);
-            if (!this.disableAlertPullPeer) {
-                safeAddErrorLog('stat-task', 'token-quote-peer', peerError).then();
+            const unavailableMinutes = Math.floor((nowMs - this.peerFailureSinceMs) / 60_000);
+            const peerError = new Error(`${summary}; peer unavailable for ${unavailableMinutes}m; retry in ${retryDelayMs}ms`);
+            if (!this.disableAlertPullPeer &&
+                nowMs - this.peerFailureSinceMs >= PEER_ALERT_AFTER_MS &&
+                nowMs >= this.peerNextAlertAtMs) {
+                this.peerNextAlertAtMs = nowMs + PEER_ALERT_INTERVAL_MS;
+                safeAddErrorLog('stat-task', 'token-quote-peer', peerError, true).then();
             }
             console.log(`Failed to sync token quote from peer: ${peerError.message}`);
         });
@@ -415,6 +427,8 @@ export class TokenQuoteSync {
         await this.upsertQuote(quoteArray);
         this.peerRequestFailures = 0;
         this.peerRequestCooldownUntilMs = 0;
+        this.peerFailureSinceMs = 0;
+        this.peerNextAlertAtMs = 0;
     }
 
     //======================================================================

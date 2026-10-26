@@ -38,6 +38,9 @@ For Beijing token quote workers, `quote.peerUrl` can override the default
 ConfluxScan peer (`https://www.confluxscan.net` for Core Space or
 `https://evm.confluxscan.org` for eSpace). Set it to the base URL of a reachable
 peer that serves `/v1/token` when the public domain is unavailable.
+If peer quote sync keeps failing for 10 minutes, it sends a Ding alert and
+repeats the alert hourly until the peer recovers. Set `quote.disableAlertPullPeer`
+to suppress these alerts.
 
 If you did not change them, just :
 1. docker compose stop

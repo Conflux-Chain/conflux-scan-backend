@@ -40,12 +40,14 @@ const alertCtx = {
 	lastErrorTime: new Date().getTime() - 3600_000,
 }
 
-async function reportError(eLog: ErrorLog, error: Error) {
+async function reportError(eLog: ErrorLog, error: Error, forceAlert = false) {
 	const nowMs = Date.now();
-	if (nowMs < alertCtx.lastErrorTime + 3600_000) {
+	if (!forceAlert && nowMs < alertCtx.lastErrorTime + 3600_000) {
 		return;
 	}
-	alertCtx.lastErrorTime = nowMs;
+	if (!forceAlert) {
+		alertCtx.lastErrorTime = nowMs;
+	}
 	const dingToken = ConfigInstance.dingDevToken || ConfigInstance.dingTalkToken;
 	if (!dingToken) {
 		return
@@ -71,18 +73,18 @@ export function isKnownError(e) {
 		;
 }
 
-export async function safeAddErrorLog(module: string, biz: string, error: Error) {
-	if (!error || isKnownError(error)) {
+export async function safeAddErrorLog(module: string, biz: string, error: Error, forceAlert = false) {
+	if (!error || (!forceAlert && isKnownError(error))) {
 		return;
 	}
 	try {
-		await addErrorLog(module, biz, error);
+		await addErrorLog(module, biz, error, forceAlert);
 	} catch (e) {
 		console.log(`failed to record error`, e)
 	}
 }
 
-async function addErrorLog(module: string, biz: string, error: Error) {
+async function addErrorLog(module: string, biz: string, error: Error, forceAlert = false) {
 	if (!ErrorLog.sequelize) {
 		return;
 	}
@@ -114,5 +116,5 @@ async function addErrorLog(module: string, biz: string, error: Error) {
 			return [bean];
 		})
 	}
-	await reportError(bean, error)
+	await reportError(bean, error, forceAlert)
 }
