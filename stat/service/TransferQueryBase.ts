@@ -124,6 +124,12 @@ export abstract class TransferQueryBase {
             minTimestamp, maxTimestamp,
             accountAddress, address, from, to, opponentAddress, tokenArray,
             tokenId, transferType, txType , status, skip = 0, limit = 10, sort, cursor, cursorField} = options;
+        // doQuery is handed `options`, not these locals, so the defaults above never
+        // reached it. CfxTransferQuery read `options.skip` as undefined and its paging
+        // arithmetic turned that into `findByPk(NaN)` -- every txlistinternal by txhash
+        // on mainnet failed that way. Written back the same way useCountCache is above.
+        options.skip = skip;
+        options.limit = limit;
         if(txType === CONST.TX_TYPE.FAIL || status === 1){
             return {total: 0, list: []};
         }

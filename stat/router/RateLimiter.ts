@@ -99,12 +99,38 @@ const burstyLimiter = new BurstyRateLimiter(
     })
 );
 
+/**
+ * X-Forwarded-For entries, counted from the right, that our own proxies wrote.
+ * The client is the leftmost of them; anything further left was written by
+ * the client and is ignored.
+ *
+ * Mainnet has two. The public nginx (chainscan-api.0g.ai) writes the client
+ * itself -- for the Vercel frontend, the address Vercel vouches for with
+ * X-Scan-Origin-Secret; otherwise its TCP peer -- and the nginx beside these
+ * processes appends the public one's 10.128.0.5. So node sees
+ * `<client>, 10.128.0.5`. Changing what either nginx does with
+ * X-Forwarded-For means changing this too: one hop too few keys every request
+ * by 10.128.0.5, one too many lets the client pick its own key again.
+ *
+ * A single nginx that overwrites the header, as the run.sh template does,
+ * leaves one entry, which 2 also reads correctly.
+ */
+export const TRUSTED_PROXY_HOPS = 2;
+
+/** Make `ctx.ip` the leftmost X-Forwarded-For entry our proxies wrote. */
+export function trustProxy(app) {
+    app.proxy = true;
+    app.maxIpsCount = TRUSTED_PROXY_HOPS;
+}
+
+/**
+ * Client address for rate limiting and logs. Deliberately reads no CDN header
+ * (ali-cdn-real-ip, cf-connecting-ip, ...): no CDN fronts the API, so those
+ * are whatever the client chose to send. Requires `trustProxy(app)`.
+ */
 export function getClientIP(ctx) {
     if (!ctx) {
         return '-';
-    }
-    if (ctx.headers) {
-        return ctx.headers['ali-cdn-real-ip'] || ctx.headers['cf-connecting-ip'] || ctx.request?.ip;
     }
     return ctx.request?.ip || '~';
 }
@@ -215,6 +241,13 @@ export interface IRateKey {
     effectiveAt: Date;
     expireAt: Date;
     remark: string;
+    /**
+     * Space-separated permissions, e.g. `partner:read partner:write`.
+     * Empty means the key predates scopes and grants none of them -- the
+     * rate-limiting keys already in this table must not silently gain write
+     * access to anything.
+     */
+    scope?: string;
 }
 
 export class RateKey extends Model<IRateKey> implements IRateKey {
@@ -225,6 +258,7 @@ export class RateKey extends Model<IRateKey> implements IRateKey {
     effectiveAt: Date;
     expireAt: Date;
     remark: string;
+    scope?: string;
 
     static register(seq: Sequelize) {
         RateKey.init({
@@ -235,6 +269,7 @@ export class RateKey extends Model<IRateKey> implements IRateKey {
             effectiveAt: {type: DataTypes.DATE, allowNull: false},
             expireAt: {type: DataTypes.DATE, allowNull: false},
             remark: {type: DataTypes.STRING(128), allowNull: false},
+            scope: {type: DataTypes.STRING(255), allowNull: false, defaultValue: ''},
         }, {
             sequelize: seq,
             tableName: 'rate_key',
@@ -244,6 +279,18 @@ export class RateKey extends Model<IRateKey> implements IRateKey {
 }
 
 let rateKeyConfig = {};
+
+/**
+ * Look up a key in the in-memory registry, which `loadRateKeyConfig` refreshes
+ * every 10s. Returns undefined for an unknown key -- callers decide whether
+ * that is a 401 or just an unauthenticated request.
+ */
+export function lookupRateKey(apiKey: string): IRateKey | undefined {
+    if (!apiKey) {
+        return undefined;
+    }
+    return rateKeyConfig[apiKey];
+}
 
 export async function loadRateKeyConfig() {
     async function repeat() {

@@ -36,16 +36,91 @@ export class ErrorLog extends Model<IErrorLog> implements IErrorLog {
 	}
 }
 
+const ALERT_THROTTLE_MS = 3600_000;
+/*
+ * A ceiling on top of the per-error throttle. `biz` is built as
+ * `json-rpc-500-${e.message}` and an error message can carry request input, so
+ * the number of distinct keys is not ours to bound: probe traffic on
+ * 2026-10-13 produced twelve of them in under two hours. Without this, each
+ * fresh payload would buy itself another alert.
+ */
+const MAX_ALERTS_PER_HOUR = 6;
+/* Same reason -- the key space is caller-controlled, so the map needs an end. */
+const MAX_TRACKED_KEYS = 500;
+
 const alertCtx = {
-	lastErrorTime: new Date().getTime() - 3600_000,
+	/* key -> last alerted at. Insertion order is kept least-recently-alerted first. */
+	lastAlertAt: new Map<string, number>(),
+	windowStartMs: 0,
+	windowCount: 0,
+}
+
+/**
+ * One alert per (module, biz) per hour, rather than one per process per hour.
+ *
+ * The throttle this replaces was a single timestamp shared by every caller, so
+ * the whole StatTask process emitted at most one alert an hour and whichever
+ * error arrived first silenced every other one until the next. A transient
+ * EPIPE from the database was enough to do it -- 22 of them over 101 days, each
+ * self-healing, each costing an hour of everything else's visibility.
+ */
+function mayAlert(module: string, biz: string): boolean {
+	const now = Date.now();
+
+	// The global cap is checked first, so a flood of new keys cannot outrun it.
+	if (now - alertCtx.windowStartMs >= ALERT_THROTTLE_MS) {
+		alertCtx.windowStartMs = now;
+		alertCtx.windowCount = 0;
+	}
+	if (alertCtx.windowCount >= MAX_ALERTS_PER_HOUR) {
+		return false;
+	}
+
+	const key = `${module}|${biz}`;
+	const last = alertCtx.lastAlertAt.get(key);
+	if (last !== undefined && now - last < ALERT_THROTTLE_MS) {
+		return false;
+	}
+
+	// delete before set: Map keeps the original position when a key is merely
+	// overwritten, which would make the eviction below drop the wrong entry.
+	alertCtx.lastAlertAt.delete(key);
+	alertCtx.lastAlertAt.set(key, now);
+	while (alertCtx.lastAlertAt.size > MAX_TRACKED_KEYS) {
+		alertCtx.lastAlertAt.delete(alertCtx.lastAlertAt.keys().next().value);
+	}
+
+	alertCtx.windowCount += 1;
+	return true;
+}
+
+/**
+ * Recorded in error_log, but never paged for.
+ *
+ * Deliberately not part of isKnownError(), which drops an error before it is
+ * written and so leaves no trace at all. These faults are transient and every
+ * caller already recovers -- the TimerStat loop reschedules 60 seconds later --
+ * but the count still has to move, because a rate that climbs from one every
+ * few days to one a minute is a database going down, and that must stay visible
+ * in the table even though nobody is woken for any single occurrence.
+ *
+ * EPIPE reaches here wrapped: SequelizeDatabaseError carries `write EPIPE` as
+ * its message and the code on `parent`/`original`, so matching the top-level
+ * `code` alone -- the way the ECONNRESET entry in isKnownError() does -- would
+ * never fire.
+ */
+function isTransientError(e: any): boolean {
+	const code = e?.code || e?.parent?.code || e?.original?.code;
+	return code === 'EPIPE' || e?.message === 'write EPIPE';
 }
 
 async function reportError(eLog: ErrorLog, error: Error) {
-	const nowMs = Date.now();
-	if (nowMs < alertCtx.lastErrorTime + 3600_000) {
+	if (isTransientError(error)) {
 		return;
 	}
-	alertCtx.lastErrorTime = nowMs;
+	if (!mayAlert(eLog.module, eLog.biz)) {
+		return;
+	}
 	const dingToken = ConfigInstance.dingDevToken || ConfigInstance.dingTalkToken;
 	if (!dingToken) {
 		return

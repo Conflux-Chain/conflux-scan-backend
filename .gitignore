@@ -6,10 +6,12 @@ koaflow/**/*.js
 koaflow/tsconfig.tsbuildinfo
 
 scan-api/app.js
+scan-api/AppBase.js
 scan-api/config/local.js
 scan-api/index.js
 scan-api/router/index.js
 scan-api/router/jsonrpc.js
+scan-api/router/supply.js
 scan-api/router/v1.js
 scan-api/scan-api.iml
 scan-api/service/AccountService.js
@@ -29,6 +31,17 @@ scan-api/starter.js
 scan-api/tsconfig.tsbuildinfo
 
 scan-compiler/config/local.js
+
+# `common/` and `tools/` hold hand-written plain JS alongside TypeScript, so
+# these are listed one by one rather than as a glob: `common/**/*.js` would
+# swallow 24 hand-written helpers and `tools/**/*.js` would take docker.js.
+# Add a line here whenever a new .ts lands in either directory.
+common/JsonRPCSDK.js
+tools/FixTxGasFee.js
+tools/Tools.js
+tools/rpcLoadTest.js
+
+tsconfig.tsbuildinfo
 
 **/*.d.ts
 **/*.d.ts.map

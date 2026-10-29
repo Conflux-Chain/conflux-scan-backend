@@ -15,6 +15,8 @@ import {TokenQuery} from "../../stat/service/TokenQuery";
 
 const lodash = require('lodash');
 
+const NFT_FTS_NAME_MAX = 64;
+
 export async function listAccountNFTs(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'owner');
     mustBeIntParamIfPresent(ctx.request.query, 'skip', 'limit');
@@ -73,8 +75,18 @@ export async function listNFTTokensPro(ctx) {
 export async function listNFTTokensByFts(ctx) {
     mustBeAddressParamIfPresent(ctx.request.query, StatApp.networkId, StatApp.isEVM, 'contract');
 
-    const {contract, name: nftName} = ctx.request.query;
-    checkPresent({nftName}, ['nftName']);
+    const {contract, name: rawName} = ctx.request.query;
+    checkPresent({nftName: rawName}, ['nftName']);
+    // A repeated ?name= arrives as an array; anything other than one string is rejected.
+    // The length cap keeps a public, unauthenticated search from sending arbitrarily
+    // large input to a full-text index -- NFT names searched in practice are short.
+    if (typeof rawName !== 'string') {
+        throw new Errors.ParameterError(`Invalid parameter [name], expect a single string`);
+    }
+    const nftName = rawName.trim();
+    if (!nftName || nftName.length > NFT_FTS_NAME_MAX) {
+        throw new Errors.ParameterError(`Invalid parameter [name], expect 1-${NFT_FTS_NAME_MAX} characters`);
+    }
 
     const data = await getApiService().nftCheckerService.getNftTokensByFtsForOpenApi({contract, name: nftName});
 

@@ -4,7 +4,7 @@ import {fmtAddr, StatApp} from "../stat/StatApp";
 import {AppBase} from "./AppBase";
 const lodash = require('lodash');
 import { Sequelize } from 'sequelize';
-import {checkRate, loadRateConfig} from "../stat/router/RateLimiter";
+import {checkRate, loadRateConfig, trustProxy} from "../stat/router/RateLimiter";
 import {setSwStatFn} from "../stat/router/StatRouter";
 import {initPartialModel} from "../stat/service/DBProvider";
 import ApiDef from "../stat/router/ApiDef";
@@ -33,7 +33,7 @@ export class ApiApp extends AppBase {
 
   async init() {
     await super.init();
-    this.proxy = true;
+    trustProxy(this);
     // networkId
     this.networkId = this.cfx.networkId;
     console.log(`================== start api, networkId ${this.cfx.networkId} ==================`);

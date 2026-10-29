@@ -105,6 +105,17 @@ export class CfxTransferQuery extends TransferQueryBase{
             return await AddressCfxTransfer.findAndCountAll(queryOptions);
         }
 
+        if(options.transactionHash){
+            /*
+             * Pinned to one transaction by txParas, so there is nothing to page through,
+             * and the full-table paging below is not merely wasted here but wrong: it
+             * narrows the query to the window around the requested offset -- the newest
+             * rows, for offset 0 -- so a transaction older than that window came back
+             * empty. The KV count below is the whole table's, not this query's total.
+             */
+            return CfxTransfer.findAndCountAll(queryOptions);
+        }
+
         const pagedCondition = await this.buildPagedCfxTransferOptions(options.skip, options.limit);
         if(pagedCondition.where){
             queryOptions.where = {[Op.and]: [pagedCondition.where, queryOptions.where]};

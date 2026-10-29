@@ -19,13 +19,13 @@ import {
   listEVMVersion
 } from "./jsonrpc";
 import {CONST} from "../../stat/service/common/constant";
+import {nativeTokenSymbol} from "../../stat/service/common/utils";
 const lodash = require('lodash');
 import * as KoaRouter from "koa-router";
-import {getClientIP} from "../../stat/router/RateLimiter";
 import {safeAddErrorLog} from "../../stat/monitor/ErrorMonitor";
 import {getAccountQuery} from "../../stat/service/AccountQuery";
 import {fmtAddr} from "../../stat/StatApp";
-import {Errors} from "../../stat/service/common/LogicError";
+import {DB_ERROR_PUBLIC_MESSAGE, Errors, isDatabaseError} from "../../stat/service/common/LogicError";
 import {HomepageDashboard} from "../../stat/service/HomepageDashboard";
 const {router_get, router_post} = require ("../../koaflow/src/koaHelper");
 const {OpenAPI} = require('../../koaflow/lib/OpenAPI');
@@ -56,7 +56,14 @@ router.use(async (ctx, next) => {
     ctx.body = StatApp.isEVM ? { status: '1', message: '', result: ctx.body } :
         { code: 0, message: '', data: ctx.body };
   } catch (e) {
-    if(e.code === undefined){
+    if (isDatabaseError(e)) {
+      // See DB_ERROR_PUBLIC_MESSAGE. Wrapped as BizError below it would keep the
+      // raw message, and its status of 600 means the 500 branch never logs it.
+      e["url"] = ctx.originalUrl;
+      console.log(`v1 db error ${ctx.originalUrl}`, e);
+      safeAddErrorLog('v1', 'v1-db-error', e).then();
+      e = new error.BizError(DB_ERROR_PUBLIC_MESSAGE);
+    } else if(e.code === undefined){
       e = new error.BizError(e.message);
     } else if (e.code === 'INVALID_ARGUMENT'
         || (e.code === 5200 && e.message?.includes("(Invalid input|args"))) {
@@ -76,14 +83,6 @@ router_get(router,'/', function (ctx) {
   const { app: { config: { machine } } } = this;
   return { message: `scan-api-v1, [${machine}]` };
 });
-router_get(router,'/echo', function (ctx) {
-  return {
-    "headers": ctx.headers,
-    "ip": getClientIP(ctx),
-    "time": new Date().toISOString(),
-    "service": "v1",
-  }
-})
 // --------------------------------- OpenAPI ----------------------------------
 
 // -------------------------------- Statistic ---------------------------------
@@ -1359,7 +1358,7 @@ router_get(router,'/report/transfer',
     let tag = ''
     switch (transferType){
       case CONST.TRANSFER_TYPE.CFX:
-        tag = 'CFXtransactions';
+        tag = `${nativeTokenSymbol()}transactions`;
         break;
       case CONST.TRANSFER_TYPE.ERC3525:
       case CONST.TRANSFER_TYPE.ERC20:

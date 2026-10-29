@@ -73,13 +73,24 @@ import {
     listTransactionSenderTopStat,
     listCoreTransactionStat,
 } from "../service/OpenStatService";
+import {
+    getPartnerChainSummary,
+    listPartnerChainMetrics,
+    getPartnerTvlSnapshot,
+    listPartnerTvlHistory,
+    listPartnerContracts,
+    registerPartnerContracts,
+    deregisterPartnerContracts,
+} from "../service/OpenPartnerChainService";
+import {requireScope, SCOPE_PARTNER_READ, SCOPE_PARTNER_WRITE} from "./partnerAuth";
 import {mustBeAddressParamIfPresent,} from "../../stat/service/common/utils";
 import {
-    checkApiKey,
+    checkRate,
     checkRateByAddress,
     checkRateByLevel,
     loadRateConfig,
-    loadRateKeyConfig
+    loadRateKeyConfig,
+    trustProxy
 } from "../../stat/router/RateLimiter";
 import {CIP1559StatType} from "../../stat/service/StatsQuery";
 import {NoCoreSpace} from "../../stat/config/StatConfig";
@@ -121,19 +132,9 @@ export async function register(app: Koa, apiServer: ApiServer, port:string|numbe
     let middleware = router.routes();
     app.use(middleware)
 
-    app.proxy = true
+    trustProxy(app)
     router.get('/', async (ctx)=>{
         return root(ctx, apiServer.config.serverTag, port)
-    })
-    router.get('/echo', (ctx)=>{
-        ctx.body = {ip: ctx.ip, header: ctx.headers}
-    })
-    router.get('/test-billing', async (ctx)=>{
-        const {ok:paid, result: billingResult} =
-            await checkApiKey('/test-billing', ctx?.request?.query?.apiKey || ctx?.headers['apiKey'],
-                ctx.request.query.dryRun
-            )
-        ctx.body = {paid, billingResult, query: ctx.request.query, header: ctx.headers, ip: ctx.ip}
     })
     router.get('/favicon.ico', (ctx) => ctx.status = 204/*No Content*/);
     router.get('/version', (ctx)=>{
@@ -183,7 +184,8 @@ function registerRouter(router: Router) {
     router.get('/nft/balances', listAccountNFTs);
     router.get('/nft/tokens', checkRateByAddr, listNFTTokensPro);
     router.get('/nft/preview', getNFTPreview);
-    router.get('/nft/fts', listNFTTokensByFts);
+    // Per-IP on top of the level limiter: public, unauthenticated full-text search.
+    router.get('/nft/fts', checkRate, listNFTTokensByFts);
     router.get('/nft/owners', listNFTOwners);
     router.get('/nft/transfers', listNFTTransfers);
 
@@ -230,6 +232,18 @@ function registerRouter(router: Router) {
     router.get('/statistics/block/avg-priority-fee', listCIP1559Stats(CIP1559StatType.PRIORITY_FEE));
     router.get('/statistics/block/gas-used', listCIP1559Stats(CIP1559StatType.GAS_USED));
     router.get('/statistics/block/txs-by-type', listCIP1559Stats(CIP1559StatType.TXS_BY_TYPE));
+
+    // partner chain metrics (Solutions Hub). Envelope and date/amount
+    // conventions follow the Router's admin usage APIs, not the scan defaults.
+    const partnerRead = requireScope(SCOPE_PARTNER_READ);
+    const partnerWrite = requireScope(SCOPE_PARTNER_WRITE);
+    router.get('/partner/chain-metrics', partnerRead, listPartnerChainMetrics);
+    router.get('/partner/chain-metrics/summary', partnerRead, getPartnerChainSummary);
+    router.get('/partner/tvl', partnerRead, getPartnerTvlSnapshot);
+    router.get('/partner/tvl/history', partnerRead, listPartnerTvlHistory);
+    router.get('/partner/contracts', partnerRead, listPartnerContracts);
+    router.post('/partner/contracts', partnerWrite, registerPartnerContracts);
+    router.delete('/partner/contracts', partnerWrite, deregisterPartnerContracts);
 
     registerDataApi(router)
 }
