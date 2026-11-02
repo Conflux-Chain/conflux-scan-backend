@@ -195,11 +195,18 @@ export function startInfluxWorker(influxDB: StatConfig['influxDB'], cfx: Conflux
     console.log(`influx db is ${host} ${database} user ${username} measurement ${measurement}`)
     const inf = connectInflux({host, database, username, password,  port, protocol});
     async function run() {
+        let timer: NodeJS.Timeout | undefined;
         try {
-            await copyAll(inf, cfx);
+            await Promise.race([
+                copyAll(inf, cfx),
+                new Promise((_, reject) => {
+                    timer = setTimeout(() => reject(new Error('copyAll timed out')), 1000 * 60 * 5);
+                }),
+            ]);
         } catch (err) {
             console.log(`Influx worker failed:`, err);
         } finally {
+            clearTimeout(timer);
             setTimeout(run, 1000 * 60);
         }
     }
