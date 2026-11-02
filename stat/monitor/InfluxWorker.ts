@@ -10,10 +10,9 @@ import {KV} from "../model/KV";
 import {Op} from "sequelize";
 import {Conflux} from "js-conflux-sdk";
 import {initCfxSdk} from "../service/common/utils";
+import {StatConfig} from "../config/StatConfig";
 import {EpochHashCfxTransfer} from "../CfxTransferSync";
 import {EpochHashTokenTransfer} from "../TokenTransferSync";
-
-let cfx: Conflux;
 
 async function copy(inf: InfluxDB, model:any, biz, epochField: Function = (a)=>a.epoch) {
     const max = await model.findOne({order: [['epoch', 'desc']]})
@@ -65,7 +64,7 @@ async function epochCursorInConfig(inf: InfluxDB) {
         console.log(`epochCursorInConfig want write:`, measureArr, err)
     })
 }
-async function copyAll(inf: InfluxDB) {
+async function copyAll(inf: InfluxDB, cfx: Conflux) {
     await copy(inf, EpochHashCfxTransfer, 'task-cfx-x')
     await copy(inf, EpochHashTokenTransfer, 'task-token-x')
     await copy(inf, Epoch, 'sync-epoch')
@@ -185,22 +184,40 @@ async function test(inf: InfluxDB) {
     await query(inf, measurement, '1=1')
 }
 
-async function setup() {
-    // host = 'http://influxdb-luhhh4.conflux-chain.org.cn'
-    const config = await init();
-    console.log(`------init done-----`)
-    cfx = await initCfxSdk(config.conflux);
-    const {host, database, username, password,  port, protocol, measurement: confMeasurement} = config.influxDB
+export function startInfluxWorker(influxDB: StatConfig['influxDB'], cfx: Conflux) {
+    if (!influxDB || influxDB.disable) {
+        return;
+    }
+    const {host, database, username, password, port, protocol, measurement: confMeasurement} = influxDB;
     if (confMeasurement) {
         measurement = confMeasurement
     }
     console.log(`influx db is ${host} ${database} user ${username} measurement ${measurement}`)
     const inf = connectInflux({host, database, username, password,  port, protocol});
-    // await test(inf);
-    await copyAll(inf)
-    setInterval(()=>{
-        copyAll(inf)
-    }, 1000 * 60); // 1 minute
+    async function run() {
+        let timer: NodeJS.Timeout | undefined;
+        try {
+            await Promise.race([
+                copyAll(inf, cfx),
+                new Promise((_, reject) => {
+                    timer = setTimeout(() => reject(new Error('copyAll timed out')), 1000 * 60 * 5);
+                }),
+            ]);
+        } catch (err) {
+            console.log(`Influx worker failed:`, err);
+        } finally {
+            clearTimeout(timer);
+            setTimeout(run, 1000 * 60);
+        }
+    }
+    run().then();
+}
+
+async function setup() {
+    const config = await init();
+    console.log(`------init done-----`)
+    const cfx = await initCfxSdk(config.conflux);
+    startInfluxWorker(config.influxDB, cfx);
 }
 
 if (module === require.main) {
