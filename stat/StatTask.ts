@@ -46,6 +46,7 @@ import {ContractDappNameSync} from "./service/ContractDappNameSync";
 import {VerifiedContracts} from "./model/VerifiedContracts";
 import {StatDailyContractVerified} from "./service/timerstat/StatDailyContractVerified";
 import {TokenAutoDetect} from "./service/TokenAutoDetect";
+import {startInfluxWorker} from "./monitor/InfluxWorker";
 
 async function runTools() {
     const [,, cmd, arg1] = process.argv;
@@ -74,6 +75,7 @@ async function main() {
     const cfx = await initCfxSdk(config.conflux, 'StatTask');
     StatApp.networkId = cfx.networkId;
     StatApp.isEVM = await KV.getSwitch(IS_EVM2);
+    startInfluxWorker(config.influxDB, cfx);
 
     removeDate1970().then();
     scheduleDailyTokenStat().then()
