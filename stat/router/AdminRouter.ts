@@ -49,14 +49,15 @@ export function registerAdminRoutes(router: Router<any, {}>) {
         if (!row?.value) {
             throw new Errors.PermissionError('管理查询未启用');
         }
-        const supplied = ctx.get('X-Admin-Password');
+        const body = ctx.request.body as any;
+        const supplied = body?.password;
         const expectedHash = crypto.createHash('sha256').update(row.value).digest();
-        const suppliedHash = crypto.createHash('sha256').update(supplied).digest();
-        if (!supplied || !crypto.timingSafeEqual(expectedHash, suppliedHash)) {
+        const suppliedHash = crypto.createHash('sha256').update(typeof supplied === 'string' ? supplied : '').digest();
+        if (typeof supplied !== 'string' || !supplied || !crypto.timingSafeEqual(expectedHash, suppliedHash)) {
             throw new Errors.PermissionError('密码错误');
         }
 
-        const parsed = parseAddress((ctx.request.body as any)?.address);
+        const parsed = parseAddress(body?.address);
         const address = await Hex40Map.findOne({
             where: parsed.id ? {id: parsed.id} : {hex: parsed.hex},
             attributes: ['id', 'hex'], raw: true,
