@@ -20,7 +20,7 @@ const LEGACY_KEYS = [
 ];
 
 export class CompilerVersion extends Model<ICompilerVersion> implements ICompilerVersion {
-    private static legacyMigrationPromise: Promise<void>;
+    private static legacyMigrationPromise?: Promise<void>;
     id?: number;
     type: CompilerVersionType;
     version: string;
@@ -67,7 +67,10 @@ export class CompilerVersion extends Model<ICompilerVersion> implements ICompile
 
     static migrateLegacy() {
         if (!CompilerVersion.legacyMigrationPromise) {
-            CompilerVersion.legacyMigrationPromise = CompilerVersion.migrateLegacyInternal();
+            CompilerVersion.legacyMigrationPromise = CompilerVersion.migrateLegacyInternal().catch(error => {
+                CompilerVersion.legacyMigrationPromise = undefined;
+                throw error;
+            });
         }
         return CompilerVersion.legacyMigrationPromise;
     }
@@ -76,26 +79,34 @@ export class CompilerVersion extends Model<ICompilerVersion> implements ICompile
         if (!CompilerVersion.sequelize) {
             return;
         }
-        const legacy = await Promise.all(LEGACY_KEYS.map(key => KV.getString(key, '')));
-        if (legacy.some(value => value)) {
-            const [solc, vulnerabilities, vyper, fe] = legacy.map(value => value ? JSON.parse(value) : {});
-            await CompilerVersion.sequelize.transaction(async transaction => {
-                if (Object.keys(solc).length) {
-                    await CompilerVersion.replace('solc', Object.entries(solc).map(([version, description]) => ({version, description: String(description)})), transaction);
-                }
-                if (Object.keys(vulnerabilities).length) {
-                    await CompilerVersion.replace('solc-vulnerability', Object.entries(vulnerabilities).map(([version, count]) => ({version, vulnerabilityCount: Number(count)})), transaction);
-                }
-                if (Object.keys(vyper).length) {
-                    await CompilerVersion.replace('vyper', Object.entries(vyper).map(([version, value]: [string, any]) => ({version, description: value.desc, commit: value.commit})), transaction);
-                }
-                if (Object.keys(fe).length) {
-                    await CompilerVersion.replace('fe', Object.entries(fe).map(([version, value]: [string, any]) => ({version, description: value.desc, commit: value.commit})), transaction);
-                }
-                await KV.destroy({where: {key: {[Op.in]: LEGACY_KEYS}}, transaction});
+        await CompilerVersion.sequelize.transaction(async transaction => {
+            // A locking read sees only unconsumed KV rows after another process commits.
+            const legacyRows = await KV.findAll({
+                where: {key: {[Op.in]: LEGACY_KEYS}},
+                order: [['key', 'ASC']],
+                transaction,
+                lock: transaction.LOCK.UPDATE,
             });
-        } else {
-            await KV.destroy({where: {key: {[Op.in]: LEGACY_KEYS}}});
-        }
+            if (!legacyRows.length) return;
+
+            const legacy = new Map<string, string>(legacyRows.map(row => [row.key, row.value]));
+            const [solc, vulnerabilities, vyper, fe] = LEGACY_KEYS.map(key => {
+                const value = legacy.get(key);
+                return value ? JSON.parse(value) : {};
+            });
+            if (Object.keys(solc).length) {
+                await CompilerVersion.replace('solc', Object.entries(solc).map(([version, description]) => ({version, description: String(description)})), transaction);
+            }
+            if (Object.keys(vulnerabilities).length) {
+                await CompilerVersion.replace('solc-vulnerability', Object.entries(vulnerabilities).map(([version, count]) => ({version, vulnerabilityCount: Number(count)})), transaction);
+            }
+            if (Object.keys(vyper).length) {
+                await CompilerVersion.replace('vyper', Object.entries(vyper).map(([version, value]: [string, any]) => ({version, description: value.desc, commit: value.commit})), transaction);
+            }
+            if (Object.keys(fe).length) {
+                await CompilerVersion.replace('fe', Object.entries(fe).map(([version, value]: [string, any]) => ({version, description: value.desc, commit: value.commit})), transaction);
+            }
+            await KV.destroy({where: {key: {[Op.in]: LEGACY_KEYS}}, transaction});
+        });
     }
 }
