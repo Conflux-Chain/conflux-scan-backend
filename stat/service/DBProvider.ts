@@ -304,6 +304,27 @@ export function createMySql(dbConf) {
 }
 
 async function migDB(seq: Sequelize) {
+    // This table is needed even when database.syncSchema is disabled. The DDL is
+    // idempotent because API and stat-task processes can start at the same time.
+    if (!StatApp.readonly) {
+        if (isMySQL()) {
+            await seq.query(`CREATE TABLE IF NOT EXISTS \`compiler_version\` (
+                \`id\` BIGINT NOT NULL AUTO_INCREMENT,
+                \`type\` VARCHAR(32) NOT NULL,
+                \`version\` VARCHAR(64) NOT NULL,
+                \`description\` VARCHAR(255) NULL,
+                \`commit\` VARCHAR(64) NULL,
+                \`vulnerabilityCount\` INT NULL,
+                \`createdAt\` DATETIME NOT NULL,
+                \`updatedAt\` DATETIME NOT NULL,
+                PRIMARY KEY (\`id\`),
+                UNIQUE KEY \`uk_compiler_version_type_version\` (\`type\`, \`version\`),
+                KEY \`idx_compiler_version_type\` (\`type\`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+        } else {
+            await CompilerVersion.sync();
+        }
+    }
     // Deployment baseline: historical migrations have run on all deployed databases.
     // Their definitions remain in git history; this hook is reserved for future migrations.
     // Reference examples below are inactive. Import DataTypes from sequelize when needed.

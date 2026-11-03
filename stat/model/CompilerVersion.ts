@@ -18,6 +18,7 @@ const LEGACY_KEYS = [
     'VYPER_VERSIONS',
     'FE_VERSIONS',
 ];
+const LEGACY_MIGRATED_KEY = 'COMPILER_VERSIONS_MIGRATED';
 
 export class CompilerVersion extends Model<ICompilerVersion> implements ICompilerVersion {
     private static legacyMigrationPromise?: Promise<void>;
@@ -75,19 +76,30 @@ export class CompilerVersion extends Model<ICompilerVersion> implements ICompile
         return CompilerVersion.legacyMigrationPromise;
     }
 
+    // Call only after all processes reading or writing the legacy KV maps have retired.
+    static async deleteLegacyKV() {
+        await CompilerVersion.migrateLegacy();
+        await KV.destroy({where: {key: {[Op.in]: LEGACY_KEYS}}});
+    }
+
     private static async migrateLegacyInternal() {
         if (!CompilerVersion.sequelize) {
             return;
         }
         await CompilerVersion.sequelize.transaction(async transaction => {
-            // A locking read sees only unconsumed KV rows after another process commits.
+            // Lock the legacy rows so concurrent processes cannot import the same snapshot.
             const legacyRows = await KV.findAll({
                 where: {key: {[Op.in]: LEGACY_KEYS}},
                 order: [['key', 'ASC']],
                 transaction,
                 lock: transaction.LOCK.UPDATE,
             });
-            if (!legacyRows.length) return;
+            const migrated = await KV.findOne({
+                where: {key: LEGACY_MIGRATED_KEY},
+                transaction,
+                lock: transaction.LOCK.UPDATE,
+            });
+            if (migrated) return;
 
             const legacy = new Map<string, string>(legacyRows.map(row => [row.key, row.value]));
             const [solc, vulnerabilities, vyper, fe] = LEGACY_KEYS.map(key => {
@@ -106,7 +118,7 @@ export class CompilerVersion extends Model<ICompilerVersion> implements ICompile
             if (Object.keys(fe).length) {
                 await CompilerVersion.replace('fe', Object.entries(fe).map(([version, value]: [string, any]) => ({version, description: value.desc, commit: value.commit})), transaction);
             }
-            await KV.destroy({where: {key: {[Op.in]: LEGACY_KEYS}}, transaction});
+            await KV.upsert({key: LEGACY_MIGRATED_KEY, value: '1'}, {transaction});
         });
     }
 }
