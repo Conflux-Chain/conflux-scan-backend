@@ -29,19 +29,16 @@ import {
     KEY_AUTO_VERIFY_TRACE_ID,
     KEY_AUTO_VERIFY_VERIFY_ID,
     KEY_EVM_VERSIONS,
-    KEY_FE_VERSIONS,
-    KEY_SOLC_VERSIONS,
-    KEY_SOLC_VULNERABILITIES,
     KEY_STAT_ANNOUNCE_NAME_FOR_VERIFIED_CONTRACTS,
     KEY_STAT_NAME_TAG_FOR_VERIFIED_CONTRACTS,
     KEY_STAT_TASK_ABI_SAVE_PREFIX,
     KEY_STAT_TXNS_FOR_VERIFIED_CONTRACTS,
     KEY_VERIFIED_MATCH_ID,
-    KEY_VYPER_VERSIONS,
     KV,
     VERIFIED_COUNT_ALL,
 } from "../model/KV";
 import {safeAddErrorLog} from "../monitor/ErrorMonitor";
+import {CompilerVersion, CompilerVersionType} from "../model/CompilerVersion";
 import axios from "axios";
 import {doHeartBeat, HeartBeatBean, KEY_COMPILER} from "../model/HeartBeat";
 import {ConfigInstance, VerificationOptions} from "../config/StatConfig";
@@ -111,8 +108,11 @@ export class ContractQuery {
         this.CACHE_VERIFY_ADDRESS = new NodeCache({maxKeys: 5000, stdTTL: this.cacheTtl, checkperiod: 60})
         this.CACHE_VERIFY_DETAIL = new NodeCache({maxKeys: 1000, stdTTL: this.cacheTtl, checkperiod: 60})
         this.cacheCompilerTtl = compilerCacheTTL || DEFAULT_COMPILER_CACHE_TTL
-        this.CACHE_COMPILER_VERSIONS = new NodeCache({maxKeys: 2, stdTTL: this.cacheCompilerTtl, checkperiod: 60})
+        this.CACHE_COMPILER_VERSIONS = new NodeCache({maxKeys: 4, stdTTL: this.cacheCompilerTtl, checkperiod: 60})
 
+        CompilerVersion.migrateLegacy().catch(error => {
+            console.log(`failed to migrate compiler versions from KV:`, error.message);
+        });
         this.heartBeat();
         _instance = this;
     }
@@ -873,6 +873,7 @@ export class ContractQuery {
     }
 
     private async updateSolcVersions() {
+        await CompilerVersion.migrateLegacy();
         const resp = await ContractQuery._getJsonRequestByAxios({
             url: 'https://binaries.soliditylang.org/bin/list.json',
             handleError: false,
@@ -880,10 +881,12 @@ export class ContractQuery {
         const {data} = resp;
         // shortVersion => fullVersion, eg: 0.5.16 => v0.5.16+commit.9c3226ce
         const versions = lodash.mapValues(data.releases, solcName => solcName.substring(8, solcName.length - 3));
-        await KV.upsert({key: KEY_SOLC_VERSIONS, value: JSON.stringify(versions)});
+        await CompilerVersion.replace('solc', Object.entries(versions).map(([version, description]) => ({version, description: String(description)})));
+        this.CACHE_COMPILER_VERSIONS.del('solc');
     }
 
     private async updateSolcVulnerabilities() {
+        await CompilerVersion.migrateLegacy();
         const resp = await ContractQuery._getJsonRequestByAxios({
             url: 'https://raw.githubusercontent.com/argotorg/solidity/refs/heads/develop/docs/bugs_by_version.json',
             handleError: false,
@@ -892,10 +895,12 @@ export class ContractQuery {
         // shortVersion => vulnerabilities, eg: 0.5.9 => 16
         const vulnerabilities = Object.fromEntries(Object.entries(data)
             .map(([shortVer, bugInfo]: [string, any]) => [shortVer, bugInfo.bugs.length]));
-        await KV.upsert({key: KEY_SOLC_VULNERABILITIES, value: JSON.stringify(vulnerabilities)});
+        await CompilerVersion.replace('solc-vulnerability', Object.entries(vulnerabilities).map(([version, count]) => ({version, vulnerabilityCount: Number(count)})));
+        this.CACHE_COMPILER_VERSIONS.del('solc-vulnerability');
     }
 
     private async updateVyperVersions() {
+        await CompilerVersion.migrateLegacy();
         // shortVersion => {desc, commit}, eg: 0.3.10 => {"desc": "vyper:0.3.10", "commit": "91361694"}
         const versions = {};
         let page = 1;
@@ -935,11 +940,13 @@ export class ContractQuery {
         }
 
         if (Object.keys(versions).length) {
-            await KV.upsert({key: KEY_VYPER_VERSIONS, value: JSON.stringify(versions)});
+            await CompilerVersion.replace('vyper', Object.entries(versions).map(([version, value]: [string, any]) => ({version, description: value.desc, commit: value.commit})));
+            this.CACHE_COMPILER_VERSIONS.del('vyper');
         }
     }
 
     private async updateFeVersions() {
+        await CompilerVersion.migrateLegacy();
         // shortVersion => {desc, commit}, 26.2.0 => {"desc": "fe:26.2.0", "commit": "1fffb9e7"}
         const versions = {};
         let page = 1;
@@ -979,31 +986,42 @@ export class ContractQuery {
         }
 
         if (Object.keys(versions).length) {
-            await KV.upsert({key: KEY_FE_VERSIONS, value: JSON.stringify(versions)});
+            await CompilerVersion.replace('fe', Object.entries(versions).map(([version, value]: [string, any]) => ({version, description: value.desc, commit: value.commit})));
+            this.CACHE_COMPILER_VERSIONS.del('fe');
         }
     }
 
     async listSolcVersions(): Promise<{ [shortVersion: string]: string }> {
-        return this.listCompilerVersions(KEY_SOLC_VERSIONS);
+        return this.listCompilerVersions('solc');
     }
 
     async listSolcVulnerabilities(): Promise<{ [shortVersion: string]: number }> {
-        return this.listCompilerVersions(KEY_SOLC_VULNERABILITIES);
+        return this.listCompilerVersions('solc-vulnerability');
     }
 
     async listVyperVersions(): Promise<{ [shortVersion: string]: { desc: string, commit: string } }> {
-        return this.listCompilerVersions(KEY_VYPER_VERSIONS);
+        return this.listCompilerVersions('vyper');
     }
 
     async listFeVersions(): Promise<{ [shortVersion: string]: { desc: string, commit: string } }> {
-        return this.listCompilerVersions(KEY_FE_VERSIONS);
+        return this.listCompilerVersions('fe');
     }
 
-    private async listCompilerVersions(key: string): Promise<any> {
-        let versions = this.CACHE_COMPILER_VERSIONS.get(key);
+    private async listCompilerVersions(type: CompilerVersionType): Promise<any> {
+        let versions = this.CACHE_COMPILER_VERSIONS.get(type);
         if (!versions) {
-            versions = JSON.parse(await KV.getString(key, "{}"));
-            this.CACHE_COMPILER_VERSIONS.set(key, versions, this.cacheCompilerTtl);
+            const rows = await CompilerVersion.list(type);
+            versions = rows.reduce((result, row) => {
+                if (type === 'solc') {
+                    result[row.version] = row.description;
+                } else if (type === 'solc-vulnerability') {
+                    result[row.version] = row.vulnerabilityCount;
+                } else {
+                    result[row.version] = {desc: row.description, commit: row.commit};
+                }
+                return result;
+            }, {});
+            this.CACHE_COMPILER_VERSIONS.set(type, versions, this.cacheCompilerTtl);
         }
         return versions;
     }

@@ -76,6 +76,7 @@ import {ENS, NameTag} from "../model/NameTag";
 import {HeartBeatBean} from "../model/HeartBeat";
 import {DailyBurntFeeStat} from "../model/DailyBurntFeeStat";
 import {GasConsumer} from "../model/GasConsumer";
+import {CompilerVersion} from "../model/CompilerVersion";
 import {ReqAccount} from "./watcher/AccountChecker";
 import {ErrorLog} from "../monitor/ErrorMonitor";
 import {AddressNfts} from "../model/AddrNft";
@@ -211,6 +212,7 @@ export async function initPartialModel(sequelize) {
     NftMetaFts.register(sequelize);
     TokenQuoteTrack.register(sequelize);
     KV.register(sequelize);
+    CompilerVersion.register(sequelize);
     Epoch.register(sequelize);
     VerifiedContracts.register(sequelize);
     ProxyVerify.register(sequelize);
