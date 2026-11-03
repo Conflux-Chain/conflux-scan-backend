@@ -21,10 +21,11 @@ async function getVersions(url) {
     if (!response.ok) throw new Error(`${url}: HTTP ${response.status}`);
 
     const body = await response.json();
-    if (body?.status !== '1' || !body.result || typeof body.result !== 'object' || Array.isArray(body.result)) {
-        throw new Error(`${url}: unexpected API response (status: ${JSON.stringify(body?.status)}, message: ${JSON.stringify(body?.message)})`);
+    const versions = body?.status === '1' ? body.result : body?.code === 0 ? body.data : null;
+    if (!versions || typeof versions !== 'object' || Array.isArray(versions)) {
+        throw new Error(`${url}: unexpected API response (status: ${JSON.stringify(body?.status)}, code: ${JSON.stringify(body?.code)}, message: ${JSON.stringify(body?.message)})`);
     }
-    return body.result;
+    return versions;
 }
 
 async function main() {

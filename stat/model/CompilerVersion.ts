@@ -62,7 +62,7 @@ export class CompilerVersion extends Model<ICompilerVersion> implements ICompile
 
     static async list(type: CompilerVersionType) {
         await CompilerVersion.migrateLegacy();
-        return CompilerVersion.findAll({where: {type}, order: [['version', 'ASC']], raw: true});
+        return CompilerVersion.findAll({where: {type}, order: [['version', 'ASC']], raw: true, useMaster: true});
     }
 
     static migrateLegacy() {
