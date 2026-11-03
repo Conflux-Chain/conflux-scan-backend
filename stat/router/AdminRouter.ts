@@ -36,6 +36,18 @@ function parseAddress(input: unknown): {id?: string; hex?: string} {
     throw new Errors.ParameterError('请输入有效的 hex ID、0x 地址或 base32 地址');
 }
 
+async function checkAdminPassword(password: unknown): Promise<void> {
+    const row = await KV.findOne({where: {key: ADMIN_PWD_KEY}, attributes: ['value']});
+    if (!row?.value) {
+        throw new Errors.PermissionError('管理查询未启用');
+    }
+    const expectedHash = crypto.createHash('sha256').update(row.value).digest();
+    const suppliedHash = crypto.createHash('sha256').update(typeof password === 'string' ? password : '').digest();
+    if (typeof password !== 'string' || !password || !crypto.timingSafeEqual(expectedHash, suppliedHash)) {
+        throw new Errors.PermissionError('密码错误');
+    }
+}
+
 export function registerAdminRoutes(router: Router<any, {}>) {
     router.get('/admin/status', async ctx => {
         ctx.set('Cache-Control', 'no-store');
@@ -43,19 +55,16 @@ export function registerAdminRoutes(router: Router<any, {}>) {
         ctx.body = {enabled: !!row?.value};
     });
 
+    router.post('/admin/auth', async ctx => {
+        ctx.set('Cache-Control', 'no-store');
+        await checkAdminPassword((ctx.request.body as any)?.password);
+        ctx.body = {authenticated: true};
+    });
+
     router.post('/admin/address', async ctx => {
         ctx.set('Cache-Control', 'no-store');
-        const row = await KV.findOne({where: {key: ADMIN_PWD_KEY}, attributes: ['value']});
-        if (!row?.value) {
-            throw new Errors.PermissionError('管理查询未启用');
-        }
         const body = ctx.request.body as any;
-        const supplied = body?.password;
-        const expectedHash = crypto.createHash('sha256').update(row.value).digest();
-        const suppliedHash = crypto.createHash('sha256').update(typeof supplied === 'string' ? supplied : '').digest();
-        if (typeof supplied !== 'string' || !supplied || !crypto.timingSafeEqual(expectedHash, suppliedHash)) {
-            throw new Errors.PermissionError('密码错误');
-        }
+        await checkAdminPassword(body?.password);
 
         const parsed = parseAddress(body?.address);
         const address = await Hex40Map.findOne({
