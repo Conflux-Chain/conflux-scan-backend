@@ -76,12 +76,6 @@ export class CompilerVersion extends Model<ICompilerVersion> implements ICompile
         return CompilerVersion.legacyMigrationPromise;
     }
 
-    // Call only after all processes reading or writing the legacy KV maps have retired.
-    static async deleteLegacyKV() {
-        await CompilerVersion.migrateLegacy();
-        await KV.destroy({where: {key: {[Op.in]: LEGACY_KEYS}}});
-    }
-
     private static async migrateLegacyInternal() {
         if (!CompilerVersion.sequelize) {
             return;
@@ -99,26 +93,28 @@ export class CompilerVersion extends Model<ICompilerVersion> implements ICompile
                 transaction,
                 lock: transaction.LOCK.UPDATE,
             });
-            if (migrated) return;
-
-            const legacy = new Map<string, string>(legacyRows.map(row => [row.key, row.value]));
-            const [solc, vulnerabilities, vyper, fe] = LEGACY_KEYS.map(key => {
-                const value = legacy.get(key);
-                return value ? JSON.parse(value) : {};
-            });
-            if (Object.keys(solc).length) {
-                await CompilerVersion.replace('solc', Object.entries(solc).map(([version, description]) => ({version, description: String(description)})), transaction);
+            if (!migrated) {
+                const legacy = new Map<string, string>(legacyRows.map(row => [row.key, row.value]));
+                const [solc, vulnerabilities, vyper, fe] = LEGACY_KEYS.map(key => {
+                    const value = legacy.get(key);
+                    return value ? JSON.parse(value) : {};
+                });
+                if (Object.keys(solc).length) {
+                    await CompilerVersion.replace('solc', Object.entries(solc).map(([version, description]) => ({version, description: String(description)})), transaction);
+                }
+                if (Object.keys(vulnerabilities).length) {
+                    await CompilerVersion.replace('solc-vulnerability', Object.entries(vulnerabilities).map(([version, count]) => ({version, vulnerabilityCount: Number(count)})), transaction);
+                }
+                if (Object.keys(vyper).length) {
+                    await CompilerVersion.replace('vyper', Object.entries(vyper).map(([version, value]: [string, any]) => ({version, description: value.desc, commit: value.commit})), transaction);
+                }
+                if (Object.keys(fe).length) {
+                    await CompilerVersion.replace('fe', Object.entries(fe).map(([version, value]: [string, any]) => ({version, description: value.desc, commit: value.commit})), transaction);
+                }
+                await KV.upsert({key: LEGACY_MIGRATED_KEY, value: '1'}, {transaction});
             }
-            if (Object.keys(vulnerabilities).length) {
-                await CompilerVersion.replace('solc-vulnerability', Object.entries(vulnerabilities).map(([version, count]) => ({version, vulnerabilityCount: Number(count)})), transaction);
-            }
-            if (Object.keys(vyper).length) {
-                await CompilerVersion.replace('vyper', Object.entries(vyper).map(([version, value]: [string, any]) => ({version, description: value.desc, commit: value.commit})), transaction);
-            }
-            if (Object.keys(fe).length) {
-                await CompilerVersion.replace('fe', Object.entries(fe).map(([version, value]: [string, any]) => ({version, description: value.desc, commit: value.commit})), transaction);
-            }
-            await KV.upsert({key: LEGACY_MIGRATED_KEY, value: '1'}, {transaction});
+            // Leave the marker so later starts cannot import stale values again.
+            await KV.destroy({where: {key: {[Op.in]: LEGACY_KEYS}}, transaction});
         });
     }
 }
