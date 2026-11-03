@@ -24,21 +24,32 @@
     dl { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: .7rem 1rem; margin: 1rem 0 0; }
     dt { font-weight: 600; } dd { margin: 0; overflow-wrap: anywhere; } #token { white-space: pre-wrap; }
     code { font-size: .92rem; }
+    #gate { display: block; max-width: 560px; }
     [hidden] { display: none !important; }
     @media (max-width: 650px) { .layout { grid-template-columns: 1fr; margin: 1rem auto; } nav, main { padding: 1rem; } }
   </style>
 </head>
 <body>
   <header>Scan 管理工具</header>
-  <div class="layout">
+  <section id="gate" class="layout">
+    <main>
+      <h1>管理入口</h1>
+      <p>请输入管理密码。</p>
+      <form id="gate-form">
+        <label for="gate-input">管理密码</label>
+        <input id="gate-input" type="password" autocomplete="off" required>
+        <button id="gate-submit" type="submit">进入</button>
+      </form>
+      <div id="gate-message" role="status" aria-live="polite"></div>
+    </main>
+  </section>
+  <div class="layout" id="app" hidden>
     <nav aria-label="功能导航"><a href="#address">地址查询</a></nav>
     <main id="address">
       <h1>地址查询</h1>
       <p>输入 hex ID、0x 地址或 Conflux base32 地址，查询 hex40 和 token 表。</p>
       <form id="lookup-form">
-        <label for="password">管理密码</label>
-        <input id="password" type="password" autocomplete="off" required>
-        <button type="button" class="secondary" id="forget">清除密码</button>
+        <button type="button" class="secondary" id="forget">退出</button>
         <label for="address-input">地址或 hex ID</label>
         <input id="address-input" type="text" autocomplete="off" spellcheck="false" required placeholder="例如 123、0x... 或 cfx:...">
         <button id="submit" type="submit">查询</button>
@@ -58,16 +69,45 @@
     (() => {
       'use strict';
       const $ = id => document.getElementById(id);
-      const password = $('password');
+      let password = '';
+      const gate = $('gate');
+      const app = $('app');
+      const gateInput = $('gate-input');
+      const gateMessage = $('gate-message');
+      $('gate-form').addEventListener('submit', async event => {
+        event.preventDefault();
+        gateMessage.textContent = '';
+        $('gate-submit').disabled = true;
+        try {
+          const response = await fetch('/stat/admin/auth', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({password: gateInput.value}),
+            cache: 'no-store',
+          });
+          const data = responseData(response, await response.json());
+          if (data?.authenticated !== true) throw new Error('验证响应无效');
+          password = gateInput.value;
+          gateInput.value = '';
+          gate.hidden = true;
+          app.hidden = false;
+          $('address-input').focus();
+        } catch (error) {
+          gateMessage.textContent = error.message || '验证失败';
+        } finally {
+          $('gate-submit').disabled = false;
+        }
+      });
       const message = $('message');
       const result = $('result');
-      password.value = sessionStorage.getItem('scanAdminPwd') || '';
 
       $('forget').addEventListener('click', () => {
-        password.value = '';
-        sessionStorage.removeItem('scanAdminPwd');
+        password = '';
         result.hidden = true;
-        password.focus();
+        app.hidden = true;
+        gate.hidden = false;
+        gateInput.value = '';
+        gateInput.focus();
       });
 
       function responseData(response, body) {
@@ -80,18 +120,6 @@
         return data;
       }
 
-      fetch('/stat/admin/status', {cache: 'no-store'})
-        .then(async response => ({response, body: await response.json()}))
-        .then(({response, body}) => {
-          const data = responseData(response, body);
-          if (typeof data?.enabled !== 'boolean') throw new Error('状态响应无效');
-          if (data.enabled === false) {
-            message.textContent = '管理查询未启用。请先在 KV 表中设置 adminPwd。';
-            $('submit').disabled = true;
-          }
-        })
-        .catch(error => { message.textContent = error.message || '无法读取管理功能状态。'; });
-
       $('lookup-form').addEventListener('submit', async event => {
         event.preventDefault();
         result.hidden = true;
@@ -101,13 +129,12 @@
           const response = await fetch('/stat/admin/address', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({address: $('address-input').value.trim(), password: password.value}),
+            body: JSON.stringify({address: $('address-input').value.trim(), password}),
             cache: 'no-store',
           });
           const body = await response.json();
           const data = responseData(response, body);
           if (!data || !Object.prototype.hasOwnProperty.call(data, 'hexId')) throw new Error('查询响应无效');
-          sessionStorage.setItem('scanAdminPwd', password.value);
           $('hex').textContent = data.hex || '未找到';
           $('base32').textContent = data.base32 || '未找到';
           $('hex-id').textContent = data.hexId || '未找到';
