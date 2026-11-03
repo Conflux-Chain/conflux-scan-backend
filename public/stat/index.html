@@ -1,10 +1,116 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <title>public resources</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Scan 管理工具</title>
+  <style>
+    :root { color-scheme: light; font: 16px/1.5 system-ui, sans-serif; background: #f4f6fa; color: #172235; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    header { background: #172235; color: white; padding: 1rem max(1rem, calc((100vw - 1040px)/2)); font-weight: 700; }
+    .layout { max-width: 1040px; margin: 2rem auto; padding: 0 1rem; display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 1.5rem; }
+    nav, main { background: white; border: 1px solid #e1e5ed; border-radius: 12px; padding: 1.5rem; }
+    nav a { display: block; padding: .6rem .75rem; color: #174ea6; text-decoration: none; background: #eef4ff; border-radius: 6px; }
+    h1 { font-size: 1.4rem; margin: 0 0 .4rem; }
+    p { margin: .25rem 0 1.4rem; color: #526071; }
+    label { display: block; font-weight: 600; margin: 1rem 0 .35rem; }
+    input { width: 100%; padding: .7rem; border: 1px solid #aeb8c6; border-radius: 6px; font: inherit; }
+    button { margin-top: 1rem; padding: .65rem 1.1rem; border: 0; border-radius: 6px; background: #1557b0; color: white; font: inherit; cursor: pointer; }
+    button:disabled { opacity: .5; cursor: default; }
+    button.secondary { background: #e9edf4; color: #172235; margin-left: .5rem; }
+    #message { min-height: 1.5rem; margin: 1rem 0; color: #b42318; }
+    dl { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: .7rem 1rem; margin: 1rem 0 0; }
+    dt { font-weight: 600; } dd { margin: 0; overflow-wrap: anywhere; } #token { white-space: pre-wrap; }
+    code { font-size: .92rem; }
+    [hidden] { display: none !important; }
+    @media (max-width: 650px) { .layout { grid-template-columns: 1fr; margin: 1rem auto; } nav, main { padding: 1rem; } }
+  </style>
 </head>
 <body>
-Scan.Statistics
+  <header>Scan 管理工具</header>
+  <div class="layout">
+    <nav aria-label="功能导航"><a href="#address">地址查询</a></nav>
+    <main id="address">
+      <h1>地址查询</h1>
+      <p>输入 hex ID、0x 地址或 Conflux base32 地址，查询 hex40 和 token 表。</p>
+      <form id="lookup-form">
+        <label for="password">管理密码</label>
+        <input id="password" type="password" autocomplete="off" required>
+        <button type="button" class="secondary" id="forget">清除密码</button>
+        <label for="address-input">地址或 hex ID</label>
+        <input id="address-input" type="text" autocomplete="off" spellcheck="false" required placeholder="例如 123、0x... 或 cfx:...">
+        <button id="submit" type="submit">查询</button>
+      </form>
+      <div id="message" role="status" aria-live="polite"></div>
+      <section id="result" hidden aria-label="查询结果">
+        <dl>
+          <dt>Hex</dt><dd><code id="hex"></code></dd>
+          <dt>Base32</dt><dd><code id="base32"></code></dd>
+          <dt>Hex ID</dt><dd><code id="hex-id"></code></dd>
+          <dt>Token</dt><dd id="token"></dd>
+        </dl>
+      </section>
+    </main>
+  </div>
+  <script>
+    (() => {
+      'use strict';
+      const $ = id => document.getElementById(id);
+      const password = $('password');
+      const message = $('message');
+      const result = $('result');
+      password.value = sessionStorage.getItem('scanAdminPwd') || '';
+
+      $('forget').addEventListener('click', () => {
+        password.value = '';
+        sessionStorage.removeItem('scanAdminPwd');
+        result.hidden = true;
+        password.focus();
+      });
+
+      fetch('/stat/admin/status', {cache: 'no-store'})
+        .then(response => response.json())
+        .then(body => {
+          if (!body.data?.enabled && !body.result?.enabled) {
+            message.textContent = '管理查询未启用。请先在 KV 表中设置 adminPwd。';
+            $('submit').disabled = true;
+          }
+        })
+        .catch(() => { message.textContent = '无法读取管理功能状态。'; });
+
+      $('lookup-form').addEventListener('submit', async event => {
+        event.preventDefault();
+        result.hidden = true;
+        message.textContent = '';
+        $('submit').disabled = true;
+        try {
+          const response = await fetch('/stat/admin/address', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-Admin-Password': password.value},
+            body: JSON.stringify({address: $('address-input').value.trim()}),
+            cache: 'no-store',
+          });
+          const body = await response.json();
+          if (!response.ok || (body.code !== undefined && body.code !== 0) || (body.status !== undefined && body.status !== '1')) {
+            throw new Error(body.message || '查询失败');
+          }
+          sessionStorage.setItem('scanAdminPwd', password.value);
+          const data = body.data || body.result;
+          $('hex').textContent = data.hex || '未找到';
+          $('base32').textContent = data.base32 || '未找到';
+          $('hex-id').textContent = data.hexId || '未找到';
+          const token = data.token;
+          $('token').textContent = token ? JSON.stringify(token, null, 2) : '未找到';
+          result.hidden = false;
+        } catch (error) {
+          message.textContent = error.message || '查询失败';
+        } finally {
+          $('submit').disabled = false;
+        }
+      });
+    })();
+  </script>
 </body>
 </html>

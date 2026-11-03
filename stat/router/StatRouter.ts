@@ -40,6 +40,7 @@ import {AbiSignature, parseAbiStr, saveAbiSigs} from "../model/ContractInfo";
 import {AuthAction, getAuthActionInTx, listAuthAction} from "../model/EIP7702model";
 import {CONST} from "../service/common/constant";
 import { ContractQuery } from "../service/ContractQuery";
+import {registerAdminRoutes} from './AdminRouter';
 
 const superagent = require('superagent');
 const NodeCache = require( "node-cache" );
@@ -864,6 +865,7 @@ export function register(app:Koa, statApp: StatApp) {
     app.proxy = true
     loadRateConfig().then()
     router.use(checkRate)
+    registerAdminRoutes(router);
     addRoute(router, statApp);
     registerPosRouter(router, statApp)
 
