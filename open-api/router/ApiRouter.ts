@@ -4,6 +4,7 @@ import * as bodyParser from "koa-bodyparser";
 import {ApiServer} from '../ApiServer'
 import {StatApp} from "../../stat/StatApp";
 import {registerRouter as registerRouterESpace} from "./ESpaceApiRouter";
+import {registerCoreHardhatVerifyRouter} from "./CoreHardhatVerifyRouter";
 import {addSwagger, executionTime, handleException, setBody} from "./middleware";
 import {listAccountAssets, listAccountInfos} from "../service/OpenAccountService";
 import {abiDecode, abiDecodeRaw, listAccountTransaction} from "../service/OpenTxService";
@@ -178,6 +179,7 @@ export async function register(app: Koa, apiServer: ApiServer, port:string|numbe
     })
 
    if(!StatApp.isEVM){
+       registerCoreHardhatVerifyRouter(router);
        registerRouter(router);
    } else{
        registerRouterESpace(router);
