@@ -11,6 +11,7 @@ import {spawn} from 'child_process';
 import * as path from 'path';
 import {BACKWARD, FORWARD, CursorStore} from '../../tools/epoch-data-checker/CursorStore';
 import {ENABLED, isEnabled, leaseOwner, setEnabled, LAST_ERROR} from '../../tools/epoch-data-checker/Control';
+import {CursorStore} from '../../tools/epoch-data-checker/CursorStore';
 
 const ADMIN_PWD_KEY = 'adminPwd';
 const MAX_HEX_ID = BigInt('9223372036854775807');
@@ -109,6 +110,21 @@ export function registerAdminRoutes(router: Router<any, {}>, statApp?: StatApp) 
         await checkAdminPassword((ctx.request.body as any)?.password);
         await setEnabled(false);
         ctx.body = {stopped: true};
+    });
+    router.post('/admin/epoch-checker/resume', async ctx => {
+        await checkAdminPassword((ctx.request.body as any)?.password);
+        const cursors = new CursorStore();
+        await Promise.all([cursors.resume('forward'), cursors.resume('backward')]);
+        await setEnabled(true);
+        const entry = path.resolve(__dirname, '../../tools/epoch-data-checker/run.js');
+        const child = spawn(process.execPath, [entry, '--direction', 'both'], {detached: true, stdio: ['ignore', 'pipe', 'pipe']});
+        child.stdout?.on('data', chunk => process.stdout.write(`[epoch-checker] ${chunk}`));
+        child.stderr?.on('data', chunk => process.stderr.write(`[epoch-checker][error] ${chunk}`));
+        child.on('error', error => console.error('[epoch-checker] worker spawn failed', error));
+        child.on('exit', (code, signal) => console.log(`[epoch-checker] worker exited pid=${child.pid} code=${code} signal=${signal || ''}`));
+        console.log(`[epoch-checker] worker resumed pid=${child.pid}`);
+        child.unref();
+        ctx.body = {resumed: true};
     });
     router.post('/admin/epoch-checker/status', async ctx => {
         await checkAdminPassword((ctx.request.body as any)?.password);

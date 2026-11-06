@@ -62,8 +62,10 @@ async function run() {
     console.log(`[epoch-checker] latest finalized=${latest}`);
     await checker.initialize(latest);
     if (args.includes('--resume')) {
-        const resume = args[args.indexOf('--resume') + 1] as Direction;
-        if (resume === 'forward' || resume === 'backward') await (new CursorStore()).resume(resume);
+        const resume = args[args.indexOf('--resume') + 1] as Direction|'both';
+        const store = new CursorStore();
+        if (resume === 'forward' || resume === 'backward') await store.resume(resume);
+        if (resume === 'both') await Promise.all([store.resume('forward'), store.resume('backward')]);
     }
     const once = args.includes('--once');
     if (args.includes('--stop')) { await setEnabled(false); return; }

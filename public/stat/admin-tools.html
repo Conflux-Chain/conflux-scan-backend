@@ -71,6 +71,7 @@
         <h1>Epoch 数据检查</h1>
         <p>全局只允许一台机器运行。启动、停止和查看双向检查进度。</p>
         <button type="button" id="checker-start">启动</button>
+        <button type="button" class="secondary" id="checker-resume">恢复并继续</button>
         <button type="button" class="secondary" id="checker-stop">停止</button>
         <button type="button" class="secondary" id="checker-refresh">刷新</button>
         <dl><dt>状态</dt><dd id="checker-enabled">-</dd><dt>实例</dt><dd id="checker-owner">-</dd><dt>最新 finalized</dt><dd id="checker-latest">-</dd><dt>正向游标</dt><dd id="checker-forward">-</dd><dt>正向区块时间</dt><dd id="checker-forward-time">-</dd><dt>反向游标</dt><dd id="checker-backward">-</dd><dt>反向区块时间</dt><dd id="checker-backward-time">-</dd><dt>暂停</dt><dd id="checker-paused">-</dd></dl>
@@ -179,6 +180,7 @@
         } catch (error) { message.textContent = error.message || '获取状态失败'; }
       }
       $('checker-start').addEventListener('click', async () => { await checkerAction('start'); await refreshChecker(); });
+      $('checker-resume').addEventListener('click', async () => { await checkerAction('start'); await fetch('/stat/admin/epoch-checker/resume', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password}), cache:'no-store'}); await refreshChecker(); });
       $('checker-stop').addEventListener('click', async () => { await checkerAction('stop'); await refreshChecker(); });
       $('checker-refresh').addEventListener('click', refreshChecker);
       function formatTime(value) { return value ? new Date(value).toLocaleString() : '未同步'; }
