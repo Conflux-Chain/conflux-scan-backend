@@ -42,9 +42,12 @@ async function run() {
     Erc721Transfer.register(sequelize);
     Erc1155Transfer.register(sequelize);
     AddressTransfer.register(sequelize);
+    AddressTransfer.removeAttribute('id');
     EpochAddressIds.register(sequelize);
+    EpochAddressIds.removeAttribute('id');
     NftTransfer.register(sequelize);
     AddressNftTransfer.register(sequelize);
+    AddressNftTransfer.removeAttribute('id');
     ContractDestroy.register(sequelize);
     NameTag.register(sequelize);
     CensorItem.register(sequelize);
