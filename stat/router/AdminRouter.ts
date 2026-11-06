@@ -94,7 +94,14 @@ export function registerAdminRoutes(router: Router<any, {}>, statApp?: StatApp) 
         await checkAdminPassword((ctx.request.body as any)?.password);
         await setEnabled(true);
         const entry = path.resolve(__dirname, '../../tools/epoch-data-checker/run.js');
-        const child = spawn(process.execPath, [entry], {detached: true, stdio: 'ignore'});
+        // Keep the checker detached from the request, but forward its output to
+        // the API process so container logs show startup, lease and cursor errors.
+        const child = spawn(process.execPath, [entry], {detached: true, stdio: ['ignore', 'pipe', 'pipe']});
+        child.stdout?.on('data', chunk => process.stdout.write(`[epoch-checker] ${chunk}`));
+        child.stderr?.on('data', chunk => process.stderr.write(`[epoch-checker][error] ${chunk}`));
+        child.on('error', error => console.error('[epoch-checker] worker spawn failed', error));
+        child.on('exit', (code, signal) => console.log(`[epoch-checker] worker exited pid=${child.pid} code=${code} signal=${signal || ''}`));
+        console.log(`[epoch-checker] worker spawned pid=${child.pid}`);
         child.unref();
         ctx.body = {started: true};
     });
