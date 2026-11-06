@@ -23,7 +23,7 @@ export function redirectLog({subPath='', mainPath = ''} = {}) {
     let entryName = parseAppEntryName(entry);
     // console.log('entry is',entry,entryName)
 
-    const dir = entry.startsWith('/Users') ? './log' : `/${entry.split('/')[1]}/log`
+    const dir = process.env.SCAN_LOG_DIR || (entry.startsWith('/Users') ? './log' : `/${entry.split('/')[1]}/log`)
     const dateStr = `${new Date().toISOString().substring(0, 10)}`
     const logFilePath = `${dir}/${mainPath || entryName}/${dateStr}${subPath}.log`
     // console.log(`log to ${logFilePath}`)
