@@ -32,6 +32,7 @@ async function run() {
     // runs production schema migration helpers, which is deliberately avoided.
     KV.register(sequelize);
     Epoch.register(sequelize);
+    Epoch.removeAttribute('id');
     Hex40Map.register(sequelize);
     FullBlock.register(sequelize);
     FullBlock.removeAttribute('id');
@@ -52,6 +53,7 @@ async function run() {
     NameTag.register(sequelize);
     CensorItem.register(sequelize);
     VoteParams.register(sequelize);
+    VoteParams.removeAttribute('id');
     const checker = new EpochDataChecker(cfx, config);
     const latest = await checker.latestFinalized();
     console.log(`[epoch-checker] latest finalized=${latest}`);
