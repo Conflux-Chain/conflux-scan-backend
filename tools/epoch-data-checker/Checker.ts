@@ -59,7 +59,7 @@ export class EpochDataChecker {
             if (!ready || !block) return this.fail(direction, latest, 'latest finalized epoch is not fully in database');
         }
 
-        const differences = await this.checkEpoch(cursor);
+        const differences = await this.checkEpoch(cursor, latest);
         if (differences.length) return this.fail(direction, cursor, JSON.stringify(differences.slice(0, 20)));
         const next = direction === 'forward' ? cursor + 1 : cursor - 1;
         await this.cursors.set(direction, next);
@@ -73,7 +73,7 @@ export class EpochDataChecker {
         console.error(`epoch data checker ${direction} paused at ${epoch}: ${reason}`);
     }
 
-    async checkEpoch(epoch: number): Promise<Difference[]> {
+    async checkEpoch(epoch: number, latestFinalized?: number): Promise<Difference[]> {
         const differences: Difference[] = [];
         const [rpcPivot, dbEpoch]: [any, any] = await Promise.all([
             this.cfx.getBlockByEpochNumber(epoch),
@@ -93,7 +93,7 @@ export class EpochDataChecker {
             this.checkBlocks(epoch, rpcPivot),
             this.checkCfxTransfers(epoch, rpcPivot),
             this.checkTokenTransfers(epoch, rpcPivot),
-            this.checkDerivedData(epoch),
+            this.checkDerivedData(epoch, latestFinalized),
         ]);
         return differences.concat(blocks, cfxTransfers, tokenTransfers, derived);
     }
@@ -181,7 +181,7 @@ export class EpochDataChecker {
     /** Validate all secondary tables written by EpochSync against the primary
      * rows for this epoch. This is deliberately relational and read-only: it
      * detects partial writes without replaying metadata side effects. */
-    private async checkDerivedData(epoch: number): Promise<Difference[]> {
+    private async checkDerivedData(epoch: number, latestFinalized?: number): Promise<Difference[]> {
         const out: Difference[] = [];
         const all: any[] = await Promise.all(([
             FullTransaction.findAll({where: {epoch}, raw: true}),
@@ -207,7 +207,11 @@ export class EpochDataChecker {
         if (addr.length !== expectedAddr) out.push({kind: 'count', key: `address_transfer:${epoch}`, expected: expectedAddr, actual: addr.length});
         const ids = new Set<number>();
         addr.forEach((row: any) => ids.add(Number(row.addressId)));
-        if (addrIds.length !== ids.size) out.push({kind: 'count', key: `epoch_address_ids:${epoch}`, expected: ids.size, actual: addrIds.length});
+        // EpochSync evicts this helper table below latest_finalized - 1000.
+        // Do not report normal retention cleanup as historical data loss.
+        if (latestFinalized === undefined || epoch >= latestFinalized - 1000) {
+            if (addrIds.length !== ids.size) out.push({kind: 'count', key: `epoch_address_ids:${epoch}`, expected: ids.size, actual: addrIds.length});
+        }
         const expectedNft = t721.length + t1155.length;
         if (nft.length !== expectedNft) out.push({kind: 'count', key: `nft_transfer:${epoch}`, expected: expectedNft, actual: nft.length});
         if (addrNft.length < expectedNft || addrNft.length > expectedNft * 2) out.push({kind: 'count', key: `address_nft_transfer:${epoch}`, expected: `${expectedNft}..${expectedNft * 2}`, actual: addrNft.length});
