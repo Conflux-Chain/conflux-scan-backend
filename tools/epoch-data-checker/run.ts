@@ -84,6 +84,12 @@ async function run() {
                 console.error(`[epoch-checker] ${item} failed`, error);
             }
         }));
+        const pausedStore = new CursorStore();
+        const paused = await Promise.all(directions.map(item => pausedStore.paused(item)));
+        if (paused.every(Boolean)) {
+            console.log(`[epoch-checker] all requested directions are paused; exiting`);
+            break;
+        }
         if (once) break;
         await new Promise(resolve => setTimeout(resolve, interval));
     } while (true);
