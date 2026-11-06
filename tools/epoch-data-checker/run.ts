@@ -19,6 +19,7 @@ import {loadCheckerConfig} from './CheckerConfig';
 import {EpochDataChecker, Direction} from './Checker';
 import {CursorStore} from './CursorStore';
 import {acquireLease, isEnabled, releaseLease, renewLease, setEnabled} from './Control';
+import {StatApp} from '../../stat/StatApp';
 
 async function run() {
     console.log(`[epoch-checker] starting pid=${process.pid} host=${require('os').hostname()}`);
@@ -27,6 +28,8 @@ async function run() {
     const direction = (args[args.indexOf('--direction') + 1] || 'both') as 'both'|Direction;
     const interval = Number(args[args.indexOf('--interval') + 1] || 10) * 1000;
     const cfx = await initCfxSdk(config.conflux);
+    StatApp.networkId = cfx.networkId;
+    console.log(`[epoch-checker] rpc networkId=${cfx.networkId}`);
     const sequelize = createDB({...config.database, readonly: true});
     // Register only the read models needed by this tool.  initModel() also
     // runs production schema migration helpers, which is deliberately avoided.

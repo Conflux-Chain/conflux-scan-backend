@@ -8,6 +8,8 @@ export interface Difference {
 export function normalize(value: any): any {
     if (value instanceof Date) return value.getTime();
     if (typeof value === 'bigint') return value.toString();
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'string' && /^0x[0-9a-f]{64}$/i.test(value)) return value.slice(2).toLowerCase();
     if (value && typeof value.toJSON === 'function' && value.constructor !== Object) {
         return normalize(value.toJSON());
     }
@@ -37,8 +39,10 @@ export function compareRows(expected: any[], actual: any[], keyOf: (row: any) =>
         const other = a.get(key);
         if (!other) return;
         fields.forEach(field => {
-            const left = normalize(row[field]);
-            const right = normalize(other[field]);
+            const rawLeft = row[field];
+            const rawRight = other[field];
+            const left = typeof rawLeft === 'boolean' && (rawRight === 0 || rawRight === 1) ? rawLeft : normalize(rawLeft);
+            const right = typeof rawRight === 'boolean' && (rawLeft === 0 || rawLeft === 1) ? Boolean(rawRight) : normalize(rawRight);
             if (JSON.stringify(left) !== JSON.stringify(right)) {
                 differences.push({kind: 'field', key: `${key}.${field}`, expected: left, actual: right});
             }
