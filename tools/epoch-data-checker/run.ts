@@ -78,6 +78,17 @@ async function run() {
     await setEnabled(true);
     if (!await acquireLease()) { console.log('[epoch-checker] another instance owns the lease; exiting'); return; }
     console.log('[epoch-checker] lease acquired');
+    let shuttingDown = false;
+    const shutdown = async (signal: string) => {
+        if (shuttingDown) return;
+        shuttingDown = true;
+        console.log(`[epoch-checker] received ${signal}; releasing lease`);
+        await releaseLease().catch(error => console.error('[epoch-checker] release lease failed', error));
+        await KV.sequelize.close().catch(() => undefined);
+        process.exit(0);
+    };
+    process.once('SIGINT', () => { shutdown('SIGINT').catch(error => { console.error(error); process.exit(1); }); });
+    process.once('SIGTERM', () => { shutdown('SIGTERM').catch(error => { console.error(error); process.exit(1); }); });
     do {
         if (!await isEnabled()) { console.log('[epoch-checker] disabled by admin; stopping'); break; }
         if (!await renewLease()) { console.log('[epoch-checker] lease lost; stopping'); break; }
@@ -100,6 +111,8 @@ async function run() {
         await new Promise(resolve => setTimeout(resolve, interval));
     } while (true);
     await releaseLease();
+    process.removeAllListeners('SIGINT');
+    process.removeAllListeners('SIGTERM');
     console.log('[epoch-checker] stopped');
     await KV.sequelize.close();
 }
