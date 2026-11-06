@@ -9,9 +9,8 @@ import {StatApp} from '../StatApp';
 import {Errors} from '../service/common/LogicError';
 import {spawn} from 'child_process';
 import * as path from 'path';
-import {BACKWARD, FORWARD, CursorStore} from '../../tools/epoch-data-checker/CursorStore';
-import {ENABLED, isEnabled, leaseOwner, setEnabled, LAST_ERROR} from '../../tools/epoch-data-checker/Control';
 import {CursorStore} from '../../tools/epoch-data-checker/CursorStore';
+import {ENABLED, isEnabled, leaseOwner, setEnabled, LAST_ERROR} from '../../tools/epoch-data-checker/Control';
 
 const ADMIN_PWD_KEY = 'adminPwd';
 const MAX_HEX_ID = BigInt('9223372036854775807');
