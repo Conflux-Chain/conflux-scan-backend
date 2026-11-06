@@ -20,6 +20,8 @@ import {ContractDestroy} from '../../stat/model/TraceCreateContract';
 import {NameTag} from '../../stat/model/NameTag';
 import {CensorItem} from '../../stat/model/CensorItem';
 import {VoteParams} from '../../stat/model/Epoch';
+import {LAST_ERROR} from './Control';
+import {KV} from '../../stat/model/KV';
 
 export type Direction = 'forward'|'backward';
 
@@ -41,7 +43,7 @@ export class EpochDataChecker {
     }
 
     async run(direction: Direction): Promise<void> {
-        if (await this.cursors.paused(direction)) return;
+        if (await this.cursors.paused(direction)) { console.log(`[epoch-checker] ${direction} paused`); return; }
         const latest = await this.latestFinalized();
         const cursor = await this.cursors.get(direction);
         if (cursor === null) return;
@@ -58,11 +60,14 @@ export class EpochDataChecker {
 
         const differences = await this.checkEpoch(cursor);
         if (differences.length) return this.fail(direction, cursor, JSON.stringify(differences.slice(0, 20)));
-        await this.cursors.set(direction, direction === 'forward' ? cursor + 1 : cursor - 1);
+        const next = direction === 'forward' ? cursor + 1 : cursor - 1;
+        await this.cursors.set(direction, next);
+        console.log(`[epoch-checker] ${direction} epoch=${cursor} matched; cursor=${next}`);
     }
 
     private async fail(direction: Direction, epoch: number, reason: string) {
         await this.cursors.pause(direction);
+        await KV.upsert({key: LAST_ERROR, value: JSON.stringify({direction, epoch, reason, at: new Date().toISOString()})});
         await dingMsg(`[${this.config.serverTag}] epoch data checker ${direction} paused at epoch ${epoch}: ${reason}`, this.config.dingTalkToken);
         console.error(`epoch data checker ${direction} paused at ${epoch}: ${reason}`);
     }

@@ -4,6 +4,7 @@ import {KV} from '../../stat/model/KV';
 
 export const ENABLED = 'DATA_CHECK_ENABLED';
 export const LEASE = 'DATA_CHECK_LEASE';
+export const LAST_ERROR = 'DATA_CHECK_LAST_ERROR';
 const owner = `${os.hostname()}:${process.pid}`;
 const leaseMs = 30_000;
 

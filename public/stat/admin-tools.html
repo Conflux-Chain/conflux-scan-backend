@@ -26,6 +26,8 @@
     code { font-size: .92rem; }
     #gate { display: block; max-width: 560px; }
     [hidden] { display: none !important; }
+    #address.epoch-mode > * { display: none; }
+    #address.epoch-mode #epoch-checker { display: block; }
     @media (max-width: 650px) { .layout { grid-template-columns: 1fr; margin: 1rem auto; } nav, main { padding: 1rem; } }
   </style>
 </head>
@@ -36,8 +38,10 @@
       <h1>管理入口</h1>
       <p>请输入管理密码。</p>
       <form id="gate-form">
+        <label for="gate-user">用户名</label>
+        <input id="gate-user" name="username" type="text" autocomplete="username" value="admin" required>
         <label for="gate-input">管理密码</label>
-        <input id="gate-input" type="password" autocomplete="off" required>
+        <input id="gate-input" name="password" type="password" autocomplete="current-password" required>
         <button id="gate-submit" type="submit">进入</button>
       </form>
       <div id="gate-message" role="status" aria-live="polite"></div>
@@ -45,7 +49,7 @@
   </section>
   <div class="layout" id="app" hidden>
     <nav aria-label="功能导航"><a href="#address">地址查询</a><a href="#epoch-checker">数据检查</a></nav>
-    <main id="address">
+    <main id="address" class="page">
       <h1>地址查询</h1>
       <p>输入 hex ID、0x 地址或 Conflux base32 地址，查询 hex40 和 token 表。</p>
       <form id="lookup-form">
@@ -63,13 +67,13 @@
           <dt>Token</dt><dd id="token"></dd>
         </dl>
       </section>
-      <section id="epoch-checker">
+      <section id="epoch-checker" class="page" hidden>
         <h1>Epoch 数据检查</h1>
         <p>全局只允许一台机器运行。启动、停止和查看双向检查进度。</p>
         <button type="button" id="checker-start">启动</button>
         <button type="button" class="secondary" id="checker-stop">停止</button>
         <button type="button" class="secondary" id="checker-refresh">刷新</button>
-        <dl><dt>状态</dt><dd id="checker-enabled">-</dd><dt>实例</dt><dd id="checker-owner">-</dd><dt>正向游标</dt><dd id="checker-forward">-</dd><dt>反向游标</dt><dd id="checker-backward">-</dd><dt>暂停</dt><dd id="checker-paused">-</dd></dl>
+        <dl><dt>状态</dt><dd id="checker-enabled">-</dd><dt>实例</dt><dd id="checker-owner">-</dd><dt>最新 finalized</dt><dd id="checker-latest">-</dd><dt>正向游标</dt><dd id="checker-forward">-</dd><dt>正向区块时间</dt><dd id="checker-forward-time">-</dd><dt>反向游标</dt><dd id="checker-backward">-</dd><dt>反向区块时间</dt><dd id="checker-backward-time">-</dd><dt>暂停</dt><dd id="checker-paused">-</dd></dl>
       </section>
     </main>
   </div>
@@ -163,15 +167,27 @@
         try {
           const data = await checkerAction('status');
           $('checker-enabled').textContent = data.enabled ? '运行中' : '已停止';
-          $('checker-owner').textContent = data.owner || '-';
+          let owner = data.owner || '';
+          try { owner = owner ? JSON.parse(owner).owner + '（租约至 ' + new Date(JSON.parse(owner).expiresAt).toLocaleString() + '）' : '无'; } catch (_) { owner = owner || '无'; }
+          $('checker-owner').textContent = owner;
+          $('checker-latest').textContent = (data.latestFinalized == null ? '-' : data.latestFinalized) + '（' + formatTime(data.latestFinalizedTime) + '）';
           $('checker-forward').textContent = data.forward == null ? '-' : data.forward;
+          $('checker-forward-time').textContent = formatTime(data.forwardTime);
           $('checker-backward').textContent = data.backward == null ? '-' : data.backward;
+          $('checker-backward-time').textContent = formatTime(data.backwardTime);
           $('checker-paused').textContent = (data.forwardPaused ? '正向 ' : '') + (data.backwardPaused ? '反向' : '') || '否';
         } catch (error) { message.textContent = error.message || '获取状态失败'; }
       }
       $('checker-start').addEventListener('click', async () => { await checkerAction('start'); await refreshChecker(); });
       $('checker-stop').addEventListener('click', async () => { await checkerAction('stop'); await refreshChecker(); });
       $('checker-refresh').addEventListener('click', refreshChecker);
+      function formatTime(value) { return value ? new Date(value).toLocaleString() : '未同步'; }
+      document.querySelectorAll('nav a').forEach(link => link.addEventListener('click', event => {
+        event.preventDefault();
+        if (link.hash === '#epoch-checker') { $('address').classList.add('epoch-mode'); $('epoch-checker').hidden = false; }
+        else { $('address').classList.remove('epoch-mode'); $('epoch-checker').hidden = true; }
+        if (link.hash === '#epoch-checker') refreshChecker();
+      }));
     })();
   </script>
 </body>

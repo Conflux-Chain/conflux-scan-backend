@@ -865,7 +865,7 @@ export function register(app:Koa, statApp: StatApp) {
     app.proxy = true
     loadRateConfig().then()
     router.use(checkRate)
-    registerAdminRoutes(router);
+    registerAdminRoutes(router, statApp);
     addRoute(router, statApp);
     registerPosRouter(router, statApp)
 

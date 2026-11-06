@@ -21,6 +21,7 @@ import {CursorStore} from './CursorStore';
 import {acquireLease, isEnabled, releaseLease, renewLease, setEnabled} from './Control';
 
 async function run() {
+    console.log(`[epoch-checker] starting pid=${process.pid} host=${require('os').hostname()}`);
     const config = loadCheckerConfig();
     const args = process.argv.slice(2);
     const direction = (args[args.indexOf('--direction') + 1] || 'both') as 'both'|Direction;
@@ -48,6 +49,7 @@ async function run() {
     VoteParams.register(sequelize);
     const checker = new EpochDataChecker(cfx, config);
     const latest = await checker.latestFinalized();
+    console.log(`[epoch-checker] latest finalized=${latest}`);
     await checker.initialize(latest);
     if (args.includes('--resume')) {
         const resume = args[args.indexOf('--resume') + 1] as Direction;
@@ -56,15 +58,19 @@ async function run() {
     const once = args.includes('--once');
     if (args.includes('--stop')) { await setEnabled(false); return; }
     await setEnabled(true);
-    if (!await acquireLease()) { console.log('epoch data checker is already running on another machine'); return; }
+    if (!await acquireLease()) { console.log('[epoch-checker] another instance owns the lease; exiting'); return; }
+    console.log('[epoch-checker] lease acquired');
     do {
-        if (!await isEnabled() || !await renewLease()) break;
+        if (!await isEnabled()) { console.log('[epoch-checker] disabled by admin; stopping'); break; }
+        if (!await renewLease()) { console.log('[epoch-checker] lease lost; stopping'); break; }
         const directions: Direction[] = direction === 'both' ? ['forward', 'backward'] : [direction];
+        console.log(`[epoch-checker] checking ${directions.join(',')}`);
         await Promise.all(directions.map(item => checker.run(item)));
         if (once) break;
         await new Promise(resolve => setTimeout(resolve, interval));
     } while (true);
     await releaseLease();
+    console.log('[epoch-checker] stopped');
     await KV.sequelize.close();
 }
 

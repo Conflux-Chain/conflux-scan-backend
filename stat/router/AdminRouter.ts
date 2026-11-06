@@ -3,13 +3,14 @@ import * as Router from 'koa-router';
 import {format} from 'js-conflux-sdk';
 import {Hex40Map} from '../model/HexMap';
 import {KV} from '../model/KV';
+import {Epoch} from '../model/Epoch';
 import {Token} from '../model/Token';
 import {StatApp} from '../StatApp';
 import {Errors} from '../service/common/LogicError';
 import {spawn} from 'child_process';
 import * as path from 'path';
 import {BACKWARD, FORWARD, CursorStore} from '../../tools/epoch-data-checker/CursorStore';
-import {ENABLED, isEnabled, leaseOwner, setEnabled} from '../../tools/epoch-data-checker/Control';
+import {ENABLED, isEnabled, leaseOwner, setEnabled, LAST_ERROR} from '../../tools/epoch-data-checker/Control';
 
 const ADMIN_PWD_KEY = 'adminPwd';
 const MAX_HEX_ID = BigInt('9223372036854775807');
@@ -52,7 +53,7 @@ async function checkAdminPassword(password: unknown): Promise<void> {
     }
 }
 
-export function registerAdminRoutes(router: Router<any, {}>) {
+export function registerAdminRoutes(router: Router<any, {}>, statApp?: StatApp) {
     router.get('/admin/status', async ctx => {
         ctx.set('Cache-Control', 'no-store');
         const row = await KV.findOne({where: {key: ADMIN_PWD_KEY}, attributes: ['value']});
@@ -105,8 +106,20 @@ export function registerAdminRoutes(router: Router<any, {}>) {
     router.post('/admin/epoch-checker/status', async ctx => {
         await checkAdminPassword((ctx.request.body as any)?.password);
         const cursors = new CursorStore();
-        ctx.body = {enabled: await isEnabled(), owner: await leaseOwner(),
+        const latestFinalized = statApp?.cfx ? Number(await statApp.cfx.getEpochNumber('latest_finalized')) : null;
+        const latestRow: any = latestFinalized == null ? null : await Epoch.findOne({where: {epoch: latestFinalized}, raw: true});
+        const cursorData: any = {};
+        for (const dir of ['forward', 'backward'] as any[]) {
+            const ep = await cursors.get(dir);
+            const row: any = ep == null ? null : await Epoch.findOne({where: {epoch: ep}, raw: true});
+            cursorData[dir] = ep;
+            cursorData[`${dir}Time`] = row?.timestamp || null;
+        }
+        ctx.body = {enabled: await isEnabled(), owner: await leaseOwner(), latestFinalized,
+            latestFinalizedTime: latestRow?.timestamp || null,
             forward: await cursors.get('forward'), backward: await cursors.get('backward'),
+            forwardTime: cursorData.forwardTime, backwardTime: cursorData.backwardTime,
+            lastError: await KV.getString(LAST_ERROR, ''),
             forwardPaused: await cursors.paused('forward'), backwardPaused: await cursors.paused('backward')};
     });
 }
