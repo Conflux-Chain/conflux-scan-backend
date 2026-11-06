@@ -11,6 +11,7 @@ import {Erc1155Transfer} from '../../stat/model/Erc1155Transfer';
 import {loadCheckerConfig} from './CheckerConfig';
 import {EpochDataChecker, Direction} from './Checker';
 import {CursorStore} from './CursorStore';
+import {acquireLease, isEnabled, releaseLease, renewLease, setEnabled} from './Control';
 
 async function run() {
     const config = loadCheckerConfig();
@@ -38,12 +39,17 @@ async function run() {
         if (resume === 'forward' || resume === 'backward') await (new CursorStore()).resume(resume);
     }
     const once = args.includes('--once');
+    if (args.includes('--stop')) { await setEnabled(false); return; }
+    await setEnabled(true);
+    if (!await acquireLease()) { console.log('epoch data checker is already running on another machine'); return; }
     do {
+        if (!await isEnabled() || !await renewLease()) break;
         const directions: Direction[] = direction === 'both' ? ['forward', 'backward'] : [direction];
         await Promise.all(directions.map(item => checker.run(item)));
         if (once) break;
         await new Promise(resolve => setTimeout(resolve, interval));
     } while (true);
+    await releaseLease();
     await KV.sequelize.close();
 }
 

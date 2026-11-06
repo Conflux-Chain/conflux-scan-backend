@@ -44,7 +44,7 @@
     </main>
   </section>
   <div class="layout" id="app" hidden>
-    <nav aria-label="功能导航"><a href="#address">地址查询</a></nav>
+    <nav aria-label="功能导航"><a href="#address">地址查询</a><a href="#epoch-checker">数据检查</a></nav>
     <main id="address">
       <h1>地址查询</h1>
       <p>输入 hex ID、0x 地址或 Conflux base32 地址，查询 hex40 和 token 表。</p>
@@ -62,6 +62,14 @@
           <dt>Hex ID</dt><dd><code id="hex-id"></code></dd>
           <dt>Token</dt><dd id="token"></dd>
         </dl>
+      </section>
+      <section id="epoch-checker">
+        <h1>Epoch 数据检查</h1>
+        <p>全局只允许一台机器运行。启动、停止和查看双向检查进度。</p>
+        <button type="button" id="checker-start">启动</button>
+        <button type="button" class="secondary" id="checker-stop">停止</button>
+        <button type="button" class="secondary" id="checker-refresh">刷新</button>
+        <dl><dt>状态</dt><dd id="checker-enabled">-</dd><dt>实例</dt><dd id="checker-owner">-</dd><dt>正向游标</dt><dd id="checker-forward">-</dd><dt>反向游标</dt><dd id="checker-backward">-</dd><dt>暂停</dt><dd id="checker-paused">-</dd></dl>
       </section>
     </main>
   </div>
@@ -147,6 +155,23 @@
           $('submit').disabled = false;
         }
       });
+      async function checkerAction(action) {
+        const response = await fetch('/stat/admin/epoch-checker/' + action, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password}), cache:'no-store'});
+        return responseData(response, await response.json());
+      }
+      async function refreshChecker() {
+        try {
+          const data = await checkerAction('status');
+          $('checker-enabled').textContent = data.enabled ? '运行中' : '已停止';
+          $('checker-owner').textContent = data.owner || '-';
+          $('checker-forward').textContent = data.forward == null ? '-' : data.forward;
+          $('checker-backward').textContent = data.backward == null ? '-' : data.backward;
+          $('checker-paused').textContent = (data.forwardPaused ? '正向 ' : '') + (data.backwardPaused ? '反向' : '') || '否';
+        } catch (error) { message.textContent = error.message || '获取状态失败'; }
+      }
+      $('checker-start').addEventListener('click', async () => { await checkerAction('start'); await refreshChecker(); });
+      $('checker-stop').addEventListener('click', async () => { await checkerAction('stop'); await refreshChecker(); });
+      $('checker-refresh').addEventListener('click', refreshChecker);
     })();
   </script>
 </body>

@@ -6,6 +6,10 @@ import {KV} from '../model/KV';
 import {Token} from '../model/Token';
 import {StatApp} from '../StatApp';
 import {Errors} from '../service/common/LogicError';
+import {spawn} from 'child_process';
+import * as path from 'path';
+import {BACKWARD, FORWARD, CursorStore} from '../../tools/epoch-data-checker/CursorStore';
+import {ENABLED, isEnabled, leaseOwner, setEnabled} from '../../tools/epoch-data-checker/Control';
 
 const ADMIN_PWD_KEY = 'adminPwd';
 const MAX_HEX_ID = BigInt('9223372036854775807');
@@ -83,5 +87,26 @@ export function registerAdminRoutes(router: Router<any, {}>) {
             hexId: address?.id == null ? null : String(address.id),
             token,
         };
+    });
+
+    router.post('/admin/epoch-checker/start', async ctx => {
+        await checkAdminPassword((ctx.request.body as any)?.password);
+        await setEnabled(true);
+        const entry = path.resolve(__dirname, '../../tools/epoch-data-checker/run.js');
+        const child = spawn(process.execPath, [entry], {detached: true, stdio: 'ignore'});
+        child.unref();
+        ctx.body = {started: true};
+    });
+    router.post('/admin/epoch-checker/stop', async ctx => {
+        await checkAdminPassword((ctx.request.body as any)?.password);
+        await setEnabled(false);
+        ctx.body = {stopped: true};
+    });
+    router.post('/admin/epoch-checker/status', async ctx => {
+        await checkAdminPassword((ctx.request.body as any)?.password);
+        const cursors = new CursorStore();
+        ctx.body = {enabled: await isEnabled(), owner: await leaseOwner(),
+            forward: await cursors.get('forward'), backward: await cursors.get('backward'),
+            forwardPaused: await cursors.paused('forward'), backwardPaused: await cursors.paused('backward')};
     });
 }
