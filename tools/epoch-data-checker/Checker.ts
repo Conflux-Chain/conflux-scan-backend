@@ -75,8 +75,10 @@ export class EpochDataChecker {
 
     async checkEpoch(epoch: number): Promise<Difference[]> {
         const differences: Difference[] = [];
-        const rpcPivot: any = await this.cfx.getBlockByEpochNumber(epoch);
-        const dbEpoch: any = await Epoch.findOne({where: {epoch}, raw: true});
+        const [rpcPivot, dbEpoch]: [any, any] = await Promise.all([
+            this.cfx.getBlockByEpochNumber(epoch),
+            Epoch.findOne({where: {epoch}, raw: true}),
+        ]);
         if (!rpcPivot || !dbEpoch) {
             differences.push({kind: 'missing', key: `epoch:${epoch}`, expected: rpcPivot ? 'db row' : 'rpc row'});
             return differences;
@@ -87,15 +89,24 @@ export class EpochDataChecker {
         const rpcTimestamp = Math.floor(Number(rpcPivot.timestamp));
         const dbTimestamp = Math.floor(new Date(dbEpoch.timestamp).getTime() / 1000);
         if (rpcTimestamp !== dbTimestamp) differences.push({kind: 'field', key: `epoch:${epoch}.timestamp`, expected: rpcTimestamp, actual: dbTimestamp});
-        return differences.concat(await this.checkBlocks(epoch, rpcPivot), await this.checkCfxTransfers(epoch, rpcPivot), await this.checkTokenTransfers(epoch, rpcPivot), await this.checkDerivedData(epoch));
+        const [blocks, cfxTransfers, tokenTransfers, derived] = await Promise.all([
+            this.checkBlocks(epoch, rpcPivot),
+            this.checkCfxTransfers(epoch, rpcPivot),
+            this.checkTokenTransfers(epoch, rpcPivot),
+            this.checkDerivedData(epoch),
+        ]);
+        return differences.concat(blocks, cfxTransfers, tokenTransfers, derived);
     }
 
     private async checkBlocks(epoch: number, rpcPivot: any): Promise<Difference[]> {
-        const rpcBlocks: any[] = await this.cfx.getBlocksByEpochNumber(epoch) || [];
-        const dbBlocks: any[] = await FullBlock.findAll({where: {epoch}, order: [['position', 'asc']], raw: true});
+        const [rpcBlocks, dbBlocks]: [any[], any[]] = await Promise.all([
+            this.cfx.getBlocksByEpochNumber(epoch).then(rows => rows || []),
+            FullBlock.findAll({where: {epoch}, order: [['position', 'asc']], raw: true}),
+        ]);
         const expected = [];
-        for (let position = 0; position < rpcBlocks.length; position++) {
-            const block = await this.cfx.getBlockByHash(rpcBlocks[position], false);
+        const blocks = await Promise.all(rpcBlocks.map(hash => this.cfx.getBlockByHash(hash, false)));
+        for (let position = 0; position < blocks.length; position++) {
+            const block = blocks[position];
             if (!block) continue;
             expected.push({epoch, position, hash: block.hash, pivot: block.hash === rpcPivot.hash,
                 difficulty: String(block.difficulty || 0), txCount: (block.transactions || []).length});
@@ -110,7 +121,11 @@ export class EpochDataChecker {
     }
 
     private async checkTokenTransfers(epoch: number, pivot: any): Promise<Difference[]> {
-        const receipts: any[][] = await (this.cfx as any).getEpochReceiptsByPivotBlockHash(pivot.hash) || [];
+        const [receipts, actualByType]: [any[][], any[][]] = await Promise.all([
+            (this.cfx as any).getEpochReceiptsByPivotBlockHash(pivot.hash).then(rows => rows || []),
+            Promise.all([Erc20Transfer, Erc721Transfer, Erc1155Transfer].map((model: any) =>
+                model.findAll({where: {epoch}, raw: true}))),
+        ]);
         const expected: any[] = [];
         for (let blockIndex = 0; blockIndex < receipts.length; blockIndex++) {
             for (const receipt of receipts[blockIndex] || []) {
@@ -132,8 +147,9 @@ export class EpochDataChecker {
             ['erc20', Erc20Transfer], ['erc721', Erc721Transfer], ['erc1155', Erc1155Transfer]
         ];
         const result: Difference[] = [];
-        for (const [type, model] of models) {
-            const actual = await model.findAll({where: {epoch}, raw: true});
+        for (let i = 0; i < models.length; i++) {
+            const [type] = models[i];
+            const actual = actualByType[i];
             const e = expected.filter(row => row._type === type);
             const fields = type === 'erc20' ? ['contractId','fromId','toId','value'] : type === 'erc721' ? ['contractId','fromId','toId','tokenId'] : ['contractId','fromId','toId','tokenId','value','batchIndex'];
             result.push(...compareRows(e, actual, row => `${row.blockIndex}:${row.txIndex}:${row.txLogIndex}:${row.batchIndex || 0}`, fields));
@@ -142,10 +158,14 @@ export class EpochDataChecker {
     }
 
     private async checkCfxTransfers(epoch: number, pivot: any): Promise<Difference[]> {
-        const hashes: any[] = await this.cfx.getBlocksByEpochNumber(epoch) || [];
+        const [hashes, actual]: [any[], any[]] = await Promise.all([
+            this.cfx.getBlocksByEpochNumber(epoch).then(rows => rows || []),
+            CfxTransfer.findAll({where: {epoch}, raw: true}),
+        ]);
         const expected: any[] = [];
-        for (let blockIndex = 0; blockIndex < hashes.length; blockIndex++) {
-            const traced: any = await (this.cfx as any).traceBlock(hashes[blockIndex]);
+        const traces = await Promise.all(hashes.map(hash => (this.cfx as any).traceBlock(hash)));
+        for (let blockIndex = 0; blockIndex < traces.length; blockIndex++) {
+            const traced: any = traces[blockIndex];
             for (const tx of traced?.transactionTraces || []) {
                 for (let traceIndex = 0; traceIndex < (tx.traces || []).length; traceIndex++) {
                     const transfer: any = getCfxTransfer(tx.traces[traceIndex]);
@@ -155,7 +175,6 @@ export class EpochDataChecker {
                 }
             }
         }
-        const actual = await CfxTransfer.findAll({where: {epoch}, raw: true});
         return compareRows(expected, actual, row => `${row.blockIndex}:${row.txIndex}:${row.txLogIndex}`, ['fromId','toId','value','type']);
     }
 
@@ -164,31 +183,41 @@ export class EpochDataChecker {
      * detects partial writes without replaying metadata side effects. */
     private async checkDerivedData(epoch: number): Promise<Difference[]> {
         const out: Difference[] = [];
-        const tx = await FullTransaction.findAll({where: {epoch}, raw: true});
-        const cfx = await CfxTransfer.findAll({where: {epoch}, raw: true});
-        const t20 = await Erc20Transfer.findAll({where: {epoch}, raw: true});
-        const t721 = await Erc721Transfer.findAll({where: {epoch}, raw: true});
-        const t1155 = await Erc1155Transfer.findAll({where: {epoch}, raw: true});
+        const all: any[] = await Promise.all(([
+            FullTransaction.findAll({where: {epoch}, raw: true}),
+            CfxTransfer.findAll({where: {epoch}, raw: true}),
+            Erc20Transfer.findAll({where: {epoch}, raw: true}),
+            Erc721Transfer.findAll({where: {epoch}, raw: true}),
+            Erc1155Transfer.findAll({where: {epoch}, raw: true}),
+            AddressTransfer.findAll({where: {epoch}, raw: true}),
+            EpochAddressIds.findAll({where: {epoch}, raw: true}),
+            NftTransfer.findAll({where: {epoch}, raw: true}),
+            AddressNftTransfer.findAll({where: {epoch}, raw: true}),
+            CensorItem.count({where: {epochNumber: epoch}}),
+            Promise.all([
+                ContractDestroy.findAll({where: {epochNumber: epoch}, raw: true}),
+                NameTag.findAll({where: {epoch}, raw: true}),
+                VoteParams.findAll({where: {epoch}, raw: true}),
+            ]),
+        ] as any[]));
+        const [tx, cfx, t20, t721, t1155, addr, addrIds, nft, addrNft, censor, eventRows] = all;
         const token = [...t20, ...t721, ...t1155];
         const source = [...tx, ...cfx, ...token];
-        const addr = await AddressTransfer.findAll({where: {epoch}, raw: true});
         const expectedAddr = source.reduce((n: number, row: any) => n + (row.fromId !== undefined ? 1 : 0) + (row.toId && row.toId !== row.fromId ? 1 : 0), 0);
         if (addr.length !== expectedAddr) out.push({kind: 'count', key: `address_transfer:${epoch}`, expected: expectedAddr, actual: addr.length});
-        const addrIds = await EpochAddressIds.findAll({where: {epoch}, raw: true});
         const ids = new Set<number>();
         addr.forEach((row: any) => ids.add(Number(row.addressId)));
         if (addrIds.length !== ids.size) out.push({kind: 'count', key: `epoch_address_ids:${epoch}`, expected: ids.size, actual: addrIds.length});
-        const nft = await NftTransfer.findAll({where: {epoch}, raw: true});
         const expectedNft = t721.length + t1155.length;
         if (nft.length !== expectedNft) out.push({kind: 'count', key: `nft_transfer:${epoch}`, expected: expectedNft, actual: nft.length});
-        const addrNft = await AddressNftTransfer.findAll({where: {epoch}, raw: true});
         if (addrNft.length < expectedNft || addrNft.length > expectedNft * 2) out.push({kind: 'count', key: `address_nft_transfer:${epoch}`, expected: `${expectedNft}..${expectedNft * 2}`, actual: addrNft.length});
-        const censor = await CensorItem.count({where: {epochNumber: epoch}});
         if (censor !== 0 && censor !== tx.length) out.push({kind: 'count', key: `censor_item:${epoch}`, expected: tx.length, actual: censor});
         // These tables are event driven. Ensure every row points at this epoch
         // and never contains an impossible future epoch after a partial write.
-        for (const [name, model, field] of [['contract_destroy', ContractDestroy, 'epochNumber'], ['name_tag', NameTag, 'epoch'], ['vote_params', VoteParams, 'epoch']] as any[]) {
-            const rows: any[] = await model.findAll({where: {[field]: epoch}, raw: true});
+        const eventDefs = [['contract_destroy', 'epochNumber'], ['name_tag', 'epoch'], ['vote_params', 'epoch']];
+        for (let i = 0; i < eventDefs.length; i++) {
+            const [name, field] = eventDefs[i];
+            const rows: any[] = eventRows[i];
             if (rows.some(row => Number(row[field]) !== epoch)) out.push({kind: 'field', key: `${name}:${epoch}`});
         }
         return out;
