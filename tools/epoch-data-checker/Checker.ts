@@ -7,7 +7,7 @@ import {Erc20Transfer} from '../../stat/model/Erc20Transfer';
 import {Erc721Transfer} from '../../stat/model/Erc721Transfer';
 import {Erc1155Transfer} from '../../stat/model/Erc1155Transfer';
 import {getAddrId} from '../../stat/model/HexMap';
-import {compareRows, Difference} from './Compare';
+import {compareRows, Difference, normalize} from './Compare';
 import {CursorStore} from './CursorStore';
 import {dingMsg} from '../../stat/monitor/Monitor';
 import {StatConfig} from '../../stat/config/StatConfig';
@@ -81,7 +81,7 @@ export class EpochDataChecker {
             differences.push({kind: 'missing', key: `epoch:${epoch}`, expected: rpcPivot ? 'db row' : 'rpc row'});
             return differences;
         }
-        if (String(dbEpoch.pivotHash).toLowerCase() !== String(rpcPivot.hash).toLowerCase()) {
+        if (normalize(dbEpoch.pivotHash) !== normalize(rpcPivot.hash)) {
             differences.push({kind: 'field', key: `epoch:${epoch}.pivotHash`, expected: rpcPivot.hash, actual: dbEpoch.pivotHash});
         }
         const rpcTimestamp = Math.floor(Number(rpcPivot.timestamp));
