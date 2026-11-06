@@ -688,7 +688,7 @@ export class EpochSync extends SyncBase {
                     FullTransaction.findAll({
                         where: {epoch}, transaction: dbTx, raw: true
                     }),
-                    FullBlock.sum('gasUsed', {where: {epoch}}).then(res=>BigInt(res ?? 0)),
+                    FullBlock.sum('gasUsed', {where: {epoch}, transaction: dbTx}).then(res=>BigInt(res ?? 0)),
                 ])
             })
             if (!pb) {
