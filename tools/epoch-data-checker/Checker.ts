@@ -13,6 +13,13 @@ import {dingMsg} from '../../stat/monitor/Monitor';
 import {StatConfig} from '../../stat/config/StatConfig';
 import {TokenTool} from '../../stat/service/tool/TokenTool';
 import {getCfxTransfer} from '../../stat/CfxTransferSync';
+import {AddressTransfer, EpochAddressIds} from '../../stat/model/AddrTransfer';
+import {NftTransfer} from '../../stat/model/NftTransfer';
+import {AddressNftTransfer} from '../../stat/model/NftTransfer';
+import {ContractDestroy} from '../../stat/model/TraceCreateContract';
+import {NameTag} from '../../stat/model/NameTag';
+import {CensorItem} from '../../stat/model/CensorItem';
+import {VoteParams} from '../../stat/model/Epoch';
 
 export type Direction = 'forward'|'backward';
 
@@ -74,7 +81,7 @@ export class EpochDataChecker {
         const rpcTimestamp = Math.floor(Number(rpcPivot.timestamp));
         const dbTimestamp = Math.floor(new Date(dbEpoch.timestamp).getTime() / 1000);
         if (rpcTimestamp !== dbTimestamp) differences.push({kind: 'field', key: `epoch:${epoch}.timestamp`, expected: rpcTimestamp, actual: dbTimestamp});
-        return differences.concat(await this.checkBlocks(epoch, rpcPivot), await this.checkCfxTransfers(epoch, rpcPivot), await this.checkTokenTransfers(epoch, rpcPivot));
+        return differences.concat(await this.checkBlocks(epoch, rpcPivot), await this.checkCfxTransfers(epoch, rpcPivot), await this.checkTokenTransfers(epoch, rpcPivot), await this.checkDerivedData(epoch));
     }
 
     private async checkBlocks(epoch: number, rpcPivot: any): Promise<Difference[]> {
@@ -144,5 +151,40 @@ export class EpochDataChecker {
         }
         const actual = await CfxTransfer.findAll({where: {epoch}, raw: true});
         return compareRows(expected, actual, row => `${row.blockIndex}:${row.txIndex}:${row.txLogIndex}`, ['fromId','toId','value','type']);
+    }
+
+    /** Validate all secondary tables written by EpochSync against the primary
+     * rows for this epoch. This is deliberately relational and read-only: it
+     * detects partial writes without replaying metadata side effects. */
+    private async checkDerivedData(epoch: number): Promise<Difference[]> {
+        const out: Difference[] = [];
+        const tx = await FullTransaction.findAll({where: {epoch}, raw: true});
+        const cfx = await CfxTransfer.findAll({where: {epoch}, raw: true});
+        const t20 = await Erc20Transfer.findAll({where: {epoch}, raw: true});
+        const t721 = await Erc721Transfer.findAll({where: {epoch}, raw: true});
+        const t1155 = await Erc1155Transfer.findAll({where: {epoch}, raw: true});
+        const token = [...t20, ...t721, ...t1155];
+        const source = [...tx, ...cfx, ...token];
+        const addr = await AddressTransfer.findAll({where: {epoch}, raw: true});
+        const expectedAddr = source.reduce((n: number, row: any) => n + (row.fromId !== undefined ? 1 : 0) + (row.toId && row.toId !== row.fromId ? 1 : 0), 0);
+        if (addr.length !== expectedAddr) out.push({kind: 'count', key: `address_transfer:${epoch}`, expected: expectedAddr, actual: addr.length});
+        const addrIds = await EpochAddressIds.findAll({where: {epoch}, raw: true});
+        const ids = new Set<number>();
+        addr.forEach((row: any) => ids.add(Number(row.addressId)));
+        if (addrIds.length !== ids.size) out.push({kind: 'count', key: `epoch_address_ids:${epoch}`, expected: ids.size, actual: addrIds.length});
+        const nft = await NftTransfer.findAll({where: {epoch}, raw: true});
+        const expectedNft = t721.length + t1155.length;
+        if (nft.length !== expectedNft) out.push({kind: 'count', key: `nft_transfer:${epoch}`, expected: expectedNft, actual: nft.length});
+        const addrNft = await AddressNftTransfer.findAll({where: {epoch}, raw: true});
+        if (addrNft.length < expectedNft || addrNft.length > expectedNft * 2) out.push({kind: 'count', key: `address_nft_transfer:${epoch}`, expected: `${expectedNft}..${expectedNft * 2}`, actual: addrNft.length});
+        const censor = await CensorItem.count({where: {epochNumber: epoch}});
+        if (censor !== 0 && censor !== tx.length) out.push({kind: 'count', key: `censor_item:${epoch}`, expected: tx.length, actual: censor});
+        // These tables are event driven. Ensure every row points at this epoch
+        // and never contains an impossible future epoch after a partial write.
+        for (const [name, model, field] of [['contract_destroy', ContractDestroy, 'epochNumber'], ['name_tag', NameTag, 'epoch'], ['vote_params', VoteParams, 'epoch']] as any[]) {
+            const rows: any[] = await model.findAll({where: {[field]: epoch}, raw: true});
+            if (rows.some(row => Number(row[field]) !== epoch)) out.push({kind: 'field', key: `${name}:${epoch}`});
+        }
+        return out;
     }
 }
