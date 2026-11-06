@@ -46,6 +46,7 @@ export class EpochDataChecker {
         if (await this.cursors.paused(direction)) { console.log(`[epoch-checker] ${direction} paused`); return; }
         const latest = await this.latestFinalized();
         const cursor = await this.cursors.get(direction);
+        console.log(`[epoch-checker] ${direction} latest=${latest} cursor=${cursor}`);
         if (cursor === null) return;
         if (direction === 'forward' && cursor > latest) return;
         if (direction === 'backward' && cursor < 0) return;

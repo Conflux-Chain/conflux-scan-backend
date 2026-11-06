@@ -34,7 +34,9 @@ async function run() {
     Epoch.register(sequelize);
     Hex40Map.register(sequelize);
     FullBlock.register(sequelize);
+    FullBlock.removeAttribute('id');
     FullTransaction.register(sequelize);
+    FullTransaction.removeAttribute('id');
     CfxTransfer.register(sequelize);
     Erc20Transfer.register(sequelize);
     Erc721Transfer.register(sequelize);
@@ -65,7 +67,13 @@ async function run() {
         if (!await renewLease()) { console.log('[epoch-checker] lease lost; stopping'); break; }
         const directions: Direction[] = direction === 'both' ? ['forward', 'backward'] : [direction];
         console.log(`[epoch-checker] checking ${directions.join(',')}`);
-        await Promise.all(directions.map(item => checker.run(item)));
+        await Promise.all(directions.map(async item => {
+            try {
+                await checker.run(item);
+            } catch (error) {
+                console.error(`[epoch-checker] ${item} failed`, error);
+            }
+        }));
         if (once) break;
         await new Promise(resolve => setTimeout(resolve, interval));
     } while (true);
