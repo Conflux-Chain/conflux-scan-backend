@@ -26,7 +26,13 @@ async function run() {
     const config = loadCheckerConfig();
     const args = process.argv.slice(2);
     const direction = (args[args.indexOf('--direction') + 1] || 'both') as 'both'|Direction;
-    const interval = Number(args[args.indexOf('--interval') + 1] || 10) * 1000;
+    const intervalArg = args.indexOf('--interval');
+    const intervalSeconds = intervalArg >= 0 && args[intervalArg + 1] !== undefined
+        ? Number(args[intervalArg + 1]) : 10;
+    if (!Number.isFinite(intervalSeconds) || intervalSeconds < 0) {
+        throw new Error(`--interval must be a non-negative number of seconds`);
+    }
+    const interval = intervalSeconds * 1000;
     const cfx = await initCfxSdk(config.conflux);
     StatApp.networkId = cfx.networkId;
     console.log(`[epoch-checker] rpc networkId=${cfx.networkId}`);
