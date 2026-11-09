@@ -84,31 +84,29 @@ async function run() {
     if (!await acquireLease()) { console.log('[epoch-checker] another instance owns the lease; exiting'); return; }
     console.log('[epoch-checker] lease acquired');
     let shuttingDown = false;
-    let currentRound: Promise<void> | null = null;
-    const shutdown = async (signal: string) => {
+    let wakeSleep: (() => void) | null = null;
+    const shutdown = (signal: string) => {
         if (shuttingDown) return;
         shuttingDown = true;
-        console.log(`[epoch-checker] received ${signal}; releasing lease`);
-        if (currentRound) await currentRound.catch(() => undefined);
-        await releaseLease().catch(error => console.error('[epoch-checker] release lease failed', error));
-        await KV.sequelize.close().catch(() => undefined);
-        process.exit(0);
+        console.log(`[epoch-checker] received ${signal}; waiting for current checks to finish`);
+        if (wakeSleep) wakeSleep();
     };
-    process.once('SIGINT', () => { shutdown('SIGINT').catch(error => { console.error(error); process.exit(1); }); });
-    process.once('SIGTERM', () => { shutdown('SIGTERM').catch(error => { console.error(error); process.exit(1); }); });
+    process.once('SIGINT', () => shutdown('SIGINT'));
+    process.once('SIGTERM', () => shutdown('SIGTERM'));
     do {
+        if (shuttingDown) break;
         if (!await isEnabled()) { console.log('[epoch-checker] disabled by admin; stopping'); break; }
+        if (shuttingDown) break;
         if (!await renewLease()) { console.log('[epoch-checker] lease lost; stopping'); break; }
+        if (shuttingDown) break;
         const directions: Direction[] = direction === 'both' ? ['forward', 'backward'] : [direction];
-        currentRound = Promise.all(directions.map(async item => {
+        await Promise.all(directions.map(async item => {
             try {
                 await checker.run(item);
             } catch (error) {
                 console.error(`[epoch-checker] ${item} failed`, error);
             }
-        })).then(() => undefined);
-        await currentRound;
-        currentRound = null;
+        }));
         if (shuttingDown) break;
         const pausedStore = new CursorStore();
         const paused = await Promise.all(directions.map(item => pausedStore.paused(item)));
@@ -121,9 +119,14 @@ async function run() {
             break;
         }
         if (once) break;
-        await new Promise(resolve => setTimeout(resolve, interval));
+        await new Promise<void>(resolve => {
+            const timer = setTimeout(finish, interval);
+            function finish() { clearTimeout(timer); wakeSleep = null; resolve(); }
+            wakeSleep = finish;
+            if (shuttingDown) finish();
+        });
     } while (true);
-    await releaseLease();
+    await releaseLease().catch(error => console.error('[epoch-checker] release lease failed', error));
     process.removeAllListeners('SIGINT');
     process.removeAllListeners('SIGTERM');
     console.log('[epoch-checker] stopped');
