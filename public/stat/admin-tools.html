@@ -23,6 +23,12 @@
     #message { min-height: 1.5rem; margin: 1rem 0; color: #b42318; }
     dl { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: .7rem 1rem; margin: 1rem 0 0; }
     dt { font-weight: 600; } dt.nowrap { white-space: nowrap; } dd { margin: 0; overflow-wrap: anywhere; } #token { white-space: pre-wrap; }
+    .checker-summary { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: .7rem 1rem; margin-top: 1rem; }
+    .checker-table { width: 100%; margin-top: 1rem; border-collapse: collapse; font-size: .94rem; }
+    .checker-table th, .checker-table td { padding: .7rem .6rem; border-bottom: 1px solid #e1e5ed; text-align: left; vertical-align: top; }
+    .checker-table th { background: #f4f6fa; color: #526071; font-weight: 600; }
+    .checker-table td { overflow-wrap: anywhere; }
+    .state { font-weight: 600; } .state.paused { color: #b42318; } .state.running { color: #137333; }
     code { font-size: .92rem; }
     #gate { display: block; max-width: 560px; }
     [hidden] { display: none !important; }
@@ -76,7 +82,14 @@
         <button type="button" class="secondary" id="checker-refresh">刷新</button>
         <label for="checker-interval">间隔（秒，0 表示连续运行）</label>
         <input id="checker-interval" type="number" min="0" max="86400" step="0.1" value="0">
-        <dl><dt>状态</dt><dd id="checker-enabled">-</dd><dt>实例</dt><dd id="checker-owner">-</dd><dt>检查间隔</dt><dd id="checker-interval-current">-</dd><dt class="nowrap">最新 finalized</dt><dd id="checker-latest">-</dd><dt>正向游标</dt><dd id="checker-forward">-</dd><dt>正向速度</dt><dd id="checker-forward-rate">-</dd><dt>正向区块时间</dt><dd id="checker-forward-time">-</dd><dt>反向游标</dt><dd id="checker-backward">-</dd><dt>反向速度</dt><dd id="checker-backward-rate">-</dd><dt>反向区块时间</dt><dd id="checker-backward-time">-</dd><dt>暂停</dt><dd id="checker-paused">-</dd></dl>
+        <dl class="checker-summary"><dt>状态</dt><dd id="checker-enabled">-</dd><dt>实例</dt><dd id="checker-owner">-</dd><dt>检查间隔</dt><dd id="checker-interval-current">-</dd><dt class="nowrap">最新 finalized</dt><dd id="checker-latest">-</dd></dl>
+        <table class="checker-table" aria-label="双向检查进度">
+          <thead><tr><th>方向</th><th>游标</th><th>区块时间</th><th>速度</th><th>状态</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">正向</th><td id="checker-forward">-</td><td id="checker-forward-time">-</td><td id="checker-forward-rate">-</td><td id="checker-forward-state" class="state">-</td></tr>
+            <tr><th scope="row">反向</th><td id="checker-backward">-</td><td id="checker-backward-time">-</td><td id="checker-backward-rate">-</td><td id="checker-backward-state" class="state">-</td></tr>
+          </tbody>
+        </table>
       </section>
     </main>
   </div>
@@ -184,10 +197,11 @@
           $('checker-forward').textContent = data.forward == null ? '-' : data.forward;
           $('checker-forward-rate').textContent = data.forwardRate == null ? '-' : data.forwardRate.toFixed(2) + ' epoch/s';
           $('checker-forward-time').textContent = formatTime(data.forwardTime);
+          setDirectionState('checker-forward-state', data.forwardPaused);
           $('checker-backward').textContent = data.backward == null ? '-' : data.backward;
           $('checker-backward-rate').textContent = data.backwardRate == null ? '-' : data.backwardRate.toFixed(2) + ' epoch/s';
           $('checker-backward-time').textContent = formatTime(data.backwardTime);
-          $('checker-paused').textContent = (data.forwardPaused ? '正向 ' : '') + (data.backwardPaused ? '反向' : '') || '否';
+          setDirectionState('checker-backward-state', data.backwardPaused);
         } catch (error) { message.textContent = error.message || '获取状态失败'; }
       }
       $('checker-start').addEventListener('click', async () => { await checkerAction('start', {interval: selectedInterval()}); await refreshChecker(); });
@@ -195,6 +209,12 @@
       $('checker-stop').addEventListener('click', async () => { await checkerAction('stop'); await refreshChecker(); });
       $('checker-refresh').addEventListener('click', refreshChecker);
       function formatTime(value) { return value ? new Date(value).toLocaleString() : '未同步'; }
+      function setDirectionState(id, paused) {
+        const element = $(id);
+        element.textContent = paused ? '已暂停' : '检查中';
+        element.classList.toggle('paused', Boolean(paused));
+        element.classList.toggle('running', !paused);
+      }
       document.querySelectorAll('nav a').forEach(link => link.addEventListener('click', event => {
         event.preventDefault();
         if (link.hash === '#epoch-checker') { $('address').classList.add('epoch-mode'); $('epoch-checker').hidden = false; }
