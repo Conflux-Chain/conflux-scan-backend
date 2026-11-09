@@ -57,7 +57,9 @@ export class EpochDataChecker {
     }
 
     async run(direction: Direction): Promise<void> {
-        if (await this.cursors.paused(direction)) { console.log(`[epoch-checker] ${direction} paused`); return; }
+        // The outer loop reports the terminal paused state once. Do not emit
+        // a line on every interval while a direction remains paused.
+        if (await this.cursors.paused(direction)) return;
         const latest = await this.latestFinalized();
         const cursor = await this.cursors.get(direction);
         if (cursor === null) return;
@@ -175,7 +177,7 @@ export class EpochDataChecker {
                 difficulty: String(block.difficulty || 0), txCount: (block.transactions || []).length});
         }
         const actual = dbBlocks.map(row => ({...row, difficulty: String(row.difficulty || 0)}));
-        return compareRows(expected, actual, row => `${row.epoch}:${row.position}`, ['hash', 'pivot', 'difficulty', 'txCount']);
+        return compareRows(expected, actual, row => `block:${row.epoch}:${row.position}`, ['hash', 'pivot', 'difficulty', 'txCount']);
     }
 
     private async id(address: string): Promise<number> {
@@ -220,7 +222,7 @@ export class EpochDataChecker {
             const actual = actualByType[i];
             const e = expected.filter(row => row._type === type);
             const fields = type === 'erc20' ? ['contractId','fromId','toId','value'] : type === 'erc721' ? ['contractId','fromId','toId','tokenId'] : ['contractId','fromId','toId','tokenId','value','batchIndex'];
-            result.push(...compareRows(e, actual, row => `${row.blockIndex}:${row.txIndex}:${row.txLogIndex}:${row.batchIndex || 0}`, fields));
+            result.push(...compareRows(e, actual, row => `${type}_transfer:${row.epoch}:${row.blockIndex}:${row.txIndex}:${row.txLogIndex}:${row.batchIndex || 0}`, fields));
         }
         return result;
     }
@@ -243,7 +245,7 @@ export class EpochDataChecker {
                 }
             }
         }
-        return compareRows(expected, actual, row => `${row.blockIndex}:${row.txIndex}:${row.txLogIndex}`, ['fromId','toId','value','type']);
+        return compareRows(expected, actual, row => `cfx_transfer:${row.epoch}:${row.blockIndex}:${row.txIndex}:${row.txLogIndex}`, ['fromId','toId','value','type']);
     }
 
     /** Validate all secondary tables written by EpochSync against the primary
