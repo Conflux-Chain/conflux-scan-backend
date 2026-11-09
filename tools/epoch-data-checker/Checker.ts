@@ -24,6 +24,10 @@ import {LAST_ERROR} from './Control';
 import {KV} from '../../stat/model/KV';
 
 export type Direction = 'forward'|'backward';
+export interface EpochCheckResult {
+    differences: Difference[];
+    timings: Record<string, number>;
+}
 
 export class EpochDataChecker {
     private readonly cursors = new CursorStore();
@@ -61,11 +65,13 @@ export class EpochDataChecker {
             if (!ready || !block) return this.fail(direction, latest, 'latest finalized epoch is not fully in database');
         }
 
-        const differences = await this.checkEpoch(cursor, latest);
-        if (differences.length) return this.fail(direction, cursor, JSON.stringify(differences.slice(0, 20)));
+        const result = await this.checkEpoch(cursor, latest);
+        if (result.differences.length) return this.fail(direction, cursor, JSON.stringify(result.differences.slice(0, 20)));
         const next = direction === 'forward' ? cursor + 1 : cursor - 1;
         await this.cursors.set(direction, next);
-        console.log(`[epoch-checker] ${direction.padEnd(8)} epoch=${cursor} matched; cursor=${next}`);
+        const t = result.timings;
+        console.log(`[epoch-checker] ${direction.padEnd(8)} epoch=${cursor} matched; cursor=${next} ` +
+            `ms=${t.total} epoch=${t.epoch} blocks=${t.blocks} cfx=${t.cfx} token=${t.token} derived=${t.derived}`);
     }
 
     private async fail(direction: Direction, epoch: number, reason: string) {
@@ -75,15 +81,19 @@ export class EpochDataChecker {
         console.error(`epoch data checker ${direction} paused at ${epoch}: ${reason}`);
     }
 
-    async checkEpoch(epoch: number, latestFinalized?: number): Promise<Difference[]> {
+    async checkEpoch(epoch: number, latestFinalized?: number): Promise<EpochCheckResult> {
+        const started = Date.now();
         const differences: Difference[] = [];
+        const epochStarted = Date.now();
         const [rpcPivot, dbEpoch]: [any, any] = await Promise.all([
             this.cfx.getBlockByEpochNumber(epoch),
             Epoch.findOne({where: {epoch}, raw: true}),
         ]);
+        const timings: Record<string, number> = {epoch: Date.now() - epochStarted};
         if (!rpcPivot || !dbEpoch) {
             differences.push({kind: 'missing', key: `epoch:${epoch}`, expected: rpcPivot ? 'db row' : 'rpc row'});
-            return differences;
+            timings.total = Date.now() - started;
+            return {differences, timings};
         }
         if (normalize(dbEpoch.pivotHash) !== normalize(rpcPivot.hash)) {
             differences.push({kind: 'field', key: `epoch:${epoch}.pivotHash`, expected: rpcPivot.hash, actual: dbEpoch.pivotHash});
@@ -91,13 +101,21 @@ export class EpochDataChecker {
         const rpcTimestamp = Math.floor(Number(rpcPivot.timestamp));
         const dbTimestamp = Math.floor(new Date(dbEpoch.timestamp).getTime() / 1000);
         if (rpcTimestamp !== dbTimestamp) differences.push({kind: 'field', key: `epoch:${epoch}.timestamp`, expected: rpcTimestamp, actual: dbTimestamp});
-        const [blocks, cfxTransfers, tokenTransfers, derived] = await Promise.all([
-            this.checkBlocks(epoch, rpcPivot),
-            this.checkCfxTransfers(epoch, rpcPivot),
-            this.checkTokenTransfers(epoch, rpcPivot),
-            this.checkDerivedData(epoch, latestFinalized),
+        const stages = await Promise.all([
+            this.timed('blocks', () => this.checkBlocks(epoch, rpcPivot)),
+            this.timed('cfx', () => this.checkCfxTransfers(epoch, rpcPivot)),
+            this.timed('token', () => this.checkTokenTransfers(epoch, rpcPivot)),
+            this.timed('derived', () => this.checkDerivedData(epoch, latestFinalized)),
         ]);
-        return differences.concat(blocks, cfxTransfers, tokenTransfers, derived);
+        for (const stage of stages) timings[stage.name] = stage.ms;
+        timings.total = Date.now() - started;
+        return {differences: differences.concat(...stages.map(stage => stage.value)), timings};
+    }
+
+    private async timed<T>(name: string, fn: () => Promise<T>): Promise<{name: string, ms: number, value: T}> {
+        const started = Date.now();
+        const value = await fn();
+        return {name, ms: Date.now() - started, value};
     }
 
     private async checkBlocks(epoch: number, rpcPivot: any): Promise<Difference[]> {
