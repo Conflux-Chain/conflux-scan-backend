@@ -114,6 +114,10 @@ async function run() {
         const paused = await Promise.all(directions.map(item => pausedStore.paused(item)));
         if (paused.every(Boolean)) {
             console.log(`[epoch-checker] all requested directions are paused; exiting`);
+            // Keep the admin status consistent with the worker lifecycle. A
+            // paused checker has no active work left, so a later admin start
+            // or resume is required.
+            await setEnabled(false);
             break;
         }
         if (once) break;
