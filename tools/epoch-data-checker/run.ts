@@ -93,7 +93,6 @@ async function run() {
         if (!await isEnabled()) { console.log('[epoch-checker] disabled by admin; stopping'); break; }
         if (!await renewLease()) { console.log('[epoch-checker] lease lost; stopping'); break; }
         const directions: Direction[] = direction === 'both' ? ['forward', 'backward'] : [direction];
-        console.log(`[epoch-checker] checking ${directions.join(',')}`);
         await Promise.all(directions.map(async item => {
             try {
                 await checker.run(item);

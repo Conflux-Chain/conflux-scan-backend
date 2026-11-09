@@ -27,6 +27,7 @@ export type Direction = 'forward'|'backward';
 
 export class EpochDataChecker {
     private readonly cursors = new CursorStore();
+    private readonly addressIdCache = new Map<string, Promise<number>>();
     private readonly tokenTool: TokenTool;
     constructor(private readonly cfx: Conflux, private readonly config: StatConfig) {
         this.tokenTool = new TokenTool(cfx);
@@ -46,7 +47,6 @@ export class EpochDataChecker {
         if (await this.cursors.paused(direction)) { console.log(`[epoch-checker] ${direction} paused`); return; }
         const latest = await this.latestFinalized();
         const cursor = await this.cursors.get(direction);
-        console.log(`[epoch-checker] ${direction} latest=${latest} cursor=${cursor}`);
         if (cursor === null) return;
         if (direction === 'forward' && cursor > latest) return;
         if (direction === 'backward' && cursor < 0) return;
@@ -54,8 +54,10 @@ export class EpochDataChecker {
         // The newest finalized epoch must already be represented in the DB.
         // This catches a stopped production container separately from a row diff.
         if (direction === 'forward') {
-            const ready = await Epoch.findOne({where: {epoch: latest}, raw: true});
-            const block = await FullBlock.findOne({where: {epoch: latest}, raw: true});
+            const [ready, block] = await Promise.all([
+                Epoch.findOne({where: {epoch: latest}, raw: true}),
+                FullBlock.findOne({where: {epoch: latest}, raw: true}),
+            ]);
             if (!ready || !block) return this.fail(direction, latest, 'latest finalized epoch is not fully in database');
         }
 
@@ -63,7 +65,7 @@ export class EpochDataChecker {
         if (differences.length) return this.fail(direction, cursor, JSON.stringify(differences.slice(0, 20)));
         const next = direction === 'forward' ? cursor + 1 : cursor - 1;
         await this.cursors.set(direction, next);
-        console.log(`[epoch-checker] ${direction} epoch=${cursor} matched; cursor=${next}`);
+        console.log(`[epoch-checker] ${direction.padEnd(8)} epoch=${cursor} matched; cursor=${next}`);
     }
 
     private async fail(direction: Direction, epoch: number, reason: string) {
@@ -116,8 +118,13 @@ export class EpochDataChecker {
     }
 
     private async id(address: string): Promise<number> {
-        const id = await getAddrId(address, -1);
-        return id === undefined ? -1 : Number(id);
+        const key = String(address).toLowerCase();
+        let pending = this.addressIdCache.get(key);
+        if (!pending) {
+            pending = getAddrId(address, -1).then(id => id === undefined ? -1 : Number(id));
+            this.addressIdCache.set(key, pending);
+        }
+        return pending;
     }
 
     private async checkTokenTransfers(epoch: number, pivot: any): Promise<Difference[]> {
