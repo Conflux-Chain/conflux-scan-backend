@@ -10,10 +10,19 @@ import {Errors} from '../service/common/LogicError';
 import {spawn} from 'child_process';
 import * as path from 'path';
 import {CursorStore} from '../../tools/epoch-data-checker/CursorStore';
-import {ENABLED, isEnabled, leaseOwner, setEnabled, LAST_ERROR, RATE_FORWARD, RATE_BACKWARD} from '../../tools/epoch-data-checker/Control';
+import {ENABLED, isEnabled, leaseOwner, setEnabled, LAST_ERROR, RATE_FORWARD, RATE_BACKWARD, INTERVAL_SECONDS} from '../../tools/epoch-data-checker/Control';
 
 const ADMIN_PWD_KEY = 'adminPwd';
 const MAX_HEX_ID = BigInt('9223372036854775807');
+
+function parseCheckerInterval(value: unknown, fallback: number): number {
+    if (value === undefined || value === null || value === '') return fallback;
+    const interval = Number(value);
+    if (!Number.isFinite(interval) || interval < 0 || interval > 86400) {
+        throw new Errors.ParameterError('interval 必须是 0 到 86400 秒之间的数字');
+    }
+    return interval;
+}
 
 function parseAddress(input: unknown): {id?: string; hex?: string} {
     if (typeof input !== 'string') {
@@ -91,19 +100,23 @@ export function registerAdminRoutes(router: Router<any, {}>, statApp?: StatApp) 
     });
 
     router.post('/admin/epoch-checker/start', async ctx => {
-        await checkAdminPassword((ctx.request.body as any)?.password);
+        const body = ctx.request.body as any;
+        await checkAdminPassword(body?.password);
+        const saved = Number(await KV.getString(INTERVAL_SECONDS, '0'));
+        const interval = parseCheckerInterval(body?.interval, Number.isFinite(saved) && saved >= 0 ? saved : 0);
+        await KV.upsert({key: INTERVAL_SECONDS, value: String(interval)});
         await setEnabled(true);
         const entry = path.resolve(__dirname, '../../tools/epoch-data-checker/run.js');
         // Keep the checker detached from the request, but forward its output to
         // the API process so container logs show startup, lease and cursor errors.
-        const child = spawn(process.execPath, [entry], {detached: true, stdio: ['ignore', 'pipe', 'pipe']});
+        const child = spawn(process.execPath, [entry, '--interval', String(interval)], {detached: true, stdio: ['ignore', 'pipe', 'pipe']});
         child.stdout?.on('data', chunk => process.stdout.write(`[epoch-checker] ${chunk}`));
         child.stderr?.on('data', chunk => process.stderr.write(`[epoch-checker][error] ${chunk}`));
         child.on('error', error => console.error('[epoch-checker] worker spawn failed', error));
         child.on('exit', (code, signal) => console.log(`[epoch-checker] worker exited pid=${child.pid} code=${code} signal=${signal || ''}`));
         console.log(`[epoch-checker] worker spawned pid=${child.pid}`);
         child.unref();
-        ctx.body = {started: true};
+        ctx.body = {started: true, interval};
     });
     router.post('/admin/epoch-checker/stop', async ctx => {
         await checkAdminPassword((ctx.request.body as any)?.password);
@@ -111,19 +124,23 @@ export function registerAdminRoutes(router: Router<any, {}>, statApp?: StatApp) 
         ctx.body = {stopped: true};
     });
     router.post('/admin/epoch-checker/resume', async ctx => {
-        await checkAdminPassword((ctx.request.body as any)?.password);
+        const body = ctx.request.body as any;
+        await checkAdminPassword(body?.password);
+        const saved = Number(await KV.getString(INTERVAL_SECONDS, '0'));
+        const interval = parseCheckerInterval(body?.interval, Number.isFinite(saved) && saved >= 0 ? saved : 0);
+        await KV.upsert({key: INTERVAL_SECONDS, value: String(interval)});
         const cursors = new CursorStore();
         await Promise.all([cursors.resume('forward'), cursors.resume('backward')]);
         await setEnabled(true);
         const entry = path.resolve(__dirname, '../../tools/epoch-data-checker/run.js');
-        const child = spawn(process.execPath, [entry, '--direction', 'both'], {detached: true, stdio: ['ignore', 'pipe', 'pipe']});
+        const child = spawn(process.execPath, [entry, '--direction', 'both', '--interval', String(interval)], {detached: true, stdio: ['ignore', 'pipe', 'pipe']});
         child.stdout?.on('data', chunk => process.stdout.write(`[epoch-checker] ${chunk}`));
         child.stderr?.on('data', chunk => process.stderr.write(`[epoch-checker][error] ${chunk}`));
         child.on('error', error => console.error('[epoch-checker] worker spawn failed', error));
         child.on('exit', (code, signal) => console.log(`[epoch-checker] worker exited pid=${child.pid} code=${code} signal=${signal || ''}`));
         console.log(`[epoch-checker] worker resumed pid=${child.pid}`);
         child.unref();
-        ctx.body = {resumed: true};
+        ctx.body = {resumed: true, interval};
     });
     router.post('/admin/epoch-checker/status', async ctx => {
         await checkAdminPassword((ctx.request.body as any)?.password);
@@ -141,12 +158,14 @@ export function registerAdminRoutes(router: Router<any, {}>, statApp?: StatApp) 
             KV.getString(RATE_FORWARD, ''),
             KV.getString(RATE_BACKWARD, ''),
         ]);
+        const savedInterval = Number(await KV.getString(INTERVAL_SECONDS, '0'));
         ctx.body = {enabled: await isEnabled(), owner: await leaseOwner(), latestFinalized,
             latestFinalizedTime: latestRow?.timestamp || null,
             forward: await cursors.get('forward'), backward: await cursors.get('backward'),
             forwardTime: cursorData.forwardTime, backwardTime: cursorData.backwardTime,
             forwardRate: forwardRate ? Number(forwardRate) : null,
             backwardRate: backwardRate ? Number(backwardRate) : null,
+            interval: Number.isFinite(savedInterval) && savedInterval >= 0 ? savedInterval : 0,
             lastError: await KV.getString(LAST_ERROR, ''),
             forwardPaused: await cursors.paused('forward'), backwardPaused: await cursors.paused('backward')};
     });

@@ -28,7 +28,7 @@ async function run() {
     const direction = (args[args.indexOf('--direction') + 1] || 'both') as 'both'|Direction;
     const intervalArg = args.indexOf('--interval');
     const intervalSeconds = intervalArg >= 0 && args[intervalArg + 1] !== undefined
-        ? Number(args[intervalArg + 1]) : 10;
+        ? Number(args[intervalArg + 1]) : 0;
     if (!Number.isFinite(intervalSeconds) || intervalSeconds < 0) {
         throw new Error(`--interval must be a non-negative number of seconds`);
     }

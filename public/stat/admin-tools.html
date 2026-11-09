@@ -74,7 +74,9 @@
         <button type="button" class="secondary" id="checker-resume">恢复并继续</button>
         <button type="button" class="secondary" id="checker-stop">停止</button>
         <button type="button" class="secondary" id="checker-refresh">刷新</button>
-        <dl><dt>状态</dt><dd id="checker-enabled">-</dd><dt>实例</dt><dd id="checker-owner">-</dd><dt class="nowrap">最新 finalized</dt><dd id="checker-latest">-</dd><dt>正向游标</dt><dd id="checker-forward">-</dd><dt>正向速度</dt><dd id="checker-forward-rate">-</dd><dt>正向区块时间</dt><dd id="checker-forward-time">-</dd><dt>反向游标</dt><dd id="checker-backward">-</dd><dt>反向速度</dt><dd id="checker-backward-rate">-</dd><dt>反向区块时间</dt><dd id="checker-backward-time">-</dd><dt>暂停</dt><dd id="checker-paused">-</dd></dl>
+        <label for="checker-interval">间隔（秒，0 表示连续运行）</label>
+        <input id="checker-interval" type="number" min="0" max="86400" step="0.1" value="0">
+        <dl><dt>状态</dt><dd id="checker-enabled">-</dd><dt>实例</dt><dd id="checker-owner">-</dd><dt>检查间隔</dt><dd id="checker-interval-current">-</dd><dt class="nowrap">最新 finalized</dt><dd id="checker-latest">-</dd><dt>正向游标</dt><dd id="checker-forward">-</dd><dt>正向速度</dt><dd id="checker-forward-rate">-</dd><dt>正向区块时间</dt><dd id="checker-forward-time">-</dd><dt>反向游标</dt><dd id="checker-backward">-</dd><dt>反向速度</dt><dd id="checker-backward-rate">-</dd><dt>反向区块时间</dt><dd id="checker-backward-time">-</dd><dt>暂停</dt><dd id="checker-paused">-</dd></dl>
       </section>
     </main>
   </div>
@@ -160,14 +162,21 @@
           $('submit').disabled = false;
         }
       });
-      async function checkerAction(action) {
-        const response = await fetch('/stat/admin/epoch-checker/' + action, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password}), cache:'no-store'});
+      function selectedInterval() {
+        const value = Number($('checker-interval').value);
+        if (!Number.isFinite(value) || value < 0 || value > 86400) throw new Error('interval 必须是 0 到 86400 秒之间的数字');
+        return value;
+      }
+      async function checkerAction(action, extra = {}) {
+        const response = await fetch('/stat/admin/epoch-checker/' + action, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password, ...extra}), cache:'no-store'});
         return responseData(response, await response.json());
       }
       async function refreshChecker() {
         try {
           const data = await checkerAction('status');
           $('checker-enabled').textContent = data.enabled ? '运行中' : '已停止';
+          $('checker-interval-current').textContent = data.interval == null ? '-' : data.interval + ' 秒';
+          if (document.activeElement !== $('checker-interval') && data.interval != null) $('checker-interval').value = data.interval;
           let owner = data.owner || '';
           try { owner = owner ? JSON.parse(owner).owner + '（租约至 ' + new Date(JSON.parse(owner).expiresAt).toLocaleString() + '）' : '无'; } catch (_) { owner = owner || '无'; }
           $('checker-owner').textContent = owner;
@@ -181,8 +190,8 @@
           $('checker-paused').textContent = (data.forwardPaused ? '正向 ' : '') + (data.backwardPaused ? '反向' : '') || '否';
         } catch (error) { message.textContent = error.message || '获取状态失败'; }
       }
-      $('checker-start').addEventListener('click', async () => { await checkerAction('start'); await refreshChecker(); });
-      $('checker-resume').addEventListener('click', async () => { await checkerAction('start'); await fetch('/stat/admin/epoch-checker/resume', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password}), cache:'no-store'}); await refreshChecker(); });
+      $('checker-start').addEventListener('click', async () => { await checkerAction('start', {interval: selectedInterval()}); await refreshChecker(); });
+      $('checker-resume').addEventListener('click', async () => { await checkerAction('resume', {interval: selectedInterval()}); await refreshChecker(); });
       $('checker-stop').addEventListener('click', async () => { await checkerAction('stop'); await refreshChecker(); });
       $('checker-refresh').addEventListener('click', refreshChecker);
       function formatTime(value) { return value ? new Date(value).toLocaleString() : '未同步'; }
