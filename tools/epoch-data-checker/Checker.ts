@@ -20,7 +20,7 @@ import {ContractDestroy} from '../../stat/model/TraceCreateContract';
 import {NameTag} from '../../stat/model/NameTag';
 import {CensorItem} from '../../stat/model/CensorItem';
 import {VoteParams} from '../../stat/model/Epoch';
-import {LAST_ERROR} from './Control';
+import {LAST_ERROR, RATE_BACKWARD, RATE_FORWARD} from './Control';
 import {KV} from '../../stat/model/KV';
 
 export type Direction = 'forward'|'backward';
@@ -39,7 +39,7 @@ export class EpochDataChecker {
     private readonly cursors = new CursorStore();
     private readonly addressIdCache = new Map<string, Promise<number>>();
     private readonly epochRows = new Map<string, Promise<any[]>>();
-    private readonly progress = new Map<Direction, {lastLog: number, count: number}>();
+    private readonly progress = new Map<Direction, {lastLog: number, count: number, startedAt: number}>();
     private readonly verbose = process.env.EPOCH_CHECKER_VERBOSE === '1';
     private readonly tokenTool: TokenTool;
     constructor(private readonly cfx: Conflux, private readonly config: StatConfig) {
@@ -79,13 +79,19 @@ export class EpochDataChecker {
         const next = direction === 'forward' ? cursor + 1 : cursor - 1;
         await this.cursors.set(direction, next);
         const t = result.timings;
-        const progress = this.progress.get(direction) || {lastLog: 0, count: 0};
-        progress.count++;
         const now = Date.now();
+        const progress = this.progress.get(direction) || {lastLog: 0, count: 0, startedAt: now};
+        progress.count++;
         if (this.verbose || progress.count === 1 || now - progress.lastLog >= 5000) {
+            const elapsed = now - progress.startedAt;
+            const rate = elapsed >= 1000 ? progress.count * 1000 / elapsed : 0;
+            const rateKey = direction === 'forward' ? RATE_FORWARD : RATE_BACKWARD;
+            if (rate > 0) void KV.upsert({key: rateKey, value: rate.toFixed(3)});
+            const detail = this.verbose && t.total < 1000
+                ? ` epoch=${t.epoch} blocks=${t.blocks} cfx=${t.cfx} token=${t.token} derived=${t.derived}${result.detail ? ` ${result.detail}` : ''}`
+                : '';
             console.log(`[epoch-checker] ${direction.padEnd(8)} epoch=${cursor} matched; cursor=${next} ` +
-                `completed=${progress.count} ms=${t.total} epoch=${t.epoch} blocks=${t.blocks} cfx=${t.cfx} token=${t.token} derived=${t.derived}` +
-                (result.detail ? ` ${result.detail}` : ''));
+                `completed=${progress.count} rate=${rate > 0 ? `${rate.toFixed(2)}/s` : '-' } ms=${t.total}${detail}`);
             progress.lastLog = now;
         }
         this.progress.set(direction, progress);

@@ -10,7 +10,7 @@ import {Errors} from '../service/common/LogicError';
 import {spawn} from 'child_process';
 import * as path from 'path';
 import {CursorStore} from '../../tools/epoch-data-checker/CursorStore';
-import {ENABLED, isEnabled, leaseOwner, setEnabled, LAST_ERROR} from '../../tools/epoch-data-checker/Control';
+import {ENABLED, isEnabled, leaseOwner, setEnabled, LAST_ERROR, RATE_FORWARD, RATE_BACKWARD} from '../../tools/epoch-data-checker/Control';
 
 const ADMIN_PWD_KEY = 'adminPwd';
 const MAX_HEX_ID = BigInt('9223372036854775807');
@@ -137,10 +137,16 @@ export function registerAdminRoutes(router: Router<any, {}>, statApp?: StatApp) 
             cursorData[dir] = ep;
             cursorData[`${dir}Time`] = row?.timestamp || null;
         }
+        const [forwardRate, backwardRate] = await Promise.all([
+            KV.getString(RATE_FORWARD, ''),
+            KV.getString(RATE_BACKWARD, ''),
+        ]);
         ctx.body = {enabled: await isEnabled(), owner: await leaseOwner(), latestFinalized,
             latestFinalizedTime: latestRow?.timestamp || null,
             forward: await cursors.get('forward'), backward: await cursors.get('backward'),
             forwardTime: cursorData.forwardTime, backwardTime: cursorData.backwardTime,
+            forwardRate: forwardRate ? Number(forwardRate) : null,
+            backwardRate: backwardRate ? Number(backwardRate) : null,
             lastError: await KV.getString(LAST_ERROR, ''),
             forwardPaused: await cursors.paused('forward'), backwardPaused: await cursors.paused('backward')};
     });
