@@ -198,15 +198,25 @@ export class EpochDataChecker {
         ]);
         const expected: any[] = [];
         for (let blockIndex = 0; blockIndex < receipts.length; blockIndex++) {
+            // Match TokenTransferSync.decodeTransferFromReceipts exactly:
+            // txPos counts only outcome 0/1 receipts, while log position is
+            // the receipt-local log order (not the RPC logIndex field).
+            let txPos = -1;
             for (const receipt of receipts[blockIndex] || []) {
-                if (receipt.outcomeStatus !== undefined && receipt.outcomeStatus !== 0 && receipt.outcomeStatus !== 1) continue;
+                if (receipt.outcomeStatus === 0) txPos++;
+                else if (receipt.outcomeStatus === 1) { txPos++; continue; }
+                else continue;
+                let txLogIndex = -1;
                 for (const log of receipt.logs || []) {
-                    const common: any = {epoch, blockIndex, txIndex: Number(receipt.transactionIndex || 0),
-                        txLogIndex: Number(log.logIndex || 0), contractId: await this.id(log.address),
-                        fromId: -1, toId: -1, createdAt: new Date(Number(pivot.timestamp) * 1000)};
+                    txLogIndex++;
+                    if ((log.topics || []).length < 3 || !log.topics[1] || !log.topics[2]) continue;
                     const e20: any = this.tokenTool.decodeERC20TransferPlus(log, true);
                     const e721: any = this.tokenTool.decodeERC721Transfer(log, true);
                     const e1155: any[] = this.tokenTool.decodeERC1155TransferArrayPlus(log);
+                    if (!e20 && !e721 && !e1155?.length) continue;
+                    const common: any = {epoch, blockIndex, txIndex: txPos,
+                        txLogIndex, contractId: await this.id(log.address),
+                        fromId: -1, toId: -1, createdAt: new Date(Number(pivot.timestamp) * 1000)};
                     if (e20) expected.push({...common, fromId: await this.id(e20.from), toId: await this.id(e20.to), value: String(e20.value), _type: 'erc20'});
                     else if (e721) expected.push({...common, fromId: await this.id(e721.from), toId: await this.id(e721.to), tokenId: String(e721.tokenId), _type: 'erc721'});
                     else if (e1155?.length) for (const item of e1155) expected.push({...common, fromId: await this.id(item.from), toId: await this.id(item.to), tokenId: String(item.tokenId), value: String(item.value), batchIndex: item.batchIndex, _type: 'erc1155'});
