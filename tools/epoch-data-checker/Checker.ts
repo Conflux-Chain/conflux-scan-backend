@@ -27,6 +27,12 @@ export type Direction = 'forward'|'backward';
 export interface EpochCheckResult {
     differences: Difference[];
     timings: Record<string, number>;
+    detail?: string;
+}
+
+interface DerivedCheckResult {
+    differences: Difference[];
+    detail: string;
 }
 
 export class EpochDataChecker {
@@ -72,7 +78,8 @@ export class EpochDataChecker {
         await this.cursors.set(direction, next);
         const t = result.timings;
         console.log(`[epoch-checker] ${direction.padEnd(8)} epoch=${cursor} matched; cursor=${next} ` +
-            `ms=${t.total} epoch=${t.epoch} blocks=${t.blocks} cfx=${t.cfx} token=${t.token} derived=${t.derived}`);
+            `ms=${t.total} epoch=${t.epoch} blocks=${t.blocks} cfx=${t.cfx} token=${t.token} derived=${t.derived}` +
+            (result.detail ? ` ${result.detail}` : ''));
     }
 
     private async fail(direction: Direction, epoch: number, reason: string) {
@@ -110,7 +117,12 @@ export class EpochDataChecker {
         ]);
         for (const stage of stages) timings[stage.name] = stage.ms;
         timings.total = Date.now() - started;
-        return {differences: differences.concat(...stages.map(stage => stage.value)), timings};
+        const derived = stages[3].value as DerivedCheckResult;
+        return {
+            differences: differences.concat(stages[0].value, stages[1].value, stages[2].value, derived.differences),
+            timings,
+            detail: derived.detail,
+        };
     }
 
     private async timed<T>(name: string, fn: () => Promise<T>): Promise<{name: string, ms: number, value: T}> {
@@ -222,12 +234,13 @@ export class EpochDataChecker {
     /** Validate all secondary tables written by EpochSync against the primary
      * rows for this epoch. This is deliberately relational and read-only: it
      * detects partial writes without replaying metadata side effects. */
-    private async checkDerivedData(epoch: number, latestFinalized?: number): Promise<Difference[]> {
+    private async checkDerivedData(epoch: number, latestFinalized?: number): Promise<DerivedCheckResult> {
         const out: Difference[] = [];
         // Load the epoch's source rows first. Address-partitioned tables are
         // keyed by addressId, so querying them by epoch alone scans every
         // partition. We use the source address IDs to make those lookups
         // selective in the second phase.
+        const sourceStarted = Date.now();
         const sourceRows: any[] = await Promise.all(([
             this.rows(FullTransaction, 'tx', epoch),
             this.rows(CfxTransfer, 'cfx', epoch),
@@ -235,26 +248,33 @@ export class EpochDataChecker {
             this.rows(Erc721Transfer, 'erc721', epoch),
             this.rows(Erc1155Transfer, 'erc1155', epoch),
         ] as any[]));
+        const sourceMs = Date.now() - sourceStarted;
         const [tx, cfx, t20, t721, t1155] = sourceRows;
         const token = [...t20, ...t721, ...t1155];
         const source = [...tx, ...cfx, ...token];
         const addressIds = Array.from(new Set(source.flatMap((row: any) =>
             [row.fromId, row.toId].filter(id => id !== undefined && id !== null).map(id => Number(id)))));
         const addressWhere = addressIds.length ? {epoch, addressId: {[Op.in]: addressIds}} : {epoch: -1};
-        const [addr, addrIds, nft, addrNft, censor, eventRows] = await Promise.all([
-            AddressTransfer.findAll({where: addressWhere, raw: true}),
-            latestFinalized === undefined || epoch >= latestFinalized - 1000
+        const [addrQ, addrIdsQ, nftQ, addrNftQ, censorQ, eventsQ] = await Promise.all([
+            this.timed('address_transfer', () => AddressTransfer.findAll({where: addressWhere, raw: true})),
+            this.timed('epoch_address_ids', () => latestFinalized === undefined || epoch >= latestFinalized - 1000
                 ? EpochAddressIds.findAll({where: {epoch}, raw: true})
-                : Promise.resolve([]),
-            NftTransfer.findAll({where: {epoch}, raw: true}),
-            AddressNftTransfer.findAll({where: addressWhere, raw: true}),
-            CensorItem.count({where: {epochNumber: epoch}}),
-            Promise.all([
+                : Promise.resolve([])),
+            this.timed('nft_transfer', () => NftTransfer.findAll({where: {epoch}, raw: true})),
+            this.timed('address_nft_transfer', () => AddressNftTransfer.findAll({where: addressWhere, raw: true})),
+            this.timed('censor_item', () => CensorItem.findAll({where: {epochNumber: epoch}, raw: true})),
+            this.timed('events', () => Promise.all([
                 ContractDestroy.findAll({where: {epochNumber: epoch}, raw: true}),
                 NameTag.findAll({where: {epoch}, raw: true}),
                 VoteParams.findAll({where: {epoch}, raw: true}),
-            ]),
-        ] as any[]);
+            ])),
+        ]);
+        const addr = addrQ.value;
+        const addrIds = addrIdsQ.value;
+        const nft = nftQ.value;
+        const addrNft = addrNftQ.value;
+        const censorRows = censorQ.value;
+        const eventRows = eventsQ.value;
         const expectedAddr = source.reduce((n: number, row: any) => n + (row.fromId !== undefined ? 1 : 0) + (row.toId && row.toId !== row.fromId ? 1 : 0), 0);
         if (addr.length !== expectedAddr) out.push({kind: 'count', key: `address_transfer:${epoch}`, expected: expectedAddr, actual: addr.length});
         const ids = new Set<number>();
@@ -267,7 +287,7 @@ export class EpochDataChecker {
         const expectedNft = t721.length + t1155.length;
         if (nft.length !== expectedNft) out.push({kind: 'count', key: `nft_transfer:${epoch}`, expected: expectedNft, actual: nft.length});
         if (addrNft.length < expectedNft || addrNft.length > expectedNft * 2) out.push({kind: 'count', key: `address_nft_transfer:${epoch}`, expected: `${expectedNft}..${expectedNft * 2}`, actual: addrNft.length});
-        if (censor !== 0 && censor !== tx.length) out.push({kind: 'count', key: `censor_item:${epoch}`, expected: tx.length, actual: censor});
+        if (censorRows.length !== 0 && censorRows.length !== tx.length) out.push({kind: 'count', key: `censor_item:${epoch}`, expected: tx.length, actual: censorRows.length});
         // These tables are event driven. Ensure every row points at this epoch
         // and never contains an impossible future epoch after a partial write.
         const eventDefs = [['contract_destroy', 'epochNumber'], ['name_tag', 'epoch'], ['vote_params', 'epoch']];
@@ -276,6 +296,12 @@ export class EpochDataChecker {
             const rows: any[] = eventRows[i];
             if (rows.some(row => Number(row[field]) !== epoch)) out.push({kind: 'field', key: `${name}:${epoch}`});
         }
-        return out;
+        const eventCount = eventRows.reduce((sum: number, rows: any[]) => sum + rows.length, 0);
+        const detail = `[derived rows tx=${tx.length} cfx=${cfx.length} erc20=${t20.length} erc721=${t721.length} erc1155=${t1155.length} ` +
+            `address_transfer=${addr.length} epoch_address_ids=${addrIds.length} nft_transfer=${nft.length} ` +
+            `address_nft_transfer=${addrNft.length} censor_item=${censorRows.length} events=${eventCount}; ` +
+            `ms source=${sourceMs} address_transfer=${addrQ.ms} epoch_address_ids=${addrIdsQ.ms} nft_transfer=${nftQ.ms} ` +
+            `address_nft_transfer=${addrNftQ.ms} censor_item=${censorQ.ms} events=${eventsQ.ms}]`;
+        return {differences: out, detail};
     }
 }
