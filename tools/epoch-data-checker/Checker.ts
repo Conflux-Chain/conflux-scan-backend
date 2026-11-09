@@ -256,12 +256,16 @@ export class EpochDataChecker {
             [row.fromId, row.toId].filter(id => id !== undefined && id !== null).map(id => Number(id)))));
         const addressWhere = addressIds.length ? {epoch, addressId: {[Op.in]: addressIds}} : {epoch: -1};
         const [addrQ, addrIdsQ, nftQ, addrNftQ, censorQ, eventsQ] = await Promise.all([
-            this.timed('address_transfer', () => AddressTransfer.findAll({where: addressWhere, raw: true})),
+            this.timed('address_transfer', () => addressIds.length
+                ? AddressTransfer.findAll({where: addressWhere, raw: true})
+                : Promise.resolve([])),
             this.timed('epoch_address_ids', () => latestFinalized === undefined || epoch >= latestFinalized - 1000
                 ? EpochAddressIds.findAll({where: {epoch}, raw: true})
                 : Promise.resolve([])),
             this.timed('nft_transfer', () => NftTransfer.findAll({where: {epoch}, raw: true})),
-            this.timed('address_nft_transfer', () => AddressNftTransfer.findAll({where: addressWhere, raw: true})),
+            this.timed('address_nft_transfer', () => addressIds.length
+                ? AddressNftTransfer.findAll({where: addressWhere, raw: true})
+                : Promise.resolve([])),
             this.timed('censor_item', () => CensorItem.findAll({where: {epochNumber: epoch}, raw: true})),
             this.timed('events', () => Promise.all([
                 ContractDestroy.findAll({where: {epochNumber: epoch}, raw: true}),
