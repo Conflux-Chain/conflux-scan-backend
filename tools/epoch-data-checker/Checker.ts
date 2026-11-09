@@ -231,8 +231,11 @@ export class EpochDataChecker {
             const [type] = models[i];
             const actual = actualByType[i];
             const e = expected.filter(row => row._type === type);
-            const fields = type === 'erc20' ? ['contractId','fromId','toId','value'] : type === 'erc721' ? ['contractId','fromId','toId','tokenId'] : ['contractId','fromId','toId','tokenId','value','batchIndex'];
-            result.push(...compareRows(e, actual, row => `${type}_transfer:${row.epoch}:${row.blockIndex}:${row.txIndex}:${row.txLogIndex}:${row.batchIndex || 0}`, fields));
+            const fields = type === 'erc20' ? ['contractId','fromId','toId','value'] : type === 'erc721' ? ['contractId','fromId','toId','tokenId'] : ['contractId','fromId','toId','tokenId','value'];
+            const keyOf = type === 'erc1155'
+                ? (row: any) => `${type}_transfer:${row.epoch}:${row.blockIndex}:${row.txIndex}:${row.txLogIndex}:${row.tokenId}`
+                : (row: any) => `${type}_transfer:${row.epoch}:${row.blockIndex}:${row.txIndex}:${row.txLogIndex}`;
+            result.push(...compareRows(e, actual, keyOf, fields));
         }
         return result;
     }
