@@ -28,7 +28,7 @@
     .checker-table th, .checker-table td { padding: .7rem .6rem; border-bottom: 1px solid #e1e5ed; text-align: left; vertical-align: top; }
     .checker-table th { background: #f4f6fa; color: #526071; font-weight: 600; }
     .checker-table td { overflow-wrap: anywhere; }
-    .state { font-weight: 600; } .state.paused { color: #b42318; } .state.running { color: #137333; }
+    .state { font-weight: 600; } .state.paused { color: #b42318; } .state.running { color: #137333; } .state.stopped { color: #526071; }
     code { font-size: .92rem; }
     #gate { display: block; max-width: 560px; }
     [hidden] { display: none !important; }
@@ -197,11 +197,11 @@
           $('checker-forward').textContent = data.forward == null ? '-' : data.forward;
           $('checker-forward-rate').textContent = data.forwardRate == null ? '-' : data.forwardRate.toFixed(2) + ' epoch/s';
           $('checker-forward-time').textContent = formatTime(data.forwardTime);
-          setDirectionState('checker-forward-state', data.forwardPaused);
+          setDirectionState('checker-forward-state', data.forwardPaused, data.enabled);
           $('checker-backward').textContent = data.backward == null ? '-' : data.backward;
           $('checker-backward-rate').textContent = data.backwardRate == null ? '-' : data.backwardRate.toFixed(2) + ' epoch/s';
           $('checker-backward-time').textContent = formatTime(data.backwardTime);
-          setDirectionState('checker-backward-state', data.backwardPaused);
+          setDirectionState('checker-backward-state', data.backwardPaused, data.enabled);
         } catch (error) { message.textContent = error.message || '获取状态失败'; }
       }
       $('checker-start').addEventListener('click', async () => { await checkerAction('start', {interval: selectedInterval()}); await refreshChecker(); });
@@ -209,11 +209,12 @@
       $('checker-stop').addEventListener('click', async () => { await checkerAction('stop'); await refreshChecker(); });
       $('checker-refresh').addEventListener('click', refreshChecker);
       function formatTime(value) { return value ? new Date(value).toLocaleString() : '未同步'; }
-      function setDirectionState(id, paused) {
+      function setDirectionState(id, paused, enabled) {
         const element = $(id);
-        element.textContent = paused ? '已暂停' : '检查中';
+        element.textContent = paused ? '已暂停' : (enabled ? '检查中' : '已停止');
         element.classList.toggle('paused', Boolean(paused));
-        element.classList.toggle('running', !paused);
+        element.classList.toggle('running', !paused && Boolean(enabled));
+        element.classList.toggle('stopped', !paused && !enabled);
       }
       document.querySelectorAll('nav a').forEach(link => link.addEventListener('click', event => {
         event.preventDefault();
