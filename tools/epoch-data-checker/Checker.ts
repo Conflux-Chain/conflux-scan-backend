@@ -208,28 +208,37 @@ export class EpochDataChecker {
      * detects partial writes without replaying metadata side effects. */
     private async checkDerivedData(epoch: number, latestFinalized?: number): Promise<Difference[]> {
         const out: Difference[] = [];
-        const all: any[] = await Promise.all(([
+        // Load the epoch's source rows first. Address-partitioned tables are
+        // keyed by addressId, so querying them by epoch alone scans every
+        // partition. We use the source address IDs to make those lookups
+        // selective in the second phase.
+        const sourceRows: any[] = await Promise.all(([
             FullTransaction.findAll({where: {epoch}, raw: true}),
             CfxTransfer.findAll({where: {epoch}, raw: true}),
             Erc20Transfer.findAll({where: {epoch}, raw: true}),
             Erc721Transfer.findAll({where: {epoch}, raw: true}),
             Erc1155Transfer.findAll({where: {epoch}, raw: true}),
-            AddressTransfer.findAll({where: {epoch}, raw: true}),
+        ] as any[]));
+        const [tx, cfx, t20, t721, t1155] = sourceRows;
+        const token = [...t20, ...t721, ...t1155];
+        const source = [...tx, ...cfx, ...token];
+        const addressIds = Array.from(new Set(source.flatMap((row: any) =>
+            [row.fromId, row.toId].filter(id => id !== undefined && id !== null).map(id => Number(id)))));
+        const addressWhere = addressIds.length ? {epoch, addressId: {[Op.in]: addressIds}} : {epoch: -1};
+        const [addr, addrIds, nft, addrNft, censor, eventRows] = await Promise.all([
+            AddressTransfer.findAll({where: addressWhere, raw: true}),
             latestFinalized === undefined || epoch >= latestFinalized - 1000
                 ? EpochAddressIds.findAll({where: {epoch}, raw: true})
                 : Promise.resolve([]),
             NftTransfer.findAll({where: {epoch}, raw: true}),
-            AddressNftTransfer.findAll({where: {epoch}, raw: true}),
+            AddressNftTransfer.findAll({where: addressWhere, raw: true}),
             CensorItem.count({where: {epochNumber: epoch}}),
             Promise.all([
                 ContractDestroy.findAll({where: {epochNumber: epoch}, raw: true}),
                 NameTag.findAll({where: {epoch}, raw: true}),
                 VoteParams.findAll({where: {epoch}, raw: true}),
             ]),
-        ] as any[]));
-        const [tx, cfx, t20, t721, t1155, addr, addrIds, nft, addrNft, censor, eventRows] = all;
-        const token = [...t20, ...t721, ...t1155];
-        const source = [...tx, ...cfx, ...token];
+        ] as any[]);
         const expectedAddr = source.reduce((n: number, row: any) => n + (row.fromId !== undefined ? 1 : 0) + (row.toId && row.toId !== row.fromId ? 1 : 0), 0);
         if (addr.length !== expectedAddr) out.push({kind: 'count', key: `address_transfer:${epoch}`, expected: expectedAddr, actual: addr.length});
         const ids = new Set<number>();
