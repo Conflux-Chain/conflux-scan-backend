@@ -39,6 +39,8 @@ export class EpochDataChecker {
     private readonly cursors = new CursorStore();
     private readonly addressIdCache = new Map<string, Promise<number>>();
     private readonly epochRows = new Map<string, Promise<any[]>>();
+    private readonly progress = new Map<Direction, {lastLog: number, count: number}>();
+    private readonly verbose = process.env.EPOCH_CHECKER_VERBOSE === '1';
     private readonly tokenTool: TokenTool;
     constructor(private readonly cfx: Conflux, private readonly config: StatConfig) {
         this.tokenTool = new TokenTool(cfx);
@@ -77,9 +79,16 @@ export class EpochDataChecker {
         const next = direction === 'forward' ? cursor + 1 : cursor - 1;
         await this.cursors.set(direction, next);
         const t = result.timings;
-        console.log(`[epoch-checker] ${direction.padEnd(8)} epoch=${cursor} matched; cursor=${next} ` +
-            `ms=${t.total} epoch=${t.epoch} blocks=${t.blocks} cfx=${t.cfx} token=${t.token} derived=${t.derived}` +
-            (result.detail ? ` ${result.detail}` : ''));
+        const progress = this.progress.get(direction) || {lastLog: 0, count: 0};
+        progress.count++;
+        const now = Date.now();
+        if (this.verbose || progress.count === 1 || now - progress.lastLog >= 5000) {
+            console.log(`[epoch-checker] ${direction.padEnd(8)} epoch=${cursor} matched; cursor=${next} ` +
+                `completed=${progress.count} ms=${t.total} epoch=${t.epoch} blocks=${t.blocks} cfx=${t.cfx} token=${t.token} derived=${t.derived}` +
+                (result.detail ? ` ${result.detail}` : ''));
+            progress.lastLog = now;
+        }
+        this.progress.set(direction, progress);
     }
 
     private async fail(direction: Direction, epoch: number, reason: string) {
