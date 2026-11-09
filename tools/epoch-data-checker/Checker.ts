@@ -272,53 +272,48 @@ export class EpochDataChecker {
         const addressWhere = addressIds.length ? {epoch, addressId: {[Op.in]: addressIds}} : {epoch: -1};
         const [addrQ, addrIdsQ, nftQ, addrNftQ, censorQ, eventsQ] = await Promise.all([
             this.timed('address_transfer', () => addressIds.length
-                ? AddressTransfer.findAll({where: addressWhere, raw: true})
-                : Promise.resolve([])),
+                ? AddressTransfer.count({where: addressWhere})
+                : Promise.resolve(0)),
             this.timed('epoch_address_ids', () => latestFinalized === undefined || epoch >= latestFinalized - 1000
-                ? EpochAddressIds.findAll({where: {epoch}, raw: true})
-                : Promise.resolve([])),
-            this.timed('nft_transfer', () => NftTransfer.findAll({where: {epoch}, raw: true})),
+                ? EpochAddressIds.count({where: {epoch}})
+                : Promise.resolve(0)),
+            this.timed('nft_transfer', () => NftTransfer.count({where: {epoch}})),
             this.timed('address_nft_transfer', () => addressIds.length
-                ? AddressNftTransfer.findAll({where: addressWhere, raw: true})
-                : Promise.resolve([])),
-            this.timed('censor_item', () => CensorItem.findAll({where: {epochNumber: epoch}, raw: true})),
+                ? AddressNftTransfer.count({where: addressWhere})
+                : Promise.resolve(0)),
+            this.timed('censor_item', () => CensorItem.count({where: {epochNumber: epoch}})),
             this.timed('events', () => Promise.all([
-                ContractDestroy.findAll({where: {epochNumber: epoch}, raw: true}),
-                NameTag.findAll({where: {epoch}, raw: true}),
-                VoteParams.findAll({where: {epoch}, raw: true}),
+                ContractDestroy.count({where: {epochNumber: epoch}}),
+                NameTag.count({where: {epoch}}),
+                VoteParams.count({where: {epoch}}),
             ])),
         ]);
-        const addr = addrQ.value;
-        const addrIds = addrIdsQ.value;
-        const nft = nftQ.value;
-        const addrNft = addrNftQ.value;
-        const censorRows = censorQ.value;
+        const addr = Number(addrQ.value);
+        const addrIds = Number(addrIdsQ.value);
+        const nft = Number(nftQ.value);
+        const addrNft = Number(addrNftQ.value);
+        const censorRows = Number(censorQ.value);
         const eventRows = eventsQ.value;
         const expectedAddr = source.reduce((n: number, row: any) => n + (row.fromId !== undefined ? 1 : 0) + (row.toId && row.toId !== row.fromId ? 1 : 0), 0);
-        if (addr.length !== expectedAddr) out.push({kind: 'count', key: `address_transfer:${epoch}`, expected: expectedAddr, actual: addr.length});
-        const ids = new Set<number>();
-        addr.forEach((row: any) => ids.add(Number(row.addressId)));
+        if (addr !== expectedAddr) out.push({kind: 'count', key: `address_transfer:${epoch}`, expected: expectedAddr, actual: addr});
+        const expectedAddressIds = new Set(addressIds).size;
         // EpochSync evicts this helper table below latest_finalized - 1000.
         // Do not report normal retention cleanup as historical data loss.
         if (latestFinalized === undefined || epoch >= latestFinalized - 1000) {
-            if (addrIds.length !== ids.size) out.push({kind: 'count', key: `epoch_address_ids:${epoch}`, expected: ids.size, actual: addrIds.length});
+            if (addrIds !== expectedAddressIds) out.push({kind: 'count', key: `epoch_address_ids:${epoch}`, expected: expectedAddressIds, actual: addrIds});
         }
         const expectedNft = t721.length + t1155.length;
-        if (nft.length !== expectedNft) out.push({kind: 'count', key: `nft_transfer:${epoch}`, expected: expectedNft, actual: nft.length});
-        if (addrNft.length < expectedNft || addrNft.length > expectedNft * 2) out.push({kind: 'count', key: `address_nft_transfer:${epoch}`, expected: `${expectedNft}..${expectedNft * 2}`, actual: addrNft.length});
-        if (censorRows.length !== 0 && censorRows.length !== tx.length) out.push({kind: 'count', key: `censor_item:${epoch}`, expected: tx.length, actual: censorRows.length});
+        if (nft !== expectedNft) out.push({kind: 'count', key: `nft_transfer:${epoch}`, expected: expectedNft, actual: nft});
+        if (addrNft < expectedNft || addrNft > expectedNft * 2) out.push({kind: 'count', key: `address_nft_transfer:${epoch}`, expected: `${expectedNft}..${expectedNft * 2}`, actual: addrNft});
+        if (censorRows !== 0 && censorRows !== tx.length) out.push({kind: 'count', key: `censor_item:${epoch}`, expected: tx.length, actual: censorRows});
         // These tables are event driven. Ensure every row points at this epoch
         // and never contains an impossible future epoch after a partial write.
-        const eventDefs = [['contract_destroy', 'epochNumber'], ['name_tag', 'epoch'], ['vote_params', 'epoch']];
-        for (let i = 0; i < eventDefs.length; i++) {
-            const [name, field] = eventDefs[i];
-            const rows: any[] = eventRows[i];
-            if (rows.some(row => Number(row[field]) !== epoch)) out.push({kind: 'field', key: `${name}:${epoch}`});
-        }
-        const eventCount = eventRows.reduce((sum: number, rows: any[]) => sum + rows.length, 0);
+        // Each event query is constrained by its epoch column, so counts are
+        // sufficient and avoid transferring full rows from the database.
+        const eventCount = eventRows.reduce((sum: number, count: number) => sum + Number(count), 0);
         const detail = `[derived rows tx=${tx.length} cfx=${cfx.length} erc20=${t20.length} erc721=${t721.length} erc1155=${t1155.length} ` +
-            `address_transfer=${addr.length} epoch_address_ids=${addrIds.length} nft_transfer=${nft.length} ` +
-            `address_nft_transfer=${addrNft.length} censor_item=${censorRows.length} events=${eventCount}; ` +
+            `address_transfer=${addr} epoch_address_ids=${addrIds} nft_transfer=${nft} ` +
+            `address_nft_transfer=${addrNft} censor_item=${censorRows} events=${eventCount}; ` +
             `ms source=${sourceMs} address_transfer=${addrQ.ms} epoch_address_ids=${addrIdsQ.ms} nft_transfer=${nftQ.ms} ` +
             `address_nft_transfer=${addrNftQ.ms} censor_item=${censorQ.ms} events=${eventsQ.ms}]`;
         return {differences: out, detail};
