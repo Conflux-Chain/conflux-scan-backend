@@ -630,16 +630,20 @@ async function checkOssBucket(accessId: string, accessKey: string, bucket: strin
     console.log(`get oss bucket info result :`, result.bucket.ExtranetEndpoint, result.bucket.Location)
 }
 let ossConf = {accessId:'', accessKey:'', bucket:'', prefix: '', region: ''} as OssConf
-export async function initOss(conf: OssConf) {
+export async function initOss(conf: OssConf, options: {skipCheck?: boolean} = {}) {
     ossConf = conf;
     let {accessId, accessKey, bucket, prefix, region} = ossConf || {}
     if (!accessId) {
-        console.log(`oss not configured.`)
+        console.log(`oss startup check skipped: oss is not configured.`)
         return
     }
     if (!region) {
         region = bucket === 'scanchina' ? 'oss-cn-beijing' : 'oss-cn-hongkong';
         ossConf.region = region;
+    }
+    if (options.skipCheck) {
+        console.log(`oss startup check skipped: bucket ${bucket}, prefix ${prefix} region ${region} ...`);
+        return;
     }
     const timer = setTimeout(()=>{
         console.log(`We are checking oss ...`)
