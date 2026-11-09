@@ -32,6 +32,7 @@ export interface EpochCheckResult {
 export class EpochDataChecker {
     private readonly cursors = new CursorStore();
     private readonly addressIdCache = new Map<string, Promise<number>>();
+    private readonly epochRows = new Map<string, Promise<any[]>>();
     private readonly tokenTool: TokenTool;
     constructor(private readonly cfx: Conflux, private readonly config: StatConfig) {
         this.tokenTool = new TokenTool(cfx);
@@ -118,6 +119,21 @@ export class EpochDataChecker {
         return {name, ms: Date.now() - started, value};
     }
 
+    private rows(model: any, name: string, epoch: number): Promise<any[]> {
+        const key = `${name}:${epoch}`;
+        const cached = this.epochRows.get(key);
+        if (cached) return cached;
+        const pending = model.findAll({where: {epoch}, raw: true}).catch(error => {
+            this.epochRows.delete(key);
+            throw error;
+        });
+        this.epochRows.set(key, pending);
+        // Keep the cache bounded. Entries are only an optimization for the
+        // concurrent checks of the same epoch and must not grow indefinitely.
+        while (this.epochRows.size > 200) this.epochRows.delete(this.epochRows.keys().next().value);
+        return pending;
+    }
+
     private async checkBlocks(epoch: number, rpcPivot: any): Promise<Difference[]> {
         const [rpcBlocks, dbBlocks]: [any[], any[]] = await Promise.all([
             this.cfx.getBlocksByEpochNumber(epoch).then(rows => rows || []),
@@ -148,8 +164,8 @@ export class EpochDataChecker {
     private async checkTokenTransfers(epoch: number, pivot: any): Promise<Difference[]> {
         const [receipts, actualByType]: [any[][], any[][]] = await Promise.all([
             (this.cfx as any).getEpochReceiptsByPivotBlockHash(pivot.hash).then(rows => rows || []),
-            Promise.all([Erc20Transfer, Erc721Transfer, Erc1155Transfer].map((model: any) =>
-                model.findAll({where: {epoch}, raw: true}))),
+            Promise.all([Erc20Transfer, Erc721Transfer, Erc1155Transfer].map((model: any, index) =>
+                this.rows(model, ['erc20', 'erc721', 'erc1155'][index], epoch))),
         ]);
         const expected: any[] = [];
         for (let blockIndex = 0; blockIndex < receipts.length; blockIndex++) {
@@ -185,7 +201,7 @@ export class EpochDataChecker {
     private async checkCfxTransfers(epoch: number, pivot: any): Promise<Difference[]> {
         const [hashes, actual]: [any[], any[]] = await Promise.all([
             this.cfx.getBlocksByEpochNumber(epoch).then(rows => rows || []),
-            CfxTransfer.findAll({where: {epoch}, raw: true}),
+            this.rows(CfxTransfer, 'cfx', epoch),
         ]);
         const expected: any[] = [];
         const traces = await Promise.all(hashes.map(hash => (this.cfx as any).traceBlock(hash)));
@@ -213,11 +229,11 @@ export class EpochDataChecker {
         // partition. We use the source address IDs to make those lookups
         // selective in the second phase.
         const sourceRows: any[] = await Promise.all(([
-            FullTransaction.findAll({where: {epoch}, raw: true}),
-            CfxTransfer.findAll({where: {epoch}, raw: true}),
-            Erc20Transfer.findAll({where: {epoch}, raw: true}),
-            Erc721Transfer.findAll({where: {epoch}, raw: true}),
-            Erc1155Transfer.findAll({where: {epoch}, raw: true}),
+            this.rows(FullTransaction, 'tx', epoch),
+            this.rows(CfxTransfer, 'cfx', epoch),
+            this.rows(Erc20Transfer, 'erc20', epoch),
+            this.rows(Erc721Transfer, 'erc721', epoch),
+            this.rows(Erc1155Transfer, 'erc1155', epoch),
         ] as any[]));
         const [tx, cfx, t20, t721, t1155] = sourceRows;
         const token = [...t20, ...t721, ...t1155];
