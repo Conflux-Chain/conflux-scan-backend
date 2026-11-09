@@ -36,7 +36,12 @@ async function run() {
     const cfx = await initCfxSdk(config.conflux);
     StatApp.networkId = cfx.networkId;
     console.log(`[epoch-checker] rpc networkId=${cfx.networkId}`);
-    const sequelize = createDB({...config.database, readonly: true});
+    const sequelize = createDB({...config.database, readonly: true, pool: {
+        ...((config.database as any)?.pool || {}),
+        max: 20,
+        min: 0,
+        acquire: 120000,
+    }});
     // Register only the read models needed by this tool.  initModel() also
     // runs production schema migration helpers, which is deliberately avoided.
     KV.register(sequelize);
@@ -79,10 +84,12 @@ async function run() {
     if (!await acquireLease()) { console.log('[epoch-checker] another instance owns the lease; exiting'); return; }
     console.log('[epoch-checker] lease acquired');
     let shuttingDown = false;
+    let currentRound: Promise<void> | null = null;
     const shutdown = async (signal: string) => {
         if (shuttingDown) return;
         shuttingDown = true;
         console.log(`[epoch-checker] received ${signal}; releasing lease`);
+        if (currentRound) await currentRound.catch(() => undefined);
         await releaseLease().catch(error => console.error('[epoch-checker] release lease failed', error));
         await KV.sequelize.close().catch(() => undefined);
         process.exit(0);
@@ -93,13 +100,16 @@ async function run() {
         if (!await isEnabled()) { console.log('[epoch-checker] disabled by admin; stopping'); break; }
         if (!await renewLease()) { console.log('[epoch-checker] lease lost; stopping'); break; }
         const directions: Direction[] = direction === 'both' ? ['forward', 'backward'] : [direction];
-        await Promise.all(directions.map(async item => {
+        currentRound = Promise.all(directions.map(async item => {
             try {
                 await checker.run(item);
             } catch (error) {
                 console.error(`[epoch-checker] ${item} failed`, error);
             }
-        }));
+        })).then(() => undefined);
+        await currentRound;
+        currentRound = null;
+        if (shuttingDown) break;
         const pausedStore = new CursorStore();
         const paused = await Promise.all(directions.map(item => pausedStore.paused(item)));
         if (paused.every(Boolean)) {

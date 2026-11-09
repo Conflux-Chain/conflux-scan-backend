@@ -215,7 +215,9 @@ export class EpochDataChecker {
             Erc721Transfer.findAll({where: {epoch}, raw: true}),
             Erc1155Transfer.findAll({where: {epoch}, raw: true}),
             AddressTransfer.findAll({where: {epoch}, raw: true}),
-            EpochAddressIds.findAll({where: {epoch}, raw: true}),
+            latestFinalized === undefined || epoch >= latestFinalized - 1000
+                ? EpochAddressIds.findAll({where: {epoch}, raw: true})
+                : Promise.resolve([]),
             NftTransfer.findAll({where: {epoch}, raw: true}),
             AddressNftTransfer.findAll({where: {epoch}, raw: true}),
             CensorItem.count({where: {epochNumber: epoch}}),
