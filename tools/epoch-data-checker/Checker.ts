@@ -228,19 +228,28 @@ export class EpochDataChecker {
     }
 
     private async checkCfxTransfers(epoch: number, pivot: any): Promise<Difference[]> {
-        const [hashes, actual]: [any[], any[]] = await Promise.all([
+        const [hashes, actual, txRows]: [any[], any[], any[]] = await Promise.all([
             this.cfx.getBlocksByEpochNumber(epoch).then(rows => rows || []),
             this.rows(CfxTransfer, 'cfx', epoch),
+            this.rows(FullTransaction, 'tx', epoch),
         ]);
+        const txStatus = new Map<string, number>();
+        txRows.forEach(row => txStatus.set(`${Number(row.blockPosition)}:${Number(row.txPosition)}`, Number(row.status)));
         const expected: any[] = [];
         const traces = await Promise.all(hashes.map(hash => (this.cfx as any).traceBlock(hash)));
         for (let blockIndex = 0; blockIndex < traces.length; blockIndex++) {
             const traced: any = traces[blockIndex];
             for (const tx of traced?.transactionTraces || []) {
+                const txPosition = Number(tx.transactionPosition || 0);
+                // CfxTransferSync only processes successful transactions and
+                // valid traces. Failed transactions can still expose traces
+                // through RPC, but they must not create cfx_transfer rows.
+                if (txStatus.get(`${blockIndex}:${txPosition}`) !== 0) continue;
                 for (let traceIndex = 0; traceIndex < (tx.traces || []).length; traceIndex++) {
+                    if (tx.traces[traceIndex]?.valid === false) continue;
                     const transfer: any = getCfxTransfer(tx.traces[traceIndex]);
                     if (!transfer) continue;
-                    expected.push({epoch, blockIndex, txIndex: Number(tx.transactionPosition || 0), txLogIndex: traceIndex,
+                    expected.push({epoch, blockIndex, txIndex: txPosition, txLogIndex: traceIndex,
                         fromId: await this.id(transfer.from), toId: await this.id(transfer.to), value: String(transfer.value), type: transfer.type});
                 }
             }
