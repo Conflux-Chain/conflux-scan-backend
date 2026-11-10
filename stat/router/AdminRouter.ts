@@ -203,4 +203,17 @@ export function registerAdminRoutes(router: Router<any, {}>, statApp?: StatApp) 
         }
         ctx.body = {reports};
     });
+    router.post('/admin/epoch-checker/reports/clear', async ctx => {
+        await checkAdminPassword((ctx.request.body as any)?.password);
+        const reportDir = path.resolve(process.cwd(), 'public/stat/epoch-checker-reports');
+        let deleted = 0;
+        if (fs.existsSync(reportDir)) {
+            for (const file of fs.readdirSync(reportDir)) {
+                if (!/^epoch-[0-9]+-[0-9]+\.html$/.test(file)) continue;
+                fs.unlinkSync(path.join(reportDir, file));
+                deleted++;
+            }
+        }
+        ctx.body = {deleted};
+    });
 }

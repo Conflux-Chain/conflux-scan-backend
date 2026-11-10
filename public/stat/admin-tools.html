@@ -20,6 +20,7 @@
     button { margin-top: 1rem; padding: .65rem 1.1rem; border: 0; border-radius: 6px; background: #1557b0; color: white; font: inherit; cursor: pointer; }
     button:disabled { opacity: .5; cursor: default; }
     button.secondary { background: #e9edf4; color: #172235; margin-left: .5rem; }
+    button.danger { background: #b42318; margin-left: .5rem; }
     #message { min-height: 1.5rem; margin: 1rem 0; color: #b42318; }
     dl { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: .7rem 1rem; margin: 1rem 0 0; }
     dt { font-weight: 600; } dt.nowrap { white-space: nowrap; } dd { margin: 0; overflow-wrap: anywhere; } #token { white-space: pre-wrap; }
@@ -100,6 +101,8 @@
         <section class="report-panel" aria-label="检查报告">
           <h2>检查报告</h2>
           <p>不一致时生成的详细报告，点击即可查看。</p>
+          <button type="button" class="secondary" id="checker-reports-refresh">刷新报告</button>
+          <button type="button" class="danger" id="checker-reports-clear">清空报告</button>
           <div id="checker-reports" class="report-list"><span>暂无报告</span></div>
         </section>
       </section>
@@ -235,6 +238,14 @@
           list.append(link);
         }
       }
+      $('checker-reports-refresh').addEventListener('click', refreshReports);
+      $('checker-reports-clear').addEventListener('click', async () => {
+        if (!window.confirm('确定清空所有检查报告吗？')) return;
+        try {
+          await checkerAction('reports/clear');
+          await refreshReports();
+        } catch (error) { message.textContent = error.message || '清空报告失败'; }
+      });
       $('checker-start').addEventListener('click', async () => { await checkerAction('start', {interval: selectedInterval()}); await refreshChecker(); });
       $('checker-resume').addEventListener('click', async () => { await checkerAction('resume', {interval: selectedInterval()}); await refreshChecker(); });
       $('checker-stop').addEventListener('click', async () => { await checkerAction('stop'); await refreshChecker(); });
