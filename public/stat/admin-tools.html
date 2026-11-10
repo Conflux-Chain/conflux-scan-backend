@@ -28,6 +28,13 @@
     .checker-table th, .checker-table td { padding: .7rem .6rem; border-bottom: 1px solid #e1e5ed; text-align: left; vertical-align: top; }
     .checker-table th { background: #f4f6fa; color: #526071; font-weight: 600; }
     .checker-table td { overflow-wrap: anywhere; }
+    .report-panel { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #e1e5ed; }
+    .report-panel h2 { font-size: 1.05rem; margin: 0; }
+    .report-panel p { margin: .25rem 0 .75rem; }
+    .report-list { display: grid; gap: .5rem; }
+    .report-list a { display: flex; justify-content: space-between; gap: 1rem; padding: .7rem .8rem; border: 1px solid #d9e2f0; border-radius: 8px; color: #174ea6; text-decoration: none; background: #f8fbff; }
+    .report-list a:hover { background: #eef4ff; }
+    .report-list small { color: #667085; white-space: nowrap; }
     .state { font-weight: 600; } .state.paused { color: #b42318; } .state.running { color: #137333; } .state.stopped { color: #526071; }
     code { font-size: .92rem; }
     #gate { display: block; max-width: 560px; }
@@ -90,6 +97,11 @@
             <tr><th scope="row">反向</th><td id="checker-backward">-</td><td id="checker-backward-time">-</td><td id="checker-backward-rate">-</td><td id="checker-backward-state" class="state">-</td></tr>
           </tbody>
         </table>
+        <section class="report-panel" aria-label="检查报告">
+          <h2>检查报告</h2>
+          <p>不一致时生成的详细报告，点击即可查看。</p>
+          <div id="checker-reports" class="report-list"><span>暂无报告</span></div>
+        </section>
       </section>
     </main>
   </div>
@@ -202,7 +214,26 @@
           $('checker-backward-rate').textContent = data.backwardRate == null ? '-' : data.backwardRate.toFixed(2) + ' epoch/s';
           $('checker-backward-time').textContent = formatTime(data.backwardTime);
           setDirectionState('checker-backward-state', data.backwardPaused, data.enabled);
+          await refreshReports();
         } catch (error) { message.textContent = error.message || '获取状态失败'; }
+      }
+      async function refreshReports() {
+        const data = await checkerAction('reports');
+        const list = $('checker-reports');
+        list.textContent = '';
+        if (!data.reports?.length) { list.textContent = '暂无报告'; return; }
+        for (const report of data.reports) {
+          const link = document.createElement('a');
+          link.href = report.url;
+          link.target = '_blank';
+          link.rel = 'noopener';
+          const title = document.createElement('span');
+          title.textContent = `Epoch ${report.epoch}`;
+          const time = document.createElement('small');
+          time.textContent = formatTime(report.createdAt);
+          link.append(title, time);
+          list.append(link);
+        }
       }
       $('checker-start').addEventListener('click', async () => { await checkerAction('start', {interval: selectedInterval()}); await refreshChecker(); });
       $('checker-resume').addEventListener('click', async () => { await checkerAction('resume', {interval: selectedInterval()}); await refreshChecker(); });

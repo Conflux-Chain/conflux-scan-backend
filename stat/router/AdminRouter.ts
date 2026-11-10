@@ -185,4 +185,22 @@ export function registerAdminRoutes(router: Router<any, {}>, statApp?: StatApp) 
             lastError: await KV.getString(LAST_ERROR, ''),
             forwardPaused: await cursors.paused('forward'), backwardPaused: await cursors.paused('backward')};
     });
+    router.post('/admin/epoch-checker/reports', async ctx => {
+        await checkAdminPassword((ctx.request.body as any)?.password);
+        const reportDir = path.resolve(process.cwd(), 'public/stat/epoch-checker-reports');
+        let reports: any[] = [];
+        if (fs.existsSync(reportDir)) {
+            reports = fs.readdirSync(reportDir)
+                .filter(file => /^epoch-[0-9]+-[0-9]+\.html$/.test(file))
+                .map(file => {
+                    const stat = fs.statSync(path.join(reportDir, file));
+                    const match = file.match(/^epoch-([0-9]+)-([0-9]+)\.html$/);
+                    return {file, epoch: Number(match[1]), createdAt: stat.mtime.toISOString(),
+                        url: `/stat/epoch-checker-reports/${file}`};
+                })
+                .sort((a, b) => b.epoch - a.epoch || b.createdAt.localeCompare(a.createdAt))
+                .slice(0, 30);
+        }
+        ctx.body = {reports};
+    });
 }
