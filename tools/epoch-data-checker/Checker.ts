@@ -23,6 +23,8 @@ import {VoteParams} from '../../stat/model/Epoch';
 import {LAST_ERROR, RATE_BACKWARD, RATE_FORWARD} from './Control';
 import {KV} from '../../stat/model/KV';
 import {PruneInfo, PruneType} from '../../stat/model/PruneInfo';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export type Direction = 'forward'|'backward';
 export interface EpochCheckResult {
@@ -34,6 +36,10 @@ export interface EpochCheckResult {
 interface DerivedCheckResult {
     differences: Difference[];
     detail: string;
+}
+
+function escapeHtml(value: any): string {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, char => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[char]));
 }
 
 export class EpochDataChecker {
@@ -398,7 +404,15 @@ export class EpochDataChecker {
                             pruneCursor: pruneByAddress.get(addressId) || null});
                     }
                 }
-                addressDiagnostic = ` address_transfer_diagnostic=${JSON.stringify({missing: expectedDetails,
+                const reportDir = path.resolve(process.cwd(), 'public/epoch-checker-reports');
+                fs.mkdirSync(reportDir, {recursive: true});
+                const reportName = `epoch-${epoch}-${Date.now()}.html`;
+                const reportRows = expectedDetails.map(row => `<tr><td>${escapeHtml(row.source)}</td><td>${escapeHtml(row.addressId)}</td><td>${escapeHtml(row.address)}</td><td>${escapeHtml(row.blockIndex)}</td><td>${escapeHtml(row.txIndex)}</td><td>${escapeHtml(row.txLogIndex)}</td><td>${escapeHtml(row.txHash)}</td><td>${escapeHtml(row.pruneCursor)}</td></tr>`).join('');
+                const actualRowsHtml = (actualRows as any[]).map(row => `<tr><td>${escapeHtml(row.addressId)}</td><td>${escapeHtml(hexById.get(Number(row.addressId)) || '')}</td><td>${escapeHtml(row.blockIndex)}</td><td>${escapeHtml(row.txIndex)}</td><td>${escapeHtml(row.txLogIndex)}</td></tr>`).join('');
+                const reportHtml = `<!doctype html><meta charset="utf-8"><title>Epoch ${escapeHtml(epoch)} address transfer mismatch</title><style>body{font:14px system-ui;margin:32px;color:#17202a}h1{margin-bottom:4px}.meta{color:#667085;margin-bottom:24px}table{border-collapse:collapse;width:100%;margin:12px 0 28px}th,td{border:1px solid #d0d5dd;padding:7px;text-align:left}th{background:#f2f4f7}code{font-family:ui-monospace,monospace}</style><h1>Epoch ${escapeHtml(epoch)} · address_transfer</h1><div class="meta">expected ${escapeHtml(expectedAddr)} · actual ${escapeHtml(addr)} · missing unpruned ${escapeHtml(missingUnpruned)} · pruned ${escapeHtml(addressTransferPruned)} · extra ${escapeHtml(extra)}</div><h2>Missing rows</h2><table><tr><th>source</th><th>address ID</th><th>address</th><th>block</th><th>tx index</th><th>log</th><th>transaction hash</th><th>prune cursor</th></tr>${reportRows || '<tr><td colspan="8">none</td></tr>'}</table><h2>Actual rows selected by source address IDs</h2><table><tr><th>address ID</th><th>address</th><th>block</th><th>tx index</th><th>log</th></tr>${actualRowsHtml || '<tr><td colspan="5">none</td></tr>'}</table>`;
+                fs.writeFileSync(path.join(reportDir, reportName), reportHtml, 'utf8');
+                const reportUrl = `/stat/admin/epoch-checker/report/${reportName}`;
+                addressDiagnostic = ` report=${reportUrl} address_transfer_diagnostic=${JSON.stringify({missing: expectedDetails,
                     actualAddresses: Array.from(actualByAddress.keys()).map(id => ({addressId: id, address: hexById.get(id) || null}))})}`;
                 out.push({kind: 'count', key: `address_transfer:${epoch}`, expected: expectedAddr,
                     actual: addr, detail: `missingUnpruned=${missingUnpruned} extra=${extra} pruned=${addressTransferPruned}${addressDiagnostic}`});

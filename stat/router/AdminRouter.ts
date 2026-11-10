@@ -9,6 +9,7 @@ import {StatApp} from '../StatApp';
 import {Errors} from '../service/common/LogicError';
 import {spawn} from 'child_process';
 import * as path from 'path';
+import * as fs from 'fs';
 import {CursorStore} from '../../tools/epoch-data-checker/CursorStore';
 import {ENABLED, isEnabled, leaseOwner, setEnabled, LAST_ERROR, RATE_FORWARD, RATE_BACKWARD, INTERVAL_SECONDS} from '../../tools/epoch-data-checker/Control';
 
@@ -63,6 +64,21 @@ async function checkAdminPassword(password: unknown): Promise<void> {
 }
 
 export function registerAdminRoutes(router: Router<any, {}>, statApp?: StatApp) {
+    router.get('/admin/epoch-checker/report/:file', async ctx => {
+        const file = String(ctx.params.file || '');
+        if (!/^epoch-[0-9]+-[0-9]+\.html$/.test(file)) {
+            ctx.status = 404;
+            return;
+        }
+        const reportPath = path.resolve(process.cwd(), 'public/epoch-checker-reports', file);
+        if (!fs.existsSync(reportPath)) {
+            ctx.status = 404;
+            return;
+        }
+        ctx.type = 'text/html';
+        ctx.set('Cache-Control', 'no-store');
+        ctx.body = fs.createReadStream(reportPath);
+    });
     router.get('/admin/status', async ctx => {
         ctx.set('Cache-Control', 'no-store');
         const row = await KV.findOne({where: {key: ADMIN_PWD_KEY}, attributes: ['value']});
