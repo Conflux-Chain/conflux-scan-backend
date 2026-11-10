@@ -20,6 +20,8 @@ const deadline = 13_000;
 const BN_REQUEST_MAX_ATTEMPTS = 5;
 const BN_REQUEST_RETRY_DELAY_MS = 1_000;
 const BN_REQUEST_MAX_RETRY_DELAY_MS = 60_000;
+const CFX_CALL_MAX_ATTEMPTS = 3;
+const CFX_CALL_RETRY_DELAY_MS = 500;
 const PEER_URLS = {
     1029: 'https://www.confluxscan.org',
     1030: 'https://evm.confluxscan.org',
@@ -409,7 +411,7 @@ export class TokenQuoteSync {
         const directConvertTokens = Object.keys(directSwap);
         const contractRouter = this.cfx.Contract({address: routerAddr, abi: abiSwappiRouter});
         for (const token0 of directConvertTokens) {
-            const [amount0, amount1] = await contractRouter.getAmountsOut(100000, [token0, usdtAddr]);
+            const [amount0, amount1] = await this.callAmountsOut(contractRouter, 100000, [token0, usdtAddr]);
             const token0Decimals = await getDecimals(this.tokenTool, token0);
             if(amount0 === BigInt(0)) continue
             tokenPriceMap[token0] = BigFixed(amount1).div(BigFixed(amount0)).div(BigFixed(10).pow(18 - token0Decimals))
@@ -420,8 +422,8 @@ export class TokenQuoteSync {
         const forwardConvertTokens = Object.keys(forwardSwap);
         for (const token0 of forwardConvertTokens) {
             const {token1} = forwardSwap[token0];
-            const ratio1 = await contractRouter.getAmountsOut(100000, [token0, token1]);
-            const ratio2 = await contractRouter.getAmountsOut(100000, [token1, usdtAddr]);
+            const ratio1 = await this.callAmountsOut(contractRouter, 100000, [token0, token1]);
+            const ratio2 = await this.callAmountsOut(contractRouter, 100000, [token1, usdtAddr]);
             const token0Decimals = await getDecimals(this.tokenTool, token0);
             const token1Decimals = await getDecimals(this.tokenTool, token1);
             if(ratio1[0] === BigInt(0) || ratio2[0] === BigInt(0)) continue
@@ -434,8 +436,8 @@ export class TokenQuoteSync {
         const backwardConvertTokens = Object.keys(backwardSwap);
         for (const token1 of backwardConvertTokens) {
             const {token0} = backwardSwap[token1];
-            const ratio1 = await contractRouter.getAmountsOut(100000, [token0, token1]);
-            const ratio2 = await contractRouter.getAmountsOut(100000, [token0, usdtAddr]);
+            const ratio1 = await this.callAmountsOut(contractRouter, 100000, [token0, token1]);
+            const ratio2 = await this.callAmountsOut(contractRouter, 100000, [token0, usdtAddr]);
             const token0Decimals = await getDecimals(this.tokenTool, token0);
             const token1Decimals = await getDecimals(this.tokenTool, token1);
             if(ratio1[1] === BigInt(0) || ratio2[0] === BigInt(0)) continue
@@ -445,6 +447,28 @@ export class TokenQuoteSync {
         }
 
         return tokenPriceMap;
+    }
+
+    private async callAmountsOut(contractRouter: any, amount: number, path: string[]) {
+        let lastError: any;
+        for (let attempt = 1; attempt <= CFX_CALL_MAX_ATTEMPTS; attempt++) {
+            try {
+                const confirmedEpoch = await this.cfx.getEpochNumber('latest_confirmed');
+                return await contractRouter.getAmountsOut(amount, path).call({}, confirmedEpoch);
+            } catch (error) {
+                lastError = error;
+                if (!this.isCfxEpochStateError(error) || attempt === CFX_CALL_MAX_ATTEMPTS) throw error;
+                const delay = CFX_CALL_RETRY_DELAY_MS * attempt;
+                console.log(`Retry cfx_call getAmountsOut attempt ${attempt + 1}/${CFX_CALL_MAX_ATTEMPTS} after ${delay}ms`, error?.code || error?.message || error);
+                await sleep(delay);
+            }
+        }
+        throw lastError;
+    }
+
+    private isCfxEpochStateError(error: any): boolean {
+        return Number(error?.code) === -32016 || Number(error?.error?.code) === -32016 ||
+            Number(error?.data?.code) === -32016;
     }
 
     //======================================================================
