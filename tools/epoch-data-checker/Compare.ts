@@ -3,6 +3,7 @@ export interface Difference {
     key: string;
     expected?: any;
     actual?: any;
+    detail?: string;
 }
 
 export function normalize(value: any): any {

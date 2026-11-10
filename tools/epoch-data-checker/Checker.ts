@@ -22,6 +22,7 @@ import {CensorItem} from '../../stat/model/CensorItem';
 import {VoteParams} from '../../stat/model/Epoch';
 import {LAST_ERROR, RATE_BACKWARD, RATE_FORWARD} from './Control';
 import {KV} from '../../stat/model/KV';
+import {PruneInfo, PruneType} from '../../stat/model/PruneInfo';
 
 export type Direction = 'forward'|'backward';
 export interface EpochCheckResult {
@@ -318,8 +319,52 @@ export class EpochDataChecker {
         const addrNft = Number(addrNftQ.value);
         const censorRows = Number(censorQ.value);
         const eventRows = eventsQ.value;
-        const expectedAddr = source.reduce((n: number, row: any) => n + (row.fromId !== undefined ? 1 : 0) + (row.toId && row.toId !== row.fromId ? 1 : 0), 0);
-        if (addr !== expectedAddr) out.push({kind: 'count', key: `address_transfer:${epoch}`, expected: expectedAddr, actual: addr});
+        const expectedByAddress = new Map<number, number>();
+        for (const row of source) {
+            if (row.fromId !== undefined && row.fromId !== null) {
+                const id = Number(row.fromId);
+                expectedByAddress.set(id, (expectedByAddress.get(id) || 0) + 1);
+            }
+            if (row.toId && row.toId !== row.fromId) {
+                const id = Number(row.toId);
+                expectedByAddress.set(id, (expectedByAddress.get(id) || 0) + 1);
+            }
+        }
+        const expectedAddr = Array.from(expectedByAddress.values()).reduce((sum, count) => sum + count, 0);
+        let addressTransferPruned = 0;
+        if (addr !== expectedAddr) {
+            // address_transfer is pruned independently per address. A historical
+            // source row may therefore legitimately have no derived row. Only
+            // suppress a mismatch when every missing row is covered by the
+            // address-specific prune cursor; unexpected rows still remain an error.
+            const actualRows = addressIds.length
+                ? await AddressTransfer.findAll({attributes: ['addressId'], where: addressWhere, raw: true})
+                : [];
+            const actualByAddress = new Map<number, number>();
+            for (const row of actualRows as any[]) {
+                const id = Number(row.addressId);
+                actualByAddress.set(id, (actualByAddress.get(id) || 0) + 1);
+            }
+            const pruneRows = expectedByAddress.size
+                ? await PruneInfo.findAll({
+                    attributes: ['addressId', 'epoch'],
+                    where: {addressId: {[Op.in]: Array.from(expectedByAddress.keys())}, type: PruneType.ADDR_TRANSFER},
+                    raw: true,
+                })
+                : [];
+            const pruneByAddress = new Map<number, number>((pruneRows as any[]).map(row => [Number(row.addressId), Number(row.epoch)]));
+            let missingUnpruned = 0;
+            for (const [addressId, expectedCount] of expectedByAddress) {
+                const missing = Math.max(0, expectedCount - (actualByAddress.get(addressId) || 0));
+                if (missing && (pruneByAddress.get(addressId) || 0) > epoch) addressTransferPruned += missing;
+                else missingUnpruned += missing;
+            }
+            const extra = Math.max(0, addr - expectedAddr);
+            if (missingUnpruned || extra) {
+                out.push({kind: 'count', key: `address_transfer:${epoch}`, expected: expectedAddr,
+                    actual: addr, detail: `missingUnpruned=${missingUnpruned} extra=${extra} pruned=${addressTransferPruned}`});
+            }
+        }
         const expectedAddressIds = new Set(addressIds).size;
         // EpochSync evicts this helper table below latest_finalized - 1000.
         // Do not report normal retention cleanup as historical data loss.
@@ -336,7 +381,7 @@ export class EpochDataChecker {
         // sufficient and avoid transferring full rows from the database.
         const eventCount = eventRows.reduce((sum: number, count: number) => sum + Number(count), 0);
         const detail = `[derived rows tx=${tx.length} cfx=${cfx.length} erc20=${t20.length} erc721=${t721.length} erc1155=${t1155.length} ` +
-            `address_transfer=${addr} epoch_address_ids=${addrIds} nft_transfer=${nft} ` +
+            `address_transfer=${addr} pruned=${addressTransferPruned} epoch_address_ids=${addrIds} nft_transfer=${nft} ` +
             `address_nft_transfer=${addrNft} censor_item=${censorRows} events=${eventCount}; ` +
             `ms source=${sourceMs} address_transfer=${addrQ.ms} epoch_address_ids=${addrIdsQ.ms} nft_transfer=${nftQ.ms} ` +
             `address_nft_transfer=${addrNftQ.ms} censor_item=${censorQ.ms} events=${eventsQ.ms}]`;

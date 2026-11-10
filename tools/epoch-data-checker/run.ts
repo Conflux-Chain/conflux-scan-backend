@@ -20,6 +20,7 @@ import {EpochDataChecker, Direction} from './Checker';
 import {CursorStore} from './CursorStore';
 import {acquireLease, isEnabled, releaseLease, renewLease, setEnabled} from './Control';
 import {StatApp} from '../../stat/StatApp';
+import {PruneInfo} from '../../stat/model/PruneInfo';
 
 async function run() {
     console.log(`[epoch-checker] starting pid=${process.pid} host=${require('os').hostname()}`);
@@ -68,6 +69,8 @@ async function run() {
     CensorItem.register(sequelize);
     VoteParams.register(sequelize);
     VoteParams.removeAttribute('id');
+    PruneInfo.register(sequelize);
+    PruneInfo.removeAttribute('id');
     const checker = new EpochDataChecker(cfx, config);
     const latest = await checker.latestFinalized();
     console.log(`[epoch-checker] latest finalized=${latest}`);
