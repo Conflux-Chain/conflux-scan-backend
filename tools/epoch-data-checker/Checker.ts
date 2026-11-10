@@ -84,7 +84,7 @@ export class EpochDataChecker {
         }
 
         const result = await this.checkEpoch(cursor, latest);
-        if (result.differences.length) return this.fail(direction, cursor, JSON.stringify(result.differences.slice(0, 20)));
+        if (result.differences.length) return this.fail(direction, cursor, this.formatDifferences(result.differences.slice(0, 20)));
         const next = direction === 'forward' ? cursor + 1 : cursor - 1;
         await this.cursors.set(direction, next);
         const t = result.timings;
@@ -111,6 +111,32 @@ export class EpochDataChecker {
         await KV.upsert({key: LAST_ERROR, value: JSON.stringify({direction, epoch, reason, at: new Date().toISOString()})});
         await dingMsg(`[${this.config.serverTag}] epoch data checker ${direction} paused at epoch ${epoch}: ${reason}`, this.config.dingTalkToken);
         console.error(`epoch data checker ${direction} paused at ${epoch}: ${reason}`);
+    }
+
+    private formatDifferences(differences: Difference[]): string {
+        return differences.map((difference: any) => {
+            const detail = String(difference.detail || '');
+            const report = detail.match(/(?:^| )report=(\/[^ ]+)/)?.[1];
+            const diagnostic = detail.split('address_transfer_diagnostic=')[1];
+            const lines = [`${difference.key}: 预期 ${difference.expected}，实际 ${difference.actual}`];
+            if (report) lines.push(`报告：${report}`);
+            if (diagnostic) {
+                try {
+                    const parsed = JSON.parse(diagnostic);
+                    for (const row of parsed.missing || []) {
+                        lines.push(`缺失：${row.source || 'transfer'} 地址=${row.address || '-'} (id=${row.addressId}) 位置=${row.blockIndex ?? '-'}:${row.txIndex ?? '-'}:${row.txLogIndex ?? '-'} 交易=${row.txHash || '-'}`);
+                    }
+                    if (parsed.actualAddresses?.length) {
+                        lines.push(`实际地址：${parsed.actualAddresses.map((row: any) => `${row.address || '-'} (id=${row.addressId})`).join('、')}`);
+                    }
+                } catch (_) {
+                    lines.push(detail);
+                }
+            } else if (detail) {
+                lines.push(detail);
+            }
+            return lines.join('\n');
+        }).join('\n');
     }
 
     async checkEpoch(epoch: number, latestFinalized?: number): Promise<EpochCheckResult> {
@@ -394,24 +420,24 @@ export class EpochDataChecker {
                     if (row.toId && row.toId !== row.fromId) addresses.push(Number(row.toId));
                     for (const addressId of addresses) {
                         const present = (actualRows as any[]).some(actual => Number(actual.addressId) === addressId &&
-                            Number(actual.blockIndex) === Number(row.blockIndex) &&
-                            Number(actual.txIndex) === Number(row.txIndex) &&
+                            Number(actual.blockIndex) === Number(row.blockIndex ?? row.blockPosition) &&
+                            Number(actual.txIndex) === Number(row.txIndex ?? row.txPosition) &&
                             Number(actual.txLogIndex || 0) === Number(row.txLogIndex || 0));
                         if (!present) expectedDetails.push({source: row._source || 'transfer', addressId,
                             address: hexById.get(addressId) || null,
-                            blockIndex: row.blockIndex, txIndex: row.txIndex, txLogIndex: row.txLogIndex || 0,
-                            txHash: txHashByPosition.get(`${Number(row.blockIndex)}:${Number(row.txIndex)}`) || null,
+                            blockIndex: row.blockIndex ?? row.blockPosition, txIndex: row.txIndex ?? row.txPosition, txLogIndex: row.txLogIndex || 0,
+                            txHash: txHashByPosition.get(`${Number(row.blockIndex ?? row.blockPosition)}:${Number(row.txIndex ?? row.txPosition)}`) || null,
                             pruneCursor: pruneByAddress.get(addressId) || null});
                     }
                 }
-                const reportDir = path.resolve(process.cwd(), 'public/epoch-checker-reports');
+                const reportDir = path.resolve(process.cwd(), 'public/stat/epoch-checker-reports');
                 fs.mkdirSync(reportDir, {recursive: true});
                 const reportName = `epoch-${epoch}-${Date.now()}.html`;
                 const reportRows = expectedDetails.map(row => `<tr><td>${escapeHtml(row.source)}</td><td>${escapeHtml(row.addressId)}</td><td>${escapeHtml(row.address)}</td><td>${escapeHtml(row.blockIndex)}</td><td>${escapeHtml(row.txIndex)}</td><td>${escapeHtml(row.txLogIndex)}</td><td>${escapeHtml(row.txHash)}</td><td>${escapeHtml(row.pruneCursor)}</td></tr>`).join('');
                 const actualRowsHtml = (actualRows as any[]).map(row => `<tr><td>${escapeHtml(row.addressId)}</td><td>${escapeHtml(hexById.get(Number(row.addressId)) || '')}</td><td>${escapeHtml(row.blockIndex)}</td><td>${escapeHtml(row.txIndex)}</td><td>${escapeHtml(row.txLogIndex)}</td></tr>`).join('');
                 const reportHtml = `<!doctype html><meta charset="utf-8"><title>Epoch ${escapeHtml(epoch)} address transfer mismatch</title><style>body{font:14px system-ui;margin:32px;color:#17202a}h1{margin-bottom:4px}.meta{color:#667085;margin-bottom:24px}table{border-collapse:collapse;width:100%;margin:12px 0 28px}th,td{border:1px solid #d0d5dd;padding:7px;text-align:left}th{background:#f2f4f7}code{font-family:ui-monospace,monospace}</style><h1>Epoch ${escapeHtml(epoch)} · address_transfer</h1><div class="meta">expected ${escapeHtml(expectedAddr)} · actual ${escapeHtml(addr)} · missing unpruned ${escapeHtml(missingUnpruned)} · pruned ${escapeHtml(addressTransferPruned)} · extra ${escapeHtml(extra)}</div><h2>Missing rows</h2><table><tr><th>source</th><th>address ID</th><th>address</th><th>block</th><th>tx index</th><th>log</th><th>transaction hash</th><th>prune cursor</th></tr>${reportRows || '<tr><td colspan="8">none</td></tr>'}</table><h2>Actual rows selected by source address IDs</h2><table><tr><th>address ID</th><th>address</th><th>block</th><th>tx index</th><th>log</th></tr>${actualRowsHtml || '<tr><td colspan="5">none</td></tr>'}</table>`;
                 fs.writeFileSync(path.join(reportDir, reportName), reportHtml, 'utf8');
-                const reportUrl = `/stat/admin/epoch-checker/report/${reportName}`;
+                const reportUrl = `/stat/epoch-checker-reports/${reportName}`;
                 addressDiagnostic = ` report=${reportUrl} address_transfer_diagnostic=${JSON.stringify({missing: expectedDetails,
                     actualAddresses: Array.from(actualByAddress.keys()).map(id => ({addressId: id, address: hexById.get(id) || null}))})}`;
                 out.push({kind: 'count', key: `address_transfer:${epoch}`, expected: expectedAddr,

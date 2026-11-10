@@ -64,13 +64,13 @@ async function checkAdminPassword(password: unknown): Promise<void> {
 }
 
 export function registerAdminRoutes(router: Router<any, {}>, statApp?: StatApp) {
-    router.get('/admin/epoch-checker/report/:file', async ctx => {
+    router.get('/epoch-checker-reports/:file', async ctx => {
         const file = String(ctx.params.file || '');
         if (!/^epoch-[0-9]+-[0-9]+\.html$/.test(file)) {
             ctx.status = 404;
             return;
         }
-        const reportPath = path.resolve(process.cwd(), 'public/epoch-checker-reports', file);
+        const reportPath = path.resolve(process.cwd(), 'public/stat/epoch-checker-reports', file);
         if (!fs.existsSync(reportPath)) {
             ctx.status = 404;
             return;
