@@ -335,7 +335,10 @@ export class EpochDataChecker {
         ] as any[]));
         const sourceMs = Date.now() - sourceStarted;
         const [tx, cfx, t20, t721, t1155] = sourceRows;
-        const token = [...t20, ...t721, ...t1155];
+        // TokenTransferSync keeps zero-value ERC20/ERC1155 rows in the primary
+        // tables, while EpochSync filters them before building address_transfer.
+        // Mirror that production boundary for the derived address check.
+        const token = [...t20.filter(row => String(row.value) !== '0'), ...t721, ...t1155.filter(row => String(row.value) !== '0')];
         const source = [
             ...tx.map(row => ({...row, _source: 'tx'})),
             ...cfx.map(row => ({...row, _source: 'cfx'})),
