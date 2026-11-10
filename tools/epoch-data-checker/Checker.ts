@@ -43,6 +43,17 @@ function escapeHtml(value: any): string {
     return String(value == null ? '' : value).replace(/[&<>"']/g, char => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[char]));
 }
 
+function transferTypeLabel(value: any): string {
+    const labels: Record<string, string> = {
+        '10': 'transaction', '20': 'ERC20', '21': 'ERC721', '55': 'ERC1155',
+        '101': 'CFX call', '102': 'CFX create', '103': 'CFX gas payment',
+        '104': 'CFX storage collateral', '105': 'CFX sponsor gas',
+        '106': 'CFX sponsor collateral', '107': 'CFX staking', '108': 'CFX balance',
+    };
+    const key = String(value ?? '');
+    return labels[key] ? `${key} (${labels[key]})` : key;
+}
+
 export class EpochDataChecker {
     private readonly cursors = new CursorStore();
     private readonly addressIdCache = new Map<string, Promise<number>>();
@@ -125,7 +136,7 @@ export class EpochDataChecker {
                 try {
                     const parsed = JSON.parse(diagnostic);
                     for (const row of parsed.missing || []) {
-                        lines.push(`缺失：${row.source || 'transfer'} type=${row.type ?? '-'} 地址=${row.address || '-'} (id=${row.addressId}) 位置=${row.blockIndex ?? '-'}:${row.txIndex ?? '-'}:${row.txLogIndex ?? '-'} 交易=${row.txHash || '-'}`);
+                        lines.push(`缺失：${row.source || 'transfer'} type=${transferTypeLabel(row.type)} 地址=${row.address || '-'} (id=${row.addressId}) 位置=${row.blockIndex ?? '-'}:${row.txIndex ?? '-'}:${row.txLogIndex ?? '-'} 交易=${row.txHash || '-'}`);
                     }
                     if (parsed.actualAddresses?.length) {
                         lines.push(`实际地址：${parsed.actualAddresses.map((row: any) => `${row.address || '-'} (id=${row.addressId})`).join('、')}`);
@@ -247,13 +258,14 @@ export class EpochDataChecker {
                     const e20: any = this.tokenTool.decodeERC20TransferPlus(log, true);
                     const e721: any = this.tokenTool.decodeERC721Transfer(log, true);
                     const e1155: any[] = this.tokenTool.decodeERC1155TransferArrayPlus(log);
-                    if (!e20 && !e721 && !e1155?.length) continue;
+                    const nonZero1155 = e1155?.filter(item => String(item.value) !== '0') || [];
+                    if ((!e20 || String(e20.value) === '0') && !e721 && !nonZero1155.length) continue;
                     const common: any = {epoch, blockIndex, txIndex: txPos,
                         txLogIndex, contractId: await this.id(log.address),
                         fromId: -1, toId: -1, createdAt: new Date(Number(pivot.timestamp) * 1000)};
-                    if (e20) expected.push({...common, fromId: await this.id(e20.from), toId: await this.id(e20.to), value: String(e20.value), _type: 'erc20'});
+                    if (e20 && String(e20.value) !== '0') expected.push({...common, fromId: await this.id(e20.from), toId: await this.id(e20.to), value: String(e20.value), _type: 'erc20'});
                     else if (e721) expected.push({...common, fromId: await this.id(e721.from), toId: await this.id(e721.to), tokenId: String(e721.tokenId), _type: 'erc721'});
-                    else if (e1155?.length) for (const item of e1155) expected.push({...common, fromId: await this.id(item.from), toId: await this.id(item.to), tokenId: String(item.tokenId), value: String(item.value), batchIndex: item.batchIndex, _type: 'erc1155'});
+                    else if (nonZero1155.length) for (const item of nonZero1155) expected.push({...common, fromId: await this.id(item.from), toId: await this.id(item.to), tokenId: String(item.tokenId), value: String(item.value), batchIndex: item.batchIndex, _type: 'erc1155'});
                 }
             }
         }
@@ -443,13 +455,13 @@ export class EpochDataChecker {
                 const reportRows = expectedDetails.map(row => {
                     const address = row.addressUrl ? `<a href="/address/${encodeURIComponent(row.addressUrl)}">${escapeHtml(row.address)}</a>` : escapeHtml(row.address);
                     const tx = row.txHash ? `<a href="/tx/${encodeURIComponent(row.txHash)}">${escapeHtml(row.txHash)}</a>` : '-';
-                    return `<tr><td>${escapeHtml(row.source)}</td><td>${escapeHtml(row.type)}</td><td>${escapeHtml(row.addressId)}</td><td>${address}</td><td>${escapeHtml(row.blockIndex)}</td><td>${escapeHtml(row.txIndex)}</td><td>${escapeHtml(row.txLogIndex)}</td><td>${tx}</td><td>${escapeHtml(row.pruneCursor)}</td></tr>`;
+                    return `<tr><td>${escapeHtml(row.source)}</td><td>${escapeHtml(transferTypeLabel(row.type))}</td><td>${escapeHtml(row.addressId)}</td><td>${address}</td><td>${escapeHtml(row.blockIndex)}</td><td>${escapeHtml(row.txIndex)}</td><td>${escapeHtml(row.txLogIndex)}</td><td>${tx}</td><td>${escapeHtml(row.pruneCursor)}</td></tr>`;
                 }).join('');
                 const actualRowsHtml = (actualRows as any[]).map(row => {
                     const addressInfo = addressById.get(Number(row.addressId));
                     const addressUrl = addressInfo ? (isEvm ? addressInfo.hex : addressInfo.display) : null;
                     const address = addressUrl ? `<a href="/address/${encodeURIComponent(addressUrl)}">${escapeHtml(addressInfo.display)}</a>` : '';
-                    return `<tr><td>${escapeHtml(row.addressId)}</td><td>${escapeHtml(row.type)}</td><td>${address}</td><td>${escapeHtml(row.blockIndex)}</td><td>${escapeHtml(row.txIndex)}</td><td>${escapeHtml(row.txLogIndex)}</td></tr>`;
+                    return `<tr><td>${escapeHtml(row.addressId)}</td><td>${escapeHtml(transferTypeLabel(row.type))}</td><td>${address}</td><td>${escapeHtml(row.blockIndex)}</td><td>${escapeHtml(row.txIndex)}</td><td>${escapeHtml(row.txLogIndex)}</td></tr>`;
                 }).join('');
                 const reportHtml = `<!doctype html><meta charset="utf-8"><title>Epoch ${escapeHtml(epoch)} address transfer mismatch</title><style>body{font:14px system-ui;margin:32px;color:#17202a}h1{margin-bottom:4px}.meta{color:#667085;margin-bottom:24px}table{border-collapse:collapse;width:100%;margin:12px 0 28px}th,td{border:1px solid #d0d5dd;padding:7px;text-align:left}th{background:#f2f4f7}code{font-family:ui-monospace,monospace}</style><h1>Epoch ${escapeHtml(epoch)} · address_transfer</h1><div class="meta">expected ${escapeHtml(expectedAddr)} · actual ${escapeHtml(addr)} · missing unpruned ${escapeHtml(missingUnpruned)} · pruned ${escapeHtml(addressTransferPruned)} · extra ${escapeHtml(extra)}</div><p>每条源 transfer 会为 from 和 to（地址不同时）各生成一条 address_transfer。1 条普通交易加 1 条 ERC20 Transfer 事件，可能产生 4 条派生记录。</p><h2>Missing rows</h2><table><tr><th>source</th><th>type</th><th>address ID</th><th>address</th><th>block</th><th>tx index</th><th>log</th><th>transaction hash</th><th>prune cursor</th></tr>${reportRows || '<tr><td colspan="9">none</td></tr>'}</table><h2>Actual rows selected by source address IDs</h2><table><tr><th>address ID</th><th>type</th><th>address</th><th>block</th><th>tx index</th><th>log</th></tr>${actualRowsHtml || '<tr><td colspan="6">none</td></tr>'}</table>`;
                 fs.writeFileSync(path.join(reportDir, reportName), reportHtml, 'utf8');

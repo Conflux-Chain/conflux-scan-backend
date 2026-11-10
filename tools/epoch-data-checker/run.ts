@@ -1,6 +1,6 @@
 import {initCfxSdk} from '../../stat/service/common/utils';
 import {createDB} from '../../stat/service/DBProvider';
-import {KV} from '../../stat/model/KV';
+import {KV, IS_EVM2} from '../../stat/model/KV';
 import {Epoch} from '../../stat/model/Epoch';
 import {Hex40Map} from '../../stat/model/HexMap';
 import {FullBlock, FullTransaction} from '../../stat/model/FullBlock';
@@ -46,6 +46,8 @@ async function run() {
     // Register only the read models needed by this tool.  initModel() also
     // runs production schema migration helpers, which is deliberately avoided.
     KV.register(sequelize);
+    // The report formatter follows the same EVM/Core Space switch as stat.
+    StatApp.isEVM = Boolean(config.noCoreSpace || await KV.getSwitch(IS_EVM2));
     Epoch.register(sequelize);
     Epoch.removeAttribute('id');
     Hex40Map.register(sequelize);
