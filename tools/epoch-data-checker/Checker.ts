@@ -23,6 +23,7 @@ import {VoteParams} from '../../stat/model/Epoch';
 import {LAST_ERROR, RATE_BACKWARD, RATE_FORWARD} from './Control';
 import {KV} from '../../stat/model/KV';
 import {PruneInfo, PruneType} from '../../stat/model/PruneInfo';
+import {StatApp} from '../../stat/StatApp';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -404,11 +405,12 @@ export class EpochDataChecker {
                 const hexRows = ids.length ? await Hex40Map.findAll({
                     attributes: ['id', 'hex'], where: {id: {[Op.in]: ids}}, raw: true,
                 }) : [];
-                const hexById = new Map<number, string>((hexRows as any[]).map(row => {
+                const isEvm = Boolean((this.config as any).noCoreSpace || StatApp.isEVM);
+                const addressById = new Map<number, {hex: string, display: string}>((hexRows as any[]).map(row => {
                     const hex = `0x${row.hex}`;
-                    let address = hex;
-                    try { address = format.address(hex, this.cfx.networkId); } catch (_) { /* retain hex */ }
-                    return [Number(row.id), address];
+                    let base32 = hex;
+                    try { base32 = format.address(hex, this.cfx.networkId); } catch (_) { /* retain hex */ }
+                    return [Number(row.id), {hex, display: isEvm ? hex : base32}];
                 }));
                 const txRows = sourceRows[0] || [];
                 const txHashByPosition = new Map<string, string>(txRows.map((row: any) =>
@@ -427,7 +429,9 @@ export class EpochDataChecker {
                             Number(actual.batchIndex || 0) === Number(row.batchIndex || 0) &&
                             Number(actual.type) === expectedType);
                         if (!present) expectedDetails.push({source: row._source || 'transfer', type: expectedType, addressId,
-                            address: hexById.get(addressId) || null,
+                            address: addressById.get(addressId)?.display || null,
+                            addressHex: addressById.get(addressId)?.hex || null,
+                            addressUrl: addressById.get(addressId) ? (isEvm ? addressById.get(addressId).hex : addressById.get(addressId).display) : null,
                             blockIndex: row.blockIndex ?? row.blockPosition, txIndex: row.txIndex ?? row.txPosition, txLogIndex: row.txLogIndex || 0,
                             txHash: txHashByPosition.get(`${Number(row.blockIndex ?? row.blockPosition)}:${Number(row.txIndex ?? row.txPosition)}`) || null,
                             pruneCursor: pruneByAddress.get(addressId) || null});
@@ -436,13 +440,22 @@ export class EpochDataChecker {
                 const reportDir = path.resolve(process.cwd(), 'public/stat/epoch-checker-reports');
                 fs.mkdirSync(reportDir, {recursive: true});
                 const reportName = `epoch-${epoch}-${Date.now()}.html`;
-                const reportRows = expectedDetails.map(row => `<tr><td>${escapeHtml(row.source)}</td><td>${escapeHtml(row.type)}</td><td>${escapeHtml(row.addressId)}</td><td>${escapeHtml(row.address)}</td><td>${escapeHtml(row.blockIndex)}</td><td>${escapeHtml(row.txIndex)}</td><td>${escapeHtml(row.txLogIndex)}</td><td>${escapeHtml(row.txHash)}</td><td>${escapeHtml(row.pruneCursor)}</td></tr>`).join('');
-                const actualRowsHtml = (actualRows as any[]).map(row => `<tr><td>${escapeHtml(row.addressId)}</td><td>${escapeHtml(hexById.get(Number(row.addressId)) || '')}</td><td>${escapeHtml(row.blockIndex)}</td><td>${escapeHtml(row.txIndex)}</td><td>${escapeHtml(row.txLogIndex)}</td></tr>`).join('');
-                const reportHtml = `<!doctype html><meta charset="utf-8"><title>Epoch ${escapeHtml(epoch)} address transfer mismatch</title><style>body{font:14px system-ui;margin:32px;color:#17202a}h1{margin-bottom:4px}.meta{color:#667085;margin-bottom:24px}table{border-collapse:collapse;width:100%;margin:12px 0 28px}th,td{border:1px solid #d0d5dd;padding:7px;text-align:left}th{background:#f2f4f7}code{font-family:ui-monospace,monospace}</style><h1>Epoch ${escapeHtml(epoch)} · address_transfer</h1><div class="meta">expected ${escapeHtml(expectedAddr)} · actual ${escapeHtml(addr)} · missing unpruned ${escapeHtml(missingUnpruned)} · pruned ${escapeHtml(addressTransferPruned)} · extra ${escapeHtml(extra)}</div><h2>Missing rows</h2><table><tr><th>source</th><th>type</th><th>address ID</th><th>address</th><th>block</th><th>tx index</th><th>log</th><th>transaction hash</th><th>prune cursor</th></tr>${reportRows || '<tr><td colspan="9">none</td></tr>'}</table><h2>Actual rows selected by source address IDs</h2><table><tr><th>address ID</th><th>address</th><th>block</th><th>tx index</th><th>log</th></tr>${actualRowsHtml || '<tr><td colspan="5">none</td></tr>'}</table>`;
+                const reportRows = expectedDetails.map(row => {
+                    const address = row.addressUrl ? `<a href="/address/${encodeURIComponent(row.addressUrl)}">${escapeHtml(row.address)}</a>` : escapeHtml(row.address);
+                    const tx = row.txHash ? `<a href="/tx/${encodeURIComponent(row.txHash)}">${escapeHtml(row.txHash)}</a>` : '-';
+                    return `<tr><td>${escapeHtml(row.source)}</td><td>${escapeHtml(row.type)}</td><td>${escapeHtml(row.addressId)}</td><td>${address}</td><td>${escapeHtml(row.blockIndex)}</td><td>${escapeHtml(row.txIndex)}</td><td>${escapeHtml(row.txLogIndex)}</td><td>${tx}</td><td>${escapeHtml(row.pruneCursor)}</td></tr>`;
+                }).join('');
+                const actualRowsHtml = (actualRows as any[]).map(row => {
+                    const addressInfo = addressById.get(Number(row.addressId));
+                    const addressUrl = addressInfo ? (isEvm ? addressInfo.hex : addressInfo.display) : null;
+                    const address = addressUrl ? `<a href="/address/${encodeURIComponent(addressUrl)}">${escapeHtml(addressInfo.display)}</a>` : '';
+                    return `<tr><td>${escapeHtml(row.addressId)}</td><td>${address}</td><td>${escapeHtml(row.blockIndex)}</td><td>${escapeHtml(row.txIndex)}</td><td>${escapeHtml(row.txLogIndex)}</td></tr>`;
+                }).join('');
+                const reportHtml = `<!doctype html><meta charset="utf-8"><title>Epoch ${escapeHtml(epoch)} address transfer mismatch</title><style>body{font:14px system-ui;margin:32px;color:#17202a}h1{margin-bottom:4px}.meta{color:#667085;margin-bottom:24px}table{border-collapse:collapse;width:100%;margin:12px 0 28px}th,td{border:1px solid #d0d5dd;padding:7px;text-align:left}th{background:#f2f4f7}code{font-family:ui-monospace,monospace}</style><h1>Epoch ${escapeHtml(epoch)} · address_transfer</h1><div class="meta">expected ${escapeHtml(expectedAddr)} · actual ${escapeHtml(addr)} · missing unpruned ${escapeHtml(missingUnpruned)} · pruned ${escapeHtml(addressTransferPruned)} · extra ${escapeHtml(extra)}</div><p>每条源 transfer 会为 from 和 to（地址不同时）各生成一条 address_transfer。1 条普通交易加 1 条 ERC20 Transfer 事件，可能产生 4 条派生记录。</p><h2>Missing rows</h2><table><tr><th>source</th><th>type</th><th>address ID</th><th>address</th><th>block</th><th>tx index</th><th>log</th><th>transaction hash</th><th>prune cursor</th></tr>${reportRows || '<tr><td colspan="9">none</td></tr>'}</table><h2>Actual rows selected by source address IDs</h2><table><tr><th>address ID</th><th>address</th><th>block</th><th>tx index</th><th>log</th></tr>${actualRowsHtml || '<tr><td colspan="5">none</td></tr>'}</table>`;
                 fs.writeFileSync(path.join(reportDir, reportName), reportHtml, 'utf8');
                 const reportUrl = `/stat/epoch-checker-reports/${reportName}`;
                 addressDiagnostic = ` report=${reportUrl} address_transfer_diagnostic=${JSON.stringify({missing: expectedDetails,
-                    actualAddresses: Array.from(actualByAddress.keys()).map(id => ({addressId: id, address: hexById.get(id) || null}))})}`;
+                    actualAddresses: Array.from(actualByAddress.keys()).map(id => ({addressId: id, address: addressById.get(id)?.display || null}))})}`;
                 out.push({kind: 'count', key: `address_transfer:${epoch}`, expected: expectedAddr,
                     actual: addr, detail: `missingUnpruned=${missingUnpruned} extra=${extra} pruned=${addressTransferPruned}${addressDiagnostic}`});
             }
