@@ -1,7 +1,7 @@
 import {Conflux, format} from 'js-conflux-sdk';
 import {Op} from 'sequelize';
 import {Epoch} from '../../stat/model/Epoch';
-import {FullBlock, FullTransaction} from '../../stat/model/FullBlock';
+import {AddressTransactionIndex, FullBlock, FullTransaction} from '../../stat/model/FullBlock';
 import {CfxTransfer} from '../../stat/model/CfxTransfer';
 import {Erc20Transfer} from '../../stat/model/Erc20Transfer';
 import {Erc721Transfer} from '../../stat/model/Erc721Transfer';
@@ -343,15 +343,21 @@ export class EpochDataChecker {
             ...t721.map(row => ({...row, _source: 'erc721'})),
             ...t1155.map(row => ({...row, _source: 'erc1155'})),
         ];
+        const txAddressIds = Array.from(new Set(tx.flatMap((row: any) =>
+            [row.fromId, row.toId].filter(id => id !== undefined && id !== null).map(id => Number(id)))));
+        const txAddressWhere = txAddressIds.length ? {epoch, addressId: {[Op.in]: txAddressIds}} : {epoch: -1};
         const addressIds = Array.from(new Set(source.flatMap((row: any) =>
             [row.fromId, row.toId].filter(id => id !== undefined && id !== null).map(id => Number(id)))));
         const addressWhere = addressIds.length ? {epoch, addressId: {[Op.in]: addressIds}} : {epoch: -1};
-        const [addrQ, addrIdsQ, nftQ, addrNftQ, censorQ, eventsQ] = await Promise.all([
+        const [addrQ, addrIdsQ, txIndexQ, nftQ, addrNftQ, censorQ, eventsQ] = await Promise.all([
             this.timed('address_transfer', () => addressIds.length
                 ? AddressTransfer.count({where: addressWhere})
                 : Promise.resolve(0)),
             this.timed('epoch_address_ids', () => latestFinalized === undefined || epoch >= latestFinalized - 1000
                 ? EpochAddressIds.count({where: {epoch}})
+                : Promise.resolve(0)),
+            this.timed('address_tx', () => txAddressIds.length
+                ? AddressTransactionIndex.count({where: txAddressWhere})
                 : Promise.resolve(0)),
             this.timed('nft_transfer', () => NftTransfer.count({where: {epoch}})),
             this.timed('address_nft_transfer', () => addressIds.length
@@ -366,6 +372,7 @@ export class EpochDataChecker {
         ]);
         const addr = Number(addrQ.value);
         const addrIds = Number(addrIdsQ.value);
+        const txIndex = Number(txIndexQ.value);
         const nft = Number(nftQ.value);
         const addrNft = Number(addrNftQ.value);
         const censorRows = Number(censorQ.value);
@@ -382,6 +389,38 @@ export class EpochDataChecker {
             }
         }
         const expectedAddr = Array.from(expectedByAddress.values()).reduce((sum, count) => sum + count, 0);
+        const expectedTx = tx.reduce((sum: number, row: any) => sum + 1 + (row.toId !== undefined && row.toId !== null && row.toId !== row.fromId ? 1 : 0), 0);
+        let txIndexPruned = 0;
+        if (txIndex !== expectedTx) {
+            const actualTxRows = txAddressIds.length ? await AddressTransactionIndex.findAll({
+                attributes: ['addressId'], where: txAddressWhere, raw: true,
+            }) : [];
+            const actualByAddress = new Map<number, number>();
+            for (const row of actualTxRows as any[]) actualByAddress.set(Number(row.addressId), (actualByAddress.get(Number(row.addressId)) || 0) + 1);
+            const pruneRows = txAddressIds.length ? await PruneInfo.findAll({
+                attributes: ['addressId', 'epoch'],
+                where: {addressId: {[Op.in]: txAddressIds}, type: PruneType.ADDR_TX}, raw: true,
+            }) : [];
+            const pruneByAddress = new Map<number, number>((pruneRows as any[]).map(row => [Number(row.addressId), Number(row.epoch)]));
+            const expectedTxByAddress = new Map<number, number>();
+            for (const row of tx) {
+                const ids = [row.fromId];
+                if (row.toId !== undefined && row.toId !== null && row.toId !== row.fromId) ids.push(row.toId);
+                for (const addressId of new Set(ids.map(id => Number(id)))) {
+                    expectedTxByAddress.set(addressId, (expectedTxByAddress.get(addressId) || 0) + 1);
+                }
+            }
+            let missingUnpruned = 0;
+            for (const [addressId, expected] of expectedTxByAddress) {
+                const missing = Math.max(0, expected - (actualByAddress.get(addressId) || 0));
+                if (missing && (pruneByAddress.get(addressId) || 0) > epoch) txIndexPruned += missing;
+                else missingUnpruned += missing;
+            }
+            if (missingUnpruned || txIndex > expectedTx) {
+                out.push({kind: 'count', key: `address_tx:${epoch}`, expected: expectedTx, actual: txIndex,
+                    detail: `missingUnpruned=${missingUnpruned} extra=${Math.max(0, txIndex - expectedTx)} pruned=${txIndexPruned}`});
+            }
+        }
         let addressTransferPruned = 0;
         let addressDiagnostic = '';
         if (addr !== expectedAddr) {
@@ -489,9 +528,9 @@ export class EpochDataChecker {
         // sufficient and avoid transferring full rows from the database.
         const eventCount = eventRows.reduce((sum: number, count: number) => sum + Number(count), 0);
         const detail = `[derived rows tx=${tx.length} cfx=${cfx.length} erc20=${t20.length} erc721=${t721.length} erc1155=${t1155.length} ` +
-            `address_transfer=${addr} pruned=${addressTransferPruned} epoch_address_ids=${addrIds} nft_transfer=${nft} ` + addressDiagnostic +
+            `address_transfer=${addr} pruned=${addressTransferPruned} address_tx=${txIndex} txPruned=${txIndexPruned} epoch_address_ids=${addrIds} nft_transfer=${nft} ` + addressDiagnostic +
             `address_nft_transfer=${addrNft} censor_item=${censorRows} events=${eventCount}; ` +
-            `ms source=${sourceMs} address_transfer=${addrQ.ms} epoch_address_ids=${addrIdsQ.ms} nft_transfer=${nftQ.ms} ` +
+            `ms source=${sourceMs} address_transfer=${addrQ.ms} epoch_address_ids=${addrIdsQ.ms} address_tx=${txIndexQ.ms} nft_transfer=${nftQ.ms} ` +
             `address_nft_transfer=${addrNftQ.ms} censor_item=${censorQ.ms} events=${eventsQ.ms}]`;
         return {differences: out, detail};
     }

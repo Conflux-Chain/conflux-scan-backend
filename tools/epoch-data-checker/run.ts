@@ -3,7 +3,7 @@ import {createDB} from '../../stat/service/DBProvider';
 import {KV, IS_EVM2} from '../../stat/model/KV';
 import {Epoch} from '../../stat/model/Epoch';
 import {Hex40Map} from '../../stat/model/HexMap';
-import {FullBlock, FullTransaction} from '../../stat/model/FullBlock';
+import {AddressTransactionIndex, FullBlock, FullTransaction} from '../../stat/model/FullBlock';
 import {CfxTransfer} from '../../stat/model/CfxTransfer';
 import {Erc20Transfer} from '../../stat/model/Erc20Transfer';
 import {Erc721Transfer} from '../../stat/model/Erc721Transfer';
@@ -55,6 +55,8 @@ async function run() {
     FullBlock.removeAttribute('id');
     FullTransaction.register(sequelize);
     FullTransaction.removeAttribute('id');
+    AddressTransactionIndex.register(sequelize);
+    AddressTransactionIndex.removeAttribute('id');
     CfxTransfer.register(sequelize);
     Erc20Transfer.register(sequelize);
     Erc721Transfer.register(sequelize);
