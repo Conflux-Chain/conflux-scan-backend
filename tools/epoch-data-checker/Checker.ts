@@ -353,11 +353,19 @@ export class EpochDataChecker {
             ...cfx.map(row => ({...row, _source: 'cfx'})),
             ...token,
         ];
-        const txAddressIds = Array.from(new Set(tx.flatMap((row: any) =>
-            [row.fromId, row.toId].filter(id => id !== undefined && id !== null).map(id => Number(id)))));
+        const transactionAddressIds = (row: any): number[] => {
+            const ids = [row.fromId];
+            const dummyTo = row.toId || row.contractCreatedId;
+            if (dummyTo && dummyTo !== row.fromId) ids.push(dummyTo);
+            return Array.from(new Set(ids.filter(id => id !== undefined && id !== null).map(id => Number(id))));
+        };
+        const txAddressIds = Array.from(new Set(tx.flatMap((row: any) => transactionAddressIds(row))));
         const txAddressWhere = txAddressIds.length ? {epoch, addressId: {[Op.in]: txAddressIds}} : {epoch: -1};
-        const addressIds = Array.from(new Set(source.flatMap((row: any) =>
-            [row.fromId, row.toId].filter(id => id !== undefined && id !== null).map(id => Number(id)))));
+        const sourceAddressIds = (row: any): number[] => row._source === 'tx'
+            ? transactionAddressIds(row)
+            : Array.from(new Set([row.fromId, row.toId]
+                .filter(id => id !== undefined && id !== null && id !== 0).map(id => Number(id))));
+        const addressIds = Array.from(new Set(source.flatMap((row: any) => sourceAddressIds(row))));
         const addressWhere = addressIds.length ? {epoch, addressId: {[Op.in]: addressIds}} : {epoch: -1};
         const cfxAddressIds = Array.from(new Set(cfx.flatMap((row: any) =>
             [row.fromId, row.toId].filter(id => id !== undefined && id !== null).map(id => Number(id)))));
@@ -396,21 +404,16 @@ export class EpochDataChecker {
         const eventRows = eventsQ.value;
         const expectedByAddress = new Map<number, number>();
         for (const row of source) {
-            if (row.fromId !== undefined && row.fromId !== null) {
-                const id = Number(row.fromId);
-                expectedByAddress.set(id, (expectedByAddress.get(id) || 0) + 1);
-            }
-            if (row.toId && row.toId !== row.fromId) {
-                const id = Number(row.toId);
+            for (const id of sourceAddressIds(row)) {
                 expectedByAddress.set(id, (expectedByAddress.get(id) || 0) + 1);
             }
         }
         const expectedAddr = Array.from(expectedByAddress.values()).reduce((sum, count) => sum + count, 0);
-        const expectedTx = tx.reduce((sum: number, row: any) => sum + 1 + (row.toId !== undefined && row.toId !== null && row.toId !== row.fromId ? 1 : 0), 0);
+        const expectedTx = tx.reduce((sum: number, row: any) => sum + transactionAddressIds(row).length, 0);
         let txIndexPruned = 0;
         if (txIndex !== expectedTx) {
             const actualTxRows = txAddressIds.length ? await AddressTransactionIndex.findAll({
-                attributes: ['addressId'], where: txAddressWhere, raw: true,
+                attributes: ['addressId', 'blockPosition', 'txPosition', 'hash'], where: txAddressWhere, raw: true,
             }) : [];
             const actualByAddress = new Map<number, number>();
             for (const row of actualTxRows as any[]) actualByAddress.set(Number(row.addressId), (actualByAddress.get(Number(row.addressId)) || 0) + 1);
@@ -421,9 +424,7 @@ export class EpochDataChecker {
             const pruneByAddress = new Map<number, number>((pruneRows as any[]).map(row => [Number(row.addressId), Number(row.epoch)]));
             const expectedTxByAddress = new Map<number, number>();
             for (const row of tx) {
-                const ids = [row.fromId];
-                if (row.toId !== undefined && row.toId !== null && row.toId !== row.fromId) ids.push(row.toId);
-                for (const addressId of new Set(ids.map(id => Number(id)))) {
+                for (const addressId of transactionAddressIds(row)) {
                     expectedTxByAddress.set(addressId, (expectedTxByAddress.get(addressId) || 0) + 1);
                 }
             }
@@ -434,8 +435,26 @@ export class EpochDataChecker {
                 else missingUnpruned += missing;
             }
             if (missingUnpruned || txIndex > expectedTx) {
+                const actualTxKeys = new Set((actualTxRows as any[]).map(row =>
+                    `${Number(row.addressId)}:${Number(row.blockPosition)}:${Number(row.txPosition)}`));
+                const missingDetails: any[] = [];
+                for (const row of tx) {
+                    for (const addressId of transactionAddressIds(row)) {
+                        const key = `${addressId}:${Number(row.blockPosition)}:${Number(row.txPosition)}`;
+                        if (!actualTxKeys.has(key)) missingDetails.push({addressId, blockPosition: row.blockPosition,
+                            txPosition: row.txPosition, hash: row.hash, pruneCursor: pruneByAddress.get(addressId) || null});
+                    }
+                }
+                const reportDir = path.resolve(process.cwd(), 'public/stat/epoch-checker-reports');
+                fs.mkdirSync(reportDir, {recursive: true});
+                const reportName = `epoch-${epoch}-address-tx-${Date.now()}.html`;
+                const missingHtml = missingDetails.map(row => `<tr><td>${escapeHtml(row.addressId)}</td><td>${escapeHtml(row.blockPosition)}</td><td>${escapeHtml(row.txPosition)}</td><td><a href="/tx/${encodeURIComponent(row.hash || '')}">${escapeHtml(row.hash || '-')}</a></td><td>${escapeHtml(row.pruneCursor)}</td></tr>`).join('');
+                const actualHtml = (actualTxRows as any[]).map(row => `<tr><td>${escapeHtml(row.addressId)}</td><td>${escapeHtml(row.blockPosition)}</td><td>${escapeHtml(row.txPosition)}</td><td>${escapeHtml(row.hash || '-')}</td></tr>`).join('');
+                const reportHtml = `<!doctype html><meta charset="utf-8"><title>Epoch ${escapeHtml(epoch)} address_tx mismatch</title><style>body{font:14px system-ui;margin:32px;color:#17202a}h1{margin-bottom:4px}.meta{color:#667085;margin-bottom:24px}table{border-collapse:collapse;width:100%;margin:12px 0 28px}th,td{border:1px solid #d0d5dd;padding:7px;text-align:left}th{background:#f2f4f7}</style><h1>Epoch ${escapeHtml(epoch)} · address_tx</h1><div class="meta">expected ${escapeHtml(expectedTx)} · actual ${escapeHtml(txIndex)} · missing unpruned ${escapeHtml(missingUnpruned)} · pruned ${escapeHtml(txIndexPruned)} · extra ${escapeHtml(Math.max(0, txIndex - expectedTx))}</div><p>每条交易按 from/to 地址生成 address_tx 派生记录；prune cursor 覆盖的缺失记录属于正常历史裁剪。</p><h2>Missing rows</h2><table><tr><th>address ID</th><th>block</th><th>tx index</th><th>transaction hash</th><th>prune cursor</th></tr>${missingHtml || '<tr><td colspan="5">none</td></tr>'}</table><h2>Actual rows selected by source address IDs</h2><table><tr><th>address ID</th><th>block</th><th>tx index</th><th>transaction hash</th></tr>${actualHtml || '<tr><td colspan="4">none</td></tr>'}</table>`;
+                fs.writeFileSync(path.join(reportDir, reportName), reportHtml, 'utf8');
+                const reportUrl = `/stat/epoch-checker-reports/${reportName}`;
                 out.push({kind: 'count', key: `address_tx:${epoch}`, expected: expectedTx, actual: txIndex,
-                    detail: `missingUnpruned=${missingUnpruned} extra=${Math.max(0, txIndex - expectedTx)} pruned=${txIndexPruned}`});
+                    detail: `missingUnpruned=${missingUnpruned} extra=${Math.max(0, txIndex - expectedTx)} pruned=${txIndexPruned} report=${reportUrl}`});
             }
         }
         let addressTransferPruned = 0;
@@ -487,9 +506,7 @@ export class EpochDataChecker {
                 const expectedDetails: any[] = [];
                 for (const row of source) {
                     const expectedType = row._source === 'tx' ? 10 : row._source === 'erc20' ? 20 : row._source === 'erc721' ? 21 : row._source === 'erc1155' ? 55 : Number(row.type);
-                    const addresses: number[] = [];
-                    if (row.fromId !== undefined && row.fromId !== null) addresses.push(Number(row.fromId));
-                    if (row.toId && row.toId !== row.fromId) addresses.push(Number(row.toId));
+                    const addresses = sourceAddressIds(row);
                     for (const addressId of addresses) {
                         const present = (actualRows as any[]).some(actual => Number(actual.addressId) === addressId &&
                             Number(actual.blockIndex) === Number(row.blockIndex ?? row.blockPosition) &&
