@@ -407,14 +407,15 @@ async function checkRateByAddress0(addressParamName, ctx, next) {
     // example, /nft/tokens?contract=...). Canonicalize valid scalar/array
     // values and let the route's own validator reject malformed input.
     let rateKey: string | undefined;
-    if (typeof address === 'string' && address.length > 0) {
-        rateKey = address;
-    } else if (Array.isArray(address)) {
-        const values = address.filter(item => typeof item === 'string' && item.length > 0).sort();
-        if (values.length > 0) {
-            rateKey = JSON.stringify(values);
-        }
-    }
+    const rawValues = Array.isArray(address) ? address : [address];
+    const values = rawValues
+        .filter((item): item is string => typeof item === 'string')
+        .flatMap(item => item.split(','))
+        .map(item => item.trim())
+        .filter(item => item.length > 0)
+        .sort();
+    if (values.length > 0) {
+        rateKey = JSON.stringify([...new Set(values)]);
     if (!rateKey) {
         await next();
         return;
