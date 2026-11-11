@@ -4,7 +4,7 @@ import {KV, IS_EVM2} from '../../stat/model/KV';
 import {Epoch} from '../../stat/model/Epoch';
 import {Hex40Map} from '../../stat/model/HexMap';
 import {AddressTransactionIndex, FullBlock, FullTransaction} from '../../stat/model/FullBlock';
-import {CfxTransfer} from '../../stat/model/CfxTransfer';
+import {AddressCfxTransfer, CfxTransfer} from '../../stat/model/CfxTransfer';
 import {Erc20Transfer} from '../../stat/model/Erc20Transfer';
 import {Erc721Transfer} from '../../stat/model/Erc721Transfer';
 import {Erc1155Transfer} from '../../stat/model/Erc1155Transfer';
@@ -58,6 +58,8 @@ async function run() {
     AddressTransactionIndex.register(sequelize);
     AddressTransactionIndex.removeAttribute('id');
     CfxTransfer.register(sequelize);
+    AddressCfxTransfer.register(sequelize);
+    AddressCfxTransfer.removeAttribute('id');
     Erc20Transfer.register(sequelize);
     Erc721Transfer.register(sequelize);
     Erc1155Transfer.register(sequelize);
