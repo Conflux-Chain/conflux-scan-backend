@@ -275,7 +275,12 @@ export class EpochDataChecker {
         const result: Difference[] = [];
         for (let i = 0; i < models.length; i++) {
             const [type] = models[i];
-            const actual = actualByType[i];
+            // TokenTransferSync may retain zero-value ERC20/ERC1155 rows in
+            // the primary tables, while its derived data and RPC comparison
+            // intentionally exclude them.
+            const actual = (type === 'erc20' || type === 'erc1155')
+                ? actualByType[i].filter(row => String(row.value) !== '0')
+                : actualByType[i];
             const e = expected.filter(row => row._type === type);
             const fields = type === 'erc20' ? ['contractId','fromId','toId','value'] : type === 'erc721' ? ['contractId','fromId','toId','tokenId'] : ['contractId','fromId','toId','tokenId','value'];
             const keyOf = type === 'erc1155'
