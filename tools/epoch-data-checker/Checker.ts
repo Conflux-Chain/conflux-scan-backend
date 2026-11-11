@@ -338,13 +338,15 @@ export class EpochDataChecker {
         // TokenTransferSync keeps zero-value ERC20/ERC1155 rows in the primary
         // tables, while EpochSync filters them before building address_transfer.
         // Mirror that production boundary for the derived address check.
-        const token = [...t20.filter(row => String(row.value) !== '0'), ...t721, ...t1155.filter(row => String(row.value) !== '0')];
+        const token = [
+            ...t20.filter(row => String(row.value) !== '0').map(row => ({...row, _source: 'erc20'})),
+            ...t721.map(row => ({...row, _source: 'erc721'})),
+            ...t1155.filter(row => String(row.value) !== '0').map(row => ({...row, _source: 'erc1155'})),
+        ];
         const source = [
             ...tx.map(row => ({...row, _source: 'tx'})),
             ...cfx.map(row => ({...row, _source: 'cfx'})),
-            ...t20.map(row => ({...row, _source: 'erc20'})),
-            ...t721.map(row => ({...row, _source: 'erc721'})),
-            ...t1155.map(row => ({...row, _source: 'erc1155'})),
+            ...token,
         ];
         const txAddressIds = Array.from(new Set(tx.flatMap((row: any) =>
             [row.fromId, row.toId].filter(id => id !== undefined && id !== null).map(id => Number(id)))));
