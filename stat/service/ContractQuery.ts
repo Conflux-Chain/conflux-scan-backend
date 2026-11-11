@@ -23,6 +23,7 @@ import {
 } from "./common/utils";
 import {VerifiedContracts} from "../model/VerifiedContracts";
 import {ethers} from "ethers";
+import {randomBytes} from "crypto";
 import {AbiSignature, ContractAbiSignature, getSignature, saveAbiSigs, SignatureType} from "../model/ContractInfo";
 import {sleep} from "./tool/ProcessTool";
 import {
@@ -843,9 +844,9 @@ export class ContractQuery {
     }
 
     private genGUID(base32){
-        const plain = `${base32}${Date.now()}${Math.floor(Math.random() * 1000)}`;
-        const random = sign.keccak256(Buffer.from(plain)).toString('hex');
-        return random.substr(0, 50);
+        // This GUID is returned to clients as a verification capability.  Do not
+        // derive it from timestamps and Math.random(), which makes it predictable.
+        return randomBytes(32).toString('hex').slice(0, 50);
     }
 
     async scheduleUpdateCompilerVersions(delay: number = 1000 * 60 * 60 * 12) { // update every 12 hours
