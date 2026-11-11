@@ -50,7 +50,7 @@ export async function handleException(ctx, next) {
         if (err.code == 500) {
             safeAddErrorLog('open', `open-500-${err.message}`, err);
         }
-        console.log(`api error ${ctx.request.url}`, err)
+        console.log('api error', ctx.request.url, err)
     })
 }
 

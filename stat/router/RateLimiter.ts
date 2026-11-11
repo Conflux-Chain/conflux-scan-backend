@@ -403,11 +403,29 @@ export function checkRateByAddress(addressParamName: string) {
 async function checkRateByAddress0(addressParamName, ctx, next) {
     const {[addressParamName]: address} = ctx.request.query;
 
+    // The key is optional on some routes and may be an address array (for
+    // example, /nft/tokens?contract=...). Canonicalize valid scalar/array
+    // values and let the route's own validator reject malformed input.
+    let rateKey: string | undefined;
+    const rawValues = Array.isArray(address) ? address : [address];
+    const values = rawValues
+        .filter((item): item is string => typeof item === 'string')
+        .flatMap(item => item.split(','))
+        .map(item => item.trim())
+        .filter(item => item.length > 0)
+        .sort();
+    if (values.length > 0) {
+        rateKey = JSON.stringify([...new Set(values)]);
+    if (!rateKey) {
+        await next();
+        return;
+    }
+
     let limiter = rateLimiterAddress;
     try {
         limiter = addressParamName === "account" ? rateLimiterAccount : rateLimiterAddress;
-        await limiter.consume(address);
-        ctx?.set(`address`, address);
+        await limiter.consume(rateKey);
+        ctx?.set(`address`, rateKey);
     } catch (e) {
         const msg = `Too many requests. Allow ${limiter['points']}/${limiter['duration']}s`;
         ctx.body = {code: 429, message: msg};

@@ -10,8 +10,19 @@ import {Conflux, format} from "js-conflux-sdk";
 import {CONST} from "./common/constant";
 import {NAME_TAG_SPLIT} from "./EpochSync";
 import {TokenSecurityAudit} from "../model/TokenSecurityAudit";
+import {URL} from "url";
 
-const REGEX_URL = /^(https?:\/\/(([a-zA-Z0-9]+-?)+[a-zA-Z0-9]+\.)+[a-zA-Z]+)(:\d+)?(\/.*)?(\?.*)?(#.*)?$/;
+function isHttpUrl(value: unknown): boolean {
+    if (typeof value !== 'string' || value.length === 0) {
+        return false;
+    }
+    try {
+        const url = new URL(value);
+        return (url.protocol === 'http:' || url.protocol === 'https:') && url.hostname.length > 0;
+    } catch {
+        return false;
+    }
+}
 
 export class TokenSecurityAuditSync{
     private OFFICIAL_LABEL_FLUSH_INTERVAL = 180_000; // 3 min
@@ -161,9 +172,9 @@ export class TokenSecurityAuditSync{
         let credits = 0;
 
         credits += [verify, audit, sponsor, zeroAdmin].filter(Boolean).length;
-        credits += [cexBinance, cexHuobi, cexOKEx].filter(item => item?.trim()?.match(REGEX_URL)).length > 0 ? 1 : 0;
-        credits += [dexMoonSwap].filter(item => item?.trim()?.match(REGEX_URL)).length > 0 ? 1 : 0;
-        credits += [trackCoinMarketCap].filter(item => item?.trim()?.match(REGEX_URL)).length > 0 ? 1 : 0;
+        credits += [cexBinance, cexHuobi, cexOKEx].filter(isHttpUrl).length > 0 ? 1 : 0;
+        credits += [dexMoonSwap].filter(isHttpUrl).length > 0 ? 1 : 0;
+        credits += [trackCoinMarketCap].filter(isHttpUrl).length > 0 ? 1 : 0;
         credits += officialLabels?.split(NAME_TAG_SPLIT).length > 0 ? 10 : 0;
 
         return Promise.resolve(credits);
