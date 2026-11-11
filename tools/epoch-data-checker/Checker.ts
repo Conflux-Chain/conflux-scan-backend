@@ -3,9 +3,9 @@ import {Op} from 'sequelize';
 import {Epoch} from '../../stat/model/Epoch';
 import {AddressTransactionIndex, FullBlock, FullTransaction} from '../../stat/model/FullBlock';
 import {AddressCfxTransfer, CfxTransfer} from '../../stat/model/CfxTransfer';
-import {Erc20Transfer} from '../../stat/model/Erc20Transfer';
-import {Erc721Transfer} from '../../stat/model/Erc721Transfer';
-import {Erc1155Transfer} from '../../stat/model/Erc1155Transfer';
+import {AddressErc20Transfer, Erc20Transfer} from '../../stat/model/Erc20Transfer';
+import {AddressErc721Transfer, Erc721Transfer} from '../../stat/model/Erc721Transfer';
+import {AddressErc1155Transfer, Erc1155Transfer} from '../../stat/model/Erc1155Transfer';
 import {getAddrId, Hex40Map} from '../../stat/model/HexMap';
 import {compareRows, Difference, normalize} from './Compare';
 import {CursorStore} from './CursorStore';
@@ -370,7 +370,20 @@ export class EpochDataChecker {
         const cfxAddressIds = Array.from(new Set(cfx.flatMap((row: any) =>
             [row.fromId, row.toId].filter(id => id !== undefined && id !== null).map(id => Number(id)))));
         const cfxAddressWhere = cfxAddressIds.length ? {epoch, addressId: {[Op.in]: cfxAddressIds}} : {epoch: -1};
-        const [addrQ, cfxAddrQ, addrIdsQ, txIndexQ, nftQ, addrNftQ, censorQ, eventsQ] = await Promise.all([
+        const tokenAddressRows = (rows: any[]) => rows.flatMap(row => {
+            const result: any[] = [];
+            if (Number(row.fromId) !== 1) result.push({...row, addressId: Number(row.fromId)});
+            if (row.fromId !== row.toId) result.push({...row, addressId: Number(row.toId)});
+            return result;
+        });
+        const expectedTokenAddressRows = {
+            erc20: tokenAddressRows(t20.filter(row => String(row.value) !== '0')),
+            erc721: tokenAddressRows(t721),
+            erc1155: tokenAddressRows(t1155.filter(row => String(row.value) !== '0')),
+        };
+        const tokenAddressIds = Array.from(new Set(Object.values(expectedTokenAddressRows).flat().map((row: any) => row.addressId)));
+        const tokenAddressWhere = tokenAddressIds.length ? {epoch, addressId: {[Op.in]: tokenAddressIds}} : {epoch: -1};
+        const [addrQ, cfxAddrQ, addrIdsQ, txIndexQ, nftQ, addrNftQ, token20AddrQ, token721AddrQ, token1155AddrQ, censorQ, eventsQ]: any[] = await Promise.all([
             this.timed('address_transfer', () => addressIds.length
                 ? AddressTransfer.count({where: addressWhere})
                 : Promise.resolve(0)),
@@ -387,19 +400,28 @@ export class EpochDataChecker {
             this.timed('address_nft_transfer', () => addressIds.length
                 ? AddressNftTransfer.count({where: addressWhere})
                 : Promise.resolve(0)),
+            this.timed('address_erc20transfer', () => tokenAddressIds.length
+                ? AddressErc20Transfer.count({where: tokenAddressWhere}) : Promise.resolve(0)),
+            this.timed('address_erc721transfer', () => tokenAddressIds.length
+                ? AddressErc721Transfer.count({where: tokenAddressWhere}) : Promise.resolve(0)),
+            this.timed('address_erc1155transfer', () => tokenAddressIds.length
+                ? AddressErc1155Transfer.count({where: tokenAddressWhere}) : Promise.resolve(0)),
             this.timed('censor_item', () => CensorItem.count({where: {epochNumber: epoch}})),
             this.timed('events', () => Promise.all([
                 ContractDestroy.count({where: {epochNumber: epoch}}),
                 NameTag.count({where: {epoch}}),
                 VoteParams.count({where: {epoch}}),
             ])),
-        ]);
+        ] as any);
         const addr = Number(addrQ.value);
         const cfxAddr = Number(cfxAddrQ.value);
         const addrIds = Number(addrIdsQ.value);
         const txIndex = Number(txIndexQ.value);
         const nft = Number(nftQ.value);
         const addrNft = Number(addrNftQ.value);
+        const token20Addr = Number(token20AddrQ.value);
+        const token721Addr = Number(token721AddrQ.value);
+        const token1155Addr = Number(token1155AddrQ.value);
         const censorRows = Number(censorQ.value);
         const eventRows = eventsQ.value;
         const expectedByAddress = new Map<number, number>();
@@ -582,6 +604,30 @@ export class EpochDataChecker {
             if (missingUnpruned || extra) out.push({kind: 'count', key: `address_cfx_transfer:${epoch}`, expected: expectedCfxAddr,
                 actual: cfxAddr, detail: `missingUnpruned=${missingUnpruned} extra=${extra} pruned=${cfxTransferPruned}`});
         }
+        const tokenAddressChecks: any[] = [
+            {name: 'address_erc20transfer', model: AddressErc20Transfer, expected: expectedTokenAddressRows.erc20, actual: token20Addr},
+            {name: 'address_erc721transfer', model: AddressErc721Transfer, expected: expectedTokenAddressRows.erc721, actual: token721Addr},
+            {name: 'address_erc1155transfer', model: AddressErc1155Transfer, expected: expectedTokenAddressRows.erc1155, actual: token1155Addr},
+        ];
+        for (const check of tokenAddressChecks) {
+            if (check.actual === check.expected.length) continue;
+            const actualRows = tokenAddressIds.length ? await check.model.findAll({
+                attributes: ['addressId', 'blockIndex', 'txIndex', 'txLogIndex', ...(check.name.endsWith('1155transfer') ? ['batchIndex'] : [])],
+                where: tokenAddressWhere, raw: true,
+            }) : [];
+            const key = (row: any) => `${Number(row.addressId)}:${Number(row.blockIndex)}:${Number(row.txIndex)}:${Number(row.txLogIndex)}:${Number(row.batchIndex || 0)}`;
+            const actualKeys = new Set((actualRows as any[]).map(key));
+            const missing = check.expected.filter((row: any) => !actualKeys.has(key(row)));
+            const reportDir = path.resolve(process.cwd(), 'public/stat/epoch-checker-reports');
+            fs.mkdirSync(reportDir, {recursive: true});
+            const reportName = `epoch-${epoch}-${check.name}-${Date.now()}.html`;
+            const missingHtml = missing.map((row: any) => `<tr><td>${escapeHtml(row.addressId)}</td><td>${escapeHtml(row.blockIndex)}</td><td>${escapeHtml(row.txIndex)}</td><td>${escapeHtml(row.txLogIndex)}</td><td>${escapeHtml(row.batchIndex || 0)}</td><td>${escapeHtml(row.value)}</td></tr>`).join('');
+            const actualHtml = (actualRows as any[]).map((row: any) => `<tr><td>${escapeHtml(row.addressId)}</td><td>${escapeHtml(row.blockIndex)}</td><td>${escapeHtml(row.txIndex)}</td><td>${escapeHtml(row.txLogIndex)}</td><td>${escapeHtml(row.batchIndex || 0)}</td></tr>`).join('');
+            const reportHtml = `<!doctype html><meta charset="utf-8"><title>Epoch ${escapeHtml(epoch)} ${escapeHtml(check.name)} mismatch</title><style>body{font:14px system-ui;margin:32px;color:#17202a}table{border-collapse:collapse;width:100%;margin:12px 0 28px}th,td{border:1px solid #d0d5dd;padding:7px;text-align:left}th{background:#f2f4f7}</style><h1>Epoch ${escapeHtml(epoch)} · ${escapeHtml(check.name)}</h1><p>expected ${escapeHtml(check.expected.length)} · actual ${escapeHtml(check.actual)}</p><h2>Missing rows</h2><table><tr><th>address ID</th><th>block</th><th>tx index</th><th>log</th><th>batch</th><th>value</th></tr>${missingHtml || '<tr><td colspan="6">none</td></tr>'}</table><h2>Actual rows</h2><table><tr><th>address ID</th><th>block</th><th>tx index</th><th>log</th><th>batch</th></tr>${actualHtml || '<tr><td colspan="5">none</td></tr>'}</table>`;
+            fs.writeFileSync(path.join(reportDir, reportName), reportHtml, 'utf8');
+            out.push({kind: 'count', key: `${check.name}:${epoch}`, expected: check.expected.length, actual: check.actual,
+                detail: `report=/stat/epoch-checker-reports/${reportName}`});
+        }
         const expectedAddressIds = new Set(addressIds).size;
         // EpochSync evicts this helper table below latest_finalized - 1000.
         // Do not report normal retention cleanup as historical data loss.
@@ -598,10 +644,10 @@ export class EpochDataChecker {
         // sufficient and avoid transferring full rows from the database.
         const eventCount = eventRows.reduce((sum: number, count: number) => sum + Number(count), 0);
         const detail = `[derived rows tx=${tx.length} cfx=${cfx.length} erc20=${t20.length} erc721=${t721.length} erc1155=${t1155.length} ` +
-            `address_transfer=${addr} pruned=${addressTransferPruned} address_cfx_transfer=${cfxAddr} cfxPruned=${cfxTransferPruned} address_tx=${txIndex} txPruned=${txIndexPruned} epoch_address_ids=${addrIds} nft_transfer=${nft} ` + addressDiagnostic +
+            `address_transfer=${addr} pruned=${addressTransferPruned} address_cfx_transfer=${cfxAddr} cfxPruned=${cfxTransferPruned} address_tx=${txIndex} txPruned=${txIndexPruned} epoch_address_ids=${addrIds} nft_transfer=${nft} address_erc20transfer=${token20Addr} address_erc721transfer=${token721Addr} address_erc1155transfer=${token1155Addr} ` + addressDiagnostic +
             `address_nft_transfer=${addrNft} censor_item=${censorRows} events=${eventCount}; ` +
             `ms source=${sourceMs} address_transfer=${addrQ.ms} address_cfx_transfer=${cfxAddrQ.ms} epoch_address_ids=${addrIdsQ.ms} address_tx=${txIndexQ.ms} nft_transfer=${nftQ.ms} ` +
-            `address_nft_transfer=${addrNftQ.ms} censor_item=${censorQ.ms} events=${eventsQ.ms}]`;
+            `address_nft_transfer=${addrNftQ.ms} address_erc20transfer=${token20AddrQ.ms} address_erc721transfer=${token721AddrQ.ms} address_erc1155transfer=${token1155AddrQ.ms} censor_item=${censorQ.ms} events=${eventsQ.ms}]`;
         return {differences: out, detail};
     }
 }
