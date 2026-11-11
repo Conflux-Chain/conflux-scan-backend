@@ -403,19 +403,28 @@ export function checkRateByAddress(addressParamName: string) {
 async function checkRateByAddress0(addressParamName, ctx, next) {
     const {[addressParamName]: address} = ctx.request.query;
 
-    // Query parameters may be arrays or objects when repeated or bracketed.
-    // Limiter keys must be scalar strings to prevent inconsistent keys.
-    if (typeof address !== 'string' || address.length === 0) {
-        ctx.status = 400;
-        ctx.body = {code: 400, message: `Invalid ${addressParamName} parameter`};
+    // The key is optional on some routes and may be an address array (for
+    // example, /nft/tokens?contract=...). Canonicalize valid scalar/array
+    // values and let the route's own validator reject malformed input.
+    let rateKey: string | undefined;
+    if (typeof address === 'string' && address.length > 0) {
+        rateKey = address;
+    } else if (Array.isArray(address)) {
+        const values = address.filter(item => typeof item === 'string' && item.length > 0).sort();
+        if (values.length > 0) {
+            rateKey = JSON.stringify(values);
+        }
+    }
+    if (!rateKey) {
+        await next();
         return;
     }
 
     let limiter = rateLimiterAddress;
     try {
         limiter = addressParamName === "account" ? rateLimiterAccount : rateLimiterAddress;
-        await limiter.consume(address);
-        ctx?.set(`address`, address);
+        await limiter.consume(rateKey);
+        ctx?.set(`address`, rateKey);
     } catch (e) {
         const msg = `Too many requests. Allow ${limiter['points']}/${limiter['duration']}s`;
         ctx.body = {code: 429, message: msg};

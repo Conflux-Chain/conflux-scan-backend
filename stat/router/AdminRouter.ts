@@ -1,5 +1,6 @@
 import * as crypto from 'crypto';
 import * as Router from 'koa-router';
+import {promisify} from 'util';
 import {format} from 'js-conflux-sdk';
 import {Hex40Map} from '../model/HexMap';
 import {KV} from '../model/KV';
@@ -9,6 +10,41 @@ import {Errors} from '../service/common/LogicError';
 
 const ADMIN_PWD_KEY = 'adminPwd';
 const MAX_HEX_ID = BigInt('9223372036854775807');
+const scryptAsync = promisify(crypto.scrypt);
+const PASSWORD_HASH_PREFIX = 'scrypt$';
+const PASSWORD_SALT_BYTES = 16;
+const PASSWORD_KEY_BYTES = 32;
+
+async function derivePasswordHash(password: string, salt: Buffer): Promise<Buffer> {
+    return await scryptAsync(password, salt, PASSWORD_KEY_BYTES) as Buffer;
+}
+
+async function createPasswordHash(password: string): Promise<string> {
+    const salt = crypto.randomBytes(PASSWORD_SALT_BYTES);
+    const hash = await derivePasswordHash(password, salt);
+    return `${PASSWORD_HASH_PREFIX}${salt.toString('hex')}$${hash.toString('hex')}`;
+}
+
+async function verifyPassword(password: string, stored: string): Promise<{valid: boolean; legacy: boolean}> {
+    if (stored.startsWith(PASSWORD_HASH_PREFIX)) {
+        const [, saltHex, hashHex] = stored.split('$');
+        if (!/^[0-9a-f]{32}$/i.test(saltHex || '') || !/^[0-9a-f]{64}$/i.test(hashHex || '')) {
+            return {valid: false, legacy: false};
+        }
+        const expected = Buffer.from(hashHex, 'hex');
+        const supplied = await derivePasswordHash(password, Buffer.from(saltHex, 'hex'));
+        return {valid: crypto.timingSafeEqual(expected, supplied), legacy: false};
+    }
+
+    // Existing deployments may still have a plaintext KV value. Verify it once
+    // and transparently migrate it to a salted scrypt hash after success.
+    const expected = Buffer.from(stored);
+    const supplied = Buffer.from(password);
+    return {
+        valid: expected.length === supplied.length && crypto.timingSafeEqual(expected, supplied),
+        legacy: true,
+    };
+}
 
 function parseAddress(input: unknown): {id?: string; hex?: string} {
     if (typeof input !== 'string') {
@@ -41,13 +77,15 @@ async function checkAdminPassword(password: unknown): Promise<void> {
     if (!row?.value) {
         throw new Errors.PermissionError('管理查询未启用');
     }
-    // scrypt is deliberately expensive and memory-hard, unlike a fast SHA-256
-    // digest, which makes offline password guessing substantially harder.
-    const salt = 'conflux-scan-admin-password';
-    const expectedHash = crypto.scryptSync(row.value, salt, 32);
-    const suppliedHash = crypto.scryptSync(typeof password === 'string' ? password : '', salt, 32);
-    if (typeof password !== 'string' || !password || !crypto.timingSafeEqual(expectedHash, suppliedHash)) {
+    if (typeof password !== 'string' || !password) {
         throw new Errors.PermissionError('密码错误');
+    }
+    const verification = await verifyPassword(password, row.value);
+    if (!verification.valid) {
+        throw new Errors.PermissionError('密码错误');
+    }
+    if (verification.legacy) {
+        await KV.update({value: await createPasswordHash(password)}, {where: {key: ADMIN_PWD_KEY}});
     }
 }
 
