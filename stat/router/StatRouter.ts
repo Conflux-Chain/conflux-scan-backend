@@ -648,7 +648,7 @@ function addRoute(router: Router<any, {}>, statApp: StatApp) {
         try {
             await refreshRateLimiter.consume(consumerKey, 1);
         } catch (e) {
-            console.log(`refresh nft hit rate limit, key:${consumerKey}`, e);
+            console.log('refresh nft hit rate limit, key:', consumerKey, e);
             ctx.body = {code: 429, message:`Too many requests, refresh nft key:${consumerKey}.`};
             return;
         }

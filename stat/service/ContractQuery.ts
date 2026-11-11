@@ -1998,6 +1998,8 @@ export class ContractQuery {
 
     public async batchGetSignaturesByName(name: string, typeArray: string[]) {
         const normalizedName = name
+            .replace(/\\/g, "\\\\")
+            .replace(/%/g, "\\%")
             .trim()
             .replace(/_/g, "\\_")
             .replace(/\*/g, "%")

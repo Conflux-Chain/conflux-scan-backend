@@ -403,6 +403,14 @@ export function checkRateByAddress(addressParamName: string) {
 async function checkRateByAddress0(addressParamName, ctx, next) {
     const {[addressParamName]: address} = ctx.request.query;
 
+    // Query parameters may be arrays or objects when repeated or bracketed.
+    // Limiter keys must be scalar strings to prevent inconsistent keys.
+    if (typeof address !== 'string' || address.length === 0) {
+        ctx.status = 400;
+        ctx.body = {code: 400, message: `Invalid ${addressParamName} parameter`};
+        return;
+    }
+
     let limiter = rateLimiterAddress;
     try {
         limiter = addressParamName === "account" ? rateLimiterAccount : rateLimiterAddress;

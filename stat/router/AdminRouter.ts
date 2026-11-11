@@ -41,8 +41,11 @@ async function checkAdminPassword(password: unknown): Promise<void> {
     if (!row?.value) {
         throw new Errors.PermissionError('管理查询未启用');
     }
-    const expectedHash = crypto.createHash('sha256').update(row.value).digest();
-    const suppliedHash = crypto.createHash('sha256').update(typeof password === 'string' ? password : '').digest();
+    // scrypt is deliberately expensive and memory-hard, unlike a fast SHA-256
+    // digest, which makes offline password guessing substantially harder.
+    const salt = 'conflux-scan-admin-password';
+    const expectedHash = crypto.scryptSync(row.value, salt, 32);
+    const suppliedHash = crypto.scryptSync(typeof password === 'string' ? password : '', salt, 32);
     if (typeof password !== 'string' || !password || !crypto.timingSafeEqual(expectedHash, suppliedHash)) {
         throw new Errors.PermissionError('密码错误');
     }
