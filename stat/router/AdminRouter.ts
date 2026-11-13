@@ -15,6 +15,10 @@ import {CursorStore} from '../../tools/epoch-data-checker/CursorStore';
 import {ENABLED, isEnabled, leaseOwner, setEnabled, LAST_ERROR, RATE_FORWARD, RATE_BACKWARD, INTERVAL_SECONDS} from '../../tools/epoch-data-checker/Control';
 
 const ADMIN_PWD_KEY = 'adminPwd';
+// Checker reports may include a diagnostic label between the epoch and the
+// timestamp (for example, `address_erc20transfer`). Restrict labels to the
+// characters emitted by the checker before resolving a file from this route.
+const EPOCH_REPORT_FILE_RE = /^epoch-([0-9]+)(?:-[a-z0-9_]+)*-([0-9]+)\.html$/;
 const MAX_HEX_ID = BigInt('9223372036854775807');
 const scryptAsync = promisify(crypto.scrypt);
 const PASSWORD_HASH_PREFIX = 'scrypt$';
@@ -107,7 +111,7 @@ async function checkAdminPassword(password: unknown): Promise<void> {
 export function registerAdminRoutes(router: Router<any, {}>, statApp?: StatApp) {
     router.get('/epoch-checker-reports/:file', async ctx => {
         const file = String(ctx.params.file || '');
-        if (!/^epoch-[0-9]+-[0-9]+\.html$/.test(file)) {
+        if (!EPOCH_REPORT_FILE_RE.test(file)) {
             ctx.status = 404;
             return;
         }
@@ -232,10 +236,10 @@ export function registerAdminRoutes(router: Router<any, {}>, statApp?: StatApp) 
         let reports: any[] = [];
         if (fs.existsSync(reportDir)) {
             reports = fs.readdirSync(reportDir)
-                .filter(file => /^epoch-[0-9]+-[0-9]+\.html$/.test(file))
+                .filter(file => EPOCH_REPORT_FILE_RE.test(file))
                 .map(file => {
                     const stat = fs.statSync(path.join(reportDir, file));
-                    const match = file.match(/^epoch-([0-9]+)-([0-9]+)\.html$/);
+                    const match = file.match(EPOCH_REPORT_FILE_RE);
                     return {file, epoch: Number(match[1]), createdAt: stat.mtime.toISOString(),
                         url: `/stat/epoch-checker-reports/${file}`};
                 })
@@ -250,7 +254,7 @@ export function registerAdminRoutes(router: Router<any, {}>, statApp?: StatApp) 
         let deleted = 0;
         if (fs.existsSync(reportDir)) {
             for (const file of fs.readdirSync(reportDir)) {
-                if (!/^epoch-[0-9]+-[0-9]+\.html$/.test(file)) continue;
+                if (!EPOCH_REPORT_FILE_RE.test(file)) continue;
                 fs.unlinkSync(path.join(reportDir, file));
                 deleted++;
             }
