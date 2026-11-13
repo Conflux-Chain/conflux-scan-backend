@@ -46,11 +46,11 @@ function createLogger(tag, label_, dirname, level='info', silent = false) {
       new winston.transports.Console({silent}),
       new DailyRotateFile({dirname,
         filename: 'error.%DATE%.log', level: 'error',
-        maxSize: '500mb', maxFiles: '20d', createSymlink: true, symlinkName: 'error.log'
+        maxSize: '500mb', maxFiles: '30d', createSymlink: true, symlinkName: 'error.log'
       }),
       new DailyRotateFile({dirname,
         filename: 'info.%DATE%.log', level: 'info',
-        maxSize: '500mb', maxFiles: '20d', createSymlink: true, symlinkName: 'info.log'
+        maxSize: '500mb', maxFiles: '30d', createSymlink: true, symlinkName: 'info.log'
       }),
     ],
   });
