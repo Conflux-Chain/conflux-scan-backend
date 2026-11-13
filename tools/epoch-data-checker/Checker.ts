@@ -381,8 +381,20 @@ export class EpochDataChecker {
             erc721: tokenAddressRows(t721),
             erc1155: tokenAddressRows(t1155.filter(row => String(row.value) !== '0')),
         };
-        const tokenAddressIds = Array.from(new Set(Object.values(expectedTokenAddressRows).flat().map((row: any) => row.addressId)));
-        const tokenAddressWhere = tokenAddressIds.length ? {epoch, addressId: {[Op.in]: tokenAddressIds}} : {epoch: -1};
+        // Each address-token table has its own source transfer stream. Keep
+        // the address-id predicates separate: using the union of ERC20,
+        // ERC721 and ERC1155 ids can count unrelated rows in one table and
+        // makes the diagnostics report the wrong rows for a mismatch.
+        const tokenAddressIds = {
+            erc20: Array.from(new Set(expectedTokenAddressRows.erc20.map((row: any) => row.addressId))),
+            erc721: Array.from(new Set(expectedTokenAddressRows.erc721.map((row: any) => row.addressId))),
+            erc1155: Array.from(new Set(expectedTokenAddressRows.erc1155.map((row: any) => row.addressId))),
+        };
+        const tokenAddressWhere = {
+            erc20: tokenAddressIds.erc20.length ? {epoch, addressId: {[Op.in]: tokenAddressIds.erc20}} : {epoch: -1},
+            erc721: tokenAddressIds.erc721.length ? {epoch, addressId: {[Op.in]: tokenAddressIds.erc721}} : {epoch: -1},
+            erc1155: tokenAddressIds.erc1155.length ? {epoch, addressId: {[Op.in]: tokenAddressIds.erc1155}} : {epoch: -1},
+        };
         const [addrQ, cfxAddrQ, addrIdsQ, txIndexQ, nftQ, addrNftQ, token20AddrQ, token721AddrQ, token1155AddrQ, censorQ, eventsQ]: any[] = await Promise.all([
             this.timed('address_transfer', () => addressIds.length
                 ? AddressTransfer.count({where: addressWhere})
@@ -400,12 +412,12 @@ export class EpochDataChecker {
             this.timed('address_nft_transfer', () => addressIds.length
                 ? AddressNftTransfer.count({where: addressWhere})
                 : Promise.resolve(0)),
-            this.timed('address_erc20transfer', () => tokenAddressIds.length
-                ? AddressErc20Transfer.count({where: tokenAddressWhere}) : Promise.resolve(0)),
-            this.timed('address_erc721transfer', () => tokenAddressIds.length
-                ? AddressErc721Transfer.count({where: tokenAddressWhere}) : Promise.resolve(0)),
-            this.timed('address_erc1155transfer', () => tokenAddressIds.length
-                ? AddressErc1155Transfer.count({where: tokenAddressWhere}) : Promise.resolve(0)),
+            this.timed('address_erc20transfer', () => tokenAddressIds.erc20.length
+                ? AddressErc20Transfer.count({where: tokenAddressWhere.erc20}) : Promise.resolve(0)),
+            this.timed('address_erc721transfer', () => tokenAddressIds.erc721.length
+                ? AddressErc721Transfer.count({where: tokenAddressWhere.erc721}) : Promise.resolve(0)),
+            this.timed('address_erc1155transfer', () => tokenAddressIds.erc1155.length
+                ? AddressErc1155Transfer.count({where: tokenAddressWhere.erc1155}) : Promise.resolve(0)),
             this.timed('censor_item', () => CensorItem.count({where: {epochNumber: epoch}})),
             this.timed('events', () => Promise.all([
                 ContractDestroy.count({where: {epochNumber: epoch}}),
@@ -605,15 +617,15 @@ export class EpochDataChecker {
                 actual: cfxAddr, detail: `missingUnpruned=${missingUnpruned} extra=${extra} pruned=${cfxTransferPruned}`});
         }
         const tokenAddressChecks: any[] = [
-            {name: 'address_erc20transfer', model: AddressErc20Transfer, expected: expectedTokenAddressRows.erc20, actual: token20Addr},
-            {name: 'address_erc721transfer', model: AddressErc721Transfer, expected: expectedTokenAddressRows.erc721, actual: token721Addr},
-            {name: 'address_erc1155transfer', model: AddressErc1155Transfer, expected: expectedTokenAddressRows.erc1155, actual: token1155Addr},
+            {type: 'erc20', name: 'address_erc20transfer', model: AddressErc20Transfer, expected: expectedTokenAddressRows.erc20, actual: token20Addr},
+            {type: 'erc721', name: 'address_erc721transfer', model: AddressErc721Transfer, expected: expectedTokenAddressRows.erc721, actual: token721Addr},
+            {type: 'erc1155', name: 'address_erc1155transfer', model: AddressErc1155Transfer, expected: expectedTokenAddressRows.erc1155, actual: token1155Addr},
         ];
         for (const check of tokenAddressChecks) {
             if (check.actual === check.expected.length) continue;
-            const actualRows = tokenAddressIds.length ? await check.model.findAll({
+            const actualRows = tokenAddressIds[check.type].length ? await check.model.findAll({
                 attributes: ['addressId', 'blockIndex', 'txIndex', 'txLogIndex', ...(check.name.endsWith('1155transfer') ? ['batchIndex'] : [])],
-                where: tokenAddressWhere, raw: true,
+                where: tokenAddressWhere[check.type], raw: true,
             }) : [];
             const key = (row: any) => `${Number(row.addressId)}:${Number(row.blockIndex)}:${Number(row.txIndex)}:${Number(row.txLogIndex)}:${Number(row.batchIndex || 0)}`;
             const actualKeys = new Set((actualRows as any[]).map(key));
