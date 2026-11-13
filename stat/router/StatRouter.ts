@@ -839,7 +839,9 @@ export function register(app:Koa, statApp: StatApp) {
     router.use(async (ctx, next)=>{
         try {
             await next();
-            if(ctx.type === 'text/csv') return;
+            // Binary/download responses and checker HTML reports must pass
+            // through unchanged; the JSON envelope is only for API results.
+            if(ctx.type === 'text/csv' || ctx.type === 'text/html') return;
             ctx.body = StatApp.isEVM ? { status: '1', message: '', result: ctx.body } :
                 { code: 0, message: '', data: ctx.body };
         } catch (e) {
@@ -865,7 +867,7 @@ export function register(app:Koa, statApp: StatApp) {
     app.proxy = true
     loadRateConfig().then()
     router.use(checkRate)
-    registerAdminRoutes(router);
+    registerAdminRoutes(router, statApp);
     addRoute(router, statApp);
     registerPosRouter(router, statApp)
 

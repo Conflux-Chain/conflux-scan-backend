@@ -4,9 +4,15 @@ import {promisify} from 'util';
 import {format} from 'js-conflux-sdk';
 import {Hex40Map} from '../model/HexMap';
 import {KV} from '../model/KV';
+import {Epoch} from '../model/Epoch';
 import {Token} from '../model/Token';
 import {StatApp} from '../StatApp';
 import {Errors} from '../service/common/LogicError';
+import {spawn} from 'child_process';
+import * as path from 'path';
+import * as fs from 'fs';
+import {CursorStore} from '../../tools/epoch-data-checker/CursorStore';
+import {ENABLED, isEnabled, leaseOwner, setEnabled, LAST_ERROR, RATE_FORWARD, RATE_BACKWARD, INTERVAL_SECONDS} from '../../tools/epoch-data-checker/Control';
 
 const ADMIN_PWD_KEY = 'adminPwd';
 const MAX_HEX_ID = BigInt('9223372036854775807');
@@ -44,6 +50,15 @@ async function verifyPassword(password: string, stored: string): Promise<{valid:
         valid: expected.length === supplied.length && crypto.timingSafeEqual(expected, supplied),
         legacy: true,
     };
+}
+
+function parseCheckerInterval(value: unknown, fallback: number): number {
+    if (value === undefined || value === null || value === '') return fallback;
+    const interval = Number(value);
+    if (!Number.isFinite(interval) || interval < 0 || interval > 86400) {
+        throw new Errors.ParameterError('interval 必须是 0 到 86400 秒之间的数字');
+    }
+    return interval;
 }
 
 function parseAddress(input: unknown): {id?: string; hex?: string} {
@@ -89,7 +104,22 @@ async function checkAdminPassword(password: unknown): Promise<void> {
     }
 }
 
-export function registerAdminRoutes(router: Router<any, {}>) {
+export function registerAdminRoutes(router: Router<any, {}>, statApp?: StatApp) {
+    router.get('/epoch-checker-reports/:file', async ctx => {
+        const file = String(ctx.params.file || '');
+        if (!/^epoch-[0-9]+-[0-9]+\.html$/.test(file)) {
+            ctx.status = 404;
+            return;
+        }
+        const reportPath = path.resolve(process.cwd(), 'public/stat/epoch-checker-reports', file);
+        if (!fs.existsSync(reportPath)) {
+            ctx.status = 404;
+            return;
+        }
+        ctx.type = 'text/html';
+        ctx.set('Cache-Control', 'no-store');
+        ctx.body = fs.createReadStream(reportPath);
+    });
     router.get('/admin/status', async ctx => {
         ctx.set('Cache-Control', 'no-store');
         const row = await KV.findOne({where: {key: ADMIN_PWD_KEY}, attributes: ['value']});
@@ -124,5 +154,107 @@ export function registerAdminRoutes(router: Router<any, {}>) {
             hexId: address?.id == null ? null : String(address.id),
             token,
         };
+    });
+
+    router.post('/admin/epoch-checker/start', async ctx => {
+        const body = ctx.request.body as any;
+        await checkAdminPassword(body?.password);
+        const saved = Number(await KV.getString(INTERVAL_SECONDS, '0'));
+        const interval = parseCheckerInterval(body?.interval, Number.isFinite(saved) && saved >= 0 ? saved : 0);
+        await KV.upsert({key: INTERVAL_SECONDS, value: String(interval)});
+        await setEnabled(true);
+        const entry = path.resolve(__dirname, '../../tools/epoch-data-checker/run.js');
+        // Keep the checker detached from the request, but forward its output to
+        // the API process so container logs show startup, lease and cursor errors.
+        const child = spawn(process.execPath, [entry, '--interval', String(interval)], {detached: true, stdio: ['ignore', 'pipe', 'pipe']});
+        child.stdout?.on('data', chunk => process.stdout.write(`[epoch-checker] ${chunk}`));
+        child.stderr?.on('data', chunk => process.stderr.write(`[epoch-checker][error] ${chunk}`));
+        child.on('error', error => console.error('[epoch-checker] worker spawn failed', error));
+        child.on('exit', (code, signal) => console.log(`[epoch-checker] worker exited pid=${child.pid} code=${code} signal=${signal || ''}`));
+        console.log(`[epoch-checker] worker spawned pid=${child.pid}`);
+        child.unref();
+        ctx.body = {started: true, interval};
+    });
+    router.post('/admin/epoch-checker/stop', async ctx => {
+        await checkAdminPassword((ctx.request.body as any)?.password);
+        await setEnabled(false);
+        ctx.body = {stopped: true};
+    });
+    router.post('/admin/epoch-checker/resume', async ctx => {
+        const body = ctx.request.body as any;
+        await checkAdminPassword(body?.password);
+        const saved = Number(await KV.getString(INTERVAL_SECONDS, '0'));
+        const interval = parseCheckerInterval(body?.interval, Number.isFinite(saved) && saved >= 0 ? saved : 0);
+        await KV.upsert({key: INTERVAL_SECONDS, value: String(interval)});
+        const cursors = new CursorStore();
+        await Promise.all([cursors.resume('forward'), cursors.resume('backward')]);
+        await setEnabled(true);
+        const entry = path.resolve(__dirname, '../../tools/epoch-data-checker/run.js');
+        const child = spawn(process.execPath, [entry, '--direction', 'both', '--interval', String(interval)], {detached: true, stdio: ['ignore', 'pipe', 'pipe']});
+        child.stdout?.on('data', chunk => process.stdout.write(`[epoch-checker] ${chunk}`));
+        child.stderr?.on('data', chunk => process.stderr.write(`[epoch-checker][error] ${chunk}`));
+        child.on('error', error => console.error('[epoch-checker] worker spawn failed', error));
+        child.on('exit', (code, signal) => console.log(`[epoch-checker] worker exited pid=${child.pid} code=${code} signal=${signal || ''}`));
+        console.log(`[epoch-checker] worker resumed pid=${child.pid}`);
+        child.unref();
+        ctx.body = {resumed: true, interval};
+    });
+    router.post('/admin/epoch-checker/status', async ctx => {
+        await checkAdminPassword((ctx.request.body as any)?.password);
+        const cursors = new CursorStore();
+        const latestFinalized = statApp?.cfx ? Number(await statApp.cfx.getEpochNumber('latest_finalized')) : null;
+        const latestRow: any = latestFinalized == null ? null : await Epoch.findOne({where: {epoch: latestFinalized}, raw: true});
+        const cursorData: any = {};
+        for (const dir of ['forward', 'backward'] as any[]) {
+            const ep = await cursors.get(dir);
+            const row: any = ep == null ? null : await Epoch.findOne({where: {epoch: ep}, raw: true});
+            cursorData[dir] = ep;
+            cursorData[`${dir}Time`] = row?.timestamp || null;
+        }
+        const [forwardRate, backwardRate] = await Promise.all([
+            KV.getString(RATE_FORWARD, ''),
+            KV.getString(RATE_BACKWARD, ''),
+        ]);
+        const savedInterval = Number(await KV.getString(INTERVAL_SECONDS, '0'));
+        ctx.body = {enabled: await isEnabled(), owner: await leaseOwner(), latestFinalized,
+            latestFinalizedTime: latestRow?.timestamp || null,
+            forward: await cursors.get('forward'), backward: await cursors.get('backward'),
+            forwardTime: cursorData.forwardTime, backwardTime: cursorData.backwardTime,
+            forwardRate: forwardRate ? Number(forwardRate) : null,
+            backwardRate: backwardRate ? Number(backwardRate) : null,
+            interval: Number.isFinite(savedInterval) && savedInterval >= 0 ? savedInterval : 0,
+            lastError: await KV.getString(LAST_ERROR, ''),
+            forwardPaused: await cursors.paused('forward'), backwardPaused: await cursors.paused('backward')};
+    });
+    router.post('/admin/epoch-checker/reports', async ctx => {
+        await checkAdminPassword((ctx.request.body as any)?.password);
+        const reportDir = path.resolve(process.cwd(), 'public/stat/epoch-checker-reports');
+        let reports: any[] = [];
+        if (fs.existsSync(reportDir)) {
+            reports = fs.readdirSync(reportDir)
+                .filter(file => /^epoch-[0-9]+-[0-9]+\.html$/.test(file))
+                .map(file => {
+                    const stat = fs.statSync(path.join(reportDir, file));
+                    const match = file.match(/^epoch-([0-9]+)-([0-9]+)\.html$/);
+                    return {file, epoch: Number(match[1]), createdAt: stat.mtime.toISOString(),
+                        url: `/stat/epoch-checker-reports/${file}`};
+                })
+                .sort((a, b) => b.epoch - a.epoch || b.createdAt.localeCompare(a.createdAt))
+                .slice(0, 30);
+        }
+        ctx.body = {reports};
+    });
+    router.post('/admin/epoch-checker/reports/clear', async ctx => {
+        await checkAdminPassword((ctx.request.body as any)?.password);
+        const reportDir = path.resolve(process.cwd(), 'public/stat/epoch-checker-reports');
+        let deleted = 0;
+        if (fs.existsSync(reportDir)) {
+            for (const file of fs.readdirSync(reportDir)) {
+                if (!/^epoch-[0-9]+-[0-9]+\.html$/.test(file)) continue;
+                fs.unlinkSync(path.join(reportDir, file));
+                deleted++;
+            }
+        }
+        ctx.body = {deleted};
     });
 }

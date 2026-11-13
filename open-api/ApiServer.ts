@@ -2,6 +2,7 @@ import {Conflux} from "js-conflux-sdk";
 import {loadConfig, StatConfig} from "../stat/config/StatConfig";
 import {initCfxSdk, initEthSdk} from "../stat/service/common/utils";
 import {StatApp} from "../stat/StatApp";
+import {initOss} from "../stat/service/tool/TokenTool";
 import {createDB, initModel} from "../stat/service/DBProvider";
 import {register} from "./router/ApiRouter";
 import {FullBlockQuery} from "../stat/service/FullBlockQuery";
@@ -89,6 +90,8 @@ export class ApiServer {
         const config = this.config;
         const logger = createLogger('apiServer', 'open-api', './log/open-api', 'info');
         console.log(`-------- start api server, port ${config.apiPort} --------`);
+
+        await initOss(config.oss, {skipCheck: true});
 
         StatApp.readonly = config.database.readonly
         const sequelize = createDB(config.database)

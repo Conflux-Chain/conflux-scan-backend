@@ -25,7 +25,6 @@ function dateString(date = new Date()) {
 
 function removeExpiredLogs(dirname: string) {
     const now = new Date();
-    // Log filenames use UTC dates, so calculate the retention cutoff in UTC too.
     const cutoffDate = dateString(new Date(Date.UTC(
         now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 31,
     )));
@@ -33,7 +32,6 @@ function removeExpiredLogs(dirname: string) {
     try {
         filenames = fs.readdirSync(dirname);
     } catch (e) {
-        // A temporary filesystem or mount failure must not terminate the service.
         process.stderr.write(`failed to read log directory ${dirname}: ${e}\n`);
         return;
     }
@@ -56,7 +54,7 @@ export function redirectLog({subPath='', mainPath = ''} = {}) {
     let entryName = parseAppEntryName(entry);
     // console.log('entry is',entry,entryName)
 
-    const dir = entry.startsWith('/Users') ? './log' : `/${entry.split('/')[1]}/log`
+    const dir = process.env.SCAN_LOG_DIR || (entry.startsWith('/Users') ? './log' : `/${entry.split('/')[1]}/log`)
     const logDir = `${dir}/${mainPath || entryName}`;
     ensureDirectoryExistence(`${logDir}/placeholder`)
     let currentDate = '';

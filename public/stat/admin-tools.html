@@ -20,12 +20,28 @@
     button { margin-top: 1rem; padding: .65rem 1.1rem; border: 0; border-radius: 6px; background: #1557b0; color: white; font: inherit; cursor: pointer; }
     button:disabled { opacity: .5; cursor: default; }
     button.secondary { background: #e9edf4; color: #172235; margin-left: .5rem; }
+    button.danger { background: #b42318; margin-left: .5rem; }
     #message { min-height: 1.5rem; margin: 1rem 0; color: #b42318; }
     dl { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: .7rem 1rem; margin: 1rem 0 0; }
-    dt { font-weight: 600; } dd { margin: 0; overflow-wrap: anywhere; } #token { white-space: pre-wrap; }
+    dt { font-weight: 600; } dt.nowrap { white-space: nowrap; } dd { margin: 0; overflow-wrap: anywhere; } #token { white-space: pre-wrap; }
+    .checker-summary { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: .7rem 1rem; margin-top: 1rem; }
+    .checker-table { width: 100%; margin-top: 1rem; border-collapse: collapse; font-size: .94rem; }
+    .checker-table th, .checker-table td { padding: .7rem .6rem; border-bottom: 1px solid #e1e5ed; text-align: left; vertical-align: top; }
+    .checker-table th { background: #f4f6fa; color: #526071; font-weight: 600; }
+    .checker-table td { overflow-wrap: anywhere; }
+    .report-panel { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #e1e5ed; }
+    .report-panel h2 { font-size: 1.05rem; margin: 0; }
+    .report-panel p { margin: .25rem 0 .75rem; }
+    .report-list { display: grid; gap: .5rem; }
+    .report-list a { display: flex; justify-content: space-between; gap: 1rem; padding: .7rem .8rem; border: 1px solid #d9e2f0; border-radius: 8px; color: #174ea6; text-decoration: none; background: #f8fbff; }
+    .report-list a:hover { background: #eef4ff; }
+    .report-list small { color: #667085; white-space: nowrap; }
+    .state { font-weight: 600; } .state.paused { color: #b42318; } .state.running { color: #137333; } .state.stopped { color: #526071; }
     code { font-size: .92rem; }
     #gate { display: block; max-width: 560px; }
     [hidden] { display: none !important; }
+    #address.epoch-mode > * { display: none; }
+    #address.epoch-mode #epoch-checker { display: block; }
     @media (max-width: 650px) { .layout { grid-template-columns: 1fr; margin: 1rem auto; } nav, main { padding: 1rem; } }
   </style>
 </head>
@@ -36,16 +52,18 @@
       <h1>管理入口</h1>
       <p>请输入管理密码。</p>
       <form id="gate-form">
+        <label for="gate-user">用户名</label>
+        <input id="gate-user" name="username" type="text" autocomplete="username" value="admin" required>
         <label for="gate-input">管理密码</label>
-        <input id="gate-input" type="password" autocomplete="off" required>
+        <input id="gate-input" name="password" type="password" autocomplete="current-password" required>
         <button id="gate-submit" type="submit">进入</button>
       </form>
       <div id="gate-message" role="status" aria-live="polite"></div>
     </main>
   </section>
   <div class="layout" id="app" hidden>
-    <nav aria-label="功能导航"><a href="#address">地址查询</a></nav>
-    <main id="address">
+    <nav aria-label="功能导航"><a href="#address">地址查询</a><a href="#epoch-checker">数据检查</a></nav>
+    <main id="address" class="page">
       <h1>地址查询</h1>
       <p>输入 hex ID、0x 地址或 Conflux base32 地址，查询 hex40 和 token 表。</p>
       <form id="lookup-form">
@@ -62,6 +80,31 @@
           <dt>Hex ID</dt><dd><code id="hex-id"></code></dd>
           <dt>Token</dt><dd id="token"></dd>
         </dl>
+      </section>
+      <section id="epoch-checker" class="page" hidden>
+        <h1>Epoch 数据检查</h1>
+        <p>全局只允许一台机器运行。启动、停止和查看双向检查进度。</p>
+        <button type="button" id="checker-start">启动</button>
+        <button type="button" class="secondary" id="checker-resume">恢复并继续</button>
+        <button type="button" class="secondary" id="checker-stop">停止</button>
+        <button type="button" class="secondary" id="checker-refresh">刷新</button>
+        <label for="checker-interval">间隔（秒，0 表示连续运行）</label>
+        <input id="checker-interval" type="number" min="0" max="86400" step="0.1" value="0">
+        <dl class="checker-summary"><dt>状态</dt><dd id="checker-enabled">-</dd><dt>实例</dt><dd id="checker-owner">-</dd><dt>检查间隔</dt><dd id="checker-interval-current">-</dd><dt class="nowrap">最新 finalized</dt><dd id="checker-latest">-</dd></dl>
+        <table class="checker-table" aria-label="双向检查进度">
+          <thead><tr><th>方向</th><th>游标</th><th>区块时间</th><th>速度</th><th>状态</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">正向</th><td id="checker-forward">-</td><td id="checker-forward-time">-</td><td id="checker-forward-rate">-</td><td id="checker-forward-state" class="state">-</td></tr>
+            <tr><th scope="row">反向</th><td id="checker-backward">-</td><td id="checker-backward-time">-</td><td id="checker-backward-rate">-</td><td id="checker-backward-state" class="state">-</td></tr>
+          </tbody>
+        </table>
+        <section class="report-panel" aria-label="检查报告">
+          <h2>检查报告</h2>
+          <p>不一致时生成的详细报告，点击即可查看。</p>
+          <button type="button" class="secondary" id="checker-reports-refresh">刷新报告</button>
+          <button type="button" class="danger" id="checker-reports-clear">清空报告</button>
+          <div id="checker-reports" class="report-list"><span>暂无报告</span></div>
+        </section>
       </section>
     </main>
   </div>
@@ -147,6 +190,80 @@
           $('submit').disabled = false;
         }
       });
+      function selectedInterval() {
+        const value = Number($('checker-interval').value);
+        if (!Number.isFinite(value) || value < 0 || value > 86400) throw new Error('interval 必须是 0 到 86400 秒之间的数字');
+        return value;
+      }
+      async function checkerAction(action, extra = {}) {
+        const response = await fetch('/stat/admin/epoch-checker/' + action, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password, ...extra}), cache:'no-store'});
+        return responseData(response, await response.json());
+      }
+      async function refreshChecker() {
+        try {
+          const data = await checkerAction('status');
+          $('checker-enabled').textContent = data.enabled ? '运行中' : '已停止';
+          $('checker-interval-current').textContent = data.interval == null ? '-' : data.interval + ' 秒';
+          if (document.activeElement !== $('checker-interval') && data.interval != null) $('checker-interval').value = data.interval;
+          let owner = data.owner || '';
+          try { owner = owner ? JSON.parse(owner).owner + '（租约至 ' + new Date(JSON.parse(owner).expiresAt).toLocaleString() + '）' : '无'; } catch (_) { owner = owner || '无'; }
+          $('checker-owner').textContent = owner;
+          $('checker-latest').textContent = (data.latestFinalized == null ? '-' : data.latestFinalized) + '（' + formatTime(data.latestFinalizedTime) + '）';
+          $('checker-forward').textContent = data.forward == null ? '-' : data.forward;
+          $('checker-forward-rate').textContent = data.forwardRate == null ? '-' : data.forwardRate.toFixed(2) + ' epoch/s';
+          $('checker-forward-time').textContent = formatTime(data.forwardTime);
+          setDirectionState('checker-forward-state', data.forwardPaused, data.enabled);
+          $('checker-backward').textContent = data.backward == null ? '-' : data.backward;
+          $('checker-backward-rate').textContent = data.backwardRate == null ? '-' : data.backwardRate.toFixed(2) + ' epoch/s';
+          $('checker-backward-time').textContent = formatTime(data.backwardTime);
+          setDirectionState('checker-backward-state', data.backwardPaused, data.enabled);
+          await refreshReports();
+        } catch (error) { message.textContent = error.message || '获取状态失败'; }
+      }
+      async function refreshReports() {
+        const data = await checkerAction('reports');
+        const list = $('checker-reports');
+        list.textContent = '';
+        if (!data.reports?.length) { list.textContent = '暂无报告'; return; }
+        for (const report of data.reports) {
+          const link = document.createElement('a');
+          link.href = report.url;
+          link.target = '_blank';
+          link.rel = 'noopener';
+          const title = document.createElement('span');
+          title.textContent = `Epoch ${report.epoch}`;
+          const time = document.createElement('small');
+          time.textContent = formatTime(report.createdAt);
+          link.append(title, time);
+          list.append(link);
+        }
+      }
+      $('checker-reports-refresh').addEventListener('click', refreshReports);
+      $('checker-reports-clear').addEventListener('click', async () => {
+        if (!window.confirm('确定清空所有检查报告吗？')) return;
+        try {
+          await checkerAction('reports/clear');
+          await refreshReports();
+        } catch (error) { message.textContent = error.message || '清空报告失败'; }
+      });
+      $('checker-start').addEventListener('click', async () => { await checkerAction('start', {interval: selectedInterval()}); await refreshChecker(); });
+      $('checker-resume').addEventListener('click', async () => { await checkerAction('resume', {interval: selectedInterval()}); await refreshChecker(); });
+      $('checker-stop').addEventListener('click', async () => { await checkerAction('stop'); await refreshChecker(); });
+      $('checker-refresh').addEventListener('click', refreshChecker);
+      function formatTime(value) { return value ? new Date(value).toLocaleString() : '未同步'; }
+      function setDirectionState(id, paused, enabled) {
+        const element = $(id);
+        element.textContent = paused ? '已暂停' : (enabled ? '检查中' : '已停止');
+        element.classList.toggle('paused', Boolean(paused));
+        element.classList.toggle('running', !paused && Boolean(enabled));
+        element.classList.toggle('stopped', !paused && !enabled);
+      }
+      document.querySelectorAll('nav a').forEach(link => link.addEventListener('click', event => {
+        event.preventDefault();
+        if (link.hash === '#epoch-checker') { $('address').classList.add('epoch-mode'); $('epoch-checker').hidden = false; }
+        else { $('address').classList.remove('epoch-mode'); $('epoch-checker').hidden = true; }
+        if (link.hash === '#epoch-checker') refreshChecker();
+      }));
     })();
   </script>
 </body>
