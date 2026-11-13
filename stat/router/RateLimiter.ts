@@ -126,6 +126,11 @@ export function getClientIP(ctx) {
     return ctx.request?.ip || '~';
 }
 
+function getApiKey(ctx): string | undefined {
+    const value = ctx?.request?.query?.apiKey || ctx?.headers?.['apiKey'];
+    return typeof value === 'string' ? value : undefined;
+}
+
 export async function checkRate(ctx, next) {
     const {path} = ctx.request;
     const ip = getClientIP(ctx);
@@ -137,7 +142,7 @@ export async function checkRate(ctx, next) {
     }
     // resources like nftPreview should have a small weight like 0.01.
     let pointsToConsume = configMap.get(nonVarPath)?.weight || configMap.get(RateConfig.defaultWeightName)?.weight || 1;
-    const {ok: paid} = await checkApiKey(nonVarPath, ctx?.request?.query?.apiKey || ctx?.headers['apiKey'])
+    const {ok: paid} = await checkApiKey(nonVarPath, getApiKey(ctx))
     if (paid) {
         pointsToConsume /= 10;
     }
@@ -160,7 +165,7 @@ export async function checkRate(ctx, next) {
 export async function checkAddressRate(address: string, ctx: any = null) {
     let pointsToConsume = configMap.get(RateConfig.addressWeightName)?.weight || 0.1 // 10 / 0.1 = 100
     const {path} = ctx?.request || {path: '-'};
-    const {ok: paid} = await checkApiKey(path, ctx?.request?.query?.apiKey || ctx?.headers['apiKey'])
+    const {ok: paid} = await checkApiKey(path, getApiKey(ctx))
     if (paid) {
         pointsToConsume /= 10;
     }
@@ -347,7 +352,7 @@ export async function checkRateByLevel(ctx, next) {
     let rateLimiter;
     let rateLimiterDaily;
     const ip = getClientIP(ctx);
-    const apiKey = ctx?.request?.query?.apiKey || ctx?.headers['apiKey'];
+    const apiKey = getApiKey(ctx);
 
     let rateKey = ip
     let rateId = 0;
@@ -437,7 +442,7 @@ async function checkRateByAddress0(addressParamName, ctx, next) {
     await next();
 }
 
-export async function checkApiKeyByLevel(path, apiKey: string) {
+export async function checkApiKeyByLevel(path, apiKey: string | undefined) {
     const rateKey = rateKeyConfig[apiKey];
     if (rateKey) {
         return {

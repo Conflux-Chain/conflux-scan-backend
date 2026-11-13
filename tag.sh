@@ -1,8 +1,10 @@
-#!/bin/bash
-git fetch
+#!/usr/bin/env bash
+set -euo pipefail
+
+git fetch -- origin
 BRANCH=origin/main
-CURTAG=`git describe --abbrev=0 --tags $BRANCH`;
-CURTAG="${CURTAG/v/}"
+CURTAG=$(git describe --abbrev=0 --tags -- "$BRANCH")
+CURTAG="${CURTAG#v}"
 #CURTAG="3.1.40"
 
 IFS='.' read -a vers <<< "$CURTAG"
@@ -11,6 +13,10 @@ IFS='.' read -a vers <<< "$CURTAG"
 MAJ=${vers[0]}
 MIN=${vers[1]}
 BUG=${vers[2]}
+if [[ ! $MAJ =~ ^[0-9]+$ || ! $MIN =~ ^[0-9]+$ || ! $BUG =~ ^[0-9]+$ ]]; then
+    echo "Latest tag is not a numeric semantic version: v$CURTAG" >&2
+    exit 1
+fi
 echo "Current Tag: v$MAJ.$MIN.$BUG branch [$BRANCH]"
 
 for cmd in "$@"
@@ -35,11 +41,11 @@ do
 	esac
 done
 NEWTAG="v$MAJ.$MIN.$BUG"
-#NEWTAG='v2.5.13'
-CMD="git tag -a $NEWTAG -m $NEWTAG $BRANCH"
-echo "Adding Tag: $NEWTAG -> [$CMD]"
-${CMD}
- git push origin tag $NEWTAG
+# Pass each argument separately. Tag and branch names are data, not shell
+# source; never build a command string and evaluate it.
+echo "Adding Tag: $NEWTAG branch [$BRANCH]"
+git tag -a "$NEWTAG" -m "$NEWTAG" "$BRANCH"
+git push origin tag "$NEWTAG"
 #echo "push it : git push origin tag $NEWTAG"
 
 #git tag                  # 查看所有标签
