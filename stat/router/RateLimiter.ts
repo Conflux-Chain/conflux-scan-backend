@@ -416,6 +416,7 @@ async function checkRateByAddress0(addressParamName, ctx, next) {
         .sort();
     if (values.length > 0) {
         rateKey = JSON.stringify([...new Set(values)]);
+    }
     if (!rateKey) {
         await next();
         return;

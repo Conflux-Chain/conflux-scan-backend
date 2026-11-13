@@ -18,21 +18,58 @@ export function getAppEntryName() {
 function parseAppEntryName(str) {
     return str.split('/').slice(-1)[0].split('.')[0]
 }
+
+function dateString(date = new Date()) {
+    return date.toISOString().substring(0, 10);
+}
+
+function removeExpiredLogs(dirname: string) {
+    const cutoff = new Date();
+    // Keep roughly one calendar month of daily files. Subtracting days avoids
+    // Date's end-of-month rollover (for example, March 31 minus one month).
+    cutoff.setDate(cutoff.getDate() - 31);
+    const cutoffDate = dateString(cutoff);
+    for (const filename of fs.readdirSync(dirname)) {
+        const match = /^(\d{4}-\d{2}-\d{2}).*\.log$/.exec(filename);
+        if (match && match[1] < cutoffDate) {
+            try {
+                fs.unlinkSync(path.join(dirname, filename));
+            } catch (e) {
+                if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
+                    console.error(`failed to remove expired log ${filename}:`, e);
+                }
+            }
+        }
+    }
+}
+
 export function redirectLog({subPath='', mainPath = ''} = {}) {
     const [,entry,] = process.argv
     let entryName = parseAppEntryName(entry);
     // console.log('entry is',entry,entryName)
 
     const dir = entry.startsWith('/Users') ? './log' : `/${entry.split('/')[1]}/log`
-    const dateStr = `${new Date().toISOString().substring(0, 10)}`
-    const logFilePath = `${dir}/${mainPath || entryName}/${dateStr}${subPath}.log`
-    // console.log(`log to ${logFilePath}`)
-    ensureDirectoryExistence(logFilePath)
-    // Or 'w' to truncate the file every time the process starts.
-    const logFile = fs.createWriteStream(logFilePath, { flags: 'a' });
+    const logDir = `${dir}/${mainPath || entryName}`;
+    ensureDirectoryExistence(`${logDir}/placeholder`)
+    let currentDate = '';
+    let logFile: fs.WriteStream;
+    const rotate = () => {
+        const nextDate = dateString();
+        if (nextDate === currentDate) return;
+        logFile?.end();
+        currentDate = nextDate;
+        logFile = fs.createWriteStream(`${logDir}/${nextDate}${subPath}.log`, { flags: 'a' });
+    };
+    rotate();
+    removeExpiredLogs(logDir);
+    const cleanupTimer = setInterval(() => removeExpiredLogs(logDir), 6 * 60 * 60 * 1000);
+    cleanupTimer.unref();
+    const rotateTimer = setInterval(rotate, 60 * 1000);
+    rotateTimer.unref();
 
     const rawLog = console.log;
     console.log = function () {
+        rotate();
         logFile.write(new Date().toISOString())
         logFile.write(' ')
         logFile.write(util.format.apply(null, arguments) + '\n');
