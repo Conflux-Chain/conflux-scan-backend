@@ -24,12 +24,20 @@ function dateString(date = new Date()) {
 }
 
 function removeExpiredLogs(dirname: string) {
-    const cutoff = new Date();
-    // Keep roughly one calendar month of daily files. Subtracting days avoids
-    // Date's end-of-month rollover (for example, March 31 minus one month).
-    cutoff.setDate(cutoff.getDate() - 31);
-    const cutoffDate = dateString(cutoff);
-    for (const filename of fs.readdirSync(dirname)) {
+    const now = new Date();
+    // Log filenames use UTC dates, so calculate the retention cutoff in UTC too.
+    const cutoffDate = dateString(new Date(Date.UTC(
+        now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 31,
+    )));
+    let filenames: string[];
+    try {
+        filenames = fs.readdirSync(dirname);
+    } catch (e) {
+        // A temporary filesystem or mount failure must not terminate the service.
+        process.stderr.write(`failed to read log directory ${dirname}: ${e}\n`);
+        return;
+    }
+    for (const filename of filenames) {
         const match = /^(\d{4}-\d{2}-\d{2}).*\.log$/.exec(filename);
         if (match && match[1] < cutoffDate) {
             try {
