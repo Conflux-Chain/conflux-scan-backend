@@ -30,6 +30,32 @@ const {StatApp} = require("../../stat/StatApp");
 const {JsonRPCFlow} = require("../../koaflow/lib/flow/JsonRPCFlow");
 export const jsonrpc = new JsonRPCFlow();
 
+function compareCompilerVersionsDesc(left: string, right: string): number {
+  const parse = (version: string) => {
+    const match = /^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?(.*)$/.exec(version);
+    return match
+      ? {major: Number(match[1]), minor: Number(match[2] || 0), patch: Number(match[3] || 0), suffix: match[4]}
+      : null;
+  };
+  const a = parse(left);
+  const b = parse(right);
+  if (!a || !b) return right.localeCompare(left);
+  for (const key of ['major', 'minor', 'patch'] as const) {
+    if (a[key] !== b[key]) return b[key] - a[key];
+  }
+  // A release without a suffix is newer than a pre-release of the same
+  // numeric version. Keep a deterministic order for other suffixes.
+  if (!a.suffix && b.suffix) return -1;
+  if (a.suffix && !b.suffix) return 1;
+  return b.suffix.localeCompare(a.suffix);
+}
+
+function sortCompilerVersions<T>(versions: {[version: string]: T}): {[version: string]: T} {
+  return Object.fromEntries(
+    Object.entries(versions).sort(([left], [right]) => compareCompilerVersionsDesc(left, right)),
+  ) as {[version: string]: T};
+}
+
 // ------------------------------- Dashboard --------------------------------
 
 export const jsonrpc_dag = jsonrpc.method_('dag',
@@ -345,7 +371,7 @@ export const jsonrpc_listCompilers = jsonrpc.method_('listCompilers',
           app: { service },
       } = this as ScanCtx
 
-      return await service.contractQuery.listSolcVersions()
+      return sortCompilerVersions(await service.contractQuery.listSolcVersions())
   },
 );
 
@@ -357,7 +383,7 @@ export const jsonrpc_listVyperCompilers = jsonrpc.method_('listVyperCompilers',
         } = this as ScanCtx
 
         const versions = await service.contractQuery.listVyperVersions()
-        return lodash.mapValues(versions, v => v.desc)
+        return sortCompilerVersions(lodash.mapValues(versions, v => v.desc))
     },
 );
 
@@ -369,7 +395,7 @@ export const jsonrpc_listFeCompilers = jsonrpc.method_('listFeCompilers',
         } = this as ScanCtx
 
         const versions = await service.contractQuery.listFeVersions()
-        return lodash.mapValues(versions, v => v.desc)
+        return sortCompilerVersions(lodash.mapValues(versions, v => v.desc))
     },
 );
 
