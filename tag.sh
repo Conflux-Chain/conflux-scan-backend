@@ -13,7 +13,7 @@ IFS='.' read -a vers <<< "$CURTAG"
 MAJ=${vers[0]}
 MIN=${vers[1]}
 BUG=${vers[2]}
-if [[ ! $MAJ =~ ^[0-9]+$ || ! $MIN =~ ^[0-9]+$ || ! $BUG =~ ^[0-9]+$ ]]; then
+if [[ ! $CURTAG =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
     echo "Latest tag is not a numeric semantic version: v$CURTAG" >&2
     exit 1
 fi
