@@ -30,6 +30,50 @@ const {StatApp} = require("../../stat/StatApp");
 const {JsonRPCFlow} = require("../../koaflow/lib/flow/JsonRPCFlow");
 export const jsonrpc = new JsonRPCFlow();
 
+function compareCompilerVersionsDesc(left: string, right: string): number {
+  const parse = (version: string) => {
+    const match = /^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?(.*)$/.exec(version);
+    return match
+      ? {
+          major: Number(match[1]),
+          minor: Number(match[2] || 0),
+          patch: Number(match[3] || 0),
+          prerelease: match[4].replace(/^\+.*$/, '').replace(/^-/, ''),
+        }
+      : null;
+  };
+  const a = parse(left);
+  const b = parse(right);
+  if (!a || !b) return right.localeCompare(left);
+  for (const key of ['major', 'minor', 'patch'] as const) {
+    if (a[key] !== b[key]) return b[key] - a[key];
+  }
+  // A release without a suffix is newer than a pre-release of the same
+  // numeric version. Compare pre-release identifiers numerically where
+  // possible, so alpha.9 sorts newer than alpha.8 but older than alpha.12.
+  if (!a.prerelease && b.prerelease) return -1;
+  if (a.prerelease && !b.prerelease) return 1;
+  if (!a.prerelease && !b.prerelease) return 0;
+  const aParts = a.prerelease.split(/[.-]/);
+  const bParts = b.prerelease.split(/[.-]/);
+  for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+    if (i >= aParts.length) return 1;
+    if (i >= bParts.length) return -1;
+    const aNumber = /^\d+$/.test(aParts[i]);
+    const bNumber = /^\d+$/.test(bParts[i]);
+    if (aNumber && bNumber && aParts[i] !== bParts[i]) return Number(bParts[i]) - Number(aParts[i]);
+    if (aNumber !== bNumber) return aNumber ? 1 : -1;
+    if (aParts[i] !== bParts[i]) return bParts[i].localeCompare(aParts[i]);
+  }
+  return 0;
+}
+
+function sortCompilerVersions<T>(versions: {[version: string]: T}): {[version: string]: T} {
+  return Object.fromEntries(
+    Object.entries(versions).sort(([left], [right]) => compareCompilerVersionsDesc(left, right)),
+  ) as {[version: string]: T};
+}
+
 // ------------------------------- Dashboard --------------------------------
 
 export const jsonrpc_dag = jsonrpc.method_('dag',
@@ -345,7 +389,7 @@ export const jsonrpc_listCompilers = jsonrpc.method_('listCompilers',
           app: { service },
       } = this as ScanCtx
 
-      return await service.contractQuery.listSolcVersions()
+      return sortCompilerVersions(await service.contractQuery.listSolcVersions())
   },
 );
 
@@ -357,7 +401,7 @@ export const jsonrpc_listVyperCompilers = jsonrpc.method_('listVyperCompilers',
         } = this as ScanCtx
 
         const versions = await service.contractQuery.listVyperVersions()
-        return lodash.mapValues(versions, v => v.desc)
+        return sortCompilerVersions(lodash.mapValues(versions, v => v.desc))
     },
 );
 
@@ -369,7 +413,7 @@ export const jsonrpc_listFeCompilers = jsonrpc.method_('listFeCompilers',
         } = this as ScanCtx
 
         const versions = await service.contractQuery.listFeVersions()
-        return lodash.mapValues(versions, v => v.desc)
+        return sortCompilerVersions(lodash.mapValues(versions, v => v.desc))
     },
 );
 
