@@ -808,11 +808,22 @@ export class ConfluxService {
       if (hexes?.length) {
         let tasks;
         if (transactionHash) {
-          const {epochNumber, index} = await this.getTransactionReceipt(transactionHash).catch(() => undefined) || {};
-          if (_.isNil(index)) {
-            throw new Errors.RPCError("Failed to get tx index by sdk");
+          const receipt = await this.getTransactionReceipt(transactionHash).catch(() => undefined) || {};
+          let {epochNumber, index} = receipt as any;
+          // Some RPC nodes may temporarily omit the receipt while still
+          // returning the transaction trace. Fall back to the transaction's
+          // block and position so a missing receipt does not break transfer
+          // details; if neither source has a position, skip the bounded auth
+          // lookup and continue with the trace response.
+          if (_.isNil(epochNumber) || _.isNil(index)) {
+            const transaction = await this.getTransactionByHash(transactionHash).catch(() => undefined);
+            epochNumber ??= transaction?.epochNumber;
+            index ??= transaction?.transactionIndex;
           }
-          tasks = hexes.map(hex => AuthAction.sequelize.query(`
+          if (_.isNil(epochNumber) || _.isNil(index)) {
+            tasks = [];
+          } else {
+            tasks = hexes.map(hex => AuthAction.sequelize.query(`
               select * from auth_action 
               where author = ? and result = 'success' and (blockNumber < ? or (blockNumber = ? and transactionPosition <= ?))
               order by blockNumber desc, transactionPosition desc
@@ -821,6 +832,7 @@ export class ConfluxService {
             type: QueryTypes.SELECT,
             replacements: [hex, epochNumber, epochNumber, index]
           }).then(items => items?.length ? items[0] : null));
+          }
         } else {
           tasks = hexes.map(hex => AuthAction.sequelize.query(`
               select * from auth_action 
