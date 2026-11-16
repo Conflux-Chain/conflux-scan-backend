@@ -11,7 +11,7 @@ import {Conflux, format} from "js-conflux-sdk";
 import {ethers, keccak256} from "ethers";
 import {Contract} from "../../model/Contract";
 import {Op, Sequelize} from "sequelize";
-import {execSync} from "child_process";
+import {execFileSync} from "child_process";
 import {sleep} from "./ProcessTool";
 import {TraceCreateContract} from "../../model/TraceCreateContract";
 import {NameTag} from "../../model/NameTag";
@@ -226,16 +226,18 @@ const URL_SOLC_VERSIONS = 'https://binaries.soliditylang.org/linux-amd64'; // ap
 
 async function fetchCompilers() {
     let versions;
-    let commands;
+    let commands: {file: string, args: string[]}[];
 
     if (compiler === "vyper") {
         versions = await contractQuery.listVyperVersions();
         commands = Object.keys(versions)
-            .map(ver => `proxychains4 curl -O -L "${URL_VYPER_VERSIONS}/v${ver}/vyper.${ver}+commit.${versions[ver].commit}.linux"`);
+            .map(ver => ({file: 'proxychains4', args: ['curl', '-O', '-L',
+                `${URL_VYPER_VERSIONS}/v${ver}/vyper.${ver}+commit.${versions[ver].commit}.linux`]}));
     } else if (compiler === "solc") {
         versions = await contractQuery.listSolcVersions();
         commands = Object.values(versions)
-            .map(ver => `proxychains4 curl -O -L "${URL_SOLC_VERSIONS}/solc-linux-amd64-${ver}"`);
+            .map(ver => ({file: 'proxychains4', args: ['curl', '-O', '-L',
+                `${URL_SOLC_VERSIONS}/solc-linux-amd64-${ver}`]}));
     } else {
         throw new Error(`Contract compiler type ${compiler} not supported.`);
     }
@@ -250,9 +252,9 @@ function executeCommands(commands) {
     let fai = 0;
 
     commands.forEach((cmd, index) => {
-        console.log(`Executing command ${index + 1}/${commands.length}: ${cmd}`);
+        console.log(`Executing command ${index + 1}/${commands.length}: ${cmd.file} ${cmd.args.join(' ')}`);
         try {
-            execSync(cmd, {stdio: 'inherit'});
+            execFileSync(cmd.file, cmd.args, {stdio: 'inherit'});
             console.log(`Command ${index + 1} succeeded`);
             suc++;
         } catch (error) {
