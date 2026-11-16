@@ -34,7 +34,12 @@ function compareCompilerVersionsDesc(left: string, right: string): number {
   const parse = (version: string) => {
     const match = /^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?(.*)$/.exec(version);
     return match
-      ? {major: Number(match[1]), minor: Number(match[2] || 0), patch: Number(match[3] || 0), suffix: match[4]}
+      ? {
+          major: Number(match[1]),
+          minor: Number(match[2] || 0),
+          patch: Number(match[3] || 0),
+          prerelease: match[4].replace(/^\+.*$/, '').replace(/^-/, ''),
+        }
       : null;
   };
   const a = parse(left);
@@ -44,10 +49,23 @@ function compareCompilerVersionsDesc(left: string, right: string): number {
     if (a[key] !== b[key]) return b[key] - a[key];
   }
   // A release without a suffix is newer than a pre-release of the same
-  // numeric version. Keep a deterministic order for other suffixes.
-  if (!a.suffix && b.suffix) return -1;
-  if (a.suffix && !b.suffix) return 1;
-  return b.suffix.localeCompare(a.suffix);
+  // numeric version. Compare pre-release identifiers numerically where
+  // possible, so alpha.9 sorts newer than alpha.8 but older than alpha.12.
+  if (!a.prerelease && b.prerelease) return -1;
+  if (a.prerelease && !b.prerelease) return 1;
+  if (!a.prerelease && !b.prerelease) return 0;
+  const aParts = a.prerelease.split(/[.-]/);
+  const bParts = b.prerelease.split(/[.-]/);
+  for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+    if (i >= aParts.length) return 1;
+    if (i >= bParts.length) return -1;
+    const aNumber = /^\d+$/.test(aParts[i]);
+    const bNumber = /^\d+$/.test(bParts[i]);
+    if (aNumber && bNumber && aParts[i] !== bParts[i]) return Number(bParts[i]) - Number(aParts[i]);
+    if (aNumber !== bNumber) return aNumber ? 1 : -1;
+    if (aParts[i] !== bParts[i]) return bParts[i].localeCompare(aParts[i]);
+  }
+  return 0;
 }
 
 function sortCompilerVersions<T>(versions: {[version: string]: T}): {[version: string]: T} {
