@@ -85,6 +85,8 @@ export async function listTokens(ctx) {
                 iconUrl: token.iconUrl || undefined,
                 quoteUrl: token.quoteUrl || undefined,
                 priceInUSDT: token.price ? formatPrice(token.price) : undefined,
+                priceSource: token.priceSource || undefined,
+                priceUpdatedAt: token.priceUpdatedAt || undefined,
             })
         } else{
             data.push({

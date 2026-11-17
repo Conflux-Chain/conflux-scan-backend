@@ -38,6 +38,8 @@ export async function listAccountAssets(ctx) {
                 decimals: 18,
                 iconUrl: TokenQuery.wrappedCFX?.iconUrl,
                 priceInUSDT: formatPrice(TokenQuery.wrappedCFX?.price),
+                priceSource: TokenQuery.wrappedCFX?.priceSource,
+                priceUpdatedAt: TokenQuery.wrappedCFX?.priceUpdatedAt,
                 quoteUrl: TokenQuery.wrappedCFX?.quoteUrl,
             };
         }
@@ -57,7 +59,7 @@ export async function listAccountAssets(ctx) {
                 amount: token?.balance,
                 priceInUSDT: token?.price,
             },
-            lodash.pick(token, ['contract', 'type', 'name', 'symbol', 'decimals', 'iconUrl', 'quoteUrl']))
+            lodash.pick(token, ['contract', 'type', 'name', 'symbol', 'decimals', 'iconUrl', 'quoteUrl', 'priceSource', 'priceUpdatedAt']))
     );
 
     if (nativeToken) {

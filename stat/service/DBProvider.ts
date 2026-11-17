@@ -1,4 +1,4 @@
-import {DataType, IndexesOptions, QueryInterface, QueryTypes, Sequelize} from "sequelize";
+import {DataType, DataTypes, IndexesOptions, QueryInterface, QueryTypes, Sequelize} from "sequelize";
 import {ESpaceHex40Map, Hex40Map} from "../model/HexMap";
 import {Epoch, VoteParams} from "../model/Epoch";
 import {PivotSwitch} from "../model/Block";
@@ -307,6 +307,37 @@ async function migDB(seq: Sequelize) {
     // This table is needed even when database.syncSchema is disabled. The DDL is
     // idempotent because API and stat-task processes can start at the same time.
     if (!StatApp.readonly) {
+        const qi = seq.getQueryInterface();
+        await addColumnIfNotExistsV2(qi, 'token', 'priceSource', {type: DataTypes.STRING(32), allowNull: true});
+        await addColumnIfNotExistsV2(qi, 'token', 'priceUpdatedAt', {type: DataTypes.DATE, allowNull: true});
+        await addColumnIfNotExistsV2(qi, 'token_quote', 'tokenId', {type: DataTypes.BIGINT, allowNull: true});
+        await addColumnIfNotExistsV2(qi, 'token_quote', 'source', {type: DataTypes.STRING(32), allowNull: true});
+        await addColumnIfNotExistsV2(qi, 'token_quote', 'priceUpdatedAt', {type: DataTypes.DATE, allowNull: true});
+        if (isMySQL()) {
+            try {
+                const quoteDescription = await qi.describeTable('token_quote');
+                if (quoteDescription.address) {
+                    await seq.query(`UPDATE token_quote q JOIN token t ON t.base32 = q.address SET q.tokenId = t.id WHERE q.tokenId IS NULL`);
+                }
+                await seq.query(`UPDATE token_quote SET source = COALESCE(source, 'legacy'), priceUpdatedAt = COALESCE(priceUpdatedAt, updatedAt, createdAt) WHERE source IS NULL OR priceUpdatedAt IS NULL`);
+            } catch (error) {
+                if (error.parent?.code !== 'ER_NO_SUCH_TABLE') throw error;
+            }
+        }
+        await changeColumnIfNecessary(qi, 'token_quote', 'tokenId', {type: DataTypes.BIGINT, allowNull: false});
+        await changeColumnIfNecessary(qi, 'token_quote', 'source', {type: DataTypes.STRING(32), allowNull: false});
+        await changeColumnIfNecessary(qi, 'token_quote', 'priceUpdatedAt', {type: DataTypes.DATE, allowNull: false});
+        for (const column of ['address', 'name', 'symbol']) {
+            try {
+                const description = await qi.describeTable('token_quote');
+                if (description[column]) await qi.removeColumn('token_quote', column);
+            } catch (error) {
+                if (!error.message?.startsWith('No description found for')) throw error;
+            }
+        }
+        await addIndexIfNotExistsMySQL(qi, 'token_quote', 'uk_token_quote_track_token_source_convert', {
+            fields: ['tokenId', 'source', 'convertSymbol'], unique: true,
+        });
         if (isMySQL()) {
             await seq.query(`CREATE TABLE IF NOT EXISTS \`compiler_version\` (
                 \`id\` BIGINT NOT NULL AUTO_INCREMENT,
