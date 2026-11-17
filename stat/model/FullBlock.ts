@@ -112,7 +112,7 @@ export class FullBlock extends Model<IFullBlock> implements IFullBlock {
             timestamps: false,
             indexes: [
                 {
-                    name: 'idx_block_time', // index name must be unique globally under sqlite.
+                    name: 'idx_block_time',
                     fields: [{name: 'createdAt', order: 'DESC'}]
                 },{
                     name: 'block_hash',
@@ -395,7 +395,7 @@ export class FullTransaction extends Model<IFullTransaction> implements IFullTra
             timestamps: false,
             indexes: [
                 {
-                    name: 'idx_block_time', // index name must be unique globally under sqlite.
+                    name: 'idx_block_time',
                     fields: [{name: 'createdAt', order: 'DESC'}]
                 },{
                     name: 'idx_hash',
@@ -459,7 +459,7 @@ export class AddressTransactionIndex extends Model<IAddressTransactionIndex> imp
             timestamps: false,
             indexes: [
                 {
-                    name: 'idx_block_time', // index name must be unique globally under sqlite.
+                    name: 'idx_block_time',
                     fields: [{name: 'createdAt', order: 'DESC'}]
                 }
                 /*{

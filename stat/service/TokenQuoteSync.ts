@@ -75,14 +75,14 @@ export class TokenQuoteSync {
     private config: QuoteOptions;
     private cfx: Conflux;
     private readonly tokenTool: TokenTool;
-    private tick = -1; // 1 sec per tick by default
     private readonly IS_BJ_REGION: boolean;
     private readonly bnIntervalSec: number;
     private readonly cmcIntervalSec: number;
-    private readonly resetIntervalSec: number;
     private readonly runIntervalSec = 10 * 60;
     private readonly disableAlertPullPeer: boolean;
     private bnRequestCooldownUntilMs = 0;
+    private lastBnFetchAt = 0;
+    private lastCmcFetchAt = 0;
 
     constructor(cfx: Conflux, config: QuoteOptions) {
         if(config.enable && (!config.binanceAccessToken || !config.coinMarketCapAccessToken)) {
@@ -95,14 +95,17 @@ export class TokenQuoteSync {
         this.IS_BJ_REGION = ConfigInstance.serverTag.includes("bj");
         this.bnIntervalSec = config.binanceFetchIntervalSec || 5;
         this.cmcIntervalSec = config.coinMarketCapFetchIntervalSec || 720;
-        this.resetIntervalSec = Math.max(1, Math.ceil(this.cmcIntervalSec / this.runIntervalSec));
         this.disableAlertPullPeer = Boolean(config.disableAlertPullPeer);
 
         this.schedule().then();
     }
 
-    public async query({address, convertSymbol = 'USDT'}) {
-        return await TokenQuoteTrack.findOne({where: {[Op.and]: [{address}, {convertSymbol}]}});
+    public async query({address, source, convertSymbol = 'USDT'}) {
+        const token = await Token.findOne({where: {base32: format.address(address, StatApp.networkId)}, attributes: ['id']});
+        if (!token) return null;
+        const where: any = {tokenId: token.id, convertSymbol};
+        if (source) where.source = source;
+        return await TokenQuoteTrack.findOne({where});
     }
 
     public async schedule(delay: number = this.runIntervalSec * 1000) {
@@ -121,8 +124,6 @@ export class TokenQuoteSync {
     }
 
     private async run() {
-        this.tick ++;
-
         const tokenList = await Token.findAll({
             attributes: [
                 ['base32', 'address'],
@@ -155,21 +156,23 @@ export class TokenQuoteSync {
             console.log(`Failed to sync token quote from swappi`, e);
         });
 
-        if (this.tick % Math.max(1, Math.ceil(this.bnIntervalSec / this.runIntervalSec)) === 0) {
+        const now = Date.now();
+        if (now - this.lastBnFetchAt >= this.bnIntervalSec * 1000) {
+            this.lastBnFetchAt = now;
             await this.updateByBN(tokenList).catch(e => {
                 safeAddErrorLog('stat-task', 'token-quote-bn', e).then();
                 console.log(`Failed to sync token quote from BN`, e);
             });
         }
 
-        if (this.tick % Math.max(1, Math.ceil(this.cmcIntervalSec / this.runIntervalSec)) === 0) {
+        if (now - this.lastCmcFetchAt >= this.cmcIntervalSec * 1000) {
+            this.lastCmcFetchAt = now;
             await this.updateByCMC(tokenList).catch(e => {
                 safeAddErrorLog('stat-task', 'quote-sync-cmc', e).then();
                 console.log(`Failed to sync token quote from CMC`, e);
             });
         }
 
-        this.tick = this.tick % this.resetIntervalSec === 0 ? 0 : this.tick;
     }
 
     //======================================================================
@@ -492,9 +495,9 @@ export class TokenQuoteSync {
                     : null;
                 totalPrice = totalPrice === 0 ? null : totalPrice;
 
-                const quoteTime = new Date(priceUpdatedAt);
+                const quoteTime = priceUpdatedAt == null || priceUpdatedAt === '' ? null : new Date(priceUpdatedAt);
                 const token = {price, totalSupply, totalPrice, priceSource: src,
-                    priceUpdatedAt: Number.isNaN(quoteTime.getTime()) ? new Date() : quoteTime, updatedAt: new Date()};
+                    priceUpdatedAt: !quoteTime || Number.isNaN(quoteTime.getTime()) ? new Date() : quoteTime, updatedAt: new Date()};
                 if(!dbToken.quoteUrl && quoteUrl) {
                     lodash.assign(token, {quoteUrl});
                 }

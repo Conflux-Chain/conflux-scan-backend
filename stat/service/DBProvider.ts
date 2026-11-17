@@ -101,30 +101,18 @@ import {
 let conf
 export function createDB(config) {
     conf = config
-    if (isMySQL()) {
-        return createMySql(config)
+    if (!isMySQL()) {
+        throw new Error('SQLite is not supported; configure a MySQL database with useMysql=true.')
     }
-    let storage = config.sqlitePath || './data/database.sqlite';
-    const sequelize = new Sequelize({
-        dialect: 'sqlite',
-        storage: storage,
-        logging: config.logging || false,
-    });
-    console.info(`create sqlite: ${storage}`)
-    return sequelize
+    return createMySql(config)
 }
 
 export function getDBConf() : Database{
     return conf;
 }
 
-/**
- * sqlite sum() specification: https://sqlite.org/lang_aggfunc.html
- * Use total() instead of sum() to avoid `integer overflow`.
- */
 export function getSumFunction() : string{
-    // sqlite uses `total`
-    return isMySQL() ? 'SUM' : 'TOTAL'
+    return 'SUM'
 }
 export function isMySQL() : boolean {
     return conf.useMysql === true
@@ -294,7 +282,16 @@ export async function initModel(sequelize: Sequelize) {
     /*await checkApiLogIpField()*/
     console.log(`init models ok`);
     await dropEmptyTables();
-    await migDB(sequelize);
+    const lockName = 'conflux_scan_schema_migration';
+    const lockResult: any[] = await sequelize.query(`SELECT GET_LOCK('${lockName}', 60)`, {type: QueryTypes.SELECT});
+    if (!lockResult[0] || Number(Object.values(lockResult[0])[0]) !== 1) {
+        throw new Error(`Unable to acquire schema migration lock: ${lockName}`);
+    }
+    try {
+        await migDB(sequelize);
+    } finally {
+        await sequelize.query(`SELECT RELEASE_LOCK('${lockName}')`, {type: QueryTypes.SELECT});
+    }
     await bindBundleTxModels();
 }
 
