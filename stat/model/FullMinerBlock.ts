@@ -57,7 +57,7 @@ export class FullMinerBlock extends Model<IFullMinerBlock> implements IFullMiner
                 tableName: 'full_miner_block',
                 indexes: [
                     {
-                        name: 'block_time_idx', // index name must be unique globally under sqlite.
+                        name: 'block_time_idx',
                         fields: [{name: 'createdAt', order: 'DESC'}]
                     },
                     /*{

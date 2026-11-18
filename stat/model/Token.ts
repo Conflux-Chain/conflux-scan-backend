@@ -30,6 +30,8 @@ export interface IToken {
     holder?: number
     // price info
     price?: number
+    priceSource?: string
+    priceUpdatedAt?: Date
     totalPrice?: number
     quoteUrl?: string
     cmcId?: number
@@ -66,6 +68,8 @@ export class Token extends Model<IToken> implements IToken {
     holder?: number
     // price info
     price?: number
+    priceSource?: string
+    priceUpdatedAt?: Date
     totalPrice?: number
     quoteUrl?: string
     cmcId?: number
@@ -101,6 +105,8 @@ export class Token extends Model<IToken> implements IToken {
             holder: {type: DataTypes.BIGINT, allowNull: false, defaultValue: 0},
             // price info
             price: {type: DataTypes.DECIMAL(36, 18)},
+            priceSource: {type: DataTypes.STRING(32)},
+            priceUpdatedAt: {type: DataTypes.DATE},
             totalPrice: {type: DataTypes.DECIMAL(36, 18)},
             quoteUrl: {type: DataTypes.CHAR(255)},
             cmcId: {type: DataTypes.INTEGER},

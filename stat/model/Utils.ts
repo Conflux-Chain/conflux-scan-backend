@@ -15,7 +15,6 @@ export function patchDateOnlyField(v: any, field = 'day') {
     return v;
 }
 /**
- * When using raw query, there is an issue about timezone, under sqlite3.
  * Avoid passing date directly, convert it to utc string.
  * @param dt
  */

@@ -75,13 +75,14 @@ export class TokenQuoteSync {
     private config: QuoteOptions;
     private cfx: Conflux;
     private readonly tokenTool: TokenTool;
-    private tick = -1; // 1 sec per tick by default
     private readonly IS_BJ_REGION: boolean;
     private readonly bnIntervalSec: number;
     private readonly cmcIntervalSec: number;
-    private readonly resetIntervalSec: number;
+    private readonly runIntervalSec = 10 * 60;
     private readonly disableAlertPullPeer: boolean;
     private bnRequestCooldownUntilMs = 0;
+    private lastBnFetchAt = 0;
+    private lastCmcFetchAt = 0;
 
     constructor(cfx: Conflux, config: QuoteOptions) {
         if(config.enable && (!config.binanceAccessToken || !config.coinMarketCapAccessToken)) {
@@ -94,17 +95,20 @@ export class TokenQuoteSync {
         this.IS_BJ_REGION = ConfigInstance.serverTag.includes("bj");
         this.bnIntervalSec = config.binanceFetchIntervalSec || 5;
         this.cmcIntervalSec = config.coinMarketCapFetchIntervalSec || 720;
-        this.resetIntervalSec = this.bnIntervalSec * this.cmcIntervalSec;
         this.disableAlertPullPeer = Boolean(config.disableAlertPullPeer);
 
         this.schedule().then();
     }
 
-    public async query({address, convertSymbol = 'USDT'}) {
-        return await TokenQuoteTrack.findOne({where: {[Op.and]: [{address}, {convertSymbol}]}});
+    public async query({address, source, convertSymbol = 'USDT'}) {
+        const token = await Token.findOne({where: {base32: format.address(address, StatApp.networkId)}, attributes: ['id']});
+        if (!token) return null;
+        const where: any = {tokenId: token.id, convertSymbol};
+        if (source) where.source = source;
+        return await TokenQuoteTrack.findOne({where, order: [['priceUpdatedAt', 'DESC'], ['id', 'DESC']]});
     }
 
-    public async schedule(delay: number = 1_000) {
+    public async schedule(delay: number = this.runIntervalSec * 1000) {
         const that = this
 
         async function repeat() {
@@ -120,8 +124,6 @@ export class TokenQuoteSync {
     }
 
     private async run() {
-        this.tick ++;
-
         const tokenList = await Token.findAll({
             attributes: [
                 ['base32', 'address'],
@@ -154,21 +156,23 @@ export class TokenQuoteSync {
             console.log(`Failed to sync token quote from swappi`, e);
         });
 
-        if (this.tick % this.bnIntervalSec === 0) {
+        const now = Date.now();
+        if (now - this.lastBnFetchAt >= this.bnIntervalSec * 1000) {
+            this.lastBnFetchAt = now;
             await this.updateByBN(tokenList).catch(e => {
                 safeAddErrorLog('stat-task', 'token-quote-bn', e).then();
                 console.log(`Failed to sync token quote from BN`, e);
             });
         }
 
-        if (this.tick % this.cmcIntervalSec === 0) {
+        if (now - this.lastCmcFetchAt >= this.cmcIntervalSec * 1000) {
+            this.lastCmcFetchAt = now;
             await this.updateByCMC(tokenList).catch(e => {
                 safeAddErrorLog('stat-task', 'quote-sync-cmc', e).then();
                 console.log(`Failed to sync token quote from CMC`, e);
             });
         }
 
-        this.tick = this.tick % this.resetIntervalSec === 0 ? 0 : this.tick;
     }
 
     //======================================================================
@@ -394,10 +398,11 @@ export class TokenQuoteSync {
             .timeout({response, deadline});
         const tokenArray = lodash.get(resp, ['body', 'data', 'list']) || lodash.get(resp, ['body', 'result', 'list']);
 
-        const quoteArray = tokenArray.map(({address, name, symbol, price}) => ({
+        const quoteArray = tokenArray.map(({address, name, symbol, price, priceUpdatedAt}) => ({
             address: formatToBase32(address),
             price,
             src: 'HK',
+            priceUpdatedAt,
         }));
 
         await this.upsertQuote(quoteArray);
@@ -474,13 +479,14 @@ export class TokenQuoteSync {
     //======================================================================
     private async upsertQuote(quoteArray) {
         const {wrappedUSDT, wrappedUSDT0} = CONST.WRAPPED_TOKENS[StatApp.networkId] || {};
-        wrappedUSDT && quoteArray.push({address: wrappedUSDT, price: 1});
-        wrappedUSDT0 && quoteArray.push({address: wrappedUSDT0, price: 1});
+        wrappedUSDT && quoteArray.push({address: wrappedUSDT, price: 1, src: 'wrapped'});
+        wrappedUSDT0 && quoteArray.push({address: wrappedUSDT0, price: 1, src: 'wrapped'});
 
-        quoteArray.map(async quote => {
-            const {address, price, quoteUrl} = quote;
+        await Promise.all(quoteArray.map(async quote => {
+            const {address, price, quoteUrl, src = 'unknown', priceUpdatedAt = new Date()} = quote;
             const base32 = format.address(address, StatApp.networkId);
             const dbToken: Token = await Token.findOne({where: {base32}});
+            if (!dbToken) return;
             const totalSupply = await this.tokenTool.getTokenTotalSupply(base32);
 
             if (dbToken) {
@@ -489,14 +495,18 @@ export class TokenQuoteSync {
                     : null;
                 totalPrice = totalPrice === 0 ? null : totalPrice;
 
-                const token = {price, totalSupply, totalPrice, updatedAt: new Date()};
+                const quoteTime = priceUpdatedAt == null || priceUpdatedAt === '' ? null : new Date(priceUpdatedAt);
+                const token = {price, totalSupply, totalPrice, priceSource: src,
+                    priceUpdatedAt: !quoteTime || Number.isNaN(quoteTime.getTime()) ? new Date() : quoteTime, updatedAt: new Date()};
                 if(!dbToken.quoteUrl && quoteUrl) {
                     lodash.assign(token, {quoteUrl});
                 }
 
                 await Token.update(token, {where: {id: dbToken.id}});
+                await TokenQuoteTrack.upsert({tokenId: dbToken.id, source: src, convertSymbol: 'USDT',
+                    price, priceUpdatedAt: token.priceUpdatedAt});
             }
-        });
+        }));
     }
 }
 

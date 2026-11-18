@@ -1,4 +1,4 @@
-import {DataType, IndexesOptions, QueryInterface, QueryTypes, Sequelize} from "sequelize";
+import {DataType, DataTypes, IndexesOptions, QueryInterface, QueryTypes, Sequelize, Transaction} from "sequelize";
 import {ESpaceHex40Map, Hex40Map} from "../model/HexMap";
 import {Epoch, VoteParams} from "../model/Epoch";
 import {PivotSwitch} from "../model/Block";
@@ -101,30 +101,18 @@ import {
 let conf
 export function createDB(config) {
     conf = config
-    if (isMySQL()) {
-        return createMySql(config)
+    if (!isMySQL()) {
+        throw new Error('SQLite is not supported; configure a MySQL database with useMysql=true.')
     }
-    let storage = config.sqlitePath || './data/database.sqlite';
-    const sequelize = new Sequelize({
-        dialect: 'sqlite',
-        storage: storage,
-        logging: config.logging || false,
-    });
-    console.info(`create sqlite: ${storage}`)
-    return sequelize
+    return createMySql(config)
 }
 
 export function getDBConf() : Database{
     return conf;
 }
 
-/**
- * sqlite sum() specification: https://sqlite.org/lang_aggfunc.html
- * Use total() instead of sum() to avoid `integer overflow`.
- */
 export function getSumFunction() : string{
-    // sqlite uses `total`
-    return isMySQL() ? 'SUM' : 'TOTAL'
+    return 'SUM'
 }
 export function isMySQL() : boolean {
     return conf.useMysql === true
@@ -294,7 +282,26 @@ export async function initModel(sequelize: Sequelize) {
     /*await checkApiLogIpField()*/
     console.log(`init models ok`);
     await dropEmptyTables();
-    await migDB(sequelize);
+    const lockName = 'conflux_scan_schema_migration';
+    const transaction = await sequelize.transaction();
+    let lockAcquired = false;
+    try {
+        const lockResult: any[] = await sequelize.query(`SELECT GET_LOCK('${lockName}', 60)`, {type: QueryTypes.SELECT, transaction});
+        if (!lockResult[0] || Number(Object.values(lockResult[0])[0]) !== 1) {
+            throw new Error(`Unable to acquire schema migration lock: ${lockName}`);
+        }
+        lockAcquired = true;
+        await migDB(sequelize, transaction);
+        await sequelize.query(`SELECT RELEASE_LOCK('${lockName}')`, {type: QueryTypes.SELECT, transaction});
+        lockAcquired = false;
+        await transaction.commit();
+    } catch (error) {
+        if (lockAcquired) {
+            await sequelize.query(`SELECT RELEASE_LOCK('${lockName}')`, {type: QueryTypes.SELECT, transaction}).catch(() => undefined);
+        }
+        await transaction.rollback();
+        throw error;
+    }
     await bindBundleTxModels();
 }
 
@@ -303,10 +310,56 @@ export function createMySql(dbConf) {
     return new Sequelize(dbConf.instanceName, null, null, dbConf)
 }
 
-async function migDB(seq: Sequelize) {
+async function migDB(seq: Sequelize, transaction: Transaction) {
     // This table is needed even when database.syncSchema is disabled. The DDL is
     // idempotent because API and stat-task processes can start at the same time.
     if (!StatApp.readonly) {
+        const qi = seq.getQueryInterface();
+        await addColumnIfNotExistsV2(qi, 'token', 'priceSource', {type: DataTypes.STRING(32), allowNull: true}, transaction);
+        await addColumnIfNotExistsV2(qi, 'token', 'priceUpdatedAt', {type: DataTypes.DATE, allowNull: true}, transaction);
+        await addColumnIfNotExistsV2(qi, 'token_quote', 'tokenId', {type: DataTypes.BIGINT, allowNull: true}, transaction);
+        await addColumnIfNotExistsV2(qi, 'token_quote', 'source', {type: DataTypes.STRING(32), allowNull: true}, transaction);
+        await addColumnIfNotExistsV2(qi, 'token_quote', 'priceUpdatedAt', {type: DataTypes.DATE, allowNull: true}, transaction);
+        if (isMySQL()) {
+            try {
+                const quoteDescription = await qi.describeTable('token_quote');
+                if (quoteDescription.address) {
+                    await seq.query(`UPDATE token_quote q JOIN token t ON t.base32 = q.address SET q.tokenId = t.id WHERE q.tokenId IS NULL`, {transaction});
+                    await seq.query(`DELETE q FROM token_quote q LEFT JOIN token t ON t.base32 = q.address WHERE q.tokenId IS NULL AND t.id IS NULL`, {transaction});
+                } else {
+                    await seq.query(`DELETE FROM token_quote WHERE tokenId IS NULL`, {transaction});
+                }
+                await seq.query(`UPDATE token_quote SET source = COALESCE(source, 'legacy'), priceUpdatedAt = COALESCE(priceUpdatedAt, updatedAt, createdAt) WHERE source IS NULL OR priceUpdatedAt IS NULL`, {transaction});
+            } catch (error) {
+                if (error.parent?.code !== 'ER_NO_SUCH_TABLE') throw error;
+            }
+        }
+        await changeColumnIfNecessary(qi, 'token_quote', 'tokenId', {type: DataTypes.BIGINT, allowNull: false}, transaction);
+        await changeColumnIfNecessary(qi, 'token_quote', 'source', {type: DataTypes.STRING(32), allowNull: false}, transaction);
+        await changeColumnIfNecessary(qi, 'token_quote', 'priceUpdatedAt', {type: DataTypes.DATE, allowNull: false}, transaction);
+        try {
+            const legacyIndexes: any[] = await seq.query('SHOW INDEX FROM `token_quote`', {type: QueryTypes.SELECT, transaction});
+            const indexesToDrop = [...new Set(legacyIndexes
+                .filter(index => index.Key_name !== 'PRIMARY' && ['address', 'name', 'symbol'].includes(index.Column_name))
+                .map(index => index.Key_name))];
+            for (const indexName of indexesToDrop) {
+                const escapedIndex = String(indexName).replace(/`/g, '``');
+                await seq.query(`ALTER TABLE \`token_quote\` DROP INDEX \`${escapedIndex}\``, {transaction});
+            }
+        } catch (error) {
+            if (error.parent?.code !== 'ER_NO_SUCH_TABLE') throw error;
+        }
+        for (const column of ['address', 'name', 'symbol']) {
+            try {
+                const description = await qi.describeTable('token_quote');
+                if (description[column]) await qi.removeColumn('token_quote', column, {transaction});
+            } catch (error) {
+                if (!error.message?.startsWith('No description found for')) throw error;
+            }
+        }
+        await addIndexIfNotExistsMySQL(qi, 'token_quote', 'uk_token_quote_track_token_source_convert', {
+            fields: ['tokenId', 'source', 'convertSymbol'], unique: true,
+        }, transaction);
         if (isMySQL()) {
             await seq.query(`CREATE TABLE IF NOT EXISTS \`compiler_version\` (
                 \`id\` BIGINT NOT NULL AUTO_INCREMENT,
@@ -320,7 +373,7 @@ async function migDB(seq: Sequelize) {
                 PRIMARY KEY (\`id\`),
                 UNIQUE KEY \`uk_compiler_version_type_version\` (\`type\`, \`version\`),
                 KEY \`idx_compiler_version_type\` (\`type\`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`, {transaction});
         } else {
             await CompilerVersion.sync();
         }
@@ -425,15 +478,16 @@ export async function addColumnIfNotExistsV2(
     queryInterface: QueryInterface,
     tableName: string,
     columnName: string,
-    options: ColumnAdditionOptions
+        options: ColumnAdditionOptions,
+        transaction?: Transaction
 ): Promise<void> {
     try {
-        const tableDescription = await queryInterface.describeTable(tableName);
+        const tableDescription = await (queryInterface.describeTable as any)(tableName, {transaction});
 
         if (!tableDescription[columnName]) {
             console.log(`Adding column "${columnName}" to table "${tableName}"...`);
 
-            await queryInterface.addColumn(tableName, columnName, options);
+            await queryInterface.addColumn(tableName, columnName, options, {transaction});
 
             console.log(`Column "${columnName}" added successfully`);
         } else {
@@ -453,11 +507,12 @@ export async function addIndexIfNotExistsMySQL(
     queryInterface: QueryInterface,
     tableName: string,
     indexName: string,
-    options: IndexesOptions
+    options: IndexesOptions,
+    transaction?: Transaction
 ): Promise<void> {
     try {
         const [results] = await queryInterface.sequelize.query(
-            `SHOW INDEX FROM \`${tableName}\` WHERE Key_name = '${indexName}'`
+            `SHOW INDEX FROM \`${tableName}\` WHERE Key_name = '${indexName}'`, {transaction}
         );
 
         const indexExists = Array.isArray(results) && results.length > 0;
@@ -466,7 +521,7 @@ export async function addIndexIfNotExistsMySQL(
             console.log(`Index "${indexName}" does not exist on table "${tableName}", creating...`);
 
             options.name = indexName;
-            await queryInterface.addIndex(tableName, options.fields as string[], options);
+            await queryInterface.addIndex(tableName, options.fields as string[], {...options, transaction} as any);
 
             console.log(`Index "${indexName}" created successfully`);
         } else {
@@ -486,15 +541,16 @@ export async function changeColumnIfNecessary(
     queryInterface: QueryInterface,
     tableName: string,
     columnName: string,
-    options: ColumnAdditionOptions
+    options: ColumnAdditionOptions,
+    transaction?: Transaction
 ): Promise<void> {
     try {
-        const tableDescription = await queryInterface.describeTable(tableName);
+        const tableDescription = await (queryInterface.describeTable as any)(tableName, {transaction});
         if (!tableDescription[columnName]) {
             console.log(`Column "${columnName}" not exists in table "${tableName}"`);
         } else {
             console.log(`Changing column "${columnName}" on table "${tableName}"...`);
-            await queryInterface.changeColumn(tableName, columnName, options);
+            await queryInterface.changeColumn(tableName, columnName, options, {transaction});
             console.log(`Column "${columnName}" changed successfully`);
         }
     } catch (error) {
