@@ -1792,6 +1792,15 @@ components:
                         description: "The price of token in USDT, optional."
                         type: string
                         nullable: true
+                      priceSource:
+                        description: "The source of the token price, optional."
+                        type: string
+                        nullable: true
+                      priceUpdatedAt:
+                        description: "The time the token price was updated, optional."
+                        type: string
+                        format: date-time
+                        nullable: true
                       amount:
                         description: "The token/native-token balance of an account, the string is not divided by the token decimal."
                         type: string
@@ -2068,6 +2077,15 @@ components:
                   priceInUSDT:
                     description: "The price of token in USDT, optional."
                     type: string
+                    nullable: true
+                  priceSource:
+                    description: "The source of the token price, optional."
+                    type: string
+                    nullable: true
+                  priceUpdatedAt:
+                    description: "The time the token price was updated, optional."
+                    type: string
+                    format: date-time
                     nullable: true
                   error:
                     description: "A string describing a particular reason that we were unable to get token info."

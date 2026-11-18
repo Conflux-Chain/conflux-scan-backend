@@ -479,8 +479,8 @@ export class TokenQuoteSync {
     //======================================================================
     private async upsertQuote(quoteArray) {
         const {wrappedUSDT, wrappedUSDT0} = CONST.WRAPPED_TOKENS[StatApp.networkId] || {};
-        wrappedUSDT && quoteArray.push({address: wrappedUSDT, price: 1});
-        wrappedUSDT0 && quoteArray.push({address: wrappedUSDT0, price: 1});
+        wrappedUSDT && quoteArray.push({address: wrappedUSDT, price: 1, src: 'wrapped'});
+        wrappedUSDT0 && quoteArray.push({address: wrappedUSDT0, price: 1, src: 'wrapped'});
 
         await Promise.all(quoteArray.map(async quote => {
             const {address, price, quoteUrl, src = 'unknown', priceUpdatedAt = new Date()} = quote;
