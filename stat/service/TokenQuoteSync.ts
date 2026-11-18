@@ -86,7 +86,6 @@ export class TokenQuoteSync {
     private bnRequestCooldownUntilMs = 0;
     private lastBnFetchAt = 0;
     private lastCmcFetchAt = 0;
-    private peerFailureCount = 0;
 
     constructor(cfx: Conflux, config: QuoteOptions) {
         if(config.enable && (!config.binanceAccessToken || !config.coinMarketCapAccessToken)) {
@@ -145,11 +144,8 @@ export class TokenQuoteSync {
             raw: true,
         });
 
-        await this.pullPrice(tokenList).then(() => {
-            this.peerFailureCount = 0;
-        }).catch(e => {
-            this.peerFailureCount++;
-            if (!this.disableAlertPullPeer && this.peerFailureCount >= 3) {
+        await this.pullPrice(tokenList).catch(e => {
+            if (!this.disableAlertPullPeer) {
                 safeAddErrorLog('stat-task', 'token-quote-peer', e).then();
             }
             console.log(`Failed to sync token quote from peer`, e);
@@ -403,9 +399,9 @@ export class TokenQuoteSync {
         const queryParams = tokenList.map(token => `addressArray=${token['address']}`).join('&');
         const req = superagent.get(`${url}/v1/token?${queryParams}`);
         const disableProxy = await KV.getSwitch(KEY_TOKEN_QUOTE_DISABLE_PROXY);
-        const proxyUrl = await KV.getString(KEY_TOKEN_QUOTE_PROXY,
-            process.env.HTTPS_PROXY || process.env.HTTP_PROXY || DEFAULT_PEER_PROXY);
-        if (!disableProxy && proxyUrl) {
+        if (!disableProxy) {
+            const proxyUrl = await KV.getString(KEY_TOKEN_QUOTE_PROXY,
+                process.env.HTTPS_PROXY || process.env.HTTP_PROXY || DEFAULT_PEER_PROXY);
             req.agent(new ProxyAgent(proxyUrl));
         }
         const resp = await req
