@@ -8,9 +8,11 @@ import {TokenTool} from "./tool/TokenTool";
 import {formatToBase32} from "../model/HexMap";
 import {CONST} from "./common/constant";
 import {ConfigInstance, QuoteOptions} from "../config/StatConfig";
+import {KEY_TOKEN_QUOTE_DISABLE_PROXY, KEY_TOKEN_QUOTE_PROXY, KV} from "../model/KV";
 
 const lodash = require('lodash');
 const superagent = require('superagent');
+const {ProxyAgent} = require('proxy-agent');
 const BigFixed = require('bigfixed');
 const {abi: abiSwappiFarmController} = require('./abi/SwappiFarmController');
 const {abi: abiSwappiPair} = require('./abi/SwappiPair');
@@ -26,6 +28,7 @@ const PEER_URLS = {
     1029: 'https://www.confluxscan.org',
     1030: 'https://evm.confluxscan.org',
 };
+const DEFAULT_PEER_PROXY = 'http://127.0.0.1:1080';
 
 function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -394,7 +397,14 @@ export class TokenQuoteSync {
         }
 
         const queryParams = tokenList.map(token => `addressArray=${token['address']}`).join('&');
-        const resp = await superagent.get(`${url}/v1/token?${queryParams}`)
+        const req = superagent.get(`${url}/v1/token?${queryParams}`);
+        const disableProxy = await KV.getSwitch(KEY_TOKEN_QUOTE_DISABLE_PROXY);
+        if (!disableProxy) {
+            const proxyUrl = await KV.getString(KEY_TOKEN_QUOTE_PROXY,
+                process.env.HTTPS_PROXY || process.env.HTTP_PROXY || DEFAULT_PEER_PROXY);
+            req.agent(new ProxyAgent(proxyUrl));
+        }
+        const resp = await req
             .timeout({response, deadline});
         const tokenArray = lodash.get(resp, ['body', 'data', 'list']) || lodash.get(resp, ['body', 'result', 'list']);
 
