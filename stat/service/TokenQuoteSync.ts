@@ -8,9 +8,12 @@ import {TokenTool} from "./tool/TokenTool";
 import {formatToBase32} from "../model/HexMap";
 import {CONST} from "./common/constant";
 import {ConfigInstance, QuoteOptions} from "../config/StatConfig";
+import {dingMsg} from "../monitor/Monitor";
+import {KEY_TOKEN_QUOTE_PROXY, KV} from "../model/KV";
 
 const lodash = require('lodash');
 const superagent = require('superagent');
+const {ProxyAgent} = require('proxy-agent');
 const BigFixed = require('bigfixed');
 const {abi: abiSwappiFarmController} = require('./abi/SwappiFarmController');
 const {abi: abiSwappiPair} = require('./abi/SwappiPair');
@@ -26,6 +29,8 @@ const PEER_URLS = {
     1029: 'https://www.confluxscan.org',
     1030: 'https://evm.confluxscan.org',
 };
+const DEFAULT_PEER_PROXY = 'http://127.0.0.1:1080';
+const PEER_FAILURE_ALERT_THRESHOLD = 3;
 
 function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -83,6 +88,8 @@ export class TokenQuoteSync {
     private bnRequestCooldownUntilMs = 0;
     private lastBnFetchAt = 0;
     private lastCmcFetchAt = 0;
+    private peerFailureCount = 0;
+    private peerFailureAlerted = false;
 
     constructor(cfx: Conflux, config: QuoteOptions) {
         if(config.enable && (!config.binanceAccessToken || !config.coinMarketCapAccessToken)) {
@@ -141,9 +148,17 @@ export class TokenQuoteSync {
             raw: true,
         });
 
-        await this.pullPrice(tokenList).catch(e => {
+        await this.pullPrice(tokenList).then(() => {
+            this.peerFailureCount = 0;
+            this.peerFailureAlerted = false;
+        }).catch(e => {
+            this.peerFailureCount++;
             if (!this.disableAlertPullPeer) {
                 safeAddErrorLog('stat-task', 'token-quote-peer', e).then();
+                if (this.peerFailureCount >= PEER_FAILURE_ALERT_THRESHOLD && !this.peerFailureAlerted) {
+                    this.peerFailureAlerted = true;
+                    dingMsg(`[${ConfigInstance.serverTag}] token quote peer failed ${this.peerFailureCount} times consecutively: ${e?.message || e}`, ConfigInstance.dingDevToken).then();
+                }
             }
             console.log(`Failed to sync token quote from peer`, e);
         });
@@ -394,7 +409,13 @@ export class TokenQuoteSync {
         }
 
         const queryParams = tokenList.map(token => `addressArray=${token['address']}`).join('&');
-        const resp = await superagent.get(`${url}/v1/token?${queryParams}`)
+        const proxyUrl = await KV.getString(KEY_TOKEN_QUOTE_PROXY,
+            process.env.HTTPS_PROXY || process.env.HTTP_PROXY || DEFAULT_PEER_PROXY);
+        const req = superagent.get(`${url}/v1/token?${queryParams}`);
+        if (proxyUrl) {
+            req.agent(new ProxyAgent(proxyUrl));
+        }
+        const resp = await req
             .timeout({response, deadline});
         const tokenArray = lodash.get(resp, ['body', 'data', 'list']) || lodash.get(resp, ['body', 'result', 'list']);
 

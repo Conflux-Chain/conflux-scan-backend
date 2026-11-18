@@ -72,6 +72,7 @@
     "ping": "^0.4.2",
     "pino": "^6.10.0",
     "prom-client": "~13.0.0",
+    "proxy-agent": "^8.0.2",
     "rate-limiter-flexible": "2.3.7",
     "ratelimiter": "~3.4.1",
     "semver": "^7.8.5",
