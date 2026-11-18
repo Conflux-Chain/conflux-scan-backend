@@ -402,7 +402,7 @@ export class TokenQuoteSync {
         if (!disableProxy) {
             const proxyUrl = await KV.getString(KEY_TOKEN_QUOTE_PROXY,
                 process.env.HTTPS_PROXY || process.env.HTTP_PROXY || DEFAULT_PEER_PROXY);
-            req.agent(new ProxyAgent(proxyUrl));
+            req.agent(new ProxyAgent({getProxyForUrl: () => proxyUrl}));
         }
         const resp = await req
             .timeout({response, deadline});
