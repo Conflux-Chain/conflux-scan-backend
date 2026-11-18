@@ -86,6 +86,7 @@ export class TokenQuoteSync {
     private bnRequestCooldownUntilMs = 0;
     private lastBnFetchAt = 0;
     private lastCmcFetchAt = 0;
+    private peerFailureCount = 0;
 
     constructor(cfx: Conflux, config: QuoteOptions) {
         if(config.enable && (!config.binanceAccessToken || !config.coinMarketCapAccessToken)) {
@@ -144,8 +145,11 @@ export class TokenQuoteSync {
             raw: true,
         });
 
-        await this.pullPrice(tokenList).catch(e => {
-            if (!this.disableAlertPullPeer) {
+        await this.pullPrice(tokenList).then(() => {
+            this.peerFailureCount = 0;
+        }).catch(e => {
+            this.peerFailureCount++;
+            if (!this.disableAlertPullPeer && this.peerFailureCount >= 3) {
                 safeAddErrorLog('stat-task', 'token-quote-peer', e).then();
             }
             console.log(`Failed to sync token quote from peer`, e);
