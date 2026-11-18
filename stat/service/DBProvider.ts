@@ -325,6 +325,9 @@ async function migDB(seq: Sequelize, transaction: Transaction) {
                 const quoteDescription = await qi.describeTable('token_quote');
                 if (quoteDescription.address) {
                     await seq.query(`UPDATE token_quote q JOIN token t ON t.base32 = q.address SET q.tokenId = t.id WHERE q.tokenId IS NULL`, {transaction});
+                    await seq.query(`DELETE q FROM token_quote q LEFT JOIN token t ON t.base32 = q.address WHERE q.tokenId IS NULL AND t.id IS NULL`, {transaction});
+                } else {
+                    await seq.query(`DELETE FROM token_quote WHERE tokenId IS NULL`, {transaction});
                 }
                 await seq.query(`UPDATE token_quote SET source = COALESCE(source, 'legacy'), priceUpdatedAt = COALESCE(priceUpdatedAt, updatedAt, createdAt) WHERE source IS NULL OR priceUpdatedAt IS NULL`, {transaction});
             } catch (error) {
@@ -334,6 +337,18 @@ async function migDB(seq: Sequelize, transaction: Transaction) {
         await changeColumnIfNecessary(qi, 'token_quote', 'tokenId', {type: DataTypes.BIGINT, allowNull: false}, transaction);
         await changeColumnIfNecessary(qi, 'token_quote', 'source', {type: DataTypes.STRING(32), allowNull: false}, transaction);
         await changeColumnIfNecessary(qi, 'token_quote', 'priceUpdatedAt', {type: DataTypes.DATE, allowNull: false}, transaction);
+        try {
+            const legacyIndexes: any[] = await seq.query('SHOW INDEX FROM `token_quote`', {type: QueryTypes.SELECT, transaction});
+            const indexesToDrop = [...new Set(legacyIndexes
+                .filter(index => index.Key_name !== 'PRIMARY' && ['address', 'name', 'symbol'].includes(index.Column_name))
+                .map(index => index.Key_name))];
+            for (const indexName of indexesToDrop) {
+                const escapedIndex = String(indexName).replace(/`/g, '``');
+                await seq.query(`ALTER TABLE \`token_quote\` DROP INDEX \`${escapedIndex}\``, {transaction});
+            }
+        } catch (error) {
+            if (error.parent?.code !== 'ER_NO_SUCH_TABLE') throw error;
+        }
         for (const column of ['address', 'name', 'symbol']) {
             try {
                 const description = await qi.describeTable('token_quote');

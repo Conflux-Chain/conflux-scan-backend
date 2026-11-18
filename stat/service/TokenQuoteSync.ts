@@ -105,7 +105,7 @@ export class TokenQuoteSync {
         if (!token) return null;
         const where: any = {tokenId: token.id, convertSymbol};
         if (source) where.source = source;
-        return await TokenQuoteTrack.findOne({where});
+        return await TokenQuoteTrack.findOne({where, order: [['priceUpdatedAt', 'DESC'], ['id', 'DESC']]});
     }
 
     public async schedule(delay: number = this.runIntervalSec * 1000) {
