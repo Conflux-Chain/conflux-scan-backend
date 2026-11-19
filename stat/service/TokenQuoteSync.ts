@@ -1,5 +1,6 @@
 import {Token} from "../model/Token";
 import {TokenQuoteTrack} from "../model/TokenQuoteTrack";
+import {TokenQuoteHistory} from "../model/TokenQuoteHistory";
 import {Op} from 'sequelize'
 import {StatApp} from "../StatApp";
 import {Conflux, format} from "js-conflux-sdk";
@@ -10,6 +11,7 @@ import {CONST} from "./common/constant";
 import {ConfigInstance, QuoteOptions} from "../config/StatConfig";
 import {KEY_TOKEN_QUOTE_DISABLE_PROXY, KEY_TOKEN_QUOTE_PROXY, KV} from "../model/KV";
 import {getPricePeerUrl} from "./common/pricePeer";
+import {calculateDexPriceChange24h} from "./common/dexPriceChange";
 
 const lodash = require('lodash');
 const superagent = require('superagent');
@@ -26,6 +28,9 @@ const BN_REQUEST_MAX_RETRY_DELAY_MS = 60_000;
 const CFX_CALL_MAX_ATTEMPTS = 3;
 const CFX_CALL_RETRY_DELAY_MS = 500;
 const DEFAULT_PEER_PROXY = 'http://127.0.0.1:1080';
+const DAY_MS = 24 * 60 * 60 * 1000;
+const DEX_BASELINE_TOLERANCE_MS = 30 * 60 * 1000;
+const DEX_HISTORY_RETENTION_MS = 48 * 60 * 60 * 1000;
 
 function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -90,6 +95,7 @@ export class TokenQuoteSync {
     private bnRequestCooldownUntilMs = 0;
     private lastBnFetchAt = 0;
     private lastCmcFetchAt = 0;
+    private lastDexHistoryCleanupAt = 0;
 
     constructor(cfx: Conflux, config: QuoteOptions) {
         if(config.enable && (!config.binanceAccessToken || !config.coinMarketCapAccessToken)) {
@@ -162,6 +168,14 @@ export class TokenQuoteSync {
             safeAddErrorLog('stat-task', 'token-quote-swappi', e).then();
             console.log(`Failed to sync token quote from swappi`, e);
         });
+        if (Date.now() - this.lastDexHistoryCleanupAt >= 60 * 60 * 1000) {
+            await TokenQuoteHistory.destroy({where: {priceUpdatedAt: {[Op.lt]: new Date(Date.now() - DEX_HISTORY_RETENTION_MS)}}})
+                .then(() => { this.lastDexHistoryCleanupAt = Date.now(); })
+                .catch(e => {
+                    safeAddErrorLog('stat-task', 'token-quote-history-cleanup', e).then();
+                    console.log('Failed to clean token quote history', e);
+                });
+        }
 
         const now = Date.now();
         if (now - this.lastBnFetchAt >= this.bnIntervalSec * 1000) {
@@ -328,7 +342,8 @@ export class TokenQuoteSync {
 
         // update price
         const quoteUri = 'https://moonswap.fi/analytics/token/';
-        const quoteArray = Object.keys(tokenPriceMap).filter(token => !wTokens.has(token))
+        const quoteArray = Object.keys(tokenPriceMap)
+            .filter(token => !wTokens.has(token) && Number.isFinite(Number(tokenPriceMap[token])) && Number(tokenPriceMap[token]) > 0)
             .map(token => ({address: token, price: tokenPriceMap[token], priceChange24h: null, src: 'moonswap',
                 quoteUrl: `${quoteUri}${format.address(token, StatApp.networkId)}`}));
 
@@ -384,7 +399,8 @@ export class TokenQuoteSync {
 
         // update price
         const quoteUri = 'https://info.swappi.io/token/';
-        const quoteArray = Object.keys(tokenPriceMap).filter(token => !wTokens_EVM.has(token))
+        const quoteArray = Object.keys(tokenPriceMap)
+            .filter(token => !wTokens_EVM.has(token) && Number.isFinite(Number(tokenPriceMap[token])) && Number(tokenPriceMap[token]) > 0)
             .map(token => ({address: token, price: tokenPriceMap[token], priceChange24h: null, src: 'swappi',
                 quoteUrl: `${quoteUri}${token}`}));
 
@@ -500,7 +516,6 @@ export class TokenQuoteSync {
 
         await Promise.all(quoteArray.map(async quote => {
             const {address, price, quoteUrl, src = 'unknown', priceUpdatedAt = new Date()} = quote;
-            const priceChange24h = parsePriceChange24h(quote.priceChange24h);
             const base32 = format.address(address, StatApp.networkId);
             const dbToken: Token = await Token.findOne({where: {base32}});
             if (!dbToken) return;
@@ -513,8 +528,13 @@ export class TokenQuoteSync {
                 totalPrice = totalPrice === 0 ? null : totalPrice;
 
                 const quoteTime = priceUpdatedAt == null || priceUpdatedAt === '' ? null : new Date(priceUpdatedAt);
+                const validQuoteTime = !quoteTime || Number.isNaN(quoteTime.getTime()) ? new Date() : quoteTime;
+                let priceChange24h = parsePriceChange24h(quote.priceChange24h);
+                if (src === 'swappi' || src === 'moonswap') {
+                    priceChange24h = await this.recordDexQuoteAndGetChange(dbToken.id, src, price, validQuoteTime);
+                }
                 const token = {price, totalSupply, totalPrice, priceSource: src, priceChange24h,
-                    priceUpdatedAt: !quoteTime || Number.isNaN(quoteTime.getTime()) ? new Date() : quoteTime, updatedAt: new Date()};
+                    priceUpdatedAt: validQuoteTime, updatedAt: new Date()};
                 if(!dbToken.quoteUrl && quoteUrl) {
                     lodash.assign(token, {quoteUrl});
                 }
@@ -524,6 +544,22 @@ export class TokenQuoteSync {
                     price, priceChange24h, priceUpdatedAt: token.priceUpdatedAt});
             }
         }));
+    }
+
+    private async recordDexQuoteAndGetChange(tokenId: number, source: string, price: number, priceUpdatedAt: Date): Promise<number | null> {
+        if (!Number.isFinite(Number(price)) || Number(price) <= 0) return null;
+        const baselineAt = new Date(priceUpdatedAt.getTime() - DAY_MS);
+        const baseline = await TokenQuoteHistory.findOne({
+            where: {
+                tokenId, source, convertSymbol: 'USDT',
+                priceUpdatedAt: {[Op.between]: [new Date(baselineAt.getTime() - DEX_BASELINE_TOLERANCE_MS), baselineAt]},
+            },
+            order: [['priceUpdatedAt', 'DESC'], ['id', 'DESC']],
+            attributes: ['price'],
+            raw: true,
+        });
+        await TokenQuoteHistory.create({tokenId, source, convertSymbol: 'USDT', price, priceUpdatedAt});
+        return baseline ? calculateDexPriceChange24h(price, baseline.price) : null;
     }
 }
 

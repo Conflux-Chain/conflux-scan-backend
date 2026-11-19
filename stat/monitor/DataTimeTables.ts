@@ -53,6 +53,7 @@ export const DataTimeTableList = {
 	'search_text': {ignore: true },
 	'stat_token_transfer': {ignore: true },
 	'token_quote': {ignore: true },
+	'token_quote_history': {ignore: true },
 	'pivot_switch_2': {ignore: true },
 	'address_cfx_transfer_2': {ignore: true },
 	'address_erc1155transfer_3': {ignore: true },
