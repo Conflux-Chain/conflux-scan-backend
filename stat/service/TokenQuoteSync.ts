@@ -9,6 +9,7 @@ import {formatToBase32} from "../model/HexMap";
 import {CONST} from "./common/constant";
 import {ConfigInstance, QuoteOptions} from "../config/StatConfig";
 import {KEY_TOKEN_QUOTE_DISABLE_PROXY, KEY_TOKEN_QUOTE_PROXY, KV} from "../model/KV";
+import {getPricePeerUrl} from "./common/pricePeer";
 
 const lodash = require('lodash');
 const superagent = require('superagent');
@@ -24,10 +25,6 @@ const BN_REQUEST_RETRY_DELAY_MS = 1_000;
 const BN_REQUEST_MAX_RETRY_DELAY_MS = 60_000;
 const CFX_CALL_MAX_ATTEMPTS = 3;
 const CFX_CALL_RETRY_DELAY_MS = 500;
-const PEER_URLS = {
-    1029: 'https://www.confluxscan.org',
-    1030: 'https://evm.confluxscan.org',
-};
 const DEFAULT_PEER_PROXY = 'http://127.0.0.1:1080';
 
 function sleep(ms: number) {
@@ -387,11 +384,10 @@ export class TokenQuoteSync {
 
     //======================================================================
     private async pullPrice(tokenList) {
-        const url = PEER_URLS[StatApp.networkId];
+        const url = getPricePeerUrl(this.config, ConfigInstance.serverTag, StatApp.networkId);
         if (
             !url ||
-            !tokenList?.length ||
-            !this.IS_BJ_REGION
+            !tokenList?.length
         ) {
             return;
         }
