@@ -52,6 +52,7 @@ import {CfxBalance} from "../model/Balance";
 import {PruneInfo, PruneType} from "../model/PruneInfo";
 import {ContractTraceCreateQuery} from "./ContractTraceCreateQuery";
 import {NameTag} from "../model/NameTag";
+import {getPricePeerUrl} from "./common/pricePeer";
 
 const path = require('path');
 const superagent = require('superagent');
@@ -893,7 +894,8 @@ export class ContractQuery {
 
     private async updateSolcVulnerabilities() {
         await CompilerVersion.migrateLegacy();
-        const disableProxy = await KV.getSwitch(KEY_COMPILER_VULNERABILITY_DISABLE_PROXY);
+        const pricePeerConfigured = Boolean(getPricePeerUrl(ConfigInstance.quote, ConfigInstance.serverTag, StatApp.networkId));
+        const disableProxy = !pricePeerConfigured || await KV.getSwitch(KEY_COMPILER_VULNERABILITY_DISABLE_PROXY);
         const proxyUrl = disableProxy ? null : await KV.getString(KEY_COMPILER_VULNERABILITY_PROXY,
             process.env.HTTPS_PROXY || process.env.HTTP_PROXY || DEFAULT_COMPILER_VULNERABILITY_PROXY);
         const resp = await ContractQuery._getJsonRequestByAxios({
