@@ -317,9 +317,11 @@ async function migDB(seq: Sequelize, transaction: Transaction) {
         const qi = seq.getQueryInterface();
         await addColumnIfNotExistsV2(qi, 'token', 'priceSource', {type: DataTypes.STRING(32), allowNull: true}, transaction);
         await addColumnIfNotExistsV2(qi, 'token', 'priceUpdatedAt', {type: DataTypes.DATE, allowNull: true}, transaction);
+        await addColumnIfNotExistsV2(qi, 'token', 'priceChange24h', {type: DataTypes.DOUBLE, allowNull: true}, transaction);
         await addColumnIfNotExistsV2(qi, 'token_quote', 'tokenId', {type: DataTypes.BIGINT, allowNull: true}, transaction);
         await addColumnIfNotExistsV2(qi, 'token_quote', 'source', {type: DataTypes.STRING(32), allowNull: true}, transaction);
         await addColumnIfNotExistsV2(qi, 'token_quote', 'priceUpdatedAt', {type: DataTypes.DATE, allowNull: true}, transaction);
+        await addColumnIfNotExistsV2(qi, 'token_quote', 'priceChange24h', {type: DataTypes.DOUBLE, allowNull: true}, transaction);
         if (isMySQL()) {
             try {
                 const quoteDescription = await qi.describeTable('token_quote');

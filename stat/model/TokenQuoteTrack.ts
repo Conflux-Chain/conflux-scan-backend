@@ -6,6 +6,7 @@ export interface ITokenQuoteTrack {
     source: string
     convertSymbol: string
     price: number
+    priceChange24h?: number | null
     priceUpdatedAt: Date
 }
 
@@ -15,6 +16,7 @@ export class TokenQuoteTrack extends Model<ITokenQuoteTrack> implements ITokenQu
     source: string
     convertSymbol: string
     price: number
+    priceChange24h?: number | null
     priceUpdatedAt: Date
 
     static register(seq: Sequelize) {
@@ -24,6 +26,7 @@ export class TokenQuoteTrack extends Model<ITokenQuoteTrack> implements ITokenQu
             source: {type: DataTypes.STRING(32), allowNull: false},
             convertSymbol: {type: DataTypes.CHAR(10), allowNull: false},
             price: {type: DataTypes.DECIMAL(36, 18)},
+            priceChange24h: {type: DataTypes.DOUBLE, allowNull: true},
             priceUpdatedAt: {type: DataTypes.DATE, allowNull: false},
         }, {
             tableName: 'token_quote',
@@ -42,6 +45,7 @@ export class TokenQuoteTrack extends Model<ITokenQuoteTrack> implements ITokenQu
             source: tokenQuote.source,
             convertSymbol: tokenQuote.convertSymbol,
             price: tokenQuote.price,
+            priceChange24h: tokenQuote.priceChange24h ?? null,
             priceUpdatedAt: tokenQuote.priceUpdatedAt,
         }, {
             transaction: dbTx
