@@ -271,7 +271,7 @@ router_get(router,'/block',
       minEpochNumber: { in: 'query', type: 'integer', minimum: 0 },
       maxEpochNumber: { in: 'query', type: 'integer', minimum: 0 },
       reverse: { in: 'query', type: 'boolean', default: true }, // XXX: front-end is lazy to input 'true'
-      skip: { in: 'query', type: 'integer', minimum: 0, maximum: 100000000, default: 0 },
+      skip: { in: 'query', type: 'integer', minimum: 0, maximum: 20000000000, default: 0 },
       limit: { in: 'query', type: 'integer', minimum: 0, maximum: 100, default: 10 },
       fields: {
         in: 'query', type: 'array', default: ['avgGasPrice', 'pivotHash', 'risk', 'totalReward'],
@@ -424,7 +424,7 @@ router_get(router,'/transaction',
       maxEpochNumber: { in: 'query', type: 'integer', minimum: 0 },
       nonce: { in: 'query', type: 'integer', minimum: 0 },
       reverse: { in: 'query', type: 'boolean', default: true }, // XXX: front-end is lazy to input 'true'
-      skip: { in: 'query', type: 'integer', minimum: 0, maximum: 100000000, default: 0 },
+      skip: { in: 'query', type: 'integer', minimum: 0, maximum: 20000000000, default: 0 },
       limit: { in: 'query', type: 'integer', minimum: 0, maximum: 100, default: 10 },
       fields: {
         in: 'query', type: 'array', default: ['risk', 'gasFee'],
