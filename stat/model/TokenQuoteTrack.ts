@@ -4,6 +4,7 @@ export interface ITokenQuoteTrack {
     id?: number
     tokenId: number
     source: string
+    peerSource?: string | null
     convertSymbol: string
     price: number
     priceChange24h?: number | null
@@ -14,6 +15,7 @@ export class TokenQuoteTrack extends Model<ITokenQuoteTrack> implements ITokenQu
     id?: number
     tokenId: number
     source: string
+    peerSource?: string | null
     convertSymbol: string
     price: number
     priceChange24h?: number | null
@@ -24,6 +26,7 @@ export class TokenQuoteTrack extends Model<ITokenQuoteTrack> implements ITokenQu
             id: {type: DataTypes.BIGINT, allowNull: false, autoIncrement: true, primaryKey: true},
             tokenId: {type: DataTypes.BIGINT, allowNull: false},
             source: {type: DataTypes.STRING(32), allowNull: false},
+            peerSource: {type: DataTypes.STRING(32), allowNull: true},
             convertSymbol: {type: DataTypes.CHAR(10), allowNull: false},
             price: {type: DataTypes.DECIMAL(36, 18)},
             priceChange24h: {type: DataTypes.DOUBLE, allowNull: true},
@@ -43,6 +46,7 @@ export class TokenQuoteTrack extends Model<ITokenQuoteTrack> implements ITokenQu
         return await TokenQuoteTrack.create({
             tokenId: tokenQuote.tokenId,
             source: tokenQuote.source,
+            peerSource: tokenQuote.peerSource ?? null,
             convertSymbol: tokenQuote.convertSymbol,
             price: tokenQuote.price,
             priceChange24h: tokenQuote.priceChange24h ?? null,
