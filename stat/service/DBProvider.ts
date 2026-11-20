@@ -9,6 +9,7 @@ import {DailyTransaction} from "../model/DailyTransaction";
 import {DailyCfxHolder} from "../model/DailyCfxHolder";
 import {ContractDestroy, TraceCreateContract} from "../model/TraceCreateContract";
 import {TokenQuoteTrack} from "../model/TokenQuoteTrack";
+import {TokenQuoteHistory} from "../model/TokenQuoteHistory";
 import {DailyBlockDataStat} from "../model/DailyBlockDataStat";
 import {CfxBalance, createTokenBalanceTable, NFTBalance,} from "../model/Balance";
 import {DailyToken, Erc1155Amount, Erc1155Data, NftId, NftMint, Token} from "../model/Token";
@@ -199,6 +200,7 @@ export async function initPartialModel(sequelize) {
     NftMint.register(sequelize)
     NftMetaFts.register(sequelize);
     TokenQuoteTrack.register(sequelize);
+    TokenQuoteHistory.register(sequelize);
     KV.register(sequelize);
     CompilerVersion.register(sequelize);
     Epoch.register(sequelize);
@@ -362,6 +364,21 @@ async function migDB(seq: Sequelize, transaction: Transaction) {
         await addIndexIfNotExistsMySQL(qi, 'token_quote', 'uk_token_quote_track_token_source_convert', {
             fields: ['tokenId', 'source', 'convertSymbol'], unique: true,
         }, transaction);
+        if (isMySQL()) {
+            await seq.query(`CREATE TABLE IF NOT EXISTS \`token_quote_history\` (
+                \`id\` BIGINT NOT NULL AUTO_INCREMENT,
+                \`tokenId\` BIGINT NOT NULL,
+                \`source\` VARCHAR(32) NOT NULL,
+                \`convertSymbol\` CHAR(10) NOT NULL,
+                \`price\` DECIMAL(36, 18) NOT NULL,
+                \`priceUpdatedAt\` DATETIME NOT NULL,
+                PRIMARY KEY (\`id\`),
+                KEY \`idx_token_quote_history_lookup\` (\`tokenId\`, \`source\`, \`convertSymbol\`, \`priceUpdatedAt\`),
+                KEY \`idx_token_quote_history_cleanup\` (\`priceUpdatedAt\`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`, {transaction});
+        } else {
+            await TokenQuoteHistory.sync();
+        }
         if (isMySQL()) {
             await seq.query(`CREATE TABLE IF NOT EXISTS \`compiler_version\` (
                 \`id\` BIGINT NOT NULL AUTO_INCREMENT,
