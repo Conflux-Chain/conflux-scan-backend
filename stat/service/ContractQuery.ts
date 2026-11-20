@@ -29,8 +29,6 @@ import {sleep} from "./tool/ProcessTool";
 import {
     KEY_AUTO_VERIFY_TRACE_ID,
     KEY_AUTO_VERIFY_VERIFY_ID,
-    KEY_COMPILER_VULNERABILITY_DISABLE_PROXY,
-    KEY_COMPILER_VULNERABILITY_PROXY,
     KEY_EVM_VERSIONS,
     KEY_STAT_ANNOUNCE_NAME_FOR_VERIFIED_CONTRACTS,
     KEY_STAT_NAME_TAG_FOR_VERIFIED_CONTRACTS,
@@ -52,7 +50,7 @@ import {CfxBalance} from "../model/Balance";
 import {PruneInfo, PruneType} from "../model/PruneInfo";
 import {ContractTraceCreateQuery} from "./ContractTraceCreateQuery";
 import {NameTag} from "../model/NameTag";
-import {getPricePeerUrl} from "./common/pricePeer";
+import {getBjProxyUrl} from "./common/bjProxy";
 
 const path = require('path');
 const superagent = require('superagent');
@@ -66,7 +64,6 @@ const DEFAULT_VERIFY_CACHE_TTL: number = 60 * 60 * 24 * 7 // 7 days
 const DEFAULT_COMPILER_CACHE_TTL: number = 60 * 3 // 3 min
 const PENDING_ABI_SAVE_INTERVAL = 10_000;
 const VERIFY_RATE_LIMIT_DELAY_MS = 30_000;
-const DEFAULT_COMPILER_VULNERABILITY_PROXY = 'http://127.0.0.1:1080';
 const METHOD_SELECTOR_REGEX = /^0x[0-9a-fA-F]{8}$/;
 const ZERO_LABS_PROXY_BEACON_MAP = {
     "0xea224dbb52f57752044c0c86ad50930091f561b9":"0x0e9cc1be1060e3dd036f16977a186a8185acc513",
@@ -894,14 +891,10 @@ export class ContractQuery {
 
     private async updateSolcVulnerabilities() {
         await CompilerVersion.migrateLegacy();
-        const pricePeerConfigured = Boolean(getPricePeerUrl(ConfigInstance.quote, ConfigInstance.serverTag, StatApp.networkId));
-        const disableProxy = !pricePeerConfigured || await KV.getSwitch(KEY_COMPILER_VULNERABILITY_DISABLE_PROXY);
-        const proxyUrl = disableProxy ? null : await KV.getString(KEY_COMPILER_VULNERABILITY_PROXY,
-            process.env.HTTPS_PROXY || process.env.HTTP_PROXY || DEFAULT_COMPILER_VULNERABILITY_PROXY);
         const resp = await ContractQuery._getJsonRequestByAxios({
             url: 'https://raw.githubusercontent.com/argotorg/solidity/refs/heads/develop/docs/bugs_by_version.json',
             handleError: false,
-            proxyUrl,
+            proxyUrl: await getBjProxyUrl(),
         });
         const {data} = resp;
         // shortVersion => vulnerabilities, eg: 0.5.9 => 16

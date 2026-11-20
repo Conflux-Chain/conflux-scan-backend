@@ -89,10 +89,12 @@ async function main() {
   let proxyAgent;
   let kvProxy;
   let kvDisableProxy;
+  let isBj = true; // The peer job only runs on BJ; DB mode checks the configured server tag.
   try {
     if (!options.skipDb) {
       const {loadConfig} = require('../stat/config/StatConfig');
       const config = loadConfig('Prod');
+      isBj = config.serverTag.includes('bj');
       if (!config.database) throw new Error('Database configuration is missing; use --skip-db with --address');
       log('connecting to configured database', {instanceName: config.database.instanceName, host: config.database.host});
       sequelize = new Sequelize(config.database.instanceName, null, null, {...config.database, logging: false});
@@ -100,11 +102,11 @@ async function main() {
       log('database connected');
       const rows = await sequelize.query(
         'SELECT `key`, `value` FROM `config` WHERE `key` IN (:keys)',
-        {replacements: {keys: ['KEY_TOKEN_QUOTE_DISABLE_PROXY', 'KEY_TOKEN_QUOTE_PROXY']}, type: QueryTypes.SELECT},
+        {replacements: {keys: ['KEY_BJ_DISABLE_PROXY', 'KEY_BJ_PROXY_URL']}, type: QueryTypes.SELECT},
       );
       const settings = Object.fromEntries(rows.map(row => [row.key, row.value]));
-      kvDisableProxy = String(settings.KEY_TOKEN_QUOTE_DISABLE_PROXY || '').toLowerCase() === 'true';
-      kvProxy = settings.KEY_TOKEN_QUOTE_PROXY || null;
+      kvDisableProxy = String(settings.KEY_BJ_DISABLE_PROXY || '').toLowerCase() === 'true';
+      kvProxy = settings.KEY_BJ_PROXY_URL || null;
       log('KV settings loaded', {disableProxy: kvDisableProxy, proxyUrl: kvProxy ? safeProxyUrl(kvProxy) : '(unset)'});
       if (!options.addresses.length) {
         const tokens = await sequelize.query(
@@ -119,7 +121,7 @@ async function main() {
     }
 
     if (!options.addresses.length) throw new Error('No token addresses to request; pass --address ADDRESS');
-    const disableProxy = options.noProxy || (!options.proxyUrl && kvDisableProxy === true);
+    const disableProxy = options.noProxy || (!options.proxyUrl && (!isBj || kvDisableProxy === true));
     const proxyUrl = options.proxyUrl || kvProxy || process.env.HTTPS_PROXY || process.env.HTTP_PROXY || DEFAULT_PROXY;
     const proxySource = options.proxyUrl ? 'CLI' : kvProxy ? 'KV' : process.env.HTTPS_PROXY ? 'HTTPS_PROXY' : process.env.HTTP_PROXY ? 'HTTP_PROXY' : 'default';
     if (!disableProxy && (new URL(proxyUrl).username || new URL(proxyUrl).password)) {
