@@ -435,10 +435,11 @@ export class TokenQuoteSync {
             .timeout({response, deadline});
         const tokenArray = lodash.get(resp, ['body', 'data', 'list']) || lodash.get(resp, ['body', 'result', 'list']);
 
-        const quoteArray = tokenArray.map(({address, price, priceUpdatedAt, priceChange24h}) => ({
+        const quoteArray = tokenArray.map(({address, price, priceSource, priceUpdatedAt, priceChange24h}) => ({
             address: formatToBase32(address),
             price,
             src: 'HK',
+            peerSource: priceSource,
             priceUpdatedAt,
             priceChange24h,
         }));
@@ -522,6 +523,8 @@ export class TokenQuoteSync {
 
         await Promise.all(quoteArray.map(async quote => {
             const {address, price, quoteUrl, src = 'unknown', priceUpdatedAt = new Date()} = quote;
+            const peerSource = src === 'HK' && typeof quote.peerSource === 'string'
+                ? quote.peerSource.slice(0, 32) || null : null;
             const base32 = format.address(address, StatApp.networkId);
             const dbToken: Token = await Token.findOne({where: {base32}});
             if (!dbToken) return;
@@ -547,7 +550,7 @@ export class TokenQuoteSync {
                 }
 
                 await Token.update(token, {where: {id: dbToken.id}});
-                await TokenQuoteTrack.upsert({tokenId: dbToken.id, source: src, convertSymbol: 'USDT',
+                await TokenQuoteTrack.upsert({tokenId: dbToken.id, source: src, peerSource, convertSymbol: 'USDT',
                     price, priceChange24h, priceUpdatedAt: token.priceUpdatedAt});
             }
         }));
