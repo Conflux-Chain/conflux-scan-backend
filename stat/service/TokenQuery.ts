@@ -117,7 +117,7 @@ export class TokenQuery {
         let attributes: any = ['hex40id', ['base32', 'address'],
             'name', 'symbol', 'decimals', 'granularity', 'totalSupply',
             ['type', 'transferType'], ['holder', 'holderCount'], ['transfer', 'transferCount'],
-            'price', 'priceSource', 'priceUpdatedAt', 'totalPrice', 'quoteUrl', 'iconUrl', 'website', 'ipfsGateway', 'securityCredits'];
+            'price', 'priceSource', 'priceUpdatedAt', 'priceChange24h', 'totalPrice', 'quoteUrl', 'iconUrl', 'website', 'ipfsGateway', 'securityCredits'];
         if (lodash.includes(fields, 'icon')) {
             attributes.push('icon');
         }
@@ -373,7 +373,7 @@ export class TokenQuery {
         }).then(list => list[0]['cntr']));
 
         const fields = `b.balance, t.base32 as contract, t.type, t.name, t.symbol, t.decimals, t.iconUrl, t.webSite, 
-            t.price, t.priceSource, t.priceUpdatedAt, t.quoteUrl, t.transfer as totalTransfer`
+            t.price, t.priceSource, t.priceUpdatedAt, t.priceChange24h, t.quoteUrl, t.transfer as totalTransfer`
 
         let contractIdCondition = "";
         const listReplacements: any = {addressId, types: normalizedTypes, maxOfAllType, skip, limit};

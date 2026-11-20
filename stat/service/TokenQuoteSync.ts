@@ -31,6 +31,13 @@ function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// A value of 5.2 means +5.2%; missing or invalid provider data stays null.
+function parsePriceChange24h(value): number | null {
+    if (value === null || value === undefined || value === '') return null;
+    const change = Number(value);
+    return Number.isFinite(change) ? change : null;
+}
+
 function shouldRetryBNRequestError(error) {
     const status = error?.status || error?.response?.status;
     return !status || status === 408 || status === 418 || status === 429 || status >= 500;
@@ -191,10 +198,11 @@ export class TokenQuoteSync {
 
         const resp = await this.getFromBNBatch(tokenArray.map(token => token.bnId));
         const quoteMap = lodash.keyBy(resp, 'symbol');
-        const quoteArray = tokenArray.map(token => {
+        const quoteArray = tokenArray.filter(token => quoteMap[`${token['bnId']}USDT`]).map(token => {
             return {
                 address: token['address'],
-                price: quoteMap[`${token['bnId']}USDT`]['price'],
+                price: quoteMap[`${token['bnId']}USDT`].lastPrice,
+                priceChange24h: quoteMap[`${token['bnId']}USDT`].priceChangePercent,
                 src: 'BN',
             };
         });
@@ -209,7 +217,7 @@ export class TokenQuoteSync {
         let lastError;
         for (let attempt = 1; attempt <= BN_REQUEST_MAX_ATTEMPTS; attempt++) {
             try {
-                const resp = await superagent.get('https://api.binance.com/api/v3/ticker/price')
+                const resp = await superagent.get('https://api.binance.com/api/v3/ticker/24hr')
                     .set('X-MBX-APIKEY', this.config.binanceAccessToken)
                     .timeout({response, deadline})
                     .query({
@@ -257,6 +265,7 @@ export class TokenQuoteSync {
             return {
                 address: token.address,
                 price: quote.price || null,
+                priceChange24h: quote.percent_change_24h,
                 src: 'CMC',
             };
         });
@@ -320,7 +329,7 @@ export class TokenQuoteSync {
         // update price
         const quoteUri = 'https://moonswap.fi/analytics/token/';
         const quoteArray = Object.keys(tokenPriceMap).filter(token => !wTokens.has(token))
-            .map(token => ({address: token, price: tokenPriceMap[token], src: 'moonswap',
+            .map(token => ({address: token, price: tokenPriceMap[token], priceChange24h: null, src: 'moonswap',
                 quoteUrl: `${quoteUri}${format.address(token, StatApp.networkId)}`}));
 
         await this.upsertQuote(quoteArray);
@@ -376,7 +385,7 @@ export class TokenQuoteSync {
         // update price
         const quoteUri = 'https://info.swappi.io/token/';
         const quoteArray = Object.keys(tokenPriceMap).filter(token => !wTokens_EVM.has(token))
-            .map(token => ({address: token, price: tokenPriceMap[token], src: 'swappi',
+            .map(token => ({address: token, price: tokenPriceMap[token], priceChange24h: null, src: 'swappi',
                 quoteUrl: `${quoteUri}${token}`}));
 
         await this.upsertQuote(quoteArray);
@@ -404,11 +413,12 @@ export class TokenQuoteSync {
             .timeout({response, deadline});
         const tokenArray = lodash.get(resp, ['body', 'data', 'list']) || lodash.get(resp, ['body', 'result', 'list']);
 
-        const quoteArray = tokenArray.map(({address, name, symbol, price, priceUpdatedAt}) => ({
+        const quoteArray = tokenArray.map(({address, price, priceUpdatedAt, priceChange24h}) => ({
             address: formatToBase32(address),
             price,
             src: 'HK',
             priceUpdatedAt,
+            priceChange24h,
         }));
 
         await this.upsertQuote(quoteArray);
@@ -485,11 +495,12 @@ export class TokenQuoteSync {
     //======================================================================
     private async upsertQuote(quoteArray) {
         const {wrappedUSDT, wrappedUSDT0} = CONST.WRAPPED_TOKENS[StatApp.networkId] || {};
-        wrappedUSDT && quoteArray.push({address: wrappedUSDT, price: 1, src: 'wrapped'});
-        wrappedUSDT0 && quoteArray.push({address: wrappedUSDT0, price: 1, src: 'wrapped'});
+        wrappedUSDT && quoteArray.push({address: wrappedUSDT, price: 1, priceChange24h: null, src: 'wrapped'});
+        wrappedUSDT0 && quoteArray.push({address: wrappedUSDT0, price: 1, priceChange24h: null, src: 'wrapped'});
 
         await Promise.all(quoteArray.map(async quote => {
             const {address, price, quoteUrl, src = 'unknown', priceUpdatedAt = new Date()} = quote;
+            const priceChange24h = parsePriceChange24h(quote.priceChange24h);
             const base32 = format.address(address, StatApp.networkId);
             const dbToken: Token = await Token.findOne({where: {base32}});
             if (!dbToken) return;
@@ -502,7 +513,7 @@ export class TokenQuoteSync {
                 totalPrice = totalPrice === 0 ? null : totalPrice;
 
                 const quoteTime = priceUpdatedAt == null || priceUpdatedAt === '' ? null : new Date(priceUpdatedAt);
-                const token = {price, totalSupply, totalPrice, priceSource: src,
+                const token = {price, totalSupply, totalPrice, priceSource: src, priceChange24h,
                     priceUpdatedAt: !quoteTime || Number.isNaN(quoteTime.getTime()) ? new Date() : quoteTime, updatedAt: new Date()};
                 if(!dbToken.quoteUrl && quoteUrl) {
                     lodash.assign(token, {quoteUrl});
@@ -510,7 +521,7 @@ export class TokenQuoteSync {
 
                 await Token.update(token, {where: {id: dbToken.id}});
                 await TokenQuoteTrack.upsert({tokenId: dbToken.id, source: src, convertSymbol: 'USDT',
-                    price, priceUpdatedAt: token.priceUpdatedAt});
+                    price, priceChange24h, priceUpdatedAt: token.priceUpdatedAt});
             }
         }));
     }

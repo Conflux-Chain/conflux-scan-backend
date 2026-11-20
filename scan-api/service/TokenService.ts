@@ -104,7 +104,7 @@ export class TokenService {
         address: token.contract,
         transferType: token.type.replace('CRC', 'ERC'), // Keep private API backward compatible
       },
-      lodash.pick(token, ['balance', 'name', 'symbol', 'iconUrl', 'decimals', 'price', 'priceSource', 'priceUpdatedAt', 'totalTransfer']))
+      lodash.pick(token, ['balance', 'name', 'symbol', 'iconUrl', 'decimals', 'price', 'priceSource', 'priceUpdatedAt', 'priceChange24h', 'totalTransfer']))
     );
   }
 }

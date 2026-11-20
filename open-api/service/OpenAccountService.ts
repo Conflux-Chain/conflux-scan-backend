@@ -40,6 +40,7 @@ export async function listAccountAssets(ctx) {
                 priceInUSDT: formatPrice(TokenQuery.wrappedCFX?.price),
                 priceSource: TokenQuery.wrappedCFX?.priceSource,
                 priceUpdatedAt: TokenQuery.wrappedCFX?.priceUpdatedAt,
+                priceChange24h: TokenQuery.wrappedCFX?.priceChange24h ?? null,
                 quoteUrl: TokenQuery.wrappedCFX?.quoteUrl,
             };
         }
@@ -59,7 +60,7 @@ export async function listAccountAssets(ctx) {
                 amount: token?.balance,
                 priceInUSDT: token?.price,
             },
-            lodash.pick(token, ['contract', 'type', 'name', 'symbol', 'decimals', 'iconUrl', 'quoteUrl', 'priceSource', 'priceUpdatedAt']))
+            lodash.pick(token, ['contract', 'type', 'name', 'symbol', 'decimals', 'iconUrl', 'quoteUrl', 'priceSource', 'priceUpdatedAt', 'priceChange24h']))
     );
 
     if (nativeToken) {
@@ -69,7 +70,10 @@ export async function listAccountAssets(ctx) {
         result.total += 1;
     }
 
-    result.list = result.list.map(token => lodash.pickBy(token, value => !lodash.isNil(value)));
+    result.list = result.list.map((token: any) => ({
+        ...lodash.pickBy(token, value => !lodash.isNil(value)),
+        priceChange24h: token.priceChange24h ?? null,
+    }));
 
     setBody(ctx, result)
 }

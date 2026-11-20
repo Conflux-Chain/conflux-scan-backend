@@ -87,6 +87,7 @@ export async function listTokens(ctx) {
                 priceInUSDT: token.price ? formatPrice(token.price) : undefined,
                 priceSource: token.priceSource || undefined,
                 priceUpdatedAt: token.priceUpdatedAt || undefined,
+                priceChange24h: token.priceChange24h ?? null,
             })
         } else{
             data.push({
