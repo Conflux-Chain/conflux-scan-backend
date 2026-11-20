@@ -7,7 +7,7 @@ environment variables, and local proxy as the scheduled job:
 docker compose exec -T stat_task npm run debug:peer-quote -- --network-id 1030 2>&1 | tee peer-quote-debug.log
 ```
 
-The tool reads `KEY_TOKEN_QUOTE_DISABLE_PROXY` and `KEY_TOKEN_QUOTE_PROXY` from
+The tool reads `KEY_BJ_DISABLE_PROXY` and `KEY_BJ_PROXY_URL` from
 the KV table, selects the same tokens as `TokenQuoteSync`, and sends one read-only
 `/v1/token` request. It prints the chosen proxy source and address, peer DNS
 result, proxy TCP reachability, request and response milestones, elapsed time,

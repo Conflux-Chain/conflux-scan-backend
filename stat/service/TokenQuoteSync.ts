@@ -9,8 +9,8 @@ import {TokenTool} from "./tool/TokenTool";
 import {formatToBase32} from "../model/HexMap";
 import {CONST} from "./common/constant";
 import {ConfigInstance, QuoteOptions} from "../config/StatConfig";
-import {KEY_TOKEN_QUOTE_DISABLE_PROXY, KEY_TOKEN_QUOTE_PROXY, KV} from "../model/KV";
 import {getPricePeerUrl} from "./common/pricePeer";
+import {getBjProxyUrl} from "./common/bjProxy";
 import {calculateDexPriceChange24h} from "./common/dexPriceChange";
 import {getSwappiPriceChanges} from "./common/swappiPriceChange";
 
@@ -28,7 +28,6 @@ const BN_REQUEST_RETRY_DELAY_MS = 1_000;
 const BN_REQUEST_MAX_RETRY_DELAY_MS = 60_000;
 const CFX_CALL_MAX_ATTEMPTS = 3;
 const CFX_CALL_RETRY_DELAY_MS = 500;
-const DEFAULT_PEER_PROXY = 'http://127.0.0.1:1080';
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEX_BASELINE_TOLERANCE_MS = 30 * 60 * 1000;
 const DEX_HISTORY_RETENTION_MS = 48 * 60 * 60 * 1000;
@@ -425,10 +424,8 @@ export class TokenQuoteSync {
 
         const queryParams = tokenList.map(token => `addressArray=${token['address']}`).join('&');
         const req = superagent.get(`${url}/v1/token?${queryParams}`);
-        const disableProxy = await KV.getSwitch(KEY_TOKEN_QUOTE_DISABLE_PROXY);
-        if (!disableProxy) {
-            const proxyUrl = await KV.getString(KEY_TOKEN_QUOTE_PROXY,
-                process.env.HTTPS_PROXY || process.env.HTTP_PROXY || DEFAULT_PEER_PROXY);
+        const proxyUrl = await getBjProxyUrl();
+        if (proxyUrl) {
             req.agent(new ProxyAgent({getProxyForUrl: () => proxyUrl}));
         }
         const resp = await req

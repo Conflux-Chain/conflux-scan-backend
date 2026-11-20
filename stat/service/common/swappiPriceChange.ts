@@ -1,4 +1,5 @@
 import {calculateDexPriceChange24h} from './dexPriceChange';
+import {getBjProxyUrl} from './bjProxy';
 
 const superagent = require('superagent');
 const {ProxyAgent} = require('proxy-agent');
@@ -26,7 +27,7 @@ const PRICE_QUERY = `query($ids: [ID!]!, $block: Int!) {
 
 async function queryGraph(url: string, query: string, variables: object): Promise<any> {
     const request = superagent.post(url).send({query, variables}).timeout(TIMEOUT);
-    const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
+    const proxyUrl = await getBjProxyUrl();
     if (proxyUrl) request.agent(new ProxyAgent({getProxyForUrl: () => proxyUrl}));
     const response = await request;
     if (response.body?.errors?.length || !response.body?.data) {
