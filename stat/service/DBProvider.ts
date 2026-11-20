@@ -3,12 +3,7 @@ import {ESpaceHex40Map, Hex40Map} from "../model/HexMap";
 import {Epoch, VoteParams} from "../model/Epoch";
 import {PivotSwitch} from "../model/Block";
 import {MinerBlock} from "../model/MinerBlock";
-import {
-    KEY_BJ_DISABLE_PROXY, KEY_BJ_PROXY_URL,
-    KEY_TOKEN_QUOTE_DISABLE_PROXY, KEY_TOKEN_QUOTE_PROXY,
-    KEY_COMPILER_VULNERABILITY_DISABLE_PROXY, KEY_COMPILER_VULNERABILITY_PROXY,
-    KV,
-} from "../model/KV";
+import {KV} from "../model/KV";
 import {Database, NoCoreSpace} from "../config/StatConfig";
 import {DailyTransaction} from "../model/DailyTransaction";
 import {DailyCfxHolder} from "../model/DailyCfxHolder";
@@ -322,7 +317,6 @@ async function migDB(seq: Sequelize, transaction: Transaction) {
     // idempotent because API and stat-task processes can start at the same time.
     if (!StatApp.readonly) {
         const qi = seq.getQueryInterface();
-        await migrateBjProxySettings(transaction);
         await addColumnIfNotExistsV2(qi, 'token', 'priceSource', {type: DataTypes.STRING(32), allowNull: true}, transaction);
         await addColumnIfNotExistsV2(qi, 'token', 'priceUpdatedAt', {type: DataTypes.DATE, allowNull: true}, transaction);
         await addColumnIfNotExistsV2(qi, 'token', 'priceChange24h', {type: DataTypes.DOUBLE, allowNull: true}, transaction);
@@ -417,29 +411,6 @@ async function migDB(seq: Sequelize, transaction: Transaction) {
     // await changeColumnIfNecessary(qi, table, 'newColumn', {
     //     type: DataTypes.STRING(512), allowNull: true,
     // });
-}
-
-async function migrateBjProxySettings(transaction: Transaction) {
-    // Preserve deployed values. If both old businesses differ, the quote setting wins.
-    const mappings = [
-        [KEY_BJ_PROXY_URL, [KEY_TOKEN_QUOTE_PROXY, KEY_COMPILER_VULNERABILITY_PROXY]],
-        [KEY_BJ_DISABLE_PROXY, [KEY_TOKEN_QUOTE_DISABLE_PROXY, KEY_COMPILER_VULNERABILITY_DISABLE_PROXY]],
-    ] as const;
-    try {
-        for (const [target, legacyKeys] of mappings) {
-            if (await KV.findByPk(target, {transaction})) continue;
-            for (const legacyKey of legacyKeys) {
-                const legacy = await KV.findByPk(legacyKey, {transaction});
-                if (legacy?.value) {
-                    await KV.create({key: target, value: legacy.value}, {transaction});
-                    break;
-                }
-            }
-        }
-    } catch (error) {
-        if (error.parent?.code !== 'ER_NO_SUCH_TABLE') throw error;
-        // Fresh databases create the config table during sequelize.sync().
-    }
 }
 
 async function dropEmptyTables() {
