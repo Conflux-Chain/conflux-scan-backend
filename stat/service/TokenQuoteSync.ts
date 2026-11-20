@@ -12,6 +12,7 @@ import {ConfigInstance, QuoteOptions} from "../config/StatConfig";
 import {KEY_TOKEN_QUOTE_DISABLE_PROXY, KEY_TOKEN_QUOTE_PROXY, KV} from "../model/KV";
 import {getPricePeerUrl} from "./common/pricePeer";
 import {calculateDexPriceChange24h} from "./common/dexPriceChange";
+import {getSwappiPriceChanges} from "./common/swappiPriceChange";
 
 const lodash = require('lodash');
 const superagent = require('superagent');
@@ -399,9 +400,14 @@ export class TokenQuoteSync {
 
         // update price
         const quoteUri = 'https://info.swappi.io/token/';
-        const quoteArray = Object.keys(tokenPriceMap)
-            .filter(token => !wTokens_EVM.has(token) && Number.isFinite(Number(tokenPriceMap[token])) && Number(tokenPriceMap[token]) > 0)
-            .map(token => ({address: token, price: tokenPriceMap[token], priceChange24h: null, src: 'swappi',
+        const addresses = Object.keys(tokenPriceMap)
+            .filter(token => !wTokens_EVM.has(token) && Number.isFinite(Number(tokenPriceMap[token])) && Number(tokenPriceMap[token]) > 0);
+        const changes = await getSwappiPriceChanges(addresses).catch(e => {
+            console.log('Failed to get Swappi 24-hour price changes; using local samples', e);
+            return {};
+        });
+        const quoteArray = addresses
+            .map(token => ({address: token, price: tokenPriceMap[token], priceChange24h: changes[token.toLowerCase()] ?? null, src: 'swappi',
                 quoteUrl: `${quoteUri}${token}`}));
 
         await this.upsertQuote(quoteArray);
@@ -531,7 +537,8 @@ export class TokenQuoteSync {
                 const validQuoteTime = !quoteTime || Number.isNaN(quoteTime.getTime()) ? new Date() : quoteTime;
                 let priceChange24h = parsePriceChange24h(quote.priceChange24h);
                 if (src === 'swappi' || src === 'moonswap') {
-                    priceChange24h = await this.recordDexQuoteAndGetChange(dbToken.id, src, price, validQuoteTime);
+                    const sampledChange = await this.recordDexQuoteAndGetChange(dbToken.id, src, price, validQuoteTime);
+                    if (priceChange24h === null) priceChange24h = sampledChange;
                 }
                 const token = {price, totalSupply, totalPrice, priceSource: src, priceChange24h,
                     priceUpdatedAt: validQuoteTime, updatedAt: new Date()};
