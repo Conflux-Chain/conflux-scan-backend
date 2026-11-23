@@ -305,9 +305,11 @@ export async function readOpHash(cfx: Conflux, entryPoint: string, op: any): Pro
 		contract = new Contract({abi, address: entryPoint}, cfx);
 		contractMap.set(entryPoint, contract);
 	}
-	return contract['getUserOpHash'](op).then(res=>{
-		return ethers.hexlify(res);
-	});
+	// Conflux SDK contract methods are thenables whose `then` implementation
+	// calls the rejection callback directly.  Awaiting the thenable supplies
+	// both callbacks and preserves the original RPC/contract error.
+	const result = await contract['getUserOpHash'](op);
+	return ethers.hexlify(result);
 }
 
 /**
