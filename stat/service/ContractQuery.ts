@@ -1782,9 +1782,8 @@ export class ContractQuery {
             if (match === false) {
                 return;
             }
-            if (error?.includes("already_verified")
-                || error?.includes("contract_not_deployed")
-                || error?.includes("no_similar_match_found")) {
+            if (["already_verified", "contract_not_deployed", "no_similar_match_found"]
+                .includes(parsedError?.customCode)) {
                 await this.removeAbiSaveTask(address).catch(removeError => {
                     console.log(`Failed to remove terminal abi save task ${address}`, removeError);
                 });
@@ -1793,8 +1792,17 @@ export class ContractQuery {
             if (error?.includes("Pending in queue")) {
                 lastError = error;
                 await sleep(intervalMs); // retry
+            } else if (error) {
+                // Other completed service errors are terminal for this contract.
+                // Keep a record, then let the cursor advance to later contracts.
+                await safeAddErrorLog('ContractQuery', 'verifyByAutoTerminal',
+                    this.wrapVerifyError('verifyByAuto terminal verification error', {
+                        address, verificationId: submit.verificationId, verificationError: error,
+                    }));
+                return;
             } else {
                 lastError = error || 'verification result was not terminal';
+                await sleep(intervalMs);
             }
         }
         throw this.wrapVerifyError('verifyByAuto retries exhausted', {
