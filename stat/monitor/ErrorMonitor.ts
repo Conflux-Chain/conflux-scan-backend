@@ -71,18 +71,18 @@ export function isKnownError(e) {
 		;
 }
 
-export async function safeAddErrorLog(module: string, biz: string, error: Error) {
+export async function safeAddErrorLog(module: string, biz: string, error: Error, alert = true) {
 	if (!error || isKnownError(error)) {
 		return;
 	}
 	try {
-		await addErrorLog(module, biz, error);
+		await addErrorLog(module, biz, error, alert);
 	} catch (e) {
 		console.log(`failed to record error`, e)
 	}
 }
 
-async function addErrorLog(module: string, biz: string, error: Error) {
+async function addErrorLog(module: string, biz: string, error: Error, alert: boolean) {
 	if (!ErrorLog.sequelize) {
 		return;
 	}
@@ -114,5 +114,7 @@ async function addErrorLog(module: string, biz: string, error: Error) {
 			return [bean];
 		})
 	}
-	await reportError(bean, error)
+	if (alert) {
+		await reportError(bean, error)
+	}
 }

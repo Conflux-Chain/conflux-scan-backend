@@ -65,6 +65,7 @@ const DEFAULT_COMPILER_CACHE_TTL: number = 60 * 3 // 3 min
 const PENDING_ABI_SAVE_INTERVAL = 10_000;
 const VERIFY_RATE_LIMIT_DELAY_MS = 30_000;
 const VERIFY_RATE_LIMIT_MAX_DELAY_MS = 15 * 60_000;
+const VERIFY_RATE_LIMIT_ALERT_AFTER_MS = 5 * 60_000;
 const METHOD_SELECTOR_REGEX = /^0x[0-9a-fA-F]{8}$/;
 const ZERO_LABS_PROXY_BEACON_MAP = {
     "0xea224dbb52f57752044c0c86ad50930091f561b9":"0x0e9cc1be1060e3dd036f16977a186a8185acc513",
@@ -93,6 +94,7 @@ export class ContractQuery {
     private CACHE_COMPILER_VERSIONS: any  // solc | vyper => {}
     private scheduleTimers: Record<string, NodeJS.Timeout> = {}
     private verifyRateLimitCount = 0;
+    private firstVerifyRateLimitAt = 0;
 
     constructor(
         {cfx, config, durableAbiSave = false}: { cfx: Conflux; config: VerificationOptions; durableAbiSave?: boolean; },
@@ -1600,7 +1602,7 @@ export class ContractQuery {
             try {
                 await this.verifyByTrace();
             } catch (e) {
-                safeAddErrorLog('ContractQuery', 'verifyByTrace', e).then();
+                safeAddErrorLog('ContractQuery', 'verifyByTrace', e, this.shouldAlertAutoVerifyError(e)).then();
                 console.log('Schedule verify by auto fail', this.formatErrorForLog(e));
                 if (e.code === 429) rateLimitError = e;
             }
@@ -1609,7 +1611,7 @@ export class ContractQuery {
                 try {
                     await this.verifyByVerification();
                 } catch (e) {
-                    safeAddErrorLog('ContractQuery', 'verifyByVerification', e).then();
+                    safeAddErrorLog('ContractQuery', 'verifyByVerification', e, this.shouldAlertAutoVerifyError(e)).then();
                     console.log('Schedule verify by auto fail', this.formatErrorForLog(e));
                     if (e.code === 429) rateLimitError = e;
                 }
@@ -1624,9 +1626,17 @@ export class ContractQuery {
                 await sleep(Math.max(backoff, this.parseRetryAfterMs(rateLimitError.retryAfter)));
             } else {
                 this.verifyRateLimitCount = 0;
+                this.firstVerifyRateLimitAt = 0;
             }
         });
         console.log(`[auto_verify]schedule in ${delay/1000}s interval`);
+    }
+
+    private shouldAlertAutoVerifyError(error: any): boolean {
+        if (error.code !== 429) return true;
+        const now = Date.now();
+        if (!this.firstVerifyRateLimitAt) this.firstVerifyRateLimitAt = now;
+        return now - this.firstVerifyRateLimitAt >= VERIFY_RATE_LIMIT_ALERT_AFTER_MS;
     }
 
     private parseRetryAfterMs(value: string | undefined): number {
