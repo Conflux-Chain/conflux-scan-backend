@@ -64,6 +64,7 @@ const DEFAULT_VERIFY_CACHE_TTL: number = 60 * 60 * 24 * 7 // 7 days
 const DEFAULT_COMPILER_CACHE_TTL: number = 60 * 3 // 3 min
 const PENDING_ABI_SAVE_INTERVAL = 10_000;
 const VERIFY_RATE_LIMIT_DELAY_MS = 30_000;
+const VERIFY_RATE_LIMIT_MAX_DELAY_MS = 15 * 60_000;
 const METHOD_SELECTOR_REGEX = /^0x[0-9a-fA-F]{8}$/;
 const ZERO_LABS_PROXY_BEACON_MAP = {
     "0xea224dbb52f57752044c0c86ad50930091f561b9":"0x0e9cc1be1060e3dd036f16977a186a8185acc513",
@@ -91,6 +92,7 @@ export class ContractQuery {
     private readonly cacheCompilerTtl: number
     private CACHE_COMPILER_VERSIONS: any  // solc | vyper => {}
     private scheduleTimers: Record<string, NodeJS.Timeout> = {}
+    private verifyRateLimitCount = 0;
 
     constructor(
         {cfx, config, durableAbiSave = false}: { cfx: Conflux; config: VerificationOptions; durableAbiSave?: boolean; },
@@ -1520,6 +1522,7 @@ export class ContractQuery {
         err['location'] = __filename
         err['remoteUrl'] = url
         err['remoteRespText'] = remoteRespText
+        err['retryAfter'] = error?.response?.headers?.['retry-after'];
 
         if (err['code'] === 404) {
             return null
@@ -1593,23 +1596,45 @@ export class ContractQuery {
 
     async scheduleVerifyByAuto(delay: number = 1000) {
         this.startLoopSchedule('auto_verify', delay, async () => {
-            await this.verifyByTrace().catch(async e => {
+            let rateLimitError: any;
+            try {
+                await this.verifyByTrace();
+            } catch (e) {
                 safeAddErrorLog('ContractQuery', 'verifyByTrace', e).then();
                 console.log('Schedule verify by auto fail', this.formatErrorForLog(e));
-                if (e.code === 429) {
-                    await sleep(VERIFY_RATE_LIMIT_DELAY_MS);
-                }
-            });
+                if (e.code === 429) rateLimitError = e;
+            }
 
-            await this.verifyByVerification().catch(async e => {
-                safeAddErrorLog('ContractQuery', 'verifyByVerification', e).then();
-                console.log('Schedule verify by auto fail', this.formatErrorForLog(e));
-                if (e.code === 429) {
-                    await sleep(VERIFY_RATE_LIMIT_DELAY_MS);
+            if (!rateLimitError) {
+                try {
+                    await this.verifyByVerification();
+                } catch (e) {
+                    safeAddErrorLog('ContractQuery', 'verifyByVerification', e).then();
+                    console.log('Schedule verify by auto fail', this.formatErrorForLog(e));
+                    if (e.code === 429) rateLimitError = e;
                 }
-            });
+            }
+
+            if (rateLimitError) {
+                this.verifyRateLimitCount++;
+                const backoff = Math.min(
+                    VERIFY_RATE_LIMIT_MAX_DELAY_MS,
+                    VERIFY_RATE_LIMIT_DELAY_MS * 2 ** Math.min(this.verifyRateLimitCount - 1, 5),
+                );
+                await sleep(Math.max(backoff, this.parseRetryAfterMs(rateLimitError.retryAfter)));
+            } else {
+                this.verifyRateLimitCount = 0;
+            }
         });
         console.log(`[auto_verify]schedule in ${delay/1000}s interval`);
+    }
+
+    private parseRetryAfterMs(value: string | undefined): number {
+        if (!value) return 0;
+        const seconds = Number(value);
+        if (Number.isFinite(seconds) && seconds >= 0) return Math.min(seconds * 1000, 24 * 60 * 60_000);
+        const date = Date.parse(value);
+        return Number.isFinite(date) ? Math.max(0, Math.min(date - Date.now(), 24 * 60 * 60_000)) : 0;
     }
 
     private async verifyByTrace() {
@@ -1700,10 +1725,8 @@ export class ContractQuery {
             return;
         }
 
+        let lastError = 'verification did not complete';
         for (let i = 0; i < retry; i++) {
-            if (i === retry) {
-                throw new Error("Retry exceeds max times");
-            }
 
             const input: VerifyByLinkInput = {
                 contractAddress: address,
@@ -1714,6 +1737,7 @@ export class ContractQuery {
             // persistence until the verification job has produced a match.
             const submit: any = await this.verifyByLink(input, false);
             if (submit.message) {
+                lastError = submit.message;
                 await sleep(intervalMs);
                 continue; // retry
             }
@@ -1743,7 +1767,10 @@ export class ContractQuery {
                         console.log(`Failed to save matched abi ${address}`, saveError);
                     });
                 }
-                break;
+                return;
+            }
+            if (match === false) {
+                return;
             }
             if (error?.includes("already_verified")
                 || error?.includes("contract_not_deployed")
@@ -1751,12 +1778,18 @@ export class ContractQuery {
                 await this.removeAbiSaveTask(address).catch(removeError => {
                     console.log(`Failed to remove terminal abi save task ${address}`, removeError);
                 });
-                break;
+                return;
             }
             if (error?.includes("Pending in queue")) {
+                lastError = error;
                 await sleep(intervalMs); // retry
+            } else {
+                lastError = error || 'verification result was not terminal';
             }
         }
+        throw this.wrapVerifyError('verifyByAuto retries exhausted', {
+            address, retry, lastError,
+        });
     }
 
     private parseVerifyServiceError(error?: string) {
@@ -1789,6 +1822,7 @@ export class ContractQuery {
         const wrapped: any = new Error(message);
         wrapped.name = 'ContractQueryVerifyError';
         wrapped.code = source?.code;
+        wrapped.retryAfter = source?.retryAfter;
         wrapped.context = {
             ...context,
             requestUrl: source.remoteUrl || source.context?.requestUrl || context.requestUrl,
