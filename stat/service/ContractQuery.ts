@@ -1857,6 +1857,7 @@ export class ContractQuery {
         wrapped.retryAfter = source?.retryAfter;
         wrapped.context = {
             ...context,
+            ...(source.context || {}),
             requestUrl: source.remoteUrl || source.context?.requestUrl || context.requestUrl,
             remoteRespText: source.remoteRespText || source.context?.remoteRespText,
         };
