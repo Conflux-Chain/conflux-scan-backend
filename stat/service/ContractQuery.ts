@@ -1858,6 +1858,7 @@ export class ContractQuery {
         wrapped.context = {
             ...context,
             requestUrl: source.remoteUrl || source.context?.requestUrl || context.requestUrl,
+            remoteRespText: source.remoteRespText || source.context?.remoteRespText,
         };
         wrapped.causeMessage = source?.message;
         wrapped.causeStack = source?.stack;
