@@ -1398,6 +1398,9 @@ export class ContractQuery {
                 const e = job.error;
                 return {
                     error: e?.message ? `${e.customCode}:${e.message}` : `${e.customCode}`,
+                    errorDetails: e,
+                    jobStartTime: job.jobStartTime,
+                    jobFinishTime: job.jobFinishTime,
                 };
             }
 
@@ -1752,19 +1755,30 @@ export class ContractQuery {
                 continue; // retry
             }
 
-            const {error, match} = await this.getVerificationResult(submit.verificationId);
+            const {error, match, errorDetails, jobStartTime, jobFinishTime} =
+                await this.getVerificationResult(submit.verificationId);
             const parsedError = this.parseVerifyServiceError(error);
 
             if (parsedError?.customCode === "internal_error") {
-                throw this.wrapVerifyError('verifyByAuto internal_error', {
+                lastError = error;
+                if (i + 1 < retry) {
+                    await sleep(intervalMs);
+                    continue;
+                }
+                throw this.wrapVerifyError('verifyByAuto internal_error retries exhausted', {
                     address,
                     attempt: i + 1,
                     retry,
                     intervalMs,
                     verificationId: submit.verificationId,
+                    requestUrl: `${this.verifyUrl}/verify/${submit.verificationId}`,
+                    submitUrl: `${this.verifyUrl}/verify/crosschain/${StatApp.networkId}/${address}`,
                     verifyInput: input,
                     verificationError: error,
                     parsedError,
+                    errorDetails,
+                    jobStartTime,
+                    jobFinishTime,
                 });
             }
             if (match) {
@@ -1806,7 +1820,7 @@ export class ContractQuery {
             }
         }
         throw this.wrapVerifyError('verifyByAuto retries exhausted', {
-            address, retry, lastError,
+            address, retry, lastError, requestUrl: this.verifyUrl,
         });
     }
 
@@ -1843,7 +1857,9 @@ export class ContractQuery {
         wrapped.retryAfter = source?.retryAfter;
         wrapped.context = {
             ...context,
+            ...(source.context || {}),
             requestUrl: source.remoteUrl || source.context?.requestUrl || context.requestUrl,
+            remoteRespText: source.remoteRespText || source.context?.remoteRespText,
         };
         wrapped.causeMessage = source?.message;
         wrapped.causeStack = source?.stack;
@@ -2284,6 +2300,9 @@ export interface VerificationJob {
 export interface VerificationResult {
     error?: string;
     match?: boolean;
+    errorDetails?: VerifyErrorResponse;
+    jobStartTime?: string;
+    jobFinishTime?: string;
 }
 
 export interface VerifiedContractMinimal {
